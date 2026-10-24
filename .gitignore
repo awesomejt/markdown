@@ -1,0 +1,26 @@
+# Agent runtime state
+.agents/requests/
+.agents/handoffs/
+.agents/chats/*.md
+project.yaml.lock
+
+# Build output
+.build/
+build/
+DerivedData/
+target/
+__pycache__/
+*.py[cod]
+
+# IDE and OS state
+.DS_Store
+*.xcuserstate
+xcuserdata/
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+local.yaml
+
+!.agents/chats/.gitkeep

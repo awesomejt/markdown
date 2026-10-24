@@ -1,0 +1,690 @@
+contract_version: project-state/v1
+revision: 74
+project:
+  concurrency_limit: 1
+  created_at: '2026-10-24T23:34:09.871478+00:00'
+  project_ref: markdown-native
+  status: active
+  updated_at: '2026-10-24T23:34:49.317496+00:00'
+  workflow_id: native-app-development
+  workflow_version: '2'
+phases:
+  - completed_at: null
+    completion_pass_ref: null
+    evidence: {}
+    id: b19ec1c8-f0c0-4cee-b584-5c9247a96edd
+    name: Feasibility
+    ordinal: 1
+    phase_key: feasibility
+    reason: null
+    started_at: '2026-10-24T23:34:09.871478+00:00'
+    status: active
+    version: 1
+  - completed_at: null
+    completion_pass_ref: null
+    evidence: {}
+    id: f1e4c757-a3fc-4cfd-810b-4cbed98586c8
+    name: Portable Core
+    ordinal: 2
+    phase_key: portable-core
+    reason: null
+    started_at: null
+    status: pending
+    version: 1
+  - completed_at: null
+    completion_pass_ref: null
+    evidence: {}
+    id: 1c2f7cf2-feeb-4b8d-b741-2aaaa890bbaa
+    name: Desktop Apps
+    ordinal: 3
+    phase_key: desktop-apps
+    reason: null
+    started_at: null
+    status: pending
+    version: 1
+  - completed_at: null
+    completion_pass_ref: null
+    evidence: {}
+    id: 293dc473-cabc-484e-9fe5-04d5fe4809ca
+    name: Mobile
+    ordinal: 4
+    phase_key: mobile
+    reason: null
+    started_at: null
+    status: pending
+    version: 1
+  - completed_at: null
+    completion_pass_ref: null
+    evidence: {}
+    id: 0a57ed9c-c834-429b-93fd-ae6f2067a037
+    name: Advanced
+    ordinal: 5
+    phase_key: advanced
+    reason: null
+    started_at: null
+    status: pending
+    version: 1
+tasks:
+  - active_pass_ref: null
+    blockers: []
+    completed_at: '2026-10-24T23:34:49.317496+00:00'
+    created_at: '2026-10-24T23:34:32.391373+00:00'
+    description: Extract phased native requirements, desktop-first scope, platform deviations, and repository
+      boundaries.
+    id: 7fe339d7-90ce-4211-9a0a-91be7640aa42
+    model_tier: null
+    phase: feasibility
+    priority: 110
+    role: designer
+    status: completed
+    task_key: REQ-001
+    title: Rebaseline requirements and repository strategy
+    updated_at: '2026-10-24T23:34:49.317496+00:00'
+    validation_expectations: Planning documents, decisions, memory, roadmap, and machine state agree.
+  - active_pass_ref: null
+    blockers: []
+    completed_at: null
+    created_at: '2026-10-24T23:34:32.518911+00:00'
+    description: Create independent provenance-tracked semantic, hostile, large, and benchmark fixtures.
+    id: 28b6e143-d968-49ca-b8c5-811c19379e6f
+    model_tier: null
+    phase: feasibility
+    priority: 100
+    role: researcher
+    status: pending
+    task_key: FEAS-001
+    title: Freeze semantic and performance corpora
+    updated_at: '2026-10-24T23:34:32.518911+00:00'
+    validation_expectations: Manifest, schemas, semantic goldens, performance inputs, and validation pass.
+  - active_pass_ref: null
+    blockers: []
+    completed_at: null
+    created_at: '2026-10-24T23:34:32.642782+00:00'
+    description: Measure Rust/Comrak, cmark-gfm C or C++, and justified platform alternatives.
+    id: 3dc6d894-4d01-4e57-ae2c-bf57dc4b95de
+    model_tier: null
+    phase: feasibility
+    priority: 95
+    role: researcher
+    status: pending
+    task_key: FEAS-002
+    title: Compare core and parser candidates
+    updated_at: '2026-10-24T23:34:32.642782+00:00'
+    validation_expectations: Semantics, spans, extensions, safety, speed, memory, package cost, and recommendation.
+  - active_pass_ref: null
+    blockers: []
+    completed_at: null
+    created_at: '2026-10-24T23:34:32.765163+00:00'
+    description: Prototype and profile the basic corpus in the proposed Windows-native stack.
+    id: 251ba860-fe9e-401d-988f-94f36154db01
+    model_tier: null
+    phase: feasibility
+    priority: 90
+    role: implementer
+    status: pending
+    task_key: FEAS-003
+    title: Prove Windows native rendering
+    updated_at: '2026-10-24T23:34:32.765163+00:00'
+    validation_expectations: Launch, layout, scroll, selection, accessibility, DPI, and package evidence.
+  - active_pass_ref: null
+    blockers: []
+    completed_at: null
+    created_at: '2026-10-24T23:34:32.887554+00:00'
+    description: Prototype and profile the basic corpus using AppKit and SwiftUI candidates.
+    id: 7a7c0c14-b717-4400-9404-b946ee4053cd
+    model_tier: null
+    phase: feasibility
+    priority: 90
+    role: implementer
+    status: pending
+    task_key: FEAS-004
+    title: Prove macOS native rendering
+    updated_at: '2026-10-24T23:34:32.887554+00:00'
+    validation_expectations: Launch, layout, scroll, selection, accessibility, scale, and package evidence.
+  - active_pass_ref: null
+    blockers: []
+    completed_at: null
+    created_at: '2026-10-24T23:34:33.017460+00:00'
+    description: Prototype and profile the basic corpus using GTK/native Linux candidates.
+    id: 18a9746c-3874-4650-8b63-39acb703922c
+    model_tier: null
+    phase: feasibility
+    priority: 90
+    role: implementer
+    status: pending
+    task_key: FEAS-005
+    title: Prove Linux native rendering
+    updated_at: '2026-10-24T23:34:33.017460+00:00'
+    validation_expectations: Launch, layout, scroll, selection, accessibility, environments, and package
+      evidence.
+  - active_pass_ref: null
+    blockers: []
+    completed_at: null
+    created_at: '2026-10-24T23:34:33.146100+00:00'
+    description: Package and consume a minimal candidate core on all desktop targets.
+    id: 83e4817e-976a-47f4-8f42-47d1ae925aa1
+    model_tier: null
+    phase: feasibility
+    priority: 85
+    role: implementer
+    status: pending
+    task_key: FEAS-006
+    title: Prove shared-core integration
+    updated_at: '2026-10-24T23:34:33.146100+00:00'
+    validation_expectations: Call/copy cost, lifecycle, error, cancellation, debugging, and release package
+      evidence.
+  - active_pass_ref: null
+    blockers: []
+    completed_at: null
+    created_at: '2026-10-24T23:34:33.268931+00:00'
+    description: Test advanced rendering, filesystem, background, export, and mobile constraints.
+    id: 9b64b970-9eeb-4301-a453-d3d39ae7ad04
+    model_tier: null
+    phase: feasibility
+    priority: 80
+    role: researcher
+    status: pending
+    task_key: FEAS-007
+    title: Complete platform capability matrix
+    updated_at: '2026-10-24T23:34:33.268931+00:00'
+    validation_expectations: Each capability is supported, deferred, alternative, or unavailable per platform
+      with evidence.
+  - active_pass_ref: null
+    blockers: []
+    completed_at: null
+    created_at: '2026-10-24T23:34:33.392833+00:00'
+    description: Choose core, facade, native stacks, targets, budgets, packages, platform order, and advanced
+      scope.
+    id: b2418f32-3f60-4bbd-9a74-0cdf6b6aecc4
+    model_tier: null
+    phase: feasibility
+    priority: 70
+    role: designer
+    status: pending
+    task_key: GATE-001
+    title: Accept implementation baseline
+    updated_at: '2026-10-24T23:34:33.392833+00:00'
+    validation_expectations: Owner-accepted decision record backed by all feasibility evidence.
+  - active_pass_ref: null
+    blockers: []
+    completed_at: null
+    created_at: '2026-10-24T23:34:33.514867+00:00'
+    description: Create accepted core and native shells with path-filtered platform validation.
+    id: db740a43-d5ce-4730-86b0-b30557061ad9
+    model_tier: null
+    phase: portable-core
+    priority: 100
+    role: implementer
+    status: pending
+    task_key: CORE-001
+    title: Scaffold monorepo workspaces and CI
+    updated_at: '2026-10-24T23:34:33.514867+00:00'
+    validation_expectations: Pinned toolchains, native jobs, lint/test, dependencies, and licenses pass.
+  - active_pass_ref: null
+    blockers: []
+    completed_at: null
+    created_at: '2026-10-24T23:34:33.639185+00:00'
+    description: Specify versioned portable values, capabilities, diagnostics, spans, and identities.
+    id: 7f790cf6-b945-4af0-996f-6e2457b3eefa
+    model_tier: null
+    phase: portable-core
+    priority: 95
+    role: designer
+    status: pending
+    task_key: CORE-002
+    title: Define semantic document model v1
+    updated_at: '2026-10-24T23:34:33.639185+00:00'
+    validation_expectations: Golden serialization and compatibility checks cover the required model.
+  - active_pass_ref: null
+    blockers: []
+    completed_at: null
+    created_at: '2026-10-24T23:34:33.760101+00:00'
+    description: Produce bounded semantic snapshots against the conformance corpus.
+    id: 9eddf711-4c6a-499c-841f-61caa539bfd6
+    model_tier: null
+    phase: portable-core
+    priority: 90
+    role: implementer
+    status: pending
+    task_key: CORE-003
+    title: Implement parsing and safety policy
+    updated_at: '2026-10-24T23:34:33.760101+00:00'
+    validation_expectations: Corpus, malformed input, safety, unit, fuzz/property, and benchmark checks
+      pass.
+  - active_pass_ref: null
+    blockers: []
+    completed_at: null
+    created_at: '2026-10-24T23:34:33.884071+00:00'
+    description: Define generations, cancellation, revisions, changes, and scroll anchors.
+    id: b50794e3-b295-42ab-8bb5-91893ba0027d
+    model_tier: null
+    phase: portable-core
+    priority: 85
+    role: implementer
+    status: pending
+    task_key: CORE-004
+    title: Implement document session semantics
+    updated_at: '2026-10-24T23:34:33.884071+00:00'
+    validation_expectations: Stale-result, cancellation, identity, and change tests pass.
+  - active_pass_ref: null
+    blockers: []
+    completed_at: null
+    created_at: '2026-10-24T23:34:34.009025+00:00'
+    description: Add find/search, snippets, word counts, section timing, and budgets.
+    id: 4581ad91-b265-411c-801d-fe3933d9c151
+    model_tier: null
+    phase: portable-core
+    priority: 80
+    role: implementer
+    status: pending
+    task_key: CORE-005
+    title: Implement search and read metadata
+    updated_at: '2026-10-24T23:34:34.009025+00:00'
+    validation_expectations: Golden semantic and performance tests pass.
+  - active_pass_ref: null
+    blockers: []
+    completed_at: null
+    created_at: '2026-10-24T23:34:34.136413+00:00'
+    description: Expose coarse versioned operations to Windows, macOS, and Linux hosts.
+    id: de7cb42e-014a-48a7-aa22-80000717a4ea
+    model_tier: null
+    phase: portable-core
+    priority: 75
+    role: implementer
+    status: pending
+    task_key: CORE-006
+    title: Stabilize desktop facade and packages
+    updated_at: '2026-10-24T23:34:34.136413+00:00'
+    validation_expectations: Release-mode hosts pass lifecycle, error, cancellation, and version tests.
+  - active_pass_ref: null
+    blockers: []
+    completed_at: null
+    created_at: '2026-10-24T23:34:34.264228+00:00'
+    description: Implement the common shallow native desktop slice on Windows.
+    id: d9d5fc63-260e-4bb0-8ac6-13a232a620f1
+    model_tier: null
+    phase: desktop-apps
+    priority: 100
+    role: implementer
+    status: pending
+    task_key: WIN-001
+    title: Build Windows single-document skeleton
+    updated_at: '2026-10-24T23:34:34.264228+00:00'
+    validation_expectations: Basic corpus, native interaction, accessibility, refresh, restoration, and
+      package pass.
+  - active_pass_ref: null
+    blockers: []
+    completed_at: null
+    created_at: '2026-10-24T23:34:34.393461+00:00'
+    description: Implement the common shallow native desktop slice on macOS.
+    id: 8efd0e35-a702-4d88-850c-0af71563e59b
+    model_tier: null
+    phase: desktop-apps
+    priority: 100
+    role: implementer
+    status: pending
+    task_key: MAC-001
+    title: Build macOS single-document skeleton
+    updated_at: '2026-10-24T23:34:34.393461+00:00'
+    validation_expectations: Basic corpus, native interaction, accessibility, refresh, restoration, and
+      package pass.
+  - active_pass_ref: null
+    blockers: []
+    completed_at: null
+    created_at: '2026-10-24T23:34:34.513347+00:00'
+    description: Implement the common shallow native desktop slice on Linux.
+    id: a5d4fd1b-fccb-418f-bdd4-41a1f3cc346a
+    model_tier: null
+    phase: desktop-apps
+    priority: 100
+    role: implementer
+    status: pending
+    task_key: LNX-001
+    title: Build Linux single-document skeleton
+    updated_at: '2026-10-24T23:34:34.513347+00:00'
+    validation_expectations: Basic corpus, native interaction, accessibility, refresh, restoration, and
+      package pass.
+  - active_pass_ref: null
+    blockers: []
+    completed_at: null
+    created_at: '2026-10-24T23:34:34.633196+00:00'
+    description: Compare semantics and performance, correct contract bias, and choose MVP deepening order.
+    id: bbdf88c3-f928-473f-934a-a58df74b9890
+    model_tier: null
+    phase: desktop-apps
+    priority: 95
+    role: reviewer
+    status: pending
+    task_key: DESK-001
+    title: Pass cross-desktop skeleton gate
+    updated_at: '2026-10-24T23:34:34.633196+00:00'
+    validation_expectations: All desktop skeletons pass or have accepted documented deviations.
+  - active_pass_ref: null
+    blockers: []
+    completed_at: null
+    created_at: '2026-10-24T23:34:34.754545+00:00'
+    description: Add folder workspace, recents, browse/find/search, settings, watchers, restoration, and
+      tuning.
+    id: a60e0069-bd18-4cd9-9948-3cbef228075c
+    model_tier: null
+    phase: desktop-apps
+    priority: 90
+    role: implementer
+    status: pending
+    task_key: WIN-002
+    title: Build Windows basic MVP
+    updated_at: '2026-10-24T23:34:34.754545+00:00'
+    validation_expectations: Windows R1 acceptance and performance budgets pass.
+  - active_pass_ref: null
+    blockers: []
+    completed_at: null
+    created_at: '2026-10-24T23:34:34.877543+00:00'
+    description: Add folder workspace, recents, browse/find/search, settings, watchers, restoration, and
+      tuning.
+    id: 24510aac-66c0-4f32-886b-41c796a20ade
+    model_tier: null
+    phase: desktop-apps
+    priority: 90
+    role: implementer
+    status: pending
+    task_key: MAC-002
+    title: Build macOS basic MVP
+    updated_at: '2026-10-24T23:34:34.877543+00:00'
+    validation_expectations: macOS R1 acceptance and performance budgets pass.
+  - active_pass_ref: null
+    blockers: []
+    completed_at: null
+    created_at: '2026-10-24T23:34:35.005205+00:00'
+    description: Add folder workspace, recents, browse/find/search, settings, watchers, restoration, and
+      tuning.
+    id: 9d5802f0-4fb1-4f33-8d84-4b1ac4bf3372
+    model_tier: null
+    phase: desktop-apps
+    priority: 90
+    role: implementer
+    status: pending
+    task_key: LNX-002
+    title: Build Linux basic MVP
+    updated_at: '2026-10-24T23:34:35.005205+00:00'
+    validation_expectations: Linux R1 acceptance and performance budgets pass.
+  - active_pass_ref: null
+    blockers: []
+    completed_at: null
+    created_at: '2026-10-24T23:34:35.129288+00:00'
+    description: Validate the three basic products, budgets, deviations, privacy, and artifacts.
+    id: 825de535-1b7f-447d-94e5-0cc4b1924410
+    model_tier: null
+    phase: desktop-apps
+    priority: 80
+    role: reviewer
+    status: pending
+    task_key: DESK-002
+    title: Pass desktop MVP release gate
+    updated_at: '2026-10-24T23:34:35.129288+00:00'
+    validation_expectations: Cross-desktop R1 conformance and named-machine evidence pass.
+  - active_pass_ref: null
+    blockers: []
+    completed_at: null
+    created_at: '2026-10-24T23:34:35.252494+00:00'
+    description: Prioritize R2 functionality and platform-native polish after the MVP gate.
+    id: b272538c-fc51-4003-adc0-33b2748627bf
+    model_tier: null
+    phase: desktop-apps
+    priority: 70
+    role: implementer
+    status: pending
+    task_key: DESK-003
+    title: Implement desktop refinement
+    updated_at: '2026-10-24T23:34:35.252494+00:00'
+    validation_expectations: Accepted R2 scope passes platform-specific acceptance and performance checks.
+  - active_pass_ref: null
+    blockers: []
+    completed_at: null
+    created_at: '2026-10-24T23:34:35.375460+00:00'
+    description: Validate core packaging, native rendering, lifecycle, provider access, memory, and deviations.
+    id: f8f8be8e-d725-4aaa-8a02-bfd40df66339
+    model_tier: null
+    phase: mobile
+    priority: 100
+    role: implementer
+    status: pending
+    task_key: IOS-001
+    title: Prove iOS and iPadOS integration
+    updated_at: '2026-10-24T23:34:35.375460+00:00'
+    validation_expectations: Simulator and named real-device feasibility evidence supports or rejects
+      the mobile baseline.
+  - active_pass_ref: null
+    blockers: []
+    completed_at: null
+    created_at: '2026-10-24T23:34:35.499457+00:00'
+    description: Implement the mobile-appropriate R1 subset and documented fallbacks.
+    id: 01393aca-1ea8-4af6-bb81-50621ab986cb
+    model_tier: null
+    phase: mobile
+    priority: 90
+    role: implementer
+    status: pending
+    task_key: IOS-002
+    title: Build iOS and iPadOS basic MVP
+    updated_at: '2026-10-24T23:34:35.499457+00:00'
+    validation_expectations: Real-device functionality, accessibility, lifecycle, privacy, and performance
+      pass.
+  - active_pass_ref: null
+    blockers: []
+    completed_at: null
+    created_at: '2026-10-24T23:34:35.629011+00:00'
+    description: Add selected styles, properties, timing, focus, print/share/export, and settings.
+    id: 5640f959-e695-45c4-8246-516d5ac77d54
+    model_tier: null
+    phase: advanced
+    priority: 90
+    role: implementer
+    status: pending
+    task_key: ADV-001
+    title: Implement reading refinement parity
+    updated_at: '2026-10-24T23:34:35.629011+00:00'
+    validation_expectations: Accepted features pass their platform capability and acceptance matrix.
+  - active_pass_ref: null
+    blockers: []
+    completed_at: null
+    created_at: '2026-10-24T23:34:35.753426+00:00'
+    description: Add only accepted safe offline math and diagram combinations.
+    id: a367af92-b334-4cd8-b26b-1ea9c5e1b33e
+    model_tier: null
+    phase: advanced
+    priority: 85
+    role: implementer
+    status: pending
+    task_key: ADV-002
+    title: Implement math and diagrams
+    updated_at: '2026-10-24T23:34:35.753426+00:00'
+    validation_expectations: Supported platforms pass safety, performance, theme, export, and fallback
+      checks.
+  - active_pass_ref: null
+    blockers: []
+    completed_at: null
+    created_at: '2026-10-24T23:34:35.876663+00:00'
+    description: Add compatible or migrated project files and permitted cross-root behavior.
+    id: 293367cd-e6d1-452c-af6b-b4a83319db02
+    model_tier: null
+    phase: advanced
+    priority: 80
+    role: implementer
+    status: pending
+    task_key: ADV-003
+    title: Implement projects
+    updated_at: '2026-10-24T23:34:35.876663+00:00'
+    validation_expectations: Schema, permissions, diagnostics, search, and migration acceptance pass.
+  - active_pass_ref: null
+    blockers: []
+    completed_at: null
+    created_at: '2026-10-24T23:34:35.999934+00:00'
+    description: Add selected script semantics, timing, presentation, wake, and platform deviations.
+    id: 491210e1-454d-44a8-a04d-09839f095876
+    model_tier: null
+    phase: advanced
+    priority: 75
+    role: implementer
+    status: pending
+    task_key: ADV-004
+    title: Implement voice-over and teleprompter
+    updated_at: '2026-10-24T23:34:35.999934+00:00'
+    validation_expectations: Semantic goldens and platform interaction/performance checks pass.
+relationships:
+  - predecessor_task_ref: 7fe339d7-90ce-4211-9a0a-91be7640aa42
+    relationship: blocks
+    successor_task_ref: 28b6e143-d968-49ca-b8c5-811c19379e6f
+  - predecessor_task_ref: 7fe339d7-90ce-4211-9a0a-91be7640aa42
+    relationship: blocks
+    successor_task_ref: 251ba860-fe9e-401d-988f-94f36154db01
+  - predecessor_task_ref: 7fe339d7-90ce-4211-9a0a-91be7640aa42
+    relationship: blocks
+    successor_task_ref: 7a7c0c14-b717-4400-9404-b946ee4053cd
+  - predecessor_task_ref: 7fe339d7-90ce-4211-9a0a-91be7640aa42
+    relationship: blocks
+    successor_task_ref: 18a9746c-3874-4650-8b63-39acb703922c
+  - predecessor_task_ref: 7fe339d7-90ce-4211-9a0a-91be7640aa42
+    relationship: blocks
+    successor_task_ref: 83e4817e-976a-47f4-8f42-47d1ae925aa1
+  - predecessor_task_ref: 7fe339d7-90ce-4211-9a0a-91be7640aa42
+    relationship: blocks
+    successor_task_ref: 9b64b970-9eeb-4301-a453-d3d39ae7ad04
+  - predecessor_task_ref: 28b6e143-d968-49ca-b8c5-811c19379e6f
+    relationship: blocks
+    successor_task_ref: 3dc6d894-4d01-4e57-ae2c-bf57dc4b95de
+  - predecessor_task_ref: 3dc6d894-4d01-4e57-ae2c-bf57dc4b95de
+    relationship: blocks
+    successor_task_ref: b2418f32-3f60-4bbd-9a74-0cdf6b6aecc4
+  - predecessor_task_ref: 251ba860-fe9e-401d-988f-94f36154db01
+    relationship: blocks
+    successor_task_ref: b2418f32-3f60-4bbd-9a74-0cdf6b6aecc4
+  - predecessor_task_ref: 7a7c0c14-b717-4400-9404-b946ee4053cd
+    relationship: blocks
+    successor_task_ref: b2418f32-3f60-4bbd-9a74-0cdf6b6aecc4
+  - predecessor_task_ref: 18a9746c-3874-4650-8b63-39acb703922c
+    relationship: blocks
+    successor_task_ref: b2418f32-3f60-4bbd-9a74-0cdf6b6aecc4
+  - predecessor_task_ref: 83e4817e-976a-47f4-8f42-47d1ae925aa1
+    relationship: blocks
+    successor_task_ref: b2418f32-3f60-4bbd-9a74-0cdf6b6aecc4
+  - predecessor_task_ref: 9b64b970-9eeb-4301-a453-d3d39ae7ad04
+    relationship: blocks
+    successor_task_ref: b2418f32-3f60-4bbd-9a74-0cdf6b6aecc4
+  - predecessor_task_ref: b2418f32-3f60-4bbd-9a74-0cdf6b6aecc4
+    relationship: blocks
+    successor_task_ref: db740a43-d5ce-4730-86b0-b30557061ad9
+  - predecessor_task_ref: db740a43-d5ce-4730-86b0-b30557061ad9
+    relationship: blocks
+    successor_task_ref: 7f790cf6-b945-4af0-996f-6e2457b3eefa
+  - predecessor_task_ref: 7f790cf6-b945-4af0-996f-6e2457b3eefa
+    relationship: blocks
+    successor_task_ref: 9eddf711-4c6a-499c-841f-61caa539bfd6
+  - predecessor_task_ref: 7f790cf6-b945-4af0-996f-6e2457b3eefa
+    relationship: blocks
+    successor_task_ref: b50794e3-b295-42ab-8bb5-91893ba0027d
+  - predecessor_task_ref: 9eddf711-4c6a-499c-841f-61caa539bfd6
+    relationship: blocks
+    successor_task_ref: 4581ad91-b265-411c-801d-fe3933d9c151
+  - predecessor_task_ref: b50794e3-b295-42ab-8bb5-91893ba0027d
+    relationship: blocks
+    successor_task_ref: 4581ad91-b265-411c-801d-fe3933d9c151
+  - predecessor_task_ref: 9eddf711-4c6a-499c-841f-61caa539bfd6
+    relationship: blocks
+    successor_task_ref: de7cb42e-014a-48a7-aa22-80000717a4ea
+  - predecessor_task_ref: b50794e3-b295-42ab-8bb5-91893ba0027d
+    relationship: blocks
+    successor_task_ref: de7cb42e-014a-48a7-aa22-80000717a4ea
+  - predecessor_task_ref: 4581ad91-b265-411c-801d-fe3933d9c151
+    relationship: blocks
+    successor_task_ref: de7cb42e-014a-48a7-aa22-80000717a4ea
+  - predecessor_task_ref: de7cb42e-014a-48a7-aa22-80000717a4ea
+    relationship: blocks
+    successor_task_ref: d9d5fc63-260e-4bb0-8ac6-13a232a620f1
+  - predecessor_task_ref: de7cb42e-014a-48a7-aa22-80000717a4ea
+    relationship: blocks
+    successor_task_ref: 8efd0e35-a702-4d88-850c-0af71563e59b
+  - predecessor_task_ref: de7cb42e-014a-48a7-aa22-80000717a4ea
+    relationship: blocks
+    successor_task_ref: a5d4fd1b-fccb-418f-bdd4-41a1f3cc346a
+  - predecessor_task_ref: d9d5fc63-260e-4bb0-8ac6-13a232a620f1
+    relationship: blocks
+    successor_task_ref: bbdf88c3-f928-473f-934a-a58df74b9890
+  - predecessor_task_ref: 8efd0e35-a702-4d88-850c-0af71563e59b
+    relationship: blocks
+    successor_task_ref: bbdf88c3-f928-473f-934a-a58df74b9890
+  - predecessor_task_ref: a5d4fd1b-fccb-418f-bdd4-41a1f3cc346a
+    relationship: blocks
+    successor_task_ref: bbdf88c3-f928-473f-934a-a58df74b9890
+  - predecessor_task_ref: bbdf88c3-f928-473f-934a-a58df74b9890
+    relationship: blocks
+    successor_task_ref: a60e0069-bd18-4cd9-9948-3cbef228075c
+  - predecessor_task_ref: bbdf88c3-f928-473f-934a-a58df74b9890
+    relationship: blocks
+    successor_task_ref: 24510aac-66c0-4f32-886b-41c796a20ade
+  - predecessor_task_ref: bbdf88c3-f928-473f-934a-a58df74b9890
+    relationship: blocks
+    successor_task_ref: 9d5802f0-4fb1-4f33-8d84-4b1ac4bf3372
+  - predecessor_task_ref: a60e0069-bd18-4cd9-9948-3cbef228075c
+    relationship: blocks
+    successor_task_ref: 825de535-1b7f-447d-94e5-0cc4b1924410
+  - predecessor_task_ref: 24510aac-66c0-4f32-886b-41c796a20ade
+    relationship: blocks
+    successor_task_ref: 825de535-1b7f-447d-94e5-0cc4b1924410
+  - predecessor_task_ref: 9d5802f0-4fb1-4f33-8d84-4b1ac4bf3372
+    relationship: blocks
+    successor_task_ref: 825de535-1b7f-447d-94e5-0cc4b1924410
+  - predecessor_task_ref: 825de535-1b7f-447d-94e5-0cc4b1924410
+    relationship: blocks
+    successor_task_ref: b272538c-fc51-4003-adc0-33b2748627bf
+  - predecessor_task_ref: 825de535-1b7f-447d-94e5-0cc4b1924410
+    relationship: blocks
+    successor_task_ref: f8f8be8e-d725-4aaa-8a02-bfd40df66339
+  - predecessor_task_ref: f8f8be8e-d725-4aaa-8a02-bfd40df66339
+    relationship: blocks
+    successor_task_ref: 01393aca-1ea8-4af6-bb81-50621ab986cb
+  - predecessor_task_ref: 825de535-1b7f-447d-94e5-0cc4b1924410
+    relationship: blocks
+    successor_task_ref: 5640f959-e695-45c4-8246-516d5ac77d54
+  - predecessor_task_ref: 825de535-1b7f-447d-94e5-0cc4b1924410
+    relationship: blocks
+    successor_task_ref: a367af92-b334-4cd8-b26b-1ea9c5e1b33e
+  - predecessor_task_ref: 825de535-1b7f-447d-94e5-0cc4b1924410
+    relationship: blocks
+    successor_task_ref: 293367cd-e6d1-452c-af6b-b4a83319db02
+  - predecessor_task_ref: 825de535-1b7f-447d-94e5-0cc4b1924410
+    relationship: blocks
+    successor_task_ref: 491210e1-454d-44a8-a04d-09839f095876
+passes:
+  - actor: codex-root
+    blocker: null
+    completed_at: '2026-10-24T23:34:49.317496+00:00'
+    evidence:
+      documents:
+        - docs/Requirements.md
+        - docs/Repository-Strategy.md
+        - docs/Platform-Strategy.md
+        - docs/Architecture.md
+        - docs/Implementation-Plan.md
+        - TODO.md
+        - MEMORY.md
+        - agents/Decisions.md
+      state: 30 tasks and 41 acyclic dependencies
+    execution_record: {}
+    handoff: null
+    id: bcaa4ef5-6b66-4c75-8d92-b9e8be135681
+    last_heartbeat_at: null
+    lease_expires_at: null
+    lease_version: 1
+    objective: Rebaseline requirements, platform scope, repository strategy, architecture, roadmap, and
+      durable state from the owner's desktop-first clarification.
+    outcome: completed
+    participants: []
+    phase_ref: b19ec1c8-f0c0-4cee-b584-5c9247a96edd
+    sequence: 1
+    started_at: '2026-10-24T23:34:49.108187+00:00'
+    status: completed
+    summary: Reframed the project around extracted requirements, native desktop performance, platform-specific
+      optimization, a native monorepo, later mobile delivery, and documented capability deviations.
+    task_ref: 7fe339d7-90ce-4211-9a0a-91be7640aa42
+    validation_result: pending final documentation and state validation
+idempotency: {}
