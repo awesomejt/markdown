@@ -11,9 +11,12 @@ design belong in `docs/` or `agents/`; runtime transcripts do not belong here.
 - Later platforms: iOS and iPadOS after the desktop contracts are stable.
 - Organization: one native monorepo with independent native UIs,
   shared specifications/fixtures/benchmarks, and a candidate portable core.
-- Status: FEAS-001, FEAS-002, and Linux FEAS-005 complete; Windows/macOS
-  rendering and shared-core integration spikes remain.
-- Blockers: none. Several design choices intentionally remain gated by spikes.
+- Status: cross-machine handoff. FEAS-001, FEAS-002, and Linux FEAS-005 are
+  complete. FEAS-003 on Windows and FEAS-004 on macOS are the only eligible
+  next tasks; there is no active pass.
+- Blockers: no technical blocker. Progress now requires real Windows and macOS
+  hosts. Shared-core integration, the capability matrix, and GATE-001 are
+  intentionally ordered after both native rendering evaluations.
 
 ## Durable context
 
@@ -55,13 +58,32 @@ design belong in `docs/` or `agents/`; runtime transcripts do not belong here.
   1 MiB/5 MiB profiles, a 1 MiB line blocked over ten seconds, and peak process
   RSS was roughly 254–289 MiB. LNX-001 must prove virtualized semantic blocks
   while preserving cross-block selection and AT-SPI reading order.
+- The current architecture recommendation is a Rust semantic core using
+  pulldown-cmark, with Comrak as fallback/oracle and cmark-gfm as the reference
+  GFM oracle. C++ is not the lead shared-core choice, but C++/WinRT remains a
+  valid Windows-host candidate. A narrow C ABI or generated bindings remain
+  the likely interop boundary. None of these recommendations becomes an
+  accepted production baseline until FEAS-006 and GATE-001.
+- Platform UI code is intentionally native rather than forced into one common
+  language: GTK 4/gtk-rs is the Linux recommendation; Windows must compare the
+  suitable WinUI 3 host options; macOS should measure AppKit with SwiftUI only
+  where it helps. iOS/iPadOS remain later Swift/UIKit/SwiftUI work.
+- The owner requires real target-host evidence from Windows and macOS before
+  further architecture decisions. `project.yaml` therefore makes FEAS-003 and
+  FEAS-004 prerequisites of FEAS-006 and FEAS-007 as well as GATE-001.
 
 ## Open decisions
 
 - Confirm the order in which the three desktop MVPs are deepened after their
   walking skeletons exist.
-- Select Rust, C++, platform libraries, or a narrow combination based on the
-  conformance and performance corpus rather than code-reuse preference.
+- Accept or reject the recommended Rust/pulldown-cmark semantic core after
+  cross-platform packaging and host-integration evidence from FEAS-006.
+- Select WinUI 3 with C# or C++/WinRT, the Windows document layout strategy,
+  and the stable Rust boundary using measurements from a real Windows host.
+- Select AppKit/SwiftUI responsibilities, the macOS document layout strategy,
+  and the stable Rust/Swift boundary using measurements from a real Mac.
+- Confirm Linux virtualized-block selection and AT-SPI behavior during LNX-001;
+  a monolithic `GtkTextView` is already rejected for unbounded documents.
 - Confirm whether “native” allows narrowly scoped non-UI engines for diagrams
   while retaining platform-native document presentation.
 - Decide how much voice-over/script behavior belongs in the first public
@@ -125,3 +147,11 @@ and dynamic-package behavior. The 1 MiB prose case first-framed in about 299 ms
 on the named workstation, but far-scroll and pathological long-line behavior
 rule out a monolithic text buffer as the universal renderer. GTK remains the
 recommended Linux shell; virtualized blocks are the next renderer hypothesis.
+
+### 2026-10-24 — native desktop handoff
+
+Recorded the owner-required sequencing stop after Linux evaluation. The next
+sessions run FEAS-003 on a real Windows system and FEAS-004 on a real Mac. No
+shared-core integration, platform capability conclusion, or implementation
+baseline decision should proceed until both results are recorded. The task
+graph was tightened so only those two native evaluations are eligible.

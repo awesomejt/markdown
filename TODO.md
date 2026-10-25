@@ -8,6 +8,36 @@ leases, and passes. This document defines task scope and acceptance criteria.
 No production application or shared core is scaffolded before GATE-001. Small
 throwaway prototypes under `spikes/` are expected.
 
+## Immediate cross-machine handoff
+
+The current Linux pass is complete and no pass is active. Preserve and sync
+the present worktree before changing machines; the current changes have not
+been committed by the agent.
+
+Only these tasks are eligible next:
+
+FEAS-003 and FEAS-004 may be completed in either order, but run one active
+pass at a time because the project concurrency limit is one.
+
+1. **On a real Windows system, run FEAS-003.** Re-inspect `project.yaml`, start
+   the FEAS-003 pass, record exact Windows build/hardware/display scaling and
+   toolchain versions, then compare the native WinUI 3 host and document-layout
+   choices against the frozen semantic and performance corpus. Evidence must
+   cover launch/first content, memory, far-scroll and long-line behavior,
+   selection/copy, Narrator/UI Automation, DPI changes, debugging, and a
+   development package. Do not infer native results from Wine or cross-builds.
+2. **On a real Mac, run FEAS-004.** Re-inspect state, start FEAS-004, record the
+   exact macOS/Mac/Xcode/Swift/display environment, and compare AppKit text and
+   block-layout approaches with selective SwiftUI shell use. Exercise the same
+   corpus and measure launch, memory, navigation, selection/copy, VoiceOver,
+   Retina/scaling, lifecycle, debugging, signing, and a development package.
+3. **Reconcile both reports in the monorepo.** Preserve platform deviations;
+   do not force identical UI implementations. Confirm each pass is complete
+   and `project.yaml` has no stale lease before selecting more work.
+4. **Then run FEAS-006 and FEAS-007.** Prove the Rust core boundary/packages on
+   all desktop hosts, finish the capability matrix, and only then ask the owner
+   to accept or revise the GATE-001 baseline.
+
 ### Requirements and feasibility
 
 - **DEC-001 — Accept native monorepo strategy.** Record owner approval of D-004
@@ -28,10 +58,10 @@ throwaway prototypes under `spikes/` are expected.
   and maintainability. Completed 2026-10-24: pulldown-cmark is the lead Rust
   candidate for the next core/integration spikes; Comrak remains the semantic
   fallback/oracle and cmark-gfm the GFM conformance oracle.
-- **FEAS-003 — Prove Windows native rendering.** Prototype the basic corpus in
+- **FEAS-003 — Prove Windows native rendering.** **Next on Windows.** Prototype the basic corpus in
   the proposed Windows-native text/layout stack; measure launch, layout,
   scrolling, selection, accessibility, and high-DPI behavior.
-- **FEAS-004 — Prove macOS native rendering.** Prototype the same corpus using
+- **FEAS-004 — Prove macOS native rendering.** **Next on macOS.** Prototype the same corpus using
   AppKit/SwiftUI candidates; measure equivalent native behaviors.
 - **FEAS-005 — Prove Linux native rendering.** Prototype the same corpus using
   GTK/native Linux candidates; measure equivalent native behaviors across the
@@ -39,10 +69,12 @@ throwaway prototypes under `spikes/` are expected.
   XWayland smoke: GTK 4/gtk-rs is viable, but a monolithic `GtkTextView` is not
   the production large-document strategy; LNX-001 must prove virtualized
   blocks without losing selection or accessibility.
-- **FEAS-006 — Prove shared-core integration.** Package and consume a minimal
+- **FEAS-006 — Prove shared-core integration.** Starts only after FEAS-003 and
+  FEAS-004. Package and consume a minimal
   candidate core on Windows, macOS, and Linux. Measure call/copy overhead,
   lifecycle, errors, cancellation, debugging, and release packaging.
-- **FEAS-007 — Complete the platform capability matrix.** Test advanced
+- **FEAS-007 — Complete the platform capability matrix.** Starts only after
+  FEAS-003 and FEAS-004. Test advanced
   rendering, file watching, network folders, background work, print/export,
   and later iOS/iPadOS constraints. Mark supported, deferred, alternative, or
   unavailable per platform.
@@ -117,12 +149,11 @@ throwaway prototypes under `spikes/` are expected.
 ## Dependency summary
 
 ```text
-REQ-001 -> FEAS-001 -> FEAS-002 -------------------------+
-       \-> FEAS-003 (Windows renderer) ------------------+
-       \-> FEAS-004 (macOS renderer) --------------------+-> GATE-001
-       \-> FEAS-005 (Linux renderer) --------------------+
-       \-> FEAS-006 (shared-core integration) -----------+
-       \-> FEAS-007 (capability matrix) -----------------+
+REQ-001 -> FEAS-001 -> FEAS-002 ---------------------------+
+       \-> FEAS-003 (Windows renderer) --+                  |
+       \-> FEAS-004 (macOS renderer) ----+-> FEAS-006 ------+-> GATE-001
+                                         +-> FEAS-007 ------+
+       \-> FEAS-005 (Linux renderer) -----------------------+
 
 GATE-001 -> CORE-001 -> CORE-002 -> CORE-003/CORE-004
 CORE-003 + CORE-004 -> CORE-005 -> CORE-006

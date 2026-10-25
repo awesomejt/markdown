@@ -47,6 +47,19 @@ platforms. Do not share the UI layer. Reconsider a split only when ownership,
 release governance, licensing, repository scale, or platform divergence makes
 atomic cross-platform changes a liability.
 
+## D-005 — Require target-host desktop evidence before the baseline gate
+
+**Date:** 2026-10-24
+
+**Status:** accepted by owner
+
+Complete FEAS-003 on a real Windows host and FEAS-004 on a real macOS host
+before shared-core integration, the final capability matrix, or GATE-001.
+Cross-compilation, compatibility layers, and simulators may support those
+evaluations but do not replace native launch, layout, selection, accessibility,
+scaling, lifecycle, debugging, and packaging evidence. The project task graph
+enforces this order.
+
 ## Proposed decisions for GATE-001
 
 The following are not yet accepted:
