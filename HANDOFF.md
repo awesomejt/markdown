@@ -1,7 +1,7 @@
 # Agent Session and Platform Handoff
 
-Updated: 2026-10-24, macOS session. Source baseline: `d34f4f3`
-(`Update spikes for MacOS`). The worktree was clean before this handoff edit.
+Updated: 2026-10-24, macOS session. Source baseline: `fcb5bc5`
+(`Added Handoff doc`). The worktree was clean before the backend-restoration update.
 
 This file carries concise, commit-safe context between sessions and machines.
 It does not replace [project.yaml](project.yaml) for operational state,
@@ -13,26 +13,29 @@ Recheck the current host and state; observations below are a dated snapshot.
 
 1. Read [AGENTS.md](AGENTS.md) and its required references. Inspect Git status;
    preserve changes made by the owner or other sessions.
-2. Restore the missing project-state backend on this Mac, then run the state
-   inspection command below. Recover any stale work before starting a pass.
+2. Run the state inspection command below. The backend is now restored on this
+   Mac. Recover any stale work before starting a pass.
 3. On macOS, select **FEAS-004**. On Windows, select **FEAS-003**. Run only one
    active pass at a time. Neither evaluation has started in the recorded state.
 4. Keep FEAS-006, FEAS-007 and GATE-001 behind both native evaluations.
    Do not scaffold production applications or accept a production stack yet.
 
-## State and workflow blocker
+## State and workflow setup
 
-The latest supported inspection attempt failed because the
-`project-yaml-state-management` backend is not installed here. The repository
-wrapper expects:
+The `project-yaml-state-management` skill and backend are now restored in the
+standard Mac user-level Codex location. The repository wrapper finds:
 
 ```text
 ~/.codex/skills/project-yaml-state-management/scripts/project_state.py
 ```
 
-Restore the existing backend/skill from the Linux setup, or point
-`MARKDOWN_STATE_BACKEND` at that backend's `project_state.py`. Do not replace
-it with an improvised implementation or manually edit task/pass/lease state.
+The skill's `SKILL.md`, Python backend and `agents/openai.yaml` were copied
+from the owner's Linux home over SSH, with matching SHA-256 hashes. Its
+referenced contract was also restored to `~/.codex/workflows/project-state-v1.md`.
+No Linux project files were changed; no credentials or cache files were copied.
+On another machine, restore the same skill or point `MARKDOWN_STATE_BACKEND`
+at its backend. Do not replace it with an improvised implementation or
+manually edit task/pass/lease state.
 See [AGENT_WORKFLOW.md](AGENT_WORKFLOW.md) and
 [tools/project_state.py](tools/project_state.py).
 
@@ -47,7 +50,7 @@ On another machine, recreate an environment with
 `tools/requirements-fixtures.txt` with that environment's Python. Virtual
 environments, downloaded dependencies and toolchains do not transfer in Git.
 
-A read-only YAML parse, **not backend validation**, found revision **87**:
+The restored backend's supported inspection succeeded at revision **87**:
 
 | Task | Recorded status | Evidence or next action |
 | --- | --- | --- |
@@ -59,8 +62,9 @@ A read-only YAML parse, **not backend validation**, found revision **87**:
 | FEAS-006 | Pending | Wait for FEAS-003 and FEAS-004 |
 | FEAS-007 | Pending | Wait for FEAS-003 and FEAS-004 |
 
-No task was marked working and the listed tasks had no active pass reference.
-Re-inspect with the backend before trusting this snapshot for coordination.
+No active or stale passes, working tasks without leases, blockers or warnings
+were reported. FEAS-003 and FEAS-004 are eligible. Re-inspect before starting
+work; no task status or revision was changed by restoring the skill.
 
 ## Owner instructions and authorization boundaries
 
@@ -70,7 +74,8 @@ Re-inspect with the backend before trusting this snapshot for coordination.
   benchmarks** without the backend, leaving `project.yaml` unchanged. That
   work is finished; this is not ongoing permission to bypass coordination.
 - An exception for FEAS-004 was requested, but **not approved**. The owner
-  instead asked what software to install. Do not treat that reply as approval.
+  instead asked what software to install. The backend is now available, so no
+  exception is needed: use the normal pass lifecycle for the authorized task.
 - This handoff file was explicitly requested for committing and transferring
   notes. No commit, push, signing or publishing was requested of the agent.
 - If the backend is still absent, follow the workflow's read-only restriction

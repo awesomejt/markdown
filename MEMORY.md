@@ -17,9 +17,10 @@ design belong in `docs/` or `agents/`; runtime transcripts do not belong here.
 - Evaluation prerequisites: real Windows and macOS hosts. Shared-core
   integration, the capability matrix, and GATE-001 are
   intentionally ordered after both native rendering evaluations.
-- Mac host setup: the project-state backend is missing. A one-time owner
-  exception allowed supplementary FEAS-002 benchmarks with `project.yaml`
-  unchanged; normal passes still require restoration of that backend.
+- Mac host setup: the project-state skill/backend and workflow contract have
+  been restored from the owner's Linux user-level Codex directory. Supported
+  inspection succeeds at revision 87 with no active/stale passes or warnings;
+  FEAS-003 and FEAS-004 are eligible. Use the normal pass lifecycle.
 
 ## Durable context
 
@@ -171,3 +172,12 @@ earlier platform exclusion was corrected. Details and limitations are in
 `docs/Parser-Evaluation-macOS.md`. Owner authorized this supplement without
 the absent state backend; no pass or task status changed. FEAS-004 is next
 on this Mac once normal pass coordination is restored.
+
+### 2026-10-24 — Mac project-state backend restored
+
+Restored the existing `project-yaml-state-management` skill and referenced
+contract from the owner's Linux home over authorized SSH. Skill file hashes
+match; no Linux project files or local task-state fields were changed.
+The repository wrapper now inspects state successfully. The FEAS-004 workflow
+blocker is resolved; full Xcode 27.1 is also installed and selected. See
+`HANDOFF.md` for resume instructions.
