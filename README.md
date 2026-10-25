@@ -33,7 +33,9 @@ Start with:
 - [Windows rendering evaluation](docs/Windows-Rendering-Evaluation.md) — WinUI
   text surfaces, virtualization, host checks and measured limits.
 - [Windows core integration](docs/Shared-Core-Windows-Evaluation.md) — Rust C
-  ABI, ownership, cancellation and WinUI timing; macOS/Linux portions pending.
+  ABI, ownership, cancellation and WinUI timing.
+- [macOS core integration](docs/Shared-Core-macOS-Evaluation.md) — Swift/AppKit
+  ownership, cancellation, packaging and memory findings; Linux still pending.
 - [macOS rendering evaluation](docs/macOS-Rendering-Evaluation.md) — AppKit
   TextKit comparisons, native interaction, memory, and development bundles.
 - [TODO](TODO.md) — human-readable roadmap; `project.yaml` is task-state truth.

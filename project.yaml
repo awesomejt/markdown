@@ -1,11 +1,11 @@
 contract_version: project-state/v1
-revision: 96
+revision: 98
 project: &id002
   concurrency_limit: 1
   created_at: '2026-10-24T23:34:09.871478+00:00'
   project_ref: markdown-native
   status: active
-  updated_at: '2026-10-25T08:28:00.399080+00:00'
+  updated_at: '2026-10-25T18:18:47.450780+00:00'
   workflow_id: native-app-development
   workflow_version: '2'
 phases: &id004
@@ -177,7 +177,7 @@ tasks:
     status: working
     task_key: FEAS-006
     title: Prove shared-core integration
-    updated_at: '2026-10-25T08:28:00.399080+00:00'
+    updated_at: '2026-10-25T18:18:47.450780+00:00'
     validation_expectations: Call/copy cost, lifecycle, error, cancellation, debugging, and release package
       evidence.
   - &id010
@@ -1082,6 +1082,61 @@ passes:
     completed_at: '2026-10-25T08:28:00.399080+00:00'
     lease_expires_at: null
     lease_version: 1
+  - &id026
+    id: 354a881d-0e0a-483a-8ae0-0a9a90ada995
+    sequence: 10
+    task_ref: 83e4817e-976a-47f4-8f42-47d1ae925aa1
+    phase_ref: b19ec1c8-f0c0-4cee-b584-5c9247a96edd
+    actor: codex-macos
+    status: completed
+    outcome: partial
+    objective: 'Native macOS checkpoint: Swift value/lifetime adapter to existing Rust C ABI, ownership/error/cancellation/concurrency
+      tests, off-thread AppKit rendering and package/source-debug evidence; retain Linux handoff.'
+    summary: 'Native Mac checkpoint evaluated: Swift C-header/value ownership adapter, strict concurrency/main-actor
+      checks, native errors/lifecycle/panic/cancellation tests, AppKit integration, live mixed Swift/Rust
+      source debugging and relocated normal-library package. Final 54 GUI trials: 51 presentations, two
+      intended cancellations, one retained TextKit 1/5 MiB timeout. Linux native facade evidence remains
+      outstanding.'
+    handoff: 'Resume FEAS-006 on native Linux/GTK using the existing C facade, not an internal Rust model
+      call. Verify native layouts, same-library release, typed errors, panic containment, observed in-flight
+      cancellation, repeated/concurrent sessions, copy/decode cost, native source debugging and a normal-library
+      development package with licenses. Windows and macOS checkpoints are evaluated; retain renderer
+      failures and Mac empty-region RSS retention risk. Full instructions and evidence: HANDOFF.md, docs/Shared-Core-macOS-Evaluation.md,
+      spikes/feas006/README.md. Keep FEAS-006 partial and GATE-001 unaccepted until Linux evidence is
+      recorded.'
+    validation_result:
+      scope: macOS checkpoint passed with retained feasibility findings; all-desktop task incomplete
+      checks:
+        - six Rust tests in debug and release, formatting, Clippy -D warnings
+        - Swift complete concurrency diagnostics and warnings-as-errors
+        - 1000 sequential plus 400 concurrent loads; ten cancellation requests after observed native entry;
+          counts returned to zero
+        - typed errors, input and snapshot lifetimes, host exception cleanup and panic recovery
+        - all eight outline contracts and final fingerprinted 54 GUI trials with failure retained
+        - 31 reached continuous selections matched; native owners zero in all 54 checkpoints
+        - live Swift-to-Rust breakpoint, source and mixed stack, continue to exit 0
+        - normal-library ZIP integrity/permissions, ditto relocation, console 100 loads/errors/cancel/recovery
+          and five AppKit package smokes
+        - memory diagnostics, leaks zero leaked bytes, vmmap empty-region classification; no production
+          memory fix accepted
+        - original FEAS-004 compile/native regression
+        - native state and path regression tests, fixture/hash checks, Python compile, links, whitespace
+          and Markdown lint 30 files zero errors
+    evidence:
+      report: docs/Shared-Core-macOS-Evaluation.md
+      measurements: spikes/feas006/results-macos-2026-10-25.yaml
+      reproduction: spikes/feas006/README.md
+      handoff: HANDOFF.md
+      remaining: Native Linux/GTK integration and package; production semantic model/IDs, memory budgets,
+        incremental layout and selection remain unaccepted.
+    participants: []
+    blocker: null
+    execution_record: {}
+    started_at: '2026-10-25T17:17:51.704937+00:00'
+    last_heartbeat_at: null
+    completed_at: '2026-10-25T18:18:47.450780+00:00'
+    lease_expires_at: null
+    lease_version: 1
 idempotency:
   accept-d004-create:
     fingerprint: 24cf06b66fd828b04e394367502bdc20f99fdf17303eec73bb77dba723bdaa1f
@@ -1907,6 +1962,81 @@ idempotency:
         eligible_tasks:
           - *id010
         latest_pass: *id025
+        queue_counts:
+          by_status:
+            completed: 8
+            working: 1
+            pending: 23
+          total: 32
+          active_passes: 0
+          stale_passes: 0
+          eligible: 1
+          blocked: 0
+        warnings: []
+        recommended_action: recover_stale_task
+  72f3d0b1-4970-4665-a675-7d46c8f4ad23:
+    fingerprint: cdae6eddc8e2058cd3b096d560294db24f51f99ef7438c1026f5e0bab9a8f2e7
+    response:
+      contract_version: project-state/v1
+      operation: start_pass
+      revision: 97
+      data:
+        pass: *id026
+        task: *id009
+      snapshot:
+        contract_version: project-state/v1
+        snapshot_at: '2026-10-25T17:17:51.704957+00:00'
+        revision: 97
+        project: *id002
+        current_phase: *id003
+        phases: *id004
+        active_tasks:
+          - *id009
+        working_tasks_without_active_lease: []
+        active_passes:
+          - *id026
+        stale_passes: []
+        blocked_tasks: []
+        eligible_tasks:
+          - *id010
+        latest_pass: *id026
+        queue_counts:
+          by_status:
+            completed: 8
+            working: 1
+            pending: 23
+          total: 32
+          active_passes: 1
+          stale_passes: 0
+          eligible: 1
+          blocked: 0
+        warnings: []
+        recommended_action: resume_active
+  feas006-macos-finish-a0f511c4-458b-42a7-9685-de842cf887d5:
+    fingerprint: 8194e61cc334edfca1a7a1b33e1d815c13212bfe0b010afc58d63df5bd522149
+    response:
+      contract_version: project-state/v1
+      operation: finish_pass
+      revision: 98
+      data:
+        pass: *id026
+        task: *id009
+      snapshot:
+        contract_version: project-state/v1
+        snapshot_at: '2026-10-25T18:18:47.450792+00:00'
+        revision: 98
+        project: *id002
+        current_phase: *id003
+        phases: *id004
+        active_tasks: []
+        working_tasks_without_active_lease:
+          - *id009
+        active_passes: []
+        stale_passes: []
+        blocked_tasks: []
+        eligible_tasks:
+          - *id010
+        latest_pass: *id026
         queue_counts:
           by_status:
             completed: 8

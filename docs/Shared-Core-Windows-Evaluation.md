@@ -4,6 +4,10 @@ Date: 2026-10-25. **Windows portion evaluated; FEAS-006 remains partial.** Nativ
 macOS/Swift and Linux/GTK bindings, debugging and packages are still required.
 No production parser, semantic model, ABI or stack is accepted by this checkpoint.
 
+Subsequent checkpoint: [macOS/Swift integration](Shared-Core-macOS-Evaluation.md)
+is now evaluated as well; native Linux/GTK evidence remains outstanding. The
+Windows measurements and limitations below retain their original scope.
+
 ## Outcome
 
 A Rust/pulldown-cmark core can feed native Windows UI through a small C ABI.

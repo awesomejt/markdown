@@ -1,8 +1,87 @@
 # FEAS-006 shared-core boundary spike
 
-Windows portion evaluated; native macOS/Linux host bindings and packages remain
-required before FEAS-006 closes. This is an experimental ABI/model, not the
+Windows and macOS portions evaluated; native Linux/GTK bindings and packages
+remain required before FEAS-006 closes. This is an experimental ABI/model, not the
 production semantic contract or an accepted stack.
+
+## Build and verify on macOS
+
+Use native arm64 macOS with Xcode/Swift, Rust and the fixture Python
+dependencies. Source is under `macos/`; the AppKit surface reuses FEAS-004
+through `-D FEAS006`, excluding Swift Markdown from this build.
+
+```sh
+python3 spikes/feas006/build_macos.py
+python3 spikes/feas006/measure_macos.py
+python3 spikes/feas006/package_macos.py > build/feas006/macos/package.json
+python3 spikes/feas006/verify_package_macos.py build/feas006/macos/package.json --output build/feas006/macos/package-checks
+```
+
+The builder uses Cargo from PATH, or this checkout's earlier isolated
+`build/feas002-macos/toolchains/` when PATH has no Cargo. No global toolchain
+configuration is changed. Release Rust has unwind containment and debug info;
+the builder sets a relocatable `@rpath/libfeas006_core.dylib` identity at link
+time. Probe and normal libraries are separate. Swift hosts use language mode 5
+with Swift 6.4, complete concurrency diagnostics and warnings-as-errors. This
+does not establish a full Swift 6 migration. AppKit uses explicit main-actor
+isolation, including assertions for timers scheduled on its main run loop.
+
+`macos/CoreInterop.swift` imports the C header rather than duplicating struct
+layouts. It negotiates sizes, validates values, bulk-copies text/table buffers,
+materializes Swift strings and uses `defer` for same-library snapshot release
+on success or conversion failure. A synchronized cancellation owner stays alive
+through parsing; native snapshots/tokens are released before UI construction.
+The normal binary locates optional probe exports dynamically and does not
+require them. Handles/pointers never escape into the Swift value model.
+
+The AppKit host opens a loading window, waits for its first main-loop heartbeat,
+then reads/parses/copies on a worker. Cancel and close-during-load request
+cooperative cancellation; closed-window results are discarded. Attributed
+conversion and native layout still run on the main thread and are not made
+cancellable by the core boundary. TextKit 1/2 and bounded-row limitations remain
+those of the native surfaces; the flattened Rust projection differs from the
+old Swift Markdown projection, so timing is not an equivalent-renderer race.
+
+Useful single runs, from the root:
+
+```sh
+build/feas006/macos/probe/SwiftCoreProbe --self-test build/fixtures/performance/prose-5mib.md
+build/feas006/macos/probe/MacCoreProbe tk2 fixtures/markdown/foundation/gfm-tour.md \
+  --automated build/feas006/macos/example.json
+build/feas006/macos/probe/MacCoreProbe tk2 build/fixtures/performance/prose-5mib.md \
+  --automated build/feas006/macos/cancel.json --cancel-on-entry
+```
+
+The matrix requires a new output directory (`--output` selects another). It
+checks all eight outlines, records five console iterations per semantic/performance
+input, and retains GUI failures/timeouts and partial checkpoints. Timings are
+authored-entry/draw callbacks, not dyld-inclusive cold launch or GPU presentation.
+
+Memory diagnosis is separate from normal timing runs:
+
+```sh
+build/feas006/macos/probe/MemoryDiagnostics native build/fixtures/performance/prose-5mib.md
+build/feas006/macos/probe/MemoryDiagnostics copy build/fixtures/performance/prose-5mib.md
+leaks --noContent --atExit -- build/feas006/macos/probe/SwiftCoreProbe \
+  --memory-native build/fixtures/performance/prose-5mib.md
+```
+
+The diagnostic records unmodified RSS/malloc samples, then requests allocator
+pressure relief as a diagnostic only. The pressure-relief call is not used by
+the UI or benchmark path and is not an accepted production remedy. A `--pause`
+argument after the input lets `vmmap --summary PID` inspect that owned process.
+Zero counters and a leak scan are bounded evidence, not a universal leak proof.
+
+The packager creates fresh local bundles/ZIP with the **normal dylib**, header,
+Swift console, fixture provenance and locked Rust dependency licenses. Console
+rpaths resolve an adjacent library; `.app` rpaths resolve `Contents/Frameworks`.
+No build-directory library path or Swift Markdown runtime is needed. Only default
+linker ad-hoc signatures are present; identity signing, resource sealing,
+notarization, installation and publishing are not performed. The declared
+macOS 13 floor is unverified; native evidence names the tested OS/architecture.
+
+FEAS-006 remains partial until the Linux/GTK portion is recorded. Do not run
+Windows builders here or substitute Mac source for Linux native evidence.
 
 ## Build and verify on Windows
 
@@ -135,13 +214,12 @@ native Rust source/PDB availability, not mixed managed/Rust stepping in an IDE.
 ## Next native-host acceptance
 
 Carry this source, locks, header, measurements and handoff through Git; do not
-transfer Windows binaries or environments. On macOS build the crate natively,
-add a Swift/AppKit value/lifetime adapter and local development package, and
-measure conversion, cancellation, repeated sessions and source debugging. On
-Linux prove the same facade from the native GTK host rather than assuming a
+transfer binaries or environments between platforms. The native Mac checkpoint
+is now in [the report](../../docs/Shared-Core-macOS-Evaluation.md). On Linux
+prove the same facade from the native GTK host rather than assuming a
 direct Rust call proves the C boundary. Recheck panic strategy, symbol visibility,
-layout and allocator behavior on each host. Keep FEAS-006 partial until both
-host reports and package evidence exist; GATE-001 remains unaccepted.
+layout and allocator behavior on that host. Keep FEAS-006 partial until Linux
+report/package evidence exists; GATE-001 remains unaccepted.
 
 References: [Rust FFI](https://doc.rust-lang.org/nomicon/ffi.html),
 [.NET native interop](https://learn.microsoft.com/en-us/dotnet/standard/native-interop/best-practices).

@@ -80,8 +80,8 @@ The following are not yet accepted:
 
 - Rust semantic core, initially spiked with pulldown-cmark and retaining
   Comrak as the parser fallback/oracle, with platform-native presentation.
-- The experimental FEAS-006 bulk C ABI: Windows ownership/cancellation and
-  WinUI evidence are positive, but native Mac/Linux bindings/packages and the
+- The experimental FEAS-006 bulk C ABI: Windows and macOS ownership/cancellation
+  and native UI evidence are positive, but the native Linux binding/package and the
   production semantic model must be reconciled before accepting the interface.
 - No general-purpose WebView for the main document surface.
 - GTK 4/gtk-rs for the Linux shell, with a virtualized semantic-block document

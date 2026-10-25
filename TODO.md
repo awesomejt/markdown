@@ -14,8 +14,8 @@ Linux, macOS and Windows native rendering evaluations are complete. Preserve and
 the present worktree before changing machines; changes have not been committed
 by the agent. Inspect `project.yaml` for current pass/lease state.
 
-FEAS-006 has a completed Windows checkpoint; native macOS/Linux integrations
-remain. Resume that partial task before selecting other work. Run one active
+FEAS-006 has completed Windows and macOS checkpoints; native Linux/GTK integration
+remains. Resume that partial task before selecting other work. Run one active
 pass at a time because the project concurrency limit is one; inspect live state.
 
 1. **Carry forward Windows FEAS-003.** The report in
@@ -34,9 +34,10 @@ pass at a time because the project concurrency limit is one; inspect live state.
 3. **Reconcile both reports in the monorepo.** Preserve platform deviations;
    do not force identical UI implementations. Confirm each pass is complete
    and `project.yaml` has no stale lease before selecting more work.
-4. **Resume FEAS-006 on macOS/Linux, then FEAS-007.** The Windows Rust/C ABI
-   checkpoint is in `docs/Shared-Core-Windows-Evaluation.md`; it does not close
-   the all-desktop task. Prove the remaining native bindings/packages, finish
+4. **Resume FEAS-006 on Linux, then FEAS-007.** The Windows and Mac Rust/C ABI
+   checkpoints are in `docs/Shared-Core-Windows-Evaluation.md` and
+   `docs/Shared-Core-macOS-Evaluation.md`; they do not close the all-desktop task.
+   Prove the remaining native binding/package, finish
    the capability matrix, then ask the owner to accept or revise GATE-001.
 
 ### Requirements and feasibility
@@ -91,8 +92,12 @@ pass at a time because the project concurrency limit is one; inspect live state.
   lifecycle, errors, cancellation, debugging, and release packaging.
   Windows checkpoint evaluated 2026-10-25: Rust C ABI, C#/C++ ownership,
   errors/cancellation, WinUI integration and local package passed; continuous
-  controls retain layout failures. Resume native Swift/AppKit and GTK portions
-  before completing this task. See `docs/Shared-Core-Windows-Evaluation.md`.
+  controls retain layout failures. macOS checkpoint evaluated 2026-10-25:
+  Swift/AppKit ownership, cancellation, concurrency, live source debugging and
+  relocated normal-library bundles passed. Repeated native RSS grows in empty
+  malloc regions despite zero handles; no production mitigation is accepted.
+  Resume the native GTK portion before completing this task. See
+  `docs/Shared-Core-Windows-Evaluation.md` and `docs/Shared-Core-macOS-Evaluation.md`.
 - **FEAS-007 — Complete the platform capability matrix.** Starts only after
   FEAS-003 and FEAS-004. Test advanced
   rendering, file watching, network folders, background work, print/export,

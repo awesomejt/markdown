@@ -1,6 +1,8 @@
 import AppKit
 import SwiftUI
+#if !FEAS006
 import Markdown
+#endif
 import QuartzCore
 
 let processStart = ProcessInfo.processInfo.systemUptime
@@ -8,6 +10,7 @@ func now() -> Double { ProcessInfo.processInfo.systemUptime }
 
 // Disposable presentation adapter, not the proposed portable semantic model.
 // Links and resources are deliberately inert; no HTML import or network API.
+#if !FEAS006
 func render(_ node: any Markup) -> NSAttributedString {
     let result = NSMutableAttributedString(string: "")
     if let text = node as? Markdown.Text { result.append(NSAttributedString(string: text.string)) }
@@ -44,6 +47,7 @@ func render(_ node: any Markup) -> NSAttributedString {
     }
     return result
 }
+#endif
 
 final class ProbeTextView: NSTextView {
     var onDraw: (() -> Void)?
@@ -61,13 +65,13 @@ final class ProbeTable: NSTableView {
     }
 }
 
-struct Shell: NSViewRepresentable {
+@MainActor struct Shell: NSViewRepresentable {
     let surface: NSView
     func makeNSView(context: Context) -> NSView { surface }
     func updateNSView(_ view: NSView, context: Context) {}
 }
 
-final class AppDelegate: NSObject, NSApplicationDelegate, NSTableViewDataSource, NSTableViewDelegate {
+@MainActor final class AppDelegate: NSObject, NSApplicationDelegate, NSTableViewDataSource, NSTableViewDelegate, NSWindowDelegate {
     let args: [String] = {
         if CommandLine.arguments.count >= 3 { return CommandLine.arguments }
         var values = [CommandLine.arguments[0], Bundle.main.object(forInfoDictionaryKey: "ProbeMode") as? String ?? "tk2",
@@ -94,6 +98,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSTableViewDataSource,
     var timer: Timer?
     var lastTick: Double = 0
     var scrollStep = 0
+#if FEAS006
+    var nativeCancellation: CoreCancellation?
+    var loadTimer: Timer?
+    var loadTicks = 0
+    var lastLoadTick = now()
+    var maxLoadGap = 0.0
+    var closingDuringLoad = false
+    var pendingNativeWork: DispatchWorkItem?
+#endif
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         guard args.count >= 3 else {
@@ -106,6 +119,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSTableViewDataSource,
         if let index = args.firstIndex(of: "--automated"), index + 1 < args.count {
             automated = true; resultPath = args[index + 1]
         }
+#if FEAS006
+        beginCoreLoad()
+#else
         let start = now()
         do {
             let data = try Data(contentsOf: URL(fileURLWithPath: args[2]))
@@ -132,10 +148,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSTableViewDataSource,
                        "parse_ms": (parseEnd - readEnd) * 1000,
                        "adapter_ms": (now() - parseEnd) * 1000]
         } catch { fputs("fixture read failed\n", stderr); exit(2) }
+        showSurface()
+#endif
+    }
+
+    func showSurface() {
         makeMenus()
-        window = NSWindow(contentRect: NSRect(x: 100, y: 100, width: 840, height: 640),
+        if window == nil {
+            window = NSWindow(contentRect: NSRect(x: 100, y: 100, width: 840, height: 640),
                           styleMask: [.titled, .closable, .resizable, .miniaturizable], backing: .buffered, defer: false)
+        }
+#if FEAS006
+        window.title = "Markdown FEAS-006 — Rust / \(mode)"
+        window.delegate = self
+        metrics["phase"] = "building_ui"
+        checkpoint()
+#else
         window.title = "Markdown FEAS-004 — \(mode) / \(shell)"
+#endif
         window.isReleasedWhenClosed = false
         scroll.hasVerticalScroller = true
         scroll.autoresizingMask = [.width, .height]
@@ -191,6 +221,123 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSTableViewDataSource,
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { self.exercise() }
         }
     }
+
+#if FEAS006
+    func beginCoreLoad() {
+        makeMenus()
+        window = NSWindow(contentRect: NSRect(x: 100, y: 100, width: 840, height: 640),
+                          styleMask: [.titled, .closable, .resizable, .miniaturizable], backing: .buffered, defer: false)
+        window.title = "Markdown FEAS-006 — loading Rust snapshot"
+        window.delegate = self
+        window.isReleasedWhenClosed = false
+        let root = NSView(frame: NSRect(x: 0, y: 0, width: 840, height: 640))
+        let label = NSTextField(labelWithString: "Loading through Rust C ABI…")
+        label.frame = NSRect(x: 20, y: 580, width: 500, height: 30)
+        let button = NSButton(title: "Cancel", target: self, action: #selector(cancelCore))
+        button.frame = NSRect(x: 20, y: 530, width: 100, height: 30)
+        root.addSubview(label); root.addSubview(button); window.contentView = root
+        window.makeKeyAndOrderFront(nil); NSApp.activate(ignoringOtherApps: true)
+        do { nativeCancellation = try CoreCancellation() }
+        catch { metrics["error"] = "cancel token creation"; checkpoint(); NSApp.terminate(nil); return }
+        let cancel = nativeCancellation!
+        if args.contains("--cancel-before-parse") { _ = cancel.request() }
+        metrics = ["mode": mode, "shell": shell, "phase": "native_loading"]
+        checkpoint()
+        lastLoadTick = now()
+        loadTimer = Timer.scheduledTimer(withTimeInterval: 0.005, repeats: true) { _ in
+            MainActor.assumeIsolated {
+            let current = now(); self.maxLoadGap = max(self.maxLoadGap, current - self.lastLoadTick)
+            self.lastLoadTick = current; self.loadTicks += 1
+            if let work = self.pendingNativeWork {
+                self.pendingNativeWork = nil
+                DispatchQueue.global(qos: .userInitiated).async(execute: work)
+            }
+            if self.args.contains("--cancel-on-entry"), (CoreProbe.active() ?? 0) > 0,
+               self.metrics["cancel_requested_after_entry"] == nil {
+                self.metrics["cancel_requested_after_entry"] = true
+                _ = cancel.request()
+            }
+            }
+        }
+        let file = args[2]
+        // Start only once the loading window's main run loop has ticked. In
+        // particular, a short parse must not finish during AppKit bootstrap
+        // before the native-entry cancellation observer can ever execute.
+        pendingNativeWork = DispatchWorkItem {
+            let start = now()
+            do {
+                let data = try Data(contentsOf: URL(fileURLWithPath: file))
+                let readMS = (now() - start) * 1000
+                let document = try Core.parseAndCopy(data, cancellation: cancel)
+                cancel.close()
+                let live = CoreProbe.live()
+                let abi = try Core.abi()
+                DispatchQueue.main.async {
+                    self.loadTimer?.invalidate(); self.nativeCancellation = nil
+                    self.metrics["loading_heartbeat_ticks"] = self.loadTicks
+                    self.metrics["loading_max_timer_gap_ms"] = self.maxLoadGap * 1000
+                    if self.closingDuringLoad { self.metrics["discarded_after_close"] = true; self.finish(); return }
+                    self.metrics["input_bytes"] = data.count
+                    self.metrics["read_ms"] = readMS
+                    self.metrics["core_parse_model_ms"] = document.coreMS
+                    self.metrics["native_call_ms"] = document.nativeCallMS
+                    self.metrics["copy_decode_ms"] = document.copyDecodeMS
+                    self.metrics["native_text_bytes"] = document.textBytes
+                    self.metrics["native_table_bytes"] = document.tableBytes
+                    self.metrics["probe_hooks"] = abi.probe_hooks
+                    if let live {
+                        self.metrics["live_snapshots_before_ui"] = live.0
+                        self.metrics["live_tokens_before_ui"] = live.1
+                    }
+                    self.metrics["phase"] = "appkit_adapter"
+                    self.checkpoint()
+                    let adapterStart = now()
+                    for value in document.blocks {
+                        let font: NSFont = value.kind == 1 ? .boldSystemFont(ofSize: CGFloat(29 - value.headingLevel * 2))
+                            : value.kind == 2 ? .monospacedSystemFont(ofSize: 14, weight: .regular) : .systemFont(ofSize: 16)
+                        let block = NSAttributedString(string: value.text + "\n\n", attributes: [.font: font, .foregroundColor: NSColor.textColor])
+                        if value.kind == 1 { self.headingRanges.append(NSRange(location: self.joined.length, length: block.length)) }
+                        self.joined.append(block)
+                        let string = block.string as NSString
+                        var offset = 0
+                        while offset < string.length {
+                            let range = string.rangeOfComposedCharacterSequences(for: NSRange(location: offset, length: min(8192, string.length - offset)))
+                            self.blocks.append(block.attributedSubstring(from: range)); offset = NSMaxRange(range)
+                        }
+                    }
+                    self.metrics["rendered_utf16"] = self.joined.length
+                    self.metrics["blocks"] = self.blocks.count
+                    self.metrics["adapter_ms"] = (now() - adapterStart) * 1000
+                    self.showSurface()
+                }
+            } catch {
+                cancel.close()
+                let live = CoreProbe.live()
+                DispatchQueue.main.async {
+                    self.loadTimer?.invalidate(); self.nativeCancellation = nil
+                    self.metrics["phase"] = "native_error"
+                    if case CoreFailure.status(let status) = error { self.metrics["core_status"] = status }
+                    else { self.metrics["error"] = "Host/core conversion failed" }
+                    if let live {
+                        self.metrics["live_snapshots_before_ui"] = live.0
+                        self.metrics["live_tokens_before_ui"] = live.1
+                    }
+                    self.metrics["loading_heartbeat_ticks"] = self.loadTicks
+                    self.finish()
+                }
+            }
+        }
+    }
+    @objc func cancelCore() { _ = nativeCancellation?.request() }
+    func windowShouldClose(_ sender: NSWindow) -> Bool {
+        if nativeCancellation != nil { closingDuringLoad = true; cancelCore(); return false }
+        return true
+    }
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        if nativeCancellation != nil { closingDuringLoad = true; cancelCore(); return .terminateCancel }
+        return .terminateNow
+    }
+#endif
 
     func configure(_ view: NSTextView) {
         view.isEditable = false; view.isSelectable = true
@@ -259,7 +406,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSTableViewDataSource,
                 self.metrics["end_visible_by_row"] = table.rows(in: table.visibleRect).contains(self.blocks.count - 1)
             }
             self.lastTick = now()
-            self.timer = Timer.scheduledTimer(withTimeInterval: 1.0 / 60, repeats: true) { _ in self.tick() }
+            self.timer = Timer.scheduledTimer(withTimeInterval: 1.0 / 60, repeats: true) { _ in
+                MainActor.assumeIsolated { self.tick() }
+            }
         }
     }
     func tick() {
@@ -305,8 +454,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSTableViewDataSource,
     }
 }
 
-let app = NSApplication.shared
-app.setActivationPolicy(.regular)
-let delegate = AppDelegate()
-app.delegate = delegate
-app.run()
+MainActor.assumeIsolated {
+    let app = NSApplication.shared
+    app.setActivationPolicy(.regular)
+    let delegate = AppDelegate()
+    app.delegate = delegate
+    withExtendedLifetime(delegate) { app.run() }
+}

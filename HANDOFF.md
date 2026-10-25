@@ -1,8 +1,8 @@
 # Agent Session and Platform Handoff
 
-Updated: 2026-10-25, FEAS-006 Windows checkpoint. Source baseline:
-`2821ff532d6defebde69bcd204721d509a8ef2fa`, plus this uncommitted shared-core
-spike, the small FEAS-003 reuse hooks, evidence, documentation and state handoff.
+Updated: 2026-10-25, FEAS-006 macOS checkpoint. Source baseline: `c2ddf26`
+(`FEAS-006 on Windows`), plus the uncommitted Mac adapter/builds, FEAS-004
+conditional reuse, evidence, documentation and state handoff.
 Preserve source/locks/header/measurements together; do not transfer environments
 or build products to another platform.
 
@@ -14,14 +14,14 @@ Recheck the current host and state; observations below are a dated snapshot.
 
 ## Resume here
 
-FEAS-006 Windows is evaluated; the all-desktop task remains **partial**.
-Resume its explicit handoff on native macOS and Linux. The partial outcome
+FEAS-006 Windows and macOS are evaluated; the all-desktop task remains **partial**.
+Resume its explicit handoff on native Linux/GTK. The partial outcome
 releases the pass lease while retaining logical ownership of FEAS-006; this is
 intentional recovery state, not permission to bypass it for another task.
 Inspect before resuming and recover only genuinely expired work.
 
-Closeout inspection: revision **96**, project active, no active/stale passes
-and no warnings. The backend reports FEAS-006 under
+Mac closeout inspection: revision **98**, project active, no active/stale
+passes and no warnings. The backend intentionally reports FEAS-006 under
 `working_tasks_without_active_lease` and recommends `recover_stale_task` because
 `partial` preserves its working status. This pass has an explicit handoff;
 resume/recover that same task before selecting another one.
@@ -29,7 +29,7 @@ resume/recover that same task before selecting another one.
 1. Read the repository's required references and inspect Git status.
 2. Inspect `project.yaml` with the current host's environment. Recover any
    stale state before starting one pass; the concurrency limit is one.
-3. Resume FEAS-006 on native macOS/Swift and Linux/GTK, then FEAS-007
+3. Resume FEAS-006 on native Linux/GTK, then FEAS-007
    capability reconciliation. Windows FEAS-003, macOS FEAS-004 and Linux FEAS-005 are
    evaluated; do not rerun them merely because the host/session changed.
 4. Keep production scaffolding/stack acceptance behind GATE-001 and owner
@@ -53,12 +53,33 @@ passed. A fresh local package uses the normal DLL (probe exports disabled),
 contains no Markdig runtime, and launches all three WinUI variants and the native
 client. No signing, installation, registration or publishing was performed.
 
-Next host: build Rust natively, verify ABI sizes/version and matching allocator
-cleanup, then integrate a native Swift/AppKit value adapter and package. On
-Linux use a native GTK host against the same facade. Re-run errors, cancellation,
-repeated sessions and source debugging there. Do not infer native acceptance
-from the portable crate or Windows DLL. The model has snapshot-local IDs and
-partial semantics; GATE-001 still owns the production model/ABI decision.
+The macOS checkpoint is in [the report](docs/Shared-Core-macOS-Evaluation.md)
+and [measurements](spikes/feas006/results-macos-2026-10-25.yaml). Swift imports
+the existing header, validates and copies values, and frees native snapshots
+before UI construction. The final 54 GUI trials have 51 completed presentations,
+two intended cancellations and a retained TextKit 1/5 MiB timeout. TextKit 2
+entry-to-draw medians were about 217/498 ms for 1/5 MiB prose. Strict Swift
+concurrency diagnostics, 1,000 sequential/400 concurrent loads, ten observed
+in-flight cancellations, eight outlines, live mixed source debugging and fresh
+normal-library package relocation passed. No production ABI/model was accepted.
+
+**Mac memory risk:** twenty native-only 5 MiB parses grew RSS to about 583 MiB,
+with zero native owners and about 5.1 MiB live malloc usage. Leaks reported zero
+leaked bytes; vmmap attributed most growth to `Malloc Large (empty)`. Swift-copy
+runs retained similar RSS; diagnostic pressure relief reclaimed zero bytes.
+This is not a leak proof or an acceptable repeated-session budget. Keep the risk
+open alongside synchronous AppKit conversion/layout, row selection/navigation,
+long-line timer delays and incomplete semantics.
+
+Next host: build Rust natively on Linux, negotiate layouts rather than assuming
+Mac/Windows sizes, and consume **the C facade** from a GTK host. A direct internal
+Rust model call does not prove this boundary. Copy values and release native
+owners before GTK work; verify errors, cooperative cancellation after observed
+entry, repeated/concurrent sessions, source debugging and a local normal-library
+package with dependency licenses. Keep diagnostic exports out of the normal
+package. Use scoped relative library loading rather than global loader changes.
+Carry both host reports and retain failures. The model has snapshot-local IDs
+and partial semantics; GATE-001 still owns the production contract and budgets.
 
 Windows evidence is in [the evaluation](docs/Windows-Rendering-Evaluation.md),
 [probe README](spikes/feas003/README.md) and
@@ -139,7 +160,7 @@ At that historical snapshot only FEAS-003 was eligible; use current inspection n
 | FEAS-003 | Completed | Windows report and 60-trial comparison; limits retained |
 | FEAS-004 | Completed | AppKit/TextKit comparison and native checks; report below |
 | FEAS-005 | Completed | Linux native rendering evaluation |
-| FEAS-006 | Partial | Windows evaluated; resume native Mac/Linux bindings/packages |
+| FEAS-006 | Partial | Windows/Mac evaluated; resume native Linux/GTK facade/package |
 | FEAS-007 | Pending | Capability reconciliation after native evaluations |
 
 Resume the FEAS-006 partial handoff before selecting other work. The skill
@@ -159,6 +180,11 @@ start/finish lifecycle. Historical revisions below are not current inspections.
 - The owner approved a temporary VoiceOver test and confirmed audible document
   reading. Its original off state was restored and verified. This approval
   does not authorize leaving accessibility settings changed.
+- For FEAS-006 the owner approved enabling developer debugging and performed
+  the administrator step. A live Swift-to-Rust breakpoint subsequently worked,
+  although the agent's separate status query still reported disabled. Record
+  that discrepancy; do not repeat authorization changes based only on that
+  status. Optimized Rust variable inspection and full IDE support are unverified.
 - This handoff file was explicitly requested for committing and transferring
   notes. No commit, push, signing or publishing was requested of the agent.
 - If the backend is still absent, follow the workflow's read-only restriction

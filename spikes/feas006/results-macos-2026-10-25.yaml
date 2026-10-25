@@ -1,0 +1,872 @@
+schema_version: 1
+task: FEAS-006 macOS checkpoint; overall task partial pending Linux
+date: '2026-10-25'
+source_baseline: c2ddf26d92195a9c4599609e5031e42e056451c8 plus this checkpoint
+environment:
+  os: macOS 27.0.1 (26A434)
+  hardware: Mac17,6 / Apple M5 Max
+  architecture: arm64
+  memory_gib: 48
+  xcode: 27.1 (27A9275)
+  swift: 6.4 (swiftlang-6.4.0.34.1)
+  swift_language_mode: 5
+  swift_concurrency: complete diagnostics with warnings-as-errors for adapter/console/AppKit
+  rust: 1.99.1
+  core: pulldown-cmark 0.13.5; existing Cargo.lock
+  display_pixels:
+  - 5120
+  - 2880
+  backing_scale: 2
+  refresh_hz: 60
+fingerprints:
+  core_sha256: 95a56d12c418e0eabece4c3142b99987046e57ad24bd8fca56b6171bb690f5de
+  console_sha256: 4f0df33b8a67f74fd474429db5155f70649818a9e19e71537d1b0c6e85324c13
+  appkit_sha256: b735a89167a09c73acc05b1b7f32a873c490a013fb8ab8a4e56b3790096cbbd2
+abi:
+  abi: 1
+  pointer_bytes: 8
+  options_bytes: 40
+  block_bytes: 48
+  snapshot_bytes: 56
+  probe_hooks: 1
+method:
+  console: five iterations; medians use iterations 2-5, matching Windows warmup convention
+  gui: serial fixed-order semantic smokes, three fresh processes per main performance
+    variant; active desktop/warm caches
+  native_timeout_seconds: 30
+  entry_to_first_draw: authored Swift entry through content draw callback; loading-label
+    draw excluded; no cold-launch/GPU presentation claim
+  memory: Darwin whole-process RSS bytes; live malloc statistics and VM classification
+    in separate diagnostics
+  projections: flat Rust model differs from FEAS-004 attributed Swift Markdown; not
+    an equivalent-frontend language race
+self_test:
+  cancellation_after_entry_ms:
+  - 7.799374870955944
+  - 7.445708382874727
+  - 7.664000149816275
+  - 7.6085831969976425
+  - 7.604499813169241
+  - 7.76495854370296
+  - 7.4639166705310345
+  - 7.5066667050123215
+  - 7.644375087693334
+  - 7.500666659325361
+  concurrent_loads: 400
+  copied_values_survive_free: true
+  error_cases: ABI, null controls, UTF-8, limits, stale/wrong/double handles
+  host_exception_cleanup: true
+  input_not_borrowed: true
+  large_loads: 10
+  live_cancellations: 0
+  live_snapshots: 0
+  panic_contained_and_next_call_passed: true
+  passed: true
+  resident_bytes_after_batches:
+  - 82001920
+  - 112427008
+  - 141574144
+  - 170721280
+  - 199901184
+  - 229064704
+  - 258211840
+  - 287375360
+  - 316522496
+  - 345718784
+  sequential_loads: 1000
+console_performance:
+  prose-1mib:
+    core_parse_model_ms: 2.628938
+    native_call_ms: 2.657875
+    copy_decode_ms: 0.871417
+    end_to_end_ms: 3.516708
+    blocks: 24272.0
+    text_bytes: 936923.0
+    table_bytes: 1165056.0
+  prose-5mib:
+    core_parse_model_ms: 13.252709
+    native_call_ms: 13.390833
+    copy_decode_ms: 4.05725
+    end_to_end_ms: 17.511083
+    blocks: 121362.0
+    text_bytes: 4684613.0
+    table_bytes: 5825376.0
+  delimiter-storm-1mib:
+    core_parse_model_ms: 5.412021
+    native_call_ms: 5.428667
+    copy_decode_ms: 0.809417
+    end_to_end_ms: 6.238646
+    blocks: 24673.0
+    text_bytes: 974558.0
+    table_bytes: 1184304.0
+  long-lines-1mib:
+    core_parse_model_ms: 0.244146
+    native_call_ms: 0.259396
+    copy_decode_ms: 0.036354
+    end_to_end_ms: 0.295583
+    blocks: 2.0
+    text_bytes: 1048572.0
+    table_bytes: 96.0
+appkit_performance:
+  prose-1mib:
+    tk2:
+      core_parse_model_ms: 3.026375
+      native_call_ms: 3.064042
+      copy_decode_ms: 1.0035
+      adapter_ms: 64.486
+      surface_setup_ms: 4.48075
+      entry_to_first_draw_ms: 216.617333
+      end_request_ms: 0.793417
+      timer_p95_ms: 17.356292
+      timer_max_ms: 17.6425
+      loading_heartbeat_ticks: 2
+      created_cells: 0
+      median_peak_rss_bytes: 143982592
+    blocks:
+      core_parse_model_ms: 2.979125
+      native_call_ms: 3.015708
+      copy_decode_ms: 0.97925
+      adapter_ms: 64.892375
+      surface_setup_ms: 252.574625
+      entry_to_first_draw_ms: 469.351542
+      end_request_ms: 3.549542
+      timer_p95_ms: 17.700042
+      timer_max_ms: 21.795583
+      loading_heartbeat_ticks: 2
+      created_cells: 17
+      median_peak_rss_bytes: 135774208
+  prose-5mib:
+    tk2:
+      core_parse_model_ms: 14.605875
+      native_call_ms: 14.818541
+      copy_decode_ms: 5.505083
+      adapter_ms: 318.576042
+      surface_setup_ms: 10.491333
+      entry_to_first_draw_ms: 498.205167
+      end_request_ms: 0.709792
+      timer_p95_ms: 17.599
+      timer_max_ms: 18.299125
+      loading_heartbeat_ticks: 5
+      created_cells: 0
+      median_peak_rss_bytes: 259162112
+    blocks:
+      core_parse_model_ms: 14.320625
+      native_call_ms: 14.488833
+      copy_decode_ms: 5.277625
+      adapter_ms: 323.119167
+      surface_setup_ms: 1239.910042
+      entry_to_first_draw_ms: 1739.743167
+      end_request_ms: 4.0375
+      timer_p95_ms: 17.346208
+      timer_max_ms: 17.714167
+      loading_heartbeat_ticks: 5
+      created_cells: 17
+      median_peak_rss_bytes: 243662848
+  delimiter-storm-1mib:
+    tk2:
+      core_parse_model_ms: 5.891541
+      native_call_ms: 5.913958
+      copy_decode_ms: 1.009792
+      adapter_ms: 63.45325
+      surface_setup_ms: 3.798333
+      entry_to_first_draw_ms: 222.711375
+      end_request_ms: 0.725167
+      timer_p95_ms: 17.621417
+      timer_max_ms: 17.729208
+      loading_heartbeat_ticks: 2
+      created_cells: 0
+      median_peak_rss_bytes: 144408576
+    blocks:
+      core_parse_model_ms: 6.00575
+      native_call_ms: 6.029292
+      copy_decode_ms: 1.050625
+      adapter_ms: 64.23775
+      surface_setup_ms: 228.532792
+      entry_to_first_draw_ms: 459.646375
+      end_request_ms: 2.7105
+      timer_p95_ms: 17.617125
+      timer_max_ms: 17.731583
+      loading_heartbeat_ticks: 2
+      created_cells: 15
+      median_peak_rss_bytes: 139575296
+  long-lines-1mib:
+    tk2:
+      core_parse_model_ms: 0.351083
+      native_call_ms: 0.376667
+      copy_decode_ms: 0.17075
+      adapter_ms: 0.546292
+      surface_setup_ms: 20.810333
+      entry_to_first_draw_ms: 202.346375
+      end_request_ms: 18.487583
+      timer_p95_ms: 32.260375
+      timer_max_ms: 34.496833
+      loading_heartbeat_ticks: 1
+      created_cells: 0
+      median_peak_rss_bytes: 204324864
+    blocks:
+      core_parse_model_ms: 0.359625
+      native_call_ms: 0.381708
+      copy_decode_ms: 0.169334
+      adapter_ms: 0.570125
+      surface_setup_ms: 110.995667
+      entry_to_first_draw_ms: 262.253292
+      end_request_ms: 1.791083
+      timer_p95_ms: 17.763667
+      timer_max_ms: 20.37525
+      loading_heartbeat_ticks: 1
+      created_cells: 3
+      median_peak_rss_bytes: 123060224
+semantic_contracts:
+- abi: 1
+  block_bytes: 48
+  headings:
+  - level: 1
+    text: GFM feature tour
+  - level: 2
+    text: Emphasis
+  - level: 2
+    text: Lists
+  - level: 3
+    text: Task list
+  - level: 2
+    text: Tables
+  - level: 2
+    text: Blockquotes
+  - level: 2
+    text: Alerts
+  - level: 2
+    text: Math
+  - level: 2
+    text: Fenced code
+  - level: 2
+    text: Links
+  - level: 2
+    text: Footnotes
+  - level: 2
+    text: Horizontal rule
+  - level: 2
+    text: Collapsible HTML
+  live_cancellations: 0
+  live_snapshots: 0
+  options_bytes: 40
+  pointer_bytes: 8
+  probe_hooks: 1
+  snapshot_bytes: 56
+  matches_expected_outline: true
+  case: gfm-tour
+- abi: 1
+  block_bytes: 48
+  headings:
+  - level: 1
+    text: Unsafe
+  live_cancellations: 0
+  live_snapshots: 0
+  options_bytes: 40
+  pointer_bytes: 8
+  probe_hooks: 1
+  snapshot_bytes: 56
+  matches_expected_outline: true
+  case: unsafe-html
+- abi: 1
+  block_bytes: 48
+  headings:
+  - level: 1
+    text: Code
+  live_cancellations: 0
+  live_snapshots: 0
+  options_bytes: 40
+  pointer_bytes: 8
+  probe_hooks: 1
+  snapshot_bytes: 56
+  matches_expected_outline: true
+  case: code-fences
+- abi: 1
+  block_bytes: 48
+  headings:
+  - level: 1
+    text: Math $E=mc^2$
+  - level: 2
+    text: Alerts
+  live_cancellations: 0
+  live_snapshots: 0
+  options_bytes: 40
+  pointer_bytes: 8
+  probe_hooks: 1
+  snapshot_bytes: 56
+  matches_expected_outline: true
+  case: math-alerts
+- abi: 1
+  block_bytes: 48
+  headings:
+  - level: 1
+    text: Inline Diagrams
+  - level: 2
+    text: Slug look-alikes
+  - level: 3
+    text: mdv-mermaid-1
+  - level: 3
+    text: dmdv-mermaid-2
+  - level: 3
+    text: mdvMermaid-1
+  - level: 3
+    text: dmdvMermaid-2
+  live_cancellations: 0
+  live_snapshots: 0
+  options_bytes: 40
+  pointer_bytes: 8
+  probe_hooks: 1
+  snapshot_bytes: 56
+  matches_expected_outline: true
+  case: inline-diagrams
+- abi: 1
+  block_bytes: 48
+  headings:
+  - level: 1
+    text: Parity script
+  - level: 2
+    text: Closing
+  live_cancellations: 0
+  live_snapshots: 0
+  options_bytes: 40
+  pointer_bytes: 8
+  probe_hooks: 1
+  snapshot_bytes: 56
+  matches_expected_outline: true
+  case: voice-parity
+- abi: 1
+  block_bytes: 48
+  headings:
+  - level: 1
+    text: Unicode
+  live_cancellations: 0
+  live_snapshots: 0
+  options_bytes: 40
+  pointer_bytes: 8
+  probe_hooks: 1
+  snapshot_bytes: 56
+  matches_expected_outline: true
+  case: unicode-filename
+- abi: 1
+  block_bytes: 48
+  headings:
+  - level: 1
+    text: NFD fixture
+  live_cancellations: 0
+  live_snapshots: 0
+  options_bytes: 40
+  pointer_bytes: 8
+  probe_hooks: 1
+  snapshot_bytes: 56
+  matches_expected_outline: true
+  case: nfd-filename
+gui_counts:
+  trials: 54
+  completed_presentation: 51
+  intentional_cancellation: 2
+  timeouts: 1
+  matching_continuous_selections: 31
+  zero_native_handles_before_ui_or_error: 54
+gui_special_cases:
+- mode: tk1
+  case: prose-1mib
+  trial: 1
+  flags: []
+  timed_out: false
+  exit_code: 0
+  external_wall_ms: 13593.347332905978
+  peak_rss_bytes: 158711808
+  metrics:
+    adapter_ms: 64.78295824490488
+    ax_role: AXTextArea
+    ax_utf16: 980612
+    backing_scale: 2
+    blocks: 24272
+    clipboard_utf16: 256
+    completed: true
+    continuous_selection: true
+    copy_decode_ms: 1.0022500064224005
+    core_parse_model_ms: 2.996
+    created_cells: 0
+    elapsed_ms: 13565.906749805436
+    end_request_ms: 340.215916512534
+    end_visible_by_hit_test: true
+    entry_to_first_draw_ms: 11572.30379153043
+    first_draw_observed: true
+    heading_navigation_ms: 0.10466668754816055
+    input_bytes: 1048576
+    live_snapshots_before_ui: 0
+    live_tokens_before_ui: 0
+    loading_heartbeat_ticks: 1
+    loading_max_timer_gap_ms: 30.495874816551805
+    mode: tk1
+    native_call_ms: 3.033916698768735
+    native_table_bytes: 1165056
+    native_text_bytes: 936923
+    phase: building_ui
+    probe_hooks: 1
+    read_ms: 0.16354164108633995
+    refresh_hz: 60
+    rendered_utf16: 980612
+    screen_pixels:
+    - 5120
+    - 2880
+    screen_points:
+    - 2560
+    - 1440
+    selection_actual_utf16: 256
+    selection_copy_matches: true
+    selection_requested_utf16: 256
+    selection_write_succeeded: true
+    shell: appkit
+    surface_setup_ms: 11332.266166806221
+    surface_text_matches: true
+    textkit2_active: false
+    window_visible: true
+    timer_p95_ms: 16.687666764482856
+    timer_max_ms: 17.424166668206453
+- mode: tk1
+  case: prose-5mib
+  trial: 1
+  flags: []
+  timed_out: true
+  exit_code: -9
+  external_wall_ms: 30008.75929207541
+  peak_rss_bytes: null
+  metrics:
+    adapter_ms: 319.3941251374781
+    blocks: 121362
+    copy_decode_ms: 5.587916588410735
+    core_parse_model_ms: 17.416667
+    input_bytes: 5242880
+    live_snapshots_before_ui: 0
+    live_tokens_before_ui: 0
+    loading_heartbeat_ticks: 3
+    loading_max_timer_gap_ms: 18.990749958902597
+    mode: tk1
+    native_call_ms: 17.610874958336353
+    native_table_bytes: 5825376
+    native_text_bytes: 4684613
+    phase: building_ui
+    probe_hooks: 1
+    read_ms: 0.8243334013968706
+    rendered_utf16: 4903064
+    shell: appkit
+- mode: tk2
+  case: pre-cancelled
+  trial: 1
+  flags:
+  - --cancel-before-parse
+  timed_out: false
+  exit_code: 0
+  external_wall_ms: 150.66666598431766
+  peak_rss_bytes: 94535680
+  metrics:
+    backing_scale: 2
+    completed: true
+    core_status: 5
+    created_cells: 0
+    elapsed_ms: 138.74291675165296
+    live_snapshots_before_ui: 0
+    live_tokens_before_ui: 0
+    loading_heartbeat_ticks: 1
+    mode: tk2
+    phase: native_error
+    refresh_hz: 60
+    screen_pixels:
+    - 5120
+    - 2880
+    screen_points:
+    - 2560
+    - 1440
+    shell: appkit
+    window_visible: true
+- mode: tk2
+  case: in-flight-cancelled
+  trial: 1
+  flags:
+  - --cancel-on-entry
+  timed_out: false
+  exit_code: 0
+  external_wall_ms: 150.31283302232623
+  peak_rss_bytes: 123863040
+  metrics:
+    backing_scale: 2
+    cancel_requested_after_entry: true
+    completed: true
+    core_status: 5
+    created_cells: 0
+    elapsed_ms: 137.89091678336263
+    live_snapshots_before_ui: 0
+    live_tokens_before_ui: 0
+    loading_heartbeat_ticks: 3
+    mode: tk2
+    phase: native_error
+    refresh_hz: 60
+    screen_pixels:
+    - 5120
+    - 2880
+    screen_points:
+    - 2560
+    - 1440
+    shell: appkit
+    window_visible: true
+- mode: tk2
+  case: swiftui-small
+  trial: 1
+  flags:
+  - --swiftui
+  timed_out: false
+  exit_code: 0
+  external_wall_ms: 1808.5795829538256
+  peak_rss_bytes: 116441088
+  metrics:
+    adapter_ms: 0.48874993808567524
+    ax_role: AXTextArea
+    ax_utf16: 2107
+    backing_scale: 2
+    blocks: 69
+    clipboard_utf16: 256
+    completed: true
+    continuous_selection: true
+    copy_decode_ms: 0.020291656255722046
+    core_parse_model_ms: 0.055333
+    created_cells: 0
+    elapsed_ms: 1786.1421667039394
+    end_request_ms: 1.5162082854658365
+    end_visible_by_hit_test: true
+    entry_to_first_draw_ms: 150.38137510418892
+    first_draw_observed: true
+    heading_navigation_ms: 0.2867917064577341
+    input_bytes: 2547
+    live_snapshots_before_ui: 0
+    live_tokens_before_ui: 0
+    loading_heartbeat_ticks: 1
+    loading_max_timer_gap_ms: 29.004125157371163
+    mode: tk2
+    native_call_ms: 0.061374856159090996
+    native_table_bytes: 3312
+    native_text_bytes: 1969
+    phase: building_ui
+    probe_hooks: 1
+    read_ms: 0.0877082347869873
+    refresh_hz: 60
+    rendered_utf16: 2107
+    screen_pixels:
+    - 5120
+    - 2880
+    screen_points:
+    - 2560
+    - 1440
+    selection_actual_utf16: 256
+    selection_copy_matches: true
+    selection_requested_utf16: 256
+    selection_write_succeeded: true
+    shell: swiftui
+    surface_setup_ms: 2.816083375364542
+    surface_text_matches: true
+    textkit2_active: true
+    window_visible: true
+    timer_p95_ms: 17.991249915212393
+    timer_max_ms: 19.77650006301701
+- mode: tk2
+  case: swiftui-large
+  trial: 1
+  flags:
+  - --swiftui
+  timed_out: false
+  exit_code: 0
+  external_wall_ms: 2302.5069998111576
+  peak_rss_bytes: 261668864
+  metrics:
+    adapter_ms: 321.9652499537915
+    ax_role: AXTextArea
+    ax_utf16: 4903064
+    backing_scale: 2
+    blocks: 121362
+    clipboard_utf16: 256
+    completed: true
+    continuous_selection: true
+    copy_decode_ms: 5.366124911233783
+    core_parse_model_ms: 14.532542
+    created_cells: 0
+    elapsed_ms: 2274.7496666852385
+    end_request_ms: 0.8241250179708004
+    end_visible_by_hit_test: true
+    entry_to_first_draw_ms: 512.4266250059009
+    first_draw_observed: true
+    heading_navigation_ms: 0.14037499204277992
+    input_bytes: 5242880
+    live_snapshots_before_ui: 0
+    live_tokens_before_ui: 0
+    loading_heartbeat_ticks: 5
+    loading_max_timer_gap_ms: 27.474124915897846
+    mode: tk2
+    native_call_ms: 14.70683328807354
+    native_table_bytes: 5825376
+    native_text_bytes: 4684613
+    phase: building_ui
+    probe_hooks: 1
+    read_ms: 0.5702916532754898
+    refresh_hz: 60
+    rendered_utf16: 4903064
+    screen_pixels:
+    - 5120
+    - 2880
+    screen_points:
+    - 2560
+    - 1440
+    selection_actual_utf16: 256
+    selection_copy_matches: true
+    selection_requested_utf16: 256
+    selection_write_succeeded: true
+    shell: swiftui
+    surface_setup_ms: 10.770416585728526
+    surface_text_matches: true
+    textkit2_active: true
+    window_visible: true
+    timer_p95_ms: 17.707250081002712
+    timer_max_ms: 21.730083506554365
+memory_diagnostics:
+  native:
+    after_pressure_relief:
+      malloc_allocated_bytes: 30425088
+      malloc_in_use_bytes: 5332192
+      resident_bytes: 611713024
+    diagnostic_pressure_relief_bytes: 0
+    live_snapshots: 0
+    live_tokens: 0
+    mode: native
+    samples:
+    - malloc_allocated_bytes: 30425088
+      malloc_in_use_bytes: 5326320
+      resident_bytes: 50855936
+    - malloc_allocated_bytes: 30425088
+      malloc_in_use_bytes: 5328208
+      resident_bytes: 86835200
+    - malloc_allocated_bytes: 30425088
+      malloc_in_use_bytes: 5328400
+      resident_bytes: 115982336
+    - malloc_allocated_bytes: 30425088
+      malloc_in_use_bytes: 5328608
+      resident_bytes: 145129472
+    - malloc_allocated_bytes: 30425088
+      malloc_in_use_bytes: 5328800
+      resident_bytes: 174309376
+    - malloc_allocated_bytes: 30425088
+      malloc_in_use_bytes: 5329024
+      resident_bytes: 203472896
+    - malloc_allocated_bytes: 30425088
+      malloc_in_use_bytes: 5329216
+      resident_bytes: 232620032
+    - malloc_allocated_bytes: 30425088
+      malloc_in_use_bytes: 5329408
+      resident_bytes: 261767168
+    - malloc_allocated_bytes: 30425088
+      malloc_in_use_bytes: 5329600
+      resident_bytes: 290930688
+    - malloc_allocated_bytes: 30425088
+      malloc_in_use_bytes: 5329856
+      resident_bytes: 320110592
+    - malloc_allocated_bytes: 30425088
+      malloc_in_use_bytes: 5330048
+      resident_bytes: 349339648
+    - malloc_allocated_bytes: 30425088
+      malloc_in_use_bytes: 5330240
+      resident_bytes: 378486784
+    - malloc_allocated_bytes: 30425088
+      malloc_in_use_bytes: 5330432
+      resident_bytes: 407633920
+    - malloc_allocated_bytes: 30425088
+      malloc_in_use_bytes: 5330624
+      resident_bytes: 436781056
+    - malloc_allocated_bytes: 30425088
+      malloc_in_use_bytes: 5330816
+      resident_bytes: 465928192
+    - malloc_allocated_bytes: 30425088
+      malloc_in_use_bytes: 5331008
+      resident_bytes: 495108096
+    - malloc_allocated_bytes: 30425088
+      malloc_in_use_bytes: 5331200
+      resident_bytes: 524255232
+    - malloc_allocated_bytes: 30425088
+      malloc_in_use_bytes: 5331552
+      resident_bytes: 553402368
+    - malloc_allocated_bytes: 30425088
+      malloc_in_use_bytes: 5331744
+      resident_bytes: 582549504
+    - malloc_allocated_bytes: 30425088
+      malloc_in_use_bytes: 5331936
+      resident_bytes: 611696640
+  copy:
+    after_pressure_relief:
+      malloc_allocated_bytes: 38813696
+      malloc_in_use_bytes: 5332336
+      resident_bytes: 637157376
+    diagnostic_pressure_relief_bytes: 0
+    live_snapshots: 0
+    live_tokens: 0
+    mode: copy
+    samples:
+    - malloc_allocated_bytes: 38813696
+      malloc_in_use_bytes: 5326624
+      resident_bytes: 81854464
+    - malloc_allocated_bytes: 38813696
+      malloc_in_use_bytes: 5328352
+      resident_bytes: 112263168
+    - malloc_allocated_bytes: 38813696
+      malloc_in_use_bytes: 5328544
+      resident_bytes: 141410304
+    - malloc_allocated_bytes: 38813696
+      malloc_in_use_bytes: 5328752
+      resident_bytes: 170557440
+    - malloc_allocated_bytes: 38813696
+      malloc_in_use_bytes: 5328944
+      resident_bytes: 199720960
+    - malloc_allocated_bytes: 38813696
+      malloc_in_use_bytes: 5329168
+      resident_bytes: 228900864
+    - malloc_allocated_bytes: 38813696
+      malloc_in_use_bytes: 5329360
+      resident_bytes: 258064384
+    - malloc_allocated_bytes: 38813696
+      malloc_in_use_bytes: 5329552
+      resident_bytes: 287244288
+    - malloc_allocated_bytes: 38813696
+      malloc_in_use_bytes: 5329744
+      resident_bytes: 316391424
+    - malloc_allocated_bytes: 38813696
+      malloc_in_use_bytes: 5330000
+      resident_bytes: 345587712
+    - malloc_allocated_bytes: 38813696
+      malloc_in_use_bytes: 5330192
+      resident_bytes: 374800384
+    - malloc_allocated_bytes: 38813696
+      malloc_in_use_bytes: 5330384
+      resident_bytes: 403947520
+    - malloc_allocated_bytes: 38813696
+      malloc_in_use_bytes: 5330576
+      resident_bytes: 433111040
+    - malloc_allocated_bytes: 38813696
+      malloc_in_use_bytes: 5330768
+      resident_bytes: 462258176
+    - malloc_allocated_bytes: 38813696
+      malloc_in_use_bytes: 5330960
+      resident_bytes: 491421696
+    - malloc_allocated_bytes: 38813696
+      malloc_in_use_bytes: 5331152
+      resident_bytes: 520568832
+    - malloc_allocated_bytes: 38813696
+      malloc_in_use_bytes: 5331344
+      resident_bytes: 549715968
+    - malloc_allocated_bytes: 38813696
+      malloc_in_use_bytes: 5331696
+      resident_bytes: 578863104
+    - malloc_allocated_bytes: 38813696
+      malloc_in_use_bytes: 5331888
+      resident_bytes: 608010240
+    - malloc_allocated_bytes: 38813696
+      malloc_in_use_bytes: 5332080
+      resident_bytes: 637157376
+  leaks_scan:
+    native_only_large_loads: 20
+    leaks: 0
+    leaked_bytes: 0
+    malloc_nodes_at_exit: 1511
+    malloc_bytes_approx_at_exit: 187392
+    limitations: single leaks scan, not a universal leak proof; counters and live
+      allocation/VM evidence do not establish a safe repeated-session RSS budget
+  vmmap_summary:
+    native_only_large_loads: 20
+    malloc_large_empty_resident_mib: 565.7
+    malloc_live_allocated_approx_kib: 5207
+    physical_footprint_mib: 579.5
+    conclusion: Most observed growth was in empty large malloc regions; pressure relief
+      released zero bytes. No production workaround accepted.
+package_checks:
+  normal:
+    abi: 1
+    block_bytes: 48
+    normal_check:
+      host_exception_recovery: true
+      loads: 100
+      passed: true
+      pre_cancelled: true
+      probe_hooks: 0
+      typed_errors: true
+    options_bytes: 40
+    pointer_bytes: 8
+    probe_hooks: 0
+    snapshot_bytes: 56
+  core_sha256: 5313226b41b7d3bda1b5dd9741c6b27e2ec11ae1b4b41b268d21e09fa82701fe
+  zip_integrity: true
+  executable_permissions: true
+  extractor: ditto -x -k
+  apps:
+  - mode: tk1
+    case: small
+    probe_hooks: 0
+    core_status: null
+    completed: true
+  - mode: tk2
+    case: small
+    probe_hooks: 0
+    core_status: null
+    completed: true
+  - mode: blocks
+    case: small
+    probe_hooks: 0
+    core_status: null
+    completed: true
+  - mode: tk2
+    case: large
+    probe_hooks: 0
+    core_status: null
+    completed: true
+  - mode: tk2
+    case: cancelled
+    probe_hooks: null
+    core_status: 5
+    completed: true
+  relocation: fresh extracted ZIP, binaries run from /private/tmp with DYLD_* removed;
+    small fixtures from package; 5 MiB test input supplied by host
+  signing: default linker ad-hoc only; no identity/resource seal/notarization/install/publish
+debugging:
+  live_source_breakpoint: md_parse_v1 called from Swift; Rust source, mixed Swift/Rust
+    backtrace, continue to exit 0
+  initial_attempts: launch and attach stalled; owned processes were terminated; owner
+    approved developer-debugging enable and performed admin step
+  status_discrepancy: agent DevToolsSecurity status still reported disabled; subsequent
+    functional debugger retry succeeded; no further authorization changes made
+  limitations: Apple LLDB reports no Rust language plugin; Rust optimized-frame variable
+    inspection limited; no full IDE stepping claim
+  aslr: remained enabled
+validation:
+- six Rust tests in debug and release
+- Rust formatting check and Clippy -D warnings
+- Swift strict concurrency complete with warnings-as-errors
+- eight outline contracts
+- 1000 sequential plus 400 concurrent Swift loads, ten observed in-flight cancellations
+- snapshot/input lifetime, host-exception cleanup, typed errors, panic guard recovery
+- 54 final GUI trials with failures retained; normal-library package checks
+- legacy FEAS-004 regression, fixture/path checks, Python compile, links, Markdown/whitespace
+  checks
+initial_runs_retained:
+  location: ignored build/feas006/macos/measurements, measurements-final, measurements-current
+  purpose: startup observer fix and concurrency isolation development; final conclusions
+    use measurements-actor-checked only
+  initial_observer_failure: initial in-flight GUI parse finished during AppKit bootstrap
+    before timer observation; final path starts at first loading-window heartbeat
+    and returns Cancelled after observed entry
+remaining:
+- Native Linux/GTK facade, ownership/cancellation/conversion/debug/package evidence
+  required before FEAS-006 completion.
+- Snapshot-local IDs and flat semantics remain provisional; no production ABI/model
+  accepted.
+- AppKit attributed conversion and layout remain main-thread, noncancellable; TextKit
+  1 large input stalls.
+- Bounded rows lack document-wide selection/navigation; long-line TextKit 2 timer
+  delay is not display frame pacing.
+- Repeated large-file RSS retention remains a production risk despite zero native
+  handles and low live malloc usage.
+- Only named arm64 Mac tested; declared macOS 13 floor, Intel/universal/Apple-mobile
+  slices, mixed DPI and clean-machine distribution unverified.

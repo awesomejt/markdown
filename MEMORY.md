@@ -11,8 +11,8 @@ design belong in `docs/` or `agents/`; runtime transcripts do not belong here.
 - Later platforms: iOS and iPadOS after the desktop contracts are stable.
 - Organization: one native monorepo with independent native UIs,
   shared specifications/fixtures/benchmarks, and a candidate portable core.
-- Status: FEAS-001 through FEAS-005 are evaluated. FEAS-006 has a completed
-  Windows checkpoint but remains partial for native macOS/Linux integration;
+- Status: FEAS-001 through FEAS-005 are evaluated. FEAS-006 has completed
+  Windows and macOS checkpoints but remains partial for native Linux integration;
   resume it before selecting other work. Inspect `project.yaml` for the live
   pass/handoff state. No production baseline or ABI is accepted.
 - The required real Windows and macOS renderer evidence is now recorded.
@@ -21,7 +21,9 @@ design belong in `docs/` or `agents/`; runtime transcripts do not belong here.
 - Mac host setup: the project-state skill/backend and workflow contract have
   been restored from the owner's Linux user-level Codex directory. Supported
   inspection works. Xcode 27.1 is installed and selected. Use the normal pass
-  lifecycle and re-inspect rather than relying on an earlier revision.
+  lifecycle and re-inspect rather than relying on an earlier revision. The
+  reviewed portability patch is now applied to this installed Mac backend,
+  with its original backup; native coordination and fixture/path checks passed.
 - Windows host setup: Codex roles/skill were copied from Mac, and the native
   build tools and fixture Python dependencies are installed. State coordination
   is restored: the backend detects native Windows versus POSIX Python, and
@@ -62,7 +64,7 @@ design belong in `docs/` or `agents/`; runtime transcripts do not belong here.
   `runtime_path` generates Unicode/NFC/NFD names in separate ignored run
   directories; `tools/validate_fixtures.py` checks three generated paths.
   `.gitattributes` preserves exact corpus bytes across Windows checkouts.
-  Windows checks passed on 2026-10-25; Linux/macOS reruns remain outstanding.
+  Windows and macOS checks passed on 2026-10-25; Linux rerun remains outstanding.
 - FEAS-002 recommends Rust with pulldown-cmark as the lead core/parser spike:
   it had the lowest parse/walk time and RSS and exposes byte ranges for every
   event. Comrak remains the feature-rich fallback/conformance oracle, while
@@ -99,8 +101,22 @@ design belong in `docs/` or `agents/`; runtime transcripts do not belong here.
   callbacks; Rust parse/model was about 9.5/42.6 ms. Continuous controls still
   stall. Handles return to zero through lifecycle/cancellation/panic tests;
   native Rust source/PDB debugging and a normal-DLL package passed. The model
-  has snapshot-local IDs and incomplete semantic coverage; Mac/Linux native
-  hosts/packages are still required. See the shared-core Windows report.
+  has snapshot-local IDs and incomplete semantic coverage; native Linux host/package
+  evidence remains required. See the shared-core Windows report.
+- FEAS-006 macOS imports the same C header into Swift, bulk-copies values and
+  releases native snapshots/tokens before AppKit construction. All eight outline
+  contracts pass. The final 54 GUI trials include 51 presentations, two intended
+  cancellations and one retained TextKit 1/5 MiB timeout. TextKit 2 entry-to-draw
+  medians were about 217/498 ms for 1/5 MiB prose; 5 MiB core/model and copy/decode
+  were about 14.6/5.5 ms in GUI runs. Main-actor/strict concurrency checks,
+  live Swift-to-Rust source debugging and relocated normal-library bundles passed.
+  This is not a cold-launch or equivalent-renderer language comparison.
+- Repeated Mac native-only 5 MiB parses grew RSS to about 583 MiB after twenty
+  loads despite zero native owners and about 5.1 MiB live malloc usage. A leaks
+  scan found zero leaked bytes; vmmap classified most growth as empty large
+  malloc regions. Swift copying shows similar retention. Allocator pressure
+  relief released zero bytes. Keep this production memory risk open; no fix or
+  acceptable repeated-session budget is established by those bounded diagnostics.
 - The owner requires real target-host evidence from Windows and macOS before
   further architecture decisions. `project.yaml` therefore makes FEAS-003 and
   FEAS-004 prerequisites of FEAS-006 and FEAS-007 as well as GATE-001.
@@ -135,6 +151,25 @@ design belong in `docs/` or `agents/`; runtime transcripts do not belong here.
   shared core expands; Apple XCFramework concerns are one part of that matrix.
 
 ## Run log
+
+### 2026-10-25 — FEAS-006 macOS checkpoint
+
+Resumed the Windows partial handoff with the normal state lifecycle. Added native
+Swift value/lifetime and synchronized cancellation adapters, strict concurrency
+checks, off-thread AppKit consumption, timing/error/concurrency tests and
+relocatable probe/normal dylib builds. Final ownership tests passed 1,000 sequential
+plus 400 concurrent loads and ten cancellations after observed native entry.
+All native counts returned to zero; host conversion failure and panic recovery
+passed. Preserved layout failures and investigated rising RSS as empty-region
+retention rather than claiming a universal leak proof. Live LLDB source and
+mixed Swift/Rust frames passed after owner-approved/admin debugging setup;
+the agent status query still reported disabled, so global authorization state
+is not inferred. No further permission changes were made. Fresh normal-library
+ZIP relocation, console/GUI/cancellation smokes, Rust gates, fixture/path checks
+and the original FEAS-004 regression passed. See the Mac integration report.
+Closed the Mac pass as partial at revision 98, with no active/stale passes
+or warnings. FEAS-006 intentionally remains working without a lease and carries
+an exact Linux handoff. No production ABI/model accepted.
 
 ### 2026-10-25 — FEAS-006 Windows checkpoint
 
