@@ -1,11 +1,11 @@
 contract_version: project-state/v1
-revision: 89
+revision: 92
 project: &id002
   concurrency_limit: 1
   created_at: '2026-10-24T23:34:09.871478+00:00'
   project_ref: markdown-native
   status: active
-  updated_at: '2026-10-25T03:52:46.168435+00:00'
+  updated_at: '2026-10-25T06:14:15.252593+00:00'
   workflow_id: native-app-development
   workflow_version: '2'
 phases: &id004
@@ -554,6 +554,28 @@ tasks:
     created_at: '2026-10-25T00:06:44.092032+00:00'
     updated_at: '2026-10-25T00:07:08.131990+00:00'
     completed_at: '2026-10-25T00:07:08.131990+00:00'
+  - &id022
+    id: 55fecfcd-102a-4a4b-b1cd-ff9202ba8c3b
+    task_key: TOOL-001
+    title: Restore portable project-state coordination
+    description: Bootstrap Windows support in the installed backend, preserve POSIX behavior, provide
+      reproducible guarded patch, verify concurrency and atomic writes, and document host detection. Initial
+      backend bootstrap is explicitly authorized by owner repair request.
+    phase: feasibility
+    role: orchestrator
+    priority: 100
+    model_tier: null
+    validation_expectations:
+      - Disposable-state tests for locking, concurrency, revisions, idempotency, failure cleanup and pass
+        lifecycle
+      - Real project inspection and supported closeout with no orphaned pass
+      - Windows native evidence; POSIX host reruns explicitly outstanding
+    status: completed
+    active_pass_ref: null
+    blockers: []
+    created_at: '2026-10-25T06:10:53.704236+00:00'
+    updated_at: '2026-10-25T06:14:15.252593+00:00'
+    completed_at: '2026-10-25T06:14:15.252593+00:00'
 relationships:
   - predecessor_task_ref: 7fe339d7-90ce-4211-9a0a-91be7640aa42
     relationship: blocks
@@ -931,6 +953,46 @@ passes:
     started_at: '2026-10-25T03:31:47.586988+00:00'
     last_heartbeat_at: null
     completed_at: '2026-10-25T03:52:46.168435+00:00'
+    lease_expires_at: null
+    lease_version: 1
+  - &id023
+    id: a3264afa-7f5a-4b9a-8526-575718e95425
+    sequence: 7
+    task_ref: 55fecfcd-102a-4a4b-b1cd-ff9202ba8c3b
+    phase_ref: b19ec1c8-f0c0-4cee-b584-5c9247a96edd
+    actor: codex-windows
+    status: completed
+    outcome: completed
+    objective: Validate and finish the owner-requested Windows/POSIX project-state portability repair
+      after minimal bootstrap restored inspection.
+    summary: Restored native Windows coordination and preserved POSIX behavior with a reproducible hash-guarded
+      backend patch; installed backend backed up; wrapper detects runtime host and shares atomic writes.
+    handoff: null
+    validation_result: passed on Windows and macOS; Linux native rerun outstanding
+    evidence:
+      windows: 'tools/test_project_state.py: 8 passed, 1 POSIX-specific skip; native Git Bash --platform-info
+        selects win32/nt/msvcrt'
+      macOS: 'Same suite via SSH in isolated /tmp directory: 8 passed, 1 Windows-specific skip; darwin/posix/flock;
+        no Mac repository or installed backend changed'
+      checks:
+        - Patch --check is idempotent
+        - 'Fixture validator: 8 semantic cases, 4 profiles, 3 generated paths'
+        - 'Path generator regressions: 4 passed'
+        - Skill quick_validate passed
+        - 'markdownlint-cli2@0.18.1: 24 files, zero errors'
+        - git diff --check passed
+      limitations:
+        - Linux native test not run
+        - Windows lacks POSIX directory fsync and permission semantics; filesystem/network-share power-loss
+          durability not established
+      bootstrap: Owner explicitly requested backend repair; minimal bootstrap restored inspection at revision
+        89, then create_task/start_pass coordinated TOOL-001.
+    participants: []
+    blocker: null
+    execution_record: {}
+    started_at: '2026-10-25T06:10:54.414203+00:00'
+    last_heartbeat_at: null
+    completed_at: '2026-10-25T06:14:15.252593+00:00'
     lease_expires_at: null
     lease_version: 1
 idempotency:
@@ -1508,6 +1570,114 @@ idempotency:
             completed: 6
             pending: 25
           total: 31
+          active_passes: 0
+          stale_passes: 0
+          eligible: 1
+          blocked: 0
+        warnings: []
+        recommended_action: select_new_task
+  windows-portability-create_task-20261025:
+    fingerprint: e55e11abaf2b01de3de392fd859b86a9093cf2b33d4ae991fe4927b6bdf746ba
+    response:
+      contract_version: project-state/v1
+      operation: create_task
+      revision: 90
+      data:
+        task: *id022
+      snapshot:
+        contract_version: project-state/v1
+        snapshot_at: '2026-10-25T06:10:53.704280+00:00'
+        revision: 90
+        project: *id002
+        current_phase: *id003
+        phases: *id004
+        active_tasks: []
+        working_tasks_without_active_lease: []
+        active_passes: []
+        stale_passes: []
+        blocked_tasks: []
+        eligible_tasks:
+          - *id022
+          - *id006
+        latest_pass: *id021
+        queue_counts:
+          by_status:
+            completed: 6
+            pending: 26
+          total: 32
+          active_passes: 0
+          stale_passes: 0
+          eligible: 2
+          blocked: 0
+        warnings: []
+        recommended_action: select_new_task
+  windows-portability-start_pass-20261025:
+    fingerprint: 9891079ed1a85071b85b35fe0089288fe68e57ca88f8574ce47a606b67e1f5a9
+    response:
+      contract_version: project-state/v1
+      operation: start_pass
+      revision: 91
+      data:
+        pass: *id023
+        task: *id022
+      snapshot:
+        contract_version: project-state/v1
+        snapshot_at: '2026-10-25T06:10:54.414244+00:00'
+        revision: 91
+        project: *id002
+        current_phase: *id003
+        phases: *id004
+        active_tasks:
+          - *id022
+        working_tasks_without_active_lease: []
+        active_passes:
+          - *id023
+        stale_passes: []
+        blocked_tasks: []
+        eligible_tasks:
+          - *id006
+        latest_pass: *id023
+        queue_counts:
+          by_status:
+            completed: 6
+            pending: 25
+            working: 1
+          total: 32
+          active_passes: 1
+          stale_passes: 0
+          eligible: 1
+          blocked: 0
+        warnings: []
+        recommended_action: resume_active
+  windows-portability-finish-20261025:
+    fingerprint: 9c60ac622a544900b827ae4ef4a9fe3f08b3c1a2e7758fcf3d35002ff78578af
+    response:
+      contract_version: project-state/v1
+      operation: finish_pass
+      revision: 92
+      data:
+        pass: *id023
+        task: *id022
+      snapshot:
+        contract_version: project-state/v1
+        snapshot_at: '2026-10-25T06:14:15.252616+00:00'
+        revision: 92
+        project: *id002
+        current_phase: *id003
+        phases: *id004
+        active_tasks: []
+        working_tasks_without_active_lease: []
+        active_passes: []
+        stale_passes: []
+        blocked_tasks: []
+        eligible_tasks:
+          - *id006
+        latest_pass: *id023
+        queue_counts:
+          by_status:
+            completed: 7
+            pending: 25
+          total: 32
           active_passes: 0
           stale_passes: 0
           eligible: 1

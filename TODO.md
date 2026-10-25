@@ -39,6 +39,13 @@ pass at a time because the project concurrency limit is one.
 
 ### Requirements and feasibility
 
+- **TOOL-001 — Restore portable project-state coordination.** Detect the
+  Python runtime host, preserve the existing state contract, and provide a
+  guarded portable backend patch. Acceptance: Windows native locking/atomic
+  writes, POSIX compatibility, disposable-state concurrency/conflict/idempotency
+  and failure checks, real-project inspection and supported pass closeout.
+  Platform evidence and unrun host checks are recorded in `AGENT_WORKFLOW.md`.
+
 - **DEC-001 — Accept native monorepo strategy.** Record owner approval of D-004
   and align durable project documentation. Completed 2026-10-24.
 - **REQ-001 — Rebaseline requirements and repository strategy.** Extract the

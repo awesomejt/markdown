@@ -19,4 +19,5 @@ expectations:
       contains_non_ascii: true
       lookup_preserves_display_name: true
   notes:
+    - The committed input has an ASCII name; runtime_path supplies the Unicode test filename.
     - URL encoding, shell integration, and persistent identity are platform-adapter concerns.

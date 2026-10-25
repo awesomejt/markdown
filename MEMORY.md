@@ -21,6 +21,12 @@ design belong in `docs/` or `agents/`; runtime transcripts do not belong here.
   been restored from the owner's Linux user-level Codex directory. Supported
   inspection works. Xcode 27.1 is installed and selected. Use the normal pass
   lifecycle and re-inspect rather than relying on an earlier revision.
+- Windows host setup: Codex roles/skill were copied from Mac, and the native
+  build tools and fixture Python dependencies are installed. State coordination
+  is restored: the backend detects native Windows versus POSIX Python, and
+  `tools/patch_project_state_backend.py` reproduces the reviewed patch on each
+  host. Windows and isolated native Mac regression suites passed on 2026-10-25;
+  Linux rerun is outstanding. Use `--platform-info` to verify the selected path.
 
 ## Durable context
 
@@ -51,6 +57,11 @@ design belong in `docs/` or `agents/`; runtime transcripts do not belong here.
   commit `0ab59c0f7bf91730bf9683b47a5eb2658f331b00`: eight semantic cases,
   four generated performance profiles, provenance/hashes, JSON Schemas in
   YAML, and a validator that does not access the sibling repository.
+- Unicode fixture contents now use ASCII filenames in Git. The manifest's
+  `runtime_path` generates Unicode/NFC/NFD names in separate ignored run
+  directories; `tools/validate_fixtures.py` checks three generated paths.
+  `.gitattributes` preserves exact corpus bytes across Windows checkouts.
+  Windows checks passed on 2026-10-25; Linux/macOS reruns remain outstanding.
 - FEAS-002 recommends Rust with pulldown-cmark as the lead core/parser spike:
   it had the lowest parse/walk time and RSS and exposes byte ranges for every
   event. Comrak remains the feature-rich fallback/conformance oracle, while
@@ -106,6 +117,35 @@ design belong in `docs/` or `agents/`; runtime transcripts do not belong here.
   shared core expands; Apple XCFramework concerns are one part of that matrix.
 
 ## Run log
+
+### 2026-10-25 — portable state coordination
+
+Owner requested Windows/POSIX backend repair after the fixture-only exception.
+Minimal bootstrap restored inspection at revision 89 without changing history;
+subsequent work used the normal TOOL-001 pass lifecycle. The installed backend
+is backed up beside its source. A hash-guarded repository installer preserves
+unknown/local edits and makes the patch transferable without vendoring another
+state engine. Windows uses a bounded exclusive byte-range sidecar lock for
+readers and writers; POSIX keeps shared/exclusive flock. The YAML wrapper and
+JSON backend share synced temporary-file replacement. Native Windows and isolated
+Mac suites each passed eight checks with one opposite-platform skip, covering
+concurrency, idempotency, failure cleanup and lifecycle. No Mac repository or
+installed skill was changed. TOOL-001 completed at revision 92 with no active
+or stale passes, no unleased working tasks, and no warnings; only FEAS-003 was
+eligible. Linux native testing remains outstanding.
+
+### 2026-10-25 — portable Unicode filesystem fixtures
+
+Owner authorized a fixture-only exception while the Windows project-state
+backend remains blocked by its Unix-only `fcntl` import. No pass was opened
+and `project.yaml` was left unchanged. Replaced tracked Unicode filenames
+and the redundant NFC alias with two ASCII-named inputs, retaining the frozen
+content hashes, origin commit and license. Runtime generation isolates NFC/NFD
+spellings, reports actual directory entries and canonical lookup behavior,
+and never overwrites existing output. Windows validation passed for eight
+semantic cases, four performance profiles and three generated paths; four
+generator regression tests passed. Native adapter normalization fallback and
+Linux/macOS filesystem behavior are not established by these checks.
 
 ### 2026-10-24 — planning baseline
 

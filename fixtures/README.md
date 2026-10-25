@@ -20,6 +20,45 @@ The source snapshot is `markdown-viewer` commit
 are byte-identical to the paths in the manifest; their hashes are validated
 without reading the sibling repository.
 
+All committed Markdown input filenames are ASCII. The Unicode cases retain
+their original content hashes and origin paths; `runtime_path` in the manifest
+describes the filenames to generate for filesystem tests. The duplicate NFC
+copy of the NFD input is no longer stored in Git. `.gitattributes` disables
+line-ending conversion for the frozen corpus so Windows checkouts retain the
+same hashed bytes as Linux and macOS.
+
+## Unicode filesystem fixtures
+
+Generate Unicode paths only when a filesystem or native-adapter test needs them:
+
+```sh
+python tools/generate_path_fixtures.py
+python tools/generate_path_fixtures.py --check
+```
+
+Use the project environment's Python (`.build/feasibility-venv/Scripts/python.exe`
+in Windows Git Bash, or `.build/feasibility-venv/bin/python` on Linux/macOS).
+The first command creates a unique run directory under ignored
+`build/fixtures/paths/` and writes `paths.json` with paths for native test
+consumers. Each run has fresh files and never overwrites an earlier run.
+The second command creates, verifies and removes a temporary run on that
+filesystem. Use `--output` to probe another filesystem; it names the parent
+directory, not an existing file to overwrite. Reports from `--check` describe
+temporary files that have already been removed.
+
+The cases cover spaces/non-ASCII characters and both NFC and NFD spellings of
+`café.md`. Each spelling lives in its own directory, so the test works even
+when the filesystem treats canonical equivalents as one name. Reports use
+escaped JSON and record requested spelling, enumerated spelling/code points,
+content hash and whether the alternate spelling resolves to the same file.
+Canonical-equivalent lookup may succeed or fail depending on the filesystem;
+neither outcome alone is an adapter conformance result. Native adapters still
+need to prove the fallback and security invariants in the semantic expectations.
+
+Parser/renderer corpus consumers continue using manifest `input` paths for
+content tests. Use generated report paths for Unicode filename integration
+tests; reading an ASCII fixture does not establish Unicode lookup behavior.
+
 ## Expectations
 
 Semantic expectation files freeze observable requirements without selecting a
@@ -61,4 +100,10 @@ python3 tools/validate_fixtures.py
 
 Validation checks schemas, unique IDs, paths, hashes, license metadata,
 requirement references, corpus completeness, expected case IDs, and generated
-performance hashes. It never accesses `../markdown-viewer`.
+performance hashes. It also materializes and checks all three Unicode paths in
+a temporary directory on the checkout filesystem, then removes them. It never
+accesses `../markdown-viewer`. Generator regression checks run with:
+
+```sh
+python tools/test_path_fixtures.py
+```

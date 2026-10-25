@@ -1,8 +1,8 @@
 # Agent Session and Platform Handoff
 
-Updated: 2026-10-24, macOS FEAS-004 session. Source baseline: `3606887`
-(`Update HANDOFF before FEAS-004`), plus the uncommitted FEAS-004 source,
-measurements, reports and state closeout. Do not omit those files when syncing.
+Updated: 2026-10-25, Windows fixture and state portability repairs. Source
+baseline: `c17acb2`, plus the uncommitted fixture/tooling/documentation/state
+changes described below. Preserve those changes when syncing.
 
 This file carries concise, commit-safe context between sessions and machines.
 It does not replace [project.yaml](project.yaml) for operational state,
@@ -12,10 +12,44 @@ Recheck the current host and state; observations below are a dated snapshot.
 
 ## Resume here
 
+Windows update: Developer Mode, Visual Studio 2026/MSVC, Windows SDKs, .NET 10,
+Rust MSVC, WPA and the pinned fixture Python dependencies are installed.
+Accessibility Insights was not detected in the last readiness check.
+State coordination is restored by an owner-requested portability repair.
+The installed Windows backend is patched and its original is backed up beside
+it. On each other host, apply `tools/patch_project_state_backend.py` before
+using the wrapper; it validates the original/patched hashes and will not replace
+unknown local edits. The Mac's installed backend was not changed by the isolated
+Mac regression run. Use `--platform-info` to confirm Python runtime detection.
+The fixture-only exception is finished; subsequent work uses the normal lifecycle.
+
+The fixture fix stores content under ASCII names and generates Unicode paths
+at test time. Run these in Windows Git Bash:
+
+```sh
+.build/feasibility-venv/Scripts/python.exe tools/validate_fixtures.py
+.build/feasibility-venv/Scripts/python.exe tools/test_path_fixtures.py
+.build/feasibility-venv/Scripts/python.exe tools/generate_path_fixtures.py --check
+.build/feasibility-venv/Scripts/python.exe tools/project_state.py --platform-info
+.build/feasibility-venv/Scripts/python.exe tools/test_project_state.py
+```
+
+Windows checks passed: eight semantic cases, four performance profiles, three
+generated paths and four regression tests. Re-run on Linux/macOS; no new native
+evidence was collected there. See [fixture instructions](fixtures/README.md).
+The fixture fix did not mutate revision 89. TOOL-001 subsequently used supported
+state operations after the initial backend bootstrap and completed at revision
+92: project active, no active/stale passes, no unleased working tasks, no warnings;
+only FEAS-003 eligible. Re-inspect rather than assuming this snapshot is current.
+The native Windows and isolated Mac state
+suites each passed eight checks and skipped the other platform's specific check.
+Linux state testing remains outstanding. See `AGENT_WORKFLOW.md` for setup and
+write-durability limitations. The historical Mac snapshot below predates TOOL-001.
+
 1. Read [AGENTS.md](AGENTS.md) and its required references. Inspect Git status;
    preserve changes made by the owner or other sessions.
-2. Run the state inspection command below. The backend is now restored on this
-   Mac. Recover any stale work before starting a pass.
+2. Run the state inspection command below after confirming backend support on
+   the current host. Recover any stale work before starting a pass.
 3. Continue **FEAS-003 on a real Windows host**. The macOS FEAS-004 evaluation
    is complete; do not rerun it merely because the session changed. Run only
    one active pass at a time and re-inspect state on the destination host.
@@ -99,10 +133,11 @@ with schemas, hashes and Apache-2.0 provenance. Origin:
 `markdown-viewer` commit `0ab59c0f7bf91730bf9683b47a5eb2658f331b00`.
 See [fixtures/README.md](fixtures/README.md).
 
-Validation passed on this Mac. That verifies corpus integrity, not complete
-macOS filesystem behavior or semantic rendering. Unicode/NFD lookup fixtures
-exist; do not casually rename or normalize them. The previously untracked
-`fixtures/markdown/paths/café.md` is now tracked in the current checkout.
+Validation passed on the Mac before the Windows portability fix. That verifies
+the earlier corpus, not complete macOS filesystem behavior or semantic
+rendering. The Windows fix replaces tracked Unicode/NFD filenames and the
+redundant NFC alias with ASCII-named content plus runtime path recipes. Original
+content hashes and provenance remain unchanged; rerun the new generator on Mac.
 
 ### FEAS-002: parser comparison and Mac supplement
 

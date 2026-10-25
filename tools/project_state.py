@@ -4,9 +4,9 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 import os
 import sys
-import tempfile
 from pathlib import Path
 from types import ModuleType
 from typing import Any
@@ -52,7 +52,20 @@ def load_backend() -> ModuleType:
     if spec is None or spec.loader is None:
         raise SystemExit(f"Cannot load project-state backend: {path}")
     module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
+    try:
+        spec.loader.exec_module(module)
+    except ModuleNotFoundError as exc:
+        if exc.name == "fcntl":
+            raise SystemExit(
+                "This backend needs the Windows portability patch. Run this Python "
+                "with tools/patch_project_state_backend.py first."
+            ) from exc
+        raise
+    if not hasattr(module, "atomic_write_text"):
+        raise SystemExit(
+            "Backend portability patch required on this host. Run this Python "
+            "with tools/patch_project_state_backend.py first."
+        )
     return module
 
 
@@ -84,26 +97,7 @@ def install_yaml_io(backend: ModuleType) -> None:
             sort_keys=False,
             width=100,
         )
-        mode = path.stat().st_mode & 0o777 if path.exists() else 0o644
-        descriptor, temporary_name = tempfile.mkstemp(
-            dir=path.parent, prefix=f".{path.name}.", suffix=".tmp"
-        )
-        temporary = Path(temporary_name)
-        try:
-            os.fchmod(descriptor, mode)
-            with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
-                handle.write(payload)
-                handle.flush()
-                os.fsync(handle.fileno())
-            os.replace(temporary, path)
-            directory = os.open(path.parent, os.O_RDONLY)
-            try:
-                os.fsync(directory)
-            finally:
-                os.close(directory)
-        finally:
-            if temporary.exists():
-                temporary.unlink()
+        backend.atomic_write_text(path, payload)
 
     def read_request(path: str) -> dict[str, Any]:
         try:
@@ -124,6 +118,17 @@ def install_yaml_io(backend: ModuleType) -> None:
 
 def main() -> int:
     backend = load_backend()
+    if sys.argv[1:] == ["--platform-info"]:
+        print(json.dumps({
+            "platform": sys.platform,
+            "os_name": os.name,
+            "backend": str(backend_path()),
+            "locking": "msvcrt-exclusive-byte-range" if os.name == "nt" else "fcntl-flock",
+            "lock_timeout_seconds": backend.LOCK_TIMEOUT_SECONDS if os.name == "nt" else None,
+            "directory_fsync": os.name == "posix",
+            "atomic_write": "synced-sibling-file-and-os.replace",
+        }, indent=2))
+        return 0
     install_yaml_io(backend)
     return int(backend.main())
 

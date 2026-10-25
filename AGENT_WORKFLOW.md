@@ -23,6 +23,50 @@ The wrapper uses the backend's exclusive lock, optimistic revisions,
 idempotency, and atomic replacement, then emits readable block YAML.
 `project.yaml.lock` and transient requests are ignored.
 
+### Host detection and backend setup
+
+Use the current host's Python, not the shell name, to select platform behavior:
+
+```sh
+python tools/patch_project_state_backend.py --check
+python tools/patch_project_state_backend.py
+python tools/project_state.py --platform-info
+python tools/test_project_state.py
+```
+
+The patch command supports the original owner-provided backend at SHA-256
+`ec6881a156f28825424a99f094db95e67944845aecd542a78e80bfa51497828e`.
+It backs up that file beside the installed backend, rejects unknown/local edits,
+and is a no-op when the reviewed patch is already installed. Apply it on each
+host after installing the skill; it does not change `project.yaml`. Use
+`--backend PATH` for an alternate installed copy, and set
+`MARKDOWN_STATE_BACKEND` to that same path for the wrapper and tests.
+
+For this Windows checkout, replace `python` above with
+`.build/feasibility-venv/Scripts/python.exe` in Git Bash (or the corresponding
+backslash path in PowerShell). Linux/macOS virtual environments use `bin/python`.
+
+`--platform-info` reports `win32`/`nt` for native Windows Python, including in
+Git Bash, `darwin`/`posix` on macOS, and `linux`/`posix` on Linux. Windows locks
+byte zero of a stable sidecar with `msvcrt`, serializing both readers and writers;
+contention times out after 30 seconds with a retryable `lease_conflict`.
+POSIX retains shared/exclusive `fcntl.flock` locks. Locks release when handles
+close; do not delete a sidecar to break a live lock.
+
+Both platforms flush and sync a sibling temporary file, close it, then call
+`os.replace`. POSIX also preserves permission bits and syncs the parent directory.
+Windows does not emulate POSIX permissions or directory syncing. Atomic
+replacement does not establish identical power-loss durability or network-share
+locking guarantees on every filesystem. Use a local checkout and one active
+machine at a time; coordinate handoffs through Git, not simultaneous state writes
+on separate copies.
+
+On 2026-10-25 the native Windows and macOS regression suites passed, including
+concurrent writers, revision conflicts, idempotency, lock release, write-failure
+cleanup and lifecycle checks. Windows timeout and POSIX permissions/directory
+sync have host-specific tests. Linux uses the POSIX branch but still needs a
+native rerun; do not infer a Linux pass from macOS results.
+
 ## Start or resume work
 
 1. Read the required files in `AGENTS.md` and inspect Git state.

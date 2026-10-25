@@ -1,6 +1,6 @@
 version: 1
 case_id: nfd-filename
-purpose: Preserve lookup and display behavior for a filename stored in decomposed Unicode form.
+purpose: Exercise lookup and display with generated NFC and NFD filenames.
 document:
   front_matter: {present: false, properties: {}}
   outline:
@@ -15,8 +15,10 @@ expectations:
       - Normalization fallback cannot escape the approved workspace.
   extensions:
     path_semantics:
-      stored_normalization: NFD
+      requested_normalizations: [NFC, NFD]
       lookup_accepts_canonical_equivalent: true
       display_name_may_normalize: true
   notes:
     - Exact on-disk normalization must be recorded by platform filesystem tests.
+    - The committed input has an ASCII name; runtime_path generates each spelling in a separate directory.
+    - Raw filesystem canonical-equivalent lookup is reported, not required; adapters own any fallback.

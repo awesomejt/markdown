@@ -60,6 +60,20 @@ evaluations but do not replace native launch, layout, selection, accessibility,
 scaling, lifecycle, debugging, and packaging evidence. The project task graph
 enforces this order.
 
+## D-006 — Generate Unicode filesystem test paths
+
+**Date:** 2026-10-25
+
+**Status:** accepted by owner request
+
+Keep committed fixture filenames ASCII and generate Unicode names from manifest
+recipes when running filesystem tests. Create NFC and NFD spellings in separate
+directories so a checkout never requires normalization-equivalent names to
+coexist. Preserve original input bytes, hashes, origin paths and licensing.
+Record actual on-disk spelling and canonical-equivalent lookup results on each
+host; filesystem observations do not replace native adapter conformance tests.
+Disable Git line-ending conversion for the frozen fixture corpus.
+
 ## Proposed decisions for GATE-001
 
 The following are not yet accepted:

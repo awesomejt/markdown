@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import hashlib
+import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -11,6 +12,7 @@ import yaml
 from jsonschema import Draft202012Validator, FormatChecker
 
 from generate_performance_fixtures import generate_profile
+from generate_path_fixtures import materialize_paths
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -98,6 +100,13 @@ def main() -> int:
     if listed_expected != actual_expected:
         raise ValueError("manifest/expected set differs from semantic expectation corpus")
 
+    if any(not path.relative_to(FIXTURES).as_posix().isascii() for path in actual_inputs):
+        raise ValueError("committed Markdown fixture paths must be ASCII; generate Unicode paths")
+    output = ROOT / "build/fixtures/paths"
+    output.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix="validate-", dir=output) as temporary:
+        path_records = materialize_paths(FIXTURES, Path(temporary))
+
     profiles_path = inside_fixture(manifest["performance_profiles"])
     profiles = load_yaml(profiles_path)
     performance_validator.validate(profiles)
@@ -113,7 +122,7 @@ def main() -> int:
 
     print(
         f"validated {len(case_ids)} semantic cases and "
-        f"{len(profile_ids)} performance profiles"
+        f"{len(profile_ids)} performance profiles and {len(path_records)} generated paths"
     )
     return 0
 

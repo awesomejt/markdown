@@ -62,7 +62,10 @@ cases:
     sha256: 6a7391b5d77138f8177b0c46f916cc62a3b627a7146a73bb5a9dc1713b94e781
   - id: unicode-filename
     stage: foundation
-    input: 'markdown/paths/Unicode Ünïcödé name.md'
+    input: markdown/paths/unicode-filename.md
+    runtime_path:
+      filename: "Unicode \u00dcn\u00efc\u00f6d\u00e9 name.md"
+      normalizations: [NFC]
     expected: expected/unicode-filename.yaml
     requirements: [R1.1, R4]
     origin:
@@ -71,7 +74,10 @@ cases:
     sha256: e84cc3de421115e7ae9cffe6902cc026353597ee48d4337d3c05cf47c2b91f23
   - id: nfd-filename
     stage: foundation
-    input: 'markdown/paths/café.md'
+    input: markdown/paths/nfd-filename.md
+    runtime_path:
+      filename: "caf\u00e9.md"
+      normalizations: [NFC, NFD]
     expected: expected/nfd-filename.yaml
     requirements: [R1.1, R4]
     origin:
