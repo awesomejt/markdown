@@ -1,0 +1,32 @@
+version: 1
+case_id: inline-diagrams
+purpose: Identify diagram fences, valid/invalid sources, and heading identities that resemble renderer IDs.
+document:
+  front_matter: {present: false, properties: {}}
+  outline:
+    - {level: 1, text: Inline Diagrams, slug: inline-diagrams}
+    - {level: 2, text: Slug look-alikes, slug: slug-look-alikes}
+    - {level: 3, text: mdv-mermaid-1, slug: mdv-mermaid-1}
+    - {level: 3, text: dmdv-mermaid-2, slug: dmdv-mermaid-2}
+    - {level: 3, text: mdvMermaid-1, slug: mdvmermaid-1}
+    - {level: 3, text: dmdvMermaid-2, slug: dmdvmermaid-2}
+  feature_counts:
+    headings: 6
+    diagram_fences: 4
+expectations:
+  code_fences:
+    - {language: mermaid, semantic: diagram, valid: true}
+    - {language: mermaid, semantic: diagram, valid: false}
+    - {language: d2, semantic: diagram, valid: true}
+    - {language: d2, semantic: diagram, valid: false}
+  security:
+    raw_html_policy: text
+    blocked_url_schemes: [javascript, vbscript, data]
+    invariants:
+      - Diagram compilation is offline and cannot access arbitrary files or URLs.
+      - Generated SVG cannot execute scripts or load external resources.
+      - A diagram failure preserves source and a bounded diagnostic.
+  extensions:
+    diagram_engines: [mermaid, d2]
+  notes:
+    - Engine availability is platform-specific and decided after FEAS-007.

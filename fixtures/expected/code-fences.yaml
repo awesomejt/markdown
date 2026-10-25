@@ -1,0 +1,24 @@
+version: 1
+case_id: code-fences
+purpose: Exercise known, unknown, and absent fenced-code language identifiers.
+document:
+  front_matter: {present: false, properties: {}}
+  outline:
+    - {level: 1, text: Code, slug: code}
+  feature_counts:
+    headings: 1
+    code_fences: 4
+expectations:
+  code_fences:
+    - {language: ts, semantic: code}
+    - {language: go, semantic: code}
+    - {language: notalang, semantic: code}
+    - {language: null, semantic: code}
+  security:
+    raw_html_policy: text
+    blocked_url_schemes: [javascript, vbscript, data]
+    invariants:
+      - Unknown languages remain readable plain code.
+      - Highlighting failure never hides or changes source text.
+  notes:
+    - Syntax highlighting is lazy and separately budgeted from parsing.

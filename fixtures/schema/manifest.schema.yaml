@@ -1,0 +1,45 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: https://awesomejt.github.io/markdown/schemas/corpus-manifest-v1
+title: Native Markdown corpus manifest
+type: object
+additionalProperties: false
+required: [version, source_snapshot, cases, performance_profiles]
+properties:
+  version:
+    const: 1
+  source_snapshot:
+    type: object
+    additionalProperties: false
+    required: [repository, commit, license, license_file, license_sha256]
+    properties:
+      repository: {type: string, format: uri}
+      commit: {type: string, pattern: '^[0-9a-f]{40}$'}
+      license: {const: Apache-2.0}
+      license_file: {type: string}
+      license_sha256: {type: string, pattern: '^[0-9a-f]{64}$'}
+  cases:
+    type: array
+    minItems: 1
+    items:
+      type: object
+      additionalProperties: false
+      required: [id, stage, input, expected, requirements, origin, sha256]
+      properties:
+        id: {type: string, pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$'}
+        stage: {enum: [foundation, advanced]}
+        input: {type: string}
+        expected: {type: string}
+        requirements:
+          type: array
+          minItems: 1
+          items: {type: string, pattern: '^R[1-5](?:\.[1-5])?$'}
+        origin:
+          type: object
+          additionalProperties: false
+          required: [path, commit]
+          properties:
+            path: {type: string}
+            commit: {type: string, pattern: '^[0-9a-f]{40}$'}
+        sha256: {type: string, pattern: '^[0-9a-f]{64}$'}
+  performance_profiles:
+    type: string

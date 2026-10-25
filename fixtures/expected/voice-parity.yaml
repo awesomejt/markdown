@@ -1,0 +1,37 @@
+version: 1
+case_id: voice-parity
+purpose: Preserve the semantic requirements of the opt-in voice-over Markdown extension.
+document:
+  front_matter:
+    present: true
+    properties:
+      mdv: script
+      title: Parity script
+  outline:
+    - {level: 1, text: Parity script, slug: parity-script}
+    - {level: 2, text: Closing, slug: closing}
+  feature_counts:
+    headings: 2
+    tables: 2
+    notes: 2
+    pronunciation_guides: 4
+expectations:
+  security:
+    raw_html_policy: text
+    blocked_url_schemes: [javascript, vbscript, data]
+    invariants:
+      - Voice-over syntax is inert unless front matter opts into script mode.
+      - Notes and directions never execute or resolve as links.
+  extensions:
+    mode: script
+    speakers: [ANNA, BOB]
+    speaker_carry_over: true
+    heading_resets_speaker: true
+    direction_forms: [bracket, leading-parenthetical]
+    note_form: double-bracket
+    pronunciation_form: brace-pipe
+    av_table: true
+    source_line_numbers: required
+  notes:
+    - Visual A/V cells are excluded from read-time and teleprompter word counts.
+    - Escaped pipes in table pronunciation guides remain part of the guide.

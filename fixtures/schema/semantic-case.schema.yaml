@@ -1,0 +1,79 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: https://awesomejt.github.io/markdown/schemas/semantic-case-v1
+title: Native Markdown semantic expectation
+type: object
+additionalProperties: false
+required: [version, case_id, purpose, document, expectations]
+properties:
+  version:
+    const: 1
+  case_id:
+    type: string
+    pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$'
+  purpose:
+    type: string
+    minLength: 1
+  document:
+    type: object
+    additionalProperties: false
+    required: [front_matter, outline, feature_counts]
+    properties:
+      front_matter:
+        type: object
+        additionalProperties: false
+        required: [present, properties]
+        properties:
+          present: {type: boolean}
+          properties: {type: object}
+      outline:
+        type: array
+        items:
+          type: object
+          additionalProperties: false
+          required: [level, text, slug]
+          properties:
+            level: {type: integer, minimum: 1, maximum: 6}
+            text: {type: string}
+            slug: {type: string}
+      feature_counts:
+        type: object
+        additionalProperties: {type: integer, minimum: 0}
+  expectations:
+    type: object
+    additionalProperties: false
+    properties:
+      code_fences:
+        type: array
+        items:
+          type: object
+          additionalProperties: false
+          required: [language, semantic]
+          properties:
+            language: {type: [string, 'null']}
+            semantic: {enum: [code, math, diagram]}
+            valid: {type: boolean}
+      links:
+        type: array
+        items:
+          type: object
+          additionalProperties: false
+          required: [target, kind]
+          properties:
+            target: {type: string}
+            kind: {enum: [fragment, relative, external, blocked]}
+      security:
+        type: object
+        additionalProperties: false
+        properties:
+          raw_html_policy: {enum: [drop, text, safe-subset, sanitize]}
+          blocked_url_schemes:
+            type: array
+            items: {type: string}
+          invariants:
+            type: array
+            items: {type: string}
+      extensions:
+        type: object
+      notes:
+        type: array
+        items: {type: string}

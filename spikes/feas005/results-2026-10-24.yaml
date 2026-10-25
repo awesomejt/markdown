@@ -1,0 +1,92 @@
+schema_version: 1
+scope: GTK 4 monolithic native text rendering feasibility
+environment:
+  os: CachyOS Linux rolling
+  kernel: 7.3.0-4-cachyos
+  architecture: x86_64
+  cpu: AMD Ryzen 9 5950X 16-Core Processor
+  desktop: KDE Plasma
+  session: Wayland
+  monitor_scale: 1
+  gtk: 4.24.1
+  gtk_rs: 0.11.5
+  pango: 1.58.2
+  rustc: 1.99.1
+  theme: Breeze
+probe:
+  widget: GtkTextView in GtkScrolledWindow
+  parser: pulldown-cmark 0.13.5
+  window_pixels: [900, 700]
+  release_binary_bytes: 815104
+  direct_dynamic_dependencies:
+    - libgtk-4.so.1
+    - libpango-1.0.so.0
+    - libgio-2.0.so.0
+    - libgobject-2.0.so.0
+    - libglib-2.0.so.0
+    - libgcc_s.so.1
+    - libc.so.6
+method:
+  trials: 3
+  first_frame: first GTK frame-clock tick after present
+  end_scroll: request scroll to final text iterator, then wait at most 120 frame ticks
+  selection: select and read back first 32 rendered characters
+medians_ms:
+  prose-1mib:
+    parse_and_buffer: 96.454
+    first_frame: 298.795
+  prose-5mib:
+    parse_and_buffer: 496.547
+    first_frame: 727.329
+  delimiter-storm-1mib:
+    parse_and_buffer: 175.794
+    first_frame: 361.440
+  long-lines-1mib_launch_only:
+    parse_and_buffer: 10.410
+    first_frame: 226.322
+peak_rss_kib:
+  prose-1mib: 260024
+  prose-5mib: 295956
+  delimiter-storm-1mib: 257116
+  long-lines-1mib_at_timeout: 261496
+behavior:
+  semantic_cases:
+    count: 8
+    launched: 8
+    selection_passed: 8
+    gtk_accessible_role: TextBox
+  wayland_small_document:
+    launched: true
+    end_scroll_reached: true
+  xwayland_small_document:
+    launched: true
+    end_scroll_reached: true
+  prose_1mib_end_scroll:
+    reached_after_120_frames: false
+  prose_5mib_end_scroll:
+    reached_after_120_frames: false
+  delimiter_storm_end_scroll:
+    reached_after_120_frames: false
+  long_lines_end_scroll:
+    returned_within_10_seconds: false
+    timeout_exit: 124
+accessibility_bus:
+  toolkit: GTK
+  toolkit_version: 4.24.1
+  application_role: application
+  document_role: text box
+  interfaces:
+    - org.a11y.atspi.Accessible
+    - org.a11y.atspi.Component
+    - org.a11y.atspi.Text
+    - org.a11y.atspi.EditableText
+    - org.a11y.atspi.Action
+  character_count_for_gfm_tour: 2103
+  get_text_returned_content: true
+limitations:
+  - Results describe one KDE Wayland workstation with scale factor 1.
+  - X11/XWayland received only a small-document smoke test.
+  - Screen-reader behavior and fractional/high-DPI scaling were not tested.
+  - The probe approximates styles and tables; it is not a conformance renderer.
+  - Parse, buffer insertion, startup, and GTK layout overlap differently by case.
+  - Peak RSS is whole-process maximum and includes GTK, graphics, parser, and input.

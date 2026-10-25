@@ -1,0 +1,24 @@
+version: 1
+case_id: unsafe-html
+purpose: Establish security invariants for raw HTML and dangerous links.
+document:
+  front_matter: {present: false, properties: {}}
+  outline:
+    - {level: 1, text: Unsafe, slug: unsafe}
+  feature_counts:
+    headings: 1
+    raw_html_constructs: 6
+    links: 1
+expectations:
+  links:
+    - {target: 'javascript:alert(1)', kind: blocked}
+  security:
+    raw_html_policy: sanitize
+    blocked_url_schemes: [javascript, vbscript, data]
+    invariants:
+      - Script and iframe content cannot execute.
+      - Event-handler attributes are removed or never represented.
+      - A blocked link cannot be activated.
+      - Safe visible text remains accessible where the selected policy permits it.
+  notes:
+    - Exact safe-subset rendering is selected at GATE-001; the invariants are mandatory.

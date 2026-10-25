@@ -25,6 +25,11 @@ Start with:
 - [Repository strategy](docs/Repository-Strategy.md) — monorepo boundaries.
 - [Architecture](docs/Architecture.md) — proposed components and boundaries.
 - [Implementation plan](docs/Implementation-Plan.md) — phased work and gates.
+- [Fixture corpus](fixtures/README.md) — frozen semantic and performance inputs.
+- [Parser evaluation](docs/Parser-Evaluation.md) — FEAS-002 measurements and
+  lead core/parser recommendation.
+- [Linux rendering evaluation](docs/Linux-Rendering-Evaluation.md) — GTK 4
+  feasibility, native behavior, and large-document limits.
 - [TODO](TODO.md) — human-readable roadmap; `project.yaml` is task-state truth.
 
 ## Proposed direction

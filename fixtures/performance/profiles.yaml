@@ -1,0 +1,27 @@
+version: 1
+profiles:
+  - id: prose-1mib
+    filename: prose-1mib.md
+    generator: prose-sections-v1
+    target_bytes: 1048576
+    purpose: Representative long-document parse, model, layout, and scroll input.
+    sha256: 2f28d767468ec3980c286fbf983c732a00601717b9f7343a92ff0e4f4056581e
+  - id: prose-5mib
+    filename: prose-5mib.md
+    generator: prose-sections-v1
+    target_bytes: 5242880
+    purpose: Upper-bound document parse, cancellation, memory, and first-content input.
+    sha256: 43086da373aa098b0a03817236f52c82d7b5383d7564ee41098e75c58246c715
+  - id: delimiter-storm-1mib
+    filename: delimiter-storm-1mib.md
+    generator: delimiter-storm-v1
+    target_bytes: 1048576
+    purpose: Hostile unmatched-delimiter and inline-parser input.
+    sha256: d0100b5e90ac68662cff1f76741bc619dbecee78c8174096aa93695f3520a757
+  - id: long-lines-1mib
+    filename: long-lines-1mib.md
+    generator: long-lines-v1
+    target_bytes: 1048576
+    line_bytes: 131072
+    purpose: Hostile long-line input for bounded parsing, diagnostics, and layout.
+    sha256: 457e4d3a4cc3e1c5afb07d2bc36afae173bb19839a7047450536459318b6cf77

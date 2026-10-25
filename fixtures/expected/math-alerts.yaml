@@ -1,0 +1,28 @@
+version: 1
+case_id: math-alerts
+purpose: Exercise inline/display/fenced math, invalid math, valid alerts, and an alert look-alike.
+document:
+  front_matter: {present: false, properties: {}}
+  outline:
+    - {level: 1, text: 'Math $E=mc^2$', slug: math-emc2}
+    - {level: 2, text: Alerts, slug: alerts}
+  feature_counts:
+    headings: 2
+    alerts: 2
+    blockquotes: 1
+    math_inline: 2
+    math_display: 1
+    math_fences: 1
+expectations:
+  code_fences:
+    - {language: math, semantic: math}
+  security:
+    raw_html_policy: text
+    blocked_url_schemes: [javascript, vbscript, data]
+    invariants:
+      - Invalid math produces a bounded diagnostic and preserves readable source.
+  extensions:
+    alerts: [NOTE, WARNING]
+    non_alert_marker: '[!NOTE] not an alert'
+  notes:
+    - Final heading slug behavior for inline math is compared during FEAS-002.

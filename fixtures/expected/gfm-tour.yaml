@@ -1,0 +1,58 @@
+version: 1
+case_id: gfm-tour
+purpose: Exercise the initial CommonMark/GFM, properties, outline, link, alert, math, and code surface.
+document:
+  front_matter:
+    present: true
+    properties:
+      description: A tour of GFM features
+      author: mdv examples
+      tags: [gfm, demo]
+      draft: false
+  outline:
+    - {level: 1, text: GFM feature tour, slug: gfm-feature-tour}
+    - {level: 2, text: Emphasis, slug: emphasis}
+    - {level: 2, text: Lists, slug: lists}
+    - {level: 3, text: Task list, slug: task-list}
+    - {level: 2, text: Tables, slug: tables}
+    - {level: 2, text: Blockquotes, slug: blockquotes}
+    - {level: 2, text: Alerts, slug: alerts}
+    - {level: 2, text: Math, slug: math}
+    - {level: 2, text: Fenced code, slug: fenced-code}
+    - {level: 2, text: Links, slug: links}
+    - {level: 2, text: Footnotes, slug: footnotes}
+    - {level: 2, text: Horizontal rule, slug: horizontal-rule}
+    - {level: 2, text: Collapsible HTML, slug: collapsible-html}
+  feature_counts:
+    headings: 13
+    tables: 1
+    task_items: 3
+    alerts: 5
+    code_fences: 7
+    footnote_definitions: 2
+expectations:
+  code_fences:
+    - {language: math, semantic: math}
+    - {language: go, semantic: code}
+    - {language: python, semantic: code}
+    - {language: typescript, semantic: code}
+    - {language: bash, semantic: code}
+    - {language: json, semantic: code}
+    - {language: yaml, semantic: code}
+  links:
+    - {target: '#tables', kind: fragment}
+    - {target: '#fenced-code', kind: fragment}
+    - {target: 'https://example.com', kind: external}
+    - {target: README.md, kind: relative}
+    - {target: 'mermaid.md#sequence-diagram', kind: relative}
+    - {target: '#gfm-feature-tour', kind: fragment}
+  security:
+    raw_html_policy: safe-subset
+    blocked_url_schemes: [javascript, vbscript, data]
+    invariants:
+      - Collapsible HTML cannot execute scripts or event handlers.
+  extensions:
+    alerts: [NOTE, TIP, IMPORTANT, WARNING, CAUTION]
+    math: {inline: 1, display: 1, fences: 1}
+  notes:
+    - Footnotes are refinement behavior even though the source exercises them.

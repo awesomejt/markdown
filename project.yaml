@@ -1,11 +1,11 @@
 contract_version: project-state/v1
-revision: 77
+revision: 83
 project: &id002
   concurrency_limit: 1
   created_at: '2026-10-24T23:34:09.871478+00:00'
   project_ref: markdown-native
   status: active
-  updated_at: '2026-10-25T00:07:08.131990+00:00'
+  updated_at: '2026-10-25T00:36:12.912940+00:00'
   workflow_id: native-app-development
   workflow_version: '2'
 phases: &id004
@@ -85,7 +85,7 @@ tasks:
   - &id005
     active_pass_ref: null
     blockers: []
-    completed_at: null
+    completed_at: '2026-10-25T00:15:41.317870+00:00'
     created_at: '2026-10-24T23:34:32.518911+00:00'
     description: Create independent provenance-tracked semantic, hostile, large, and benchmark fixtures.
     id: 28b6e143-d968-49ca-b8c5-811c19379e6f
@@ -93,14 +93,15 @@ tasks:
     phase: feasibility
     priority: 100
     role: researcher
-    status: pending
+    status: completed
     task_key: FEAS-001
     title: Freeze semantic and performance corpora
-    updated_at: '2026-10-24T23:34:32.518911+00:00'
+    updated_at: '2026-10-25T00:15:41.317870+00:00'
     validation_expectations: Manifest, schemas, semantic goldens, performance inputs, and validation pass.
-  - active_pass_ref: null
+  - &id014
+    active_pass_ref: null
     blockers: []
-    completed_at: null
+    completed_at: '2026-10-25T00:22:15.390501+00:00'
     created_at: '2026-10-24T23:34:32.642782+00:00'
     description: Measure Rust/Comrak, cmark-gfm C or C++, and justified platform alternatives.
     id: 3dc6d894-4d01-4e57-ae2c-bf57dc4b95de
@@ -108,10 +109,10 @@ tasks:
     phase: feasibility
     priority: 95
     role: researcher
-    status: pending
+    status: completed
     task_key: FEAS-002
     title: Compare core and parser candidates
-    updated_at: '2026-10-24T23:34:32.642782+00:00'
+    updated_at: '2026-10-25T00:22:15.390501+00:00'
     validation_expectations: Semantics, spans, extensions, safety, speed, memory, package cost, and recommendation.
   - &id006
     active_pass_ref: null
@@ -148,7 +149,7 @@ tasks:
   - &id008
     active_pass_ref: null
     blockers: []
-    completed_at: null
+    completed_at: '2026-10-25T00:36:12.912940+00:00'
     created_at: '2026-10-24T23:34:33.017460+00:00'
     description: Prototype and profile the basic corpus using GTK/native Linux candidates.
     id: 18a9746c-3874-4650-8b63-39acb703922c
@@ -156,10 +157,10 @@ tasks:
     phase: feasibility
     priority: 90
     role: implementer
-    status: pending
+    status: completed
     task_key: FEAS-005
     title: Prove Linux native rendering
-    updated_at: '2026-10-24T23:34:33.017460+00:00'
+    updated_at: '2026-10-25T00:36:12.912940+00:00'
     validation_expectations: Launch, layout, scroll, selection, accessibility, environments, and package
       evidence.
   - &id009
@@ -742,6 +743,136 @@ passes:
     completed_at: '2026-10-25T00:07:08.131990+00:00'
     lease_expires_at: null
     lease_version: 1
+  - &id013
+    id: 270cd540-5aa5-4d71-9492-01e46df8b464
+    sequence: 3
+    task_ref: 28b6e143-d968-49ca-b8c5-811c19379e6f
+    phase_ref: b19ec1c8-f0c0-4cee-b584-5c9247a96edd
+    actor: codex-root
+    status: completed
+    outcome: completed
+    objective: Create an independent, provenance-tracked semantic and performance corpus from markdown-viewer
+      requirements and fixtures, with schemas and validation.
+    summary: 'Frozen an independent corpus pinned to markdown-viewer 0ab59c0: eight byte-identical semantic
+      cases with parser-neutral expectations, Unicode/NFD paths, copied Apache-2.0 license, three schemas,
+      four deterministic large/hostile profiles, and offline validation/generation tools.'
+    handoff: null
+    validation_result: passed
+    evidence:
+      checks:
+        - 'validate_fixtures: 8 semantic cases and 4 performance profiles'
+        - 'generated files: 1 MiB, 5 MiB, 1 MiB delimiter storm, 1 MiB long lines'
+        - 'source byte comparison: 8 cases and license'
+        - 'markdownlint: 16 files, 0 issues'
+        - documentation links resolve
+        - Python syntax checks
+        - git diff --check
+      artifacts:
+        - fixtures/manifest.yaml
+        - fixtures/README.md
+        - fixtures/schema/
+        - fixtures/expected/
+        - fixtures/markdown/
+        - fixtures/performance/profiles.yaml
+        - tools/validate_fixtures.py
+        - tools/generate_performance_fixtures.py
+    participants: []
+    blocker: null
+    execution_record: {}
+    started_at: '2026-10-25T00:11:27.743948+00:00'
+    last_heartbeat_at: null
+    completed_at: '2026-10-25T00:15:41.317870+00:00'
+    lease_expires_at: null
+    lease_version: 1
+  - &id015
+    id: c13f61f2-7ae5-4c59-9cd9-a9309aa66120
+    sequence: 4
+    task_ref: 3dc6d894-4d01-4e57-ae2c-bf57dc4b95de
+    phase_ref: b19ec1c8-f0c0-4cee-b584-5c9247a96edd
+    actor: codex-root
+    status: completed
+    outcome: completed
+    objective: Compare Rust/Comrak, cmark-gfm C or C++, and justified platform parser alternatives against
+      the frozen semantic and performance corpus, then recommend a core/parser direction.
+    summary: Compared pinned Comrak, pulldown-cmark, cmark-gfm, and the justified Apple-only Swift Markdown
+      alternative; recorded reproducible semantic, source-span, performance, memory, packaging, safety,
+      and maintenance evidence; recommended Rust plus pulldown-cmark for the next feasibility spikes with
+      Comrak as fallback and cmark-gfm as conformance oracle.
+    handoff: null
+    validation_result: passed
+    evidence:
+      report: docs/Parser-Evaluation.md
+      reproducible_probe: spikes/feas002/README.md
+      measured_results: spikes/feas002/results-2026-10-24.yaml
+      corpus: 8 semantic cases and 4 deterministic performance profiles
+      benchmark_method: 5 fresh-process trials per engine/profile after warmup
+      checks:
+        - cargo fmt --check
+        - cargo clippy --all-targets -- -D warnings
+        - cargo test
+        - pinned cmark-gfm C99 release build
+        - benchmark smoke from outside repository cwd
+        - fixture/schema/hash validation
+        - Python compile checks
+        - Markdown lint, 18 files and 0 issues
+        - YAML parse, 20 files
+        - git diff --check
+      limitations:
+        - Benchmarks are from one named Linux workstation.
+        - Semantic-model construction and FFI cost remain for CORE-003 and FEAS-006.
+        - Swift Markdown was not executed because Swift is unavailable on this host.
+    participants:
+      - codex-root
+    blocker: null
+    execution_record: {}
+    started_at: '2026-10-25T00:15:51.169411+00:00'
+    last_heartbeat_at: null
+    completed_at: '2026-10-25T00:22:15.390501+00:00'
+    lease_expires_at: null
+    lease_version: 1
+  - &id016
+    id: 411f8343-dfcd-44b6-9bb7-812e33dfaf58
+    sequence: 5
+    task_ref: 18a9746c-3874-4650-8b63-39acb703922c
+    phase_ref: b19ec1c8-f0c0-4cee-b584-5c9247a96edd
+    actor: codex-root
+    status: completed
+    outcome: completed
+    objective: Prototype and profile the frozen basic corpus with GTK/native Linux rendering, recording
+      launch, layout, scroll, selection, accessibility, scale, environment, and package evidence without
+      scaffolding production.
+    summary: Built and profiled a GTK 4/gtk-rs native text rendering spike over all frozen semantic inputs
+      and four performance profiles; validated native selection and AT-SPI text exposure on KDE Wayland
+      plus an XWayland smoke; accepted GTK for the Linux shell while rejecting one unbounded GtkTextView
+      as the production large-document renderer and requiring a virtualized semantic-block proof in LNX-001.
+    handoff: null
+    validation_result: passed_with_documented_limits
+    evidence:
+      report: docs/Linux-Rendering-Evaluation.md
+      reproducible_probe: spikes/feas005/README.md
+      measured_results: spikes/feas005/results-2026-10-24.yaml
+      environment: CachyOS KDE Plasma, GTK 4.24.1, Wayland scale 1
+      checks:
+        - All 8 semantic cases launched, selected native text, and exposed TextBox role.
+        - AT-SPI Text reported 2103 characters and returned GFM tour content.
+        - Wayland and XWayland small-document launch/scroll smoke passed.
+        - 1 MiB prose median first frame 298.8 ms; 5 MiB median 727.3 ms.
+        - Far-scroll limit and 10-second long-line timeout recorded as negative evidence.
+        - Release ELF size, direct shared dependencies, and no RPATH recorded.
+        - Cargo fmt, clippy with warnings denied, test, and locked release build passed.
+        - Markdown lint, YAML parse, fixture/hash validation, shell syntax, and diff check passed.
+      residual_risk:
+        - GNOME, real X11, high-DPI/fractional scale, and screen-reader behavior remain untested.
+        - Virtualized cross-block selection and coherent accessibility remain for LNX-001.
+    participants:
+      - codex-root
+    blocker: null
+    execution_record: {}
+    started_at: '2026-10-25T00:22:27.741973+00:00'
+    last_heartbeat_at: null
+    completed_at: '2026-10-25T00:36:12.912940+00:00'
+    lease_expires_at: null
+    lease_version: 1
 idempotency:
   accept-d004-create:
     fingerprint: 24cf06b66fd828b04e394367502bdc20f99fdf17303eec73bb77dba723bdaa1f
@@ -863,6 +994,248 @@ idempotency:
           active_passes: 0
           stale_passes: 0
           eligible: 6
+          blocked: 0
+        warnings: []
+        recommended_action: select_new_task
+  feas001-start:
+    fingerprint: 59c82ab5f0c821b2fa7a27b7224328c5fe900eb562c41a7b109d13f2c681e426
+    response:
+      contract_version: project-state/v1
+      operation: start_pass
+      revision: 78
+      data:
+        pass: *id013
+        task: *id005
+      snapshot:
+        contract_version: project-state/v1
+        snapshot_at: '2026-10-25T00:11:27.743974+00:00'
+        revision: 78
+        project: *id002
+        current_phase: *id003
+        phases: *id004
+        active_tasks:
+          - *id005
+        working_tasks_without_active_lease: []
+        active_passes:
+          - *id013
+        stale_passes: []
+        blocked_tasks: []
+        eligible_tasks:
+          - *id006
+          - *id007
+          - *id008
+          - *id009
+          - *id010
+        latest_pass: *id013
+        queue_counts:
+          by_status:
+            completed: 2
+            working: 1
+            pending: 28
+          total: 31
+          active_passes: 1
+          stale_passes: 0
+          eligible: 5
+          blocked: 0
+        warnings: []
+        recommended_action: resume_active
+  feas001-finish:
+    fingerprint: f9428abf98787b1256874180f28e069fca39a8ff28b252d8836a370533e33264
+    response:
+      contract_version: project-state/v1
+      operation: finish_pass
+      revision: 79
+      data:
+        pass: *id013
+        task: *id005
+      snapshot:
+        contract_version: project-state/v1
+        snapshot_at: '2026-10-25T00:15:41.317884+00:00'
+        revision: 79
+        project: *id002
+        current_phase: *id003
+        phases: *id004
+        active_tasks: []
+        working_tasks_without_active_lease: []
+        active_passes: []
+        stale_passes: []
+        blocked_tasks: []
+        eligible_tasks:
+          - *id014
+          - *id006
+          - *id007
+          - *id008
+          - *id009
+          - *id010
+        latest_pass: *id013
+        queue_counts:
+          by_status:
+            completed: 3
+            pending: 28
+          total: 31
+          active_passes: 0
+          stale_passes: 0
+          eligible: 6
+          blocked: 0
+        warnings: []
+        recommended_action: select_new_task
+  feas002-start:
+    fingerprint: fba497b30702e7e11ded1440ee10eacd897ac8bdfbdaa4a0be968159ccc13b50
+    response:
+      contract_version: project-state/v1
+      operation: start_pass
+      revision: 80
+      data:
+        pass: *id015
+        task: *id014
+      snapshot:
+        contract_version: project-state/v1
+        snapshot_at: '2026-10-25T00:15:51.169434+00:00'
+        revision: 80
+        project: *id002
+        current_phase: *id003
+        phases: *id004
+        active_tasks:
+          - *id014
+        working_tasks_without_active_lease: []
+        active_passes:
+          - *id015
+        stale_passes: []
+        blocked_tasks: []
+        eligible_tasks:
+          - *id006
+          - *id007
+          - *id008
+          - *id009
+          - *id010
+        latest_pass: *id015
+        queue_counts:
+          by_status:
+            completed: 3
+            working: 1
+            pending: 27
+          total: 31
+          active_passes: 1
+          stale_passes: 0
+          eligible: 5
+          blocked: 0
+        warnings: []
+        recommended_action: resume_active
+  feas002-finish-20261024-v1:
+    fingerprint: 1e2fd7ef2d8f8590cb241916990633a86b1da200da408ff85cf8bbc7e66750b5
+    response:
+      contract_version: project-state/v1
+      operation: finish_pass
+      revision: 81
+      data:
+        pass: *id015
+        task: *id014
+      snapshot:
+        contract_version: project-state/v1
+        snapshot_at: '2026-10-25T00:22:15.390516+00:00'
+        revision: 81
+        project: *id002
+        current_phase: *id003
+        phases: *id004
+        active_tasks: []
+        working_tasks_without_active_lease: []
+        active_passes: []
+        stale_passes: []
+        blocked_tasks: []
+        eligible_tasks:
+          - *id006
+          - *id007
+          - *id008
+          - *id009
+          - *id010
+        latest_pass: *id015
+        queue_counts:
+          by_status:
+            completed: 4
+            pending: 27
+          total: 31
+          active_passes: 0
+          stale_passes: 0
+          eligible: 5
+          blocked: 0
+        warnings: []
+        recommended_action: select_new_task
+  feas005-start-20261024-v1:
+    fingerprint: 84f35751912302836f94f33cd3ee9d1cda8c445de8c1f1c473be8cffdcb0f7c1
+    response:
+      contract_version: project-state/v1
+      operation: start_pass
+      revision: 82
+      data:
+        pass: *id016
+        task: *id008
+      snapshot:
+        contract_version: project-state/v1
+        snapshot_at: '2026-10-25T00:22:27.741999+00:00'
+        revision: 82
+        project: *id002
+        current_phase: *id003
+        phases: *id004
+        active_tasks:
+          - *id008
+        working_tasks_without_active_lease: []
+        active_passes:
+          - *id016
+        stale_passes: []
+        blocked_tasks: []
+        eligible_tasks:
+          - *id006
+          - *id007
+          - *id009
+          - *id010
+        latest_pass: *id016
+        queue_counts:
+          by_status:
+            completed: 4
+            pending: 26
+            working: 1
+          total: 31
+          active_passes: 1
+          stale_passes: 0
+          eligible: 4
+          blocked: 0
+        warnings: []
+        recommended_action: resume_active
+  feas005-finish-20261024-v1:
+    fingerprint: 8000529a1934ab76976cf52fe49a4953221a1b5f0903542982dadbe9ce75f130
+    response:
+      contract_version: project-state/v1
+      operation: finish_pass
+      revision: 83
+      data:
+        pass: *id016
+        task: *id008
+      snapshot:
+        contract_version: project-state/v1
+        snapshot_at: '2026-10-25T00:36:12.912958+00:00'
+        revision: 83
+        project: *id002
+        current_phase: *id003
+        phases: *id004
+        active_tasks: []
+        working_tasks_without_active_lease: []
+        active_passes: []
+        stale_passes: []
+        blocked_tasks: []
+        eligible_tasks:
+          - *id006
+          - *id007
+          - *id009
+          - *id010
+        latest_pass: *id016
+        queue_counts:
+          by_status:
+            completed: 5
+            pending: 26
+          total: 31
+          active_passes: 0
+          stale_passes: 0
+          eligible: 4
           blocked: 0
         warnings: []
         recommended_action: select_new_task

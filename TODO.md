@@ -20,10 +20,14 @@ throwaway prototypes under `spikes/` are expected.
 - **FEAS-001 — Freeze semantic and performance corpora.** Copy representative,
   licensed inputs and semantic expectations from `markdown-viewer` at a pinned
   commit. Add large/hostile performance fixtures and a provenance manifest.
+  Completed 2026-10-24: eight semantic cases, four deterministic performance
+  profiles, three schemas, copied Apache-2.0 license, and offline validation.
 - **FEAS-002 — Compare core/parser candidates.** Measure Rust/Comrak,
   cmark-gfm/C or C++, and justified platform alternatives. Compare semantics,
   source spans, extension cost, safety, performance, memory, package impact,
-  and maintainability.
+  and maintainability. Completed 2026-10-24: pulldown-cmark is the lead Rust
+  candidate for the next core/integration spikes; Comrak remains the semantic
+  fallback/oracle and cmark-gfm the GFM conformance oracle.
 - **FEAS-003 — Prove Windows native rendering.** Prototype the basic corpus in
   the proposed Windows-native text/layout stack; measure launch, layout,
   scrolling, selection, accessibility, and high-DPI behavior.
@@ -31,7 +35,10 @@ throwaway prototypes under `spikes/` are expected.
   AppKit/SwiftUI candidates; measure equivalent native behaviors.
 - **FEAS-005 — Prove Linux native rendering.** Prototype the same corpus using
   GTK/native Linux candidates; measure equivalent native behaviors across the
-  selected desktop environments.
+  selected desktop environments. Completed 2026-10-24 on KDE Wayland with an
+  XWayland smoke: GTK 4/gtk-rs is viable, but a monolithic `GtkTextView` is not
+  the production large-document strategy; LNX-001 must prove virtualized
+  blocks without losing selection or accessibility.
 - **FEAS-006 — Prove shared-core integration.** Package and consume a minimal
   candidate core on Windows, macOS, and Linux. Measure call/copy overhead,
   lifecycle, errors, cancellation, debugging, and release packaging.

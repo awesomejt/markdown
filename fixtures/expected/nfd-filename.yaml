@@ -1,0 +1,22 @@
+version: 1
+case_id: nfd-filename
+purpose: Preserve lookup and display behavior for a filename stored in decomposed Unicode form.
+document:
+  front_matter: {present: false, properties: {}}
+  outline:
+    - {level: 1, text: NFD fixture, slug: nfd-fixture}
+  feature_counts:
+    headings: 1
+expectations:
+  security:
+    raw_html_policy: text
+    blocked_url_schemes: [javascript, vbscript, data]
+    invariants:
+      - Normalization fallback cannot escape the approved workspace.
+  extensions:
+    path_semantics:
+      stored_normalization: NFD
+      lookup_accepts_canonical_equivalent: true
+      display_name_may_normalize: true
+  notes:
+    - Exact on-disk normalization must be recorded by platform filesystem tests.

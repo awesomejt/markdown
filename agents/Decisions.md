@@ -51,7 +51,10 @@ atomic cross-platform changes a liability.
 
 The following are not yet accepted:
 
-- Rust or C++ semantic core with platform-native desktop presentation.
+- Rust semantic core, initially spiked with pulldown-cmark and retaining
+  Comrak as the parser fallback/oracle, with platform-native presentation.
 - No general-purpose WebView for the main document surface.
-- Windows, macOS, and Linux framework/language choices after measured spikes.
+- GTK 4/gtk-rs for the Linux shell, with a virtualized semantic-block document
+  renderer rather than one unbounded `GtkTextView`.
+- Windows and macOS framework/language choices after their measured spikes.
 - Tier 1 excludes Mermaid and D2 unless FEAS-005 proves a safe offline path.

@@ -1,0 +1,22 @@
+version: 1
+case_id: unicode-filename
+purpose: Preserve a readable Markdown file whose path contains spaces and non-ASCII characters.
+document:
+  front_matter: {present: false, properties: {}}
+  outline:
+    - {level: 1, text: Unicode, slug: unicode}
+  feature_counts:
+    headings: 1
+expectations:
+  security:
+    raw_html_policy: text
+    blocked_url_schemes: [javascript, vbscript, data]
+    invariants:
+      - The displayed filename round-trips without replacement characters.
+  extensions:
+    path_semantics:
+      contains_spaces: true
+      contains_non_ascii: true
+      lookup_preserves_display_name: true
+  notes:
+    - URL encoding, shell integration, and persistent identity are platform-adapter concerns.

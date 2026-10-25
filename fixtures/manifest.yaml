@@ -1,0 +1,81 @@
+version: 1
+source_snapshot:
+  repository: https://github.com/awesomejt/markdown-viewer.git
+  commit: 0ab59c0f7bf91730bf9683b47a5eb2658f331b00
+  license: Apache-2.0
+  license_file: licenses/markdown-viewer-APACHE-2.0.txt
+  license_sha256: c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4
+cases:
+  - id: gfm-tour
+    stage: foundation
+    input: markdown/foundation/gfm-tour.md
+    expected: expected/gfm-tour.yaml
+    requirements: [R1.2, R1.3, R2, R3]
+    origin:
+      path: examples/gfm-tour.md
+      commit: 0ab59c0f7bf91730bf9683b47a5eb2658f331b00
+    sha256: ca08e4d20c830884ff36bed95f1e8284a0fd1b1c43919eabc865646f79d733f1
+  - id: unsafe-html
+    stage: foundation
+    input: markdown/foundation/unsafe-html.md
+    expected: expected/unsafe-html.yaml
+    requirements: [R1.2, R5]
+    origin:
+      path: testdata/fixtures/docs/unsafe.md
+      commit: 0ab59c0f7bf91730bf9683b47a5eb2658f331b00
+    sha256: 19ab9ffc16d4a4eca0c022827c13e2adc8c068c28e4d60453041624f0f1d3017
+  - id: code-fences
+    stage: foundation
+    input: markdown/foundation/code-fences.md
+    expected: expected/code-fences.yaml
+    requirements: [R1.2, R4]
+    origin:
+      path: testdata/fixtures/docs/code.md
+      commit: 0ab59c0f7bf91730bf9683b47a5eb2658f331b00
+    sha256: 9c08dc12c7e36f5a7157ecf96752ca3b741fd85cee952b254716ad9178d18848
+  - id: math-alerts
+    stage: advanced
+    input: markdown/advanced/math-alerts.md
+    expected: expected/math-alerts.yaml
+    requirements: [R1.2, R3, R4]
+    origin:
+      path: testdata/fixtures/docs/math.md
+      commit: 0ab59c0f7bf91730bf9683b47a5eb2658f331b00
+    sha256: 1dbc8e31e6f0d2903c33edecbafeee0c1edfc336e8eb01f3b02466a7e3b68bfe
+  - id: inline-diagrams
+    stage: advanced
+    input: markdown/advanced/inline-diagrams.md
+    expected: expected/inline-diagrams.yaml
+    requirements: [R3, R4, R5]
+    origin:
+      path: testdata/fixtures/diagrams/inline.md
+      commit: 0ab59c0f7bf91730bf9683b47a5eb2658f331b00
+    sha256: ab3d733ad731d90f09a94dfec7d4e925405826d50b796387681490adf8fa81b0
+  - id: voice-parity
+    stage: advanced
+    input: markdown/advanced/voice-parity.md
+    expected: expected/voice-parity.yaml
+    requirements: [R3, R4, R5]
+    origin:
+      path: testdata/fixtures/docs/voice-parity.md
+      commit: 0ab59c0f7bf91730bf9683b47a5eb2658f331b00
+    sha256: 6a7391b5d77138f8177b0c46f916cc62a3b627a7146a73bb5a9dc1713b94e781
+  - id: unicode-filename
+    stage: foundation
+    input: 'markdown/paths/Unicode Ünïcödé name.md'
+    expected: expected/unicode-filename.yaml
+    requirements: [R1.1, R4]
+    origin:
+      path: 'testdata/fixtures/Unicode Ünïcödé name.md'
+      commit: 0ab59c0f7bf91730bf9683b47a5eb2658f331b00
+    sha256: e84cc3de421115e7ae9cffe6902cc026353597ee48d4337d3c05cf47c2b91f23
+  - id: nfd-filename
+    stage: foundation
+    input: 'markdown/paths/café.md'
+    expected: expected/nfd-filename.yaml
+    requirements: [R1.1, R4]
+    origin:
+      path: 'testdata/fixtures/generated/café.md'
+      commit: 0ab59c0f7bf91730bf9683b47a5eb2658f331b00
+    sha256: 582ffa0bdf7af54427f8756180b4b7f3a0d98567ad1bbbff4d83344105ba5626
+performance_profiles: performance/profiles.yaml

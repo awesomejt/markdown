@@ -10,3 +10,4 @@ ignores:
   - "build/**"
   - ".build/**"
   - ".agents/chats/**"
+  - "fixtures/markdown/**"

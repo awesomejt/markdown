@@ -1,0 +1,25 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: https://awesomejt.github.io/markdown/schemas/performance-profiles-v1
+title: Native Markdown generated performance profiles
+type: object
+additionalProperties: false
+required: [version, profiles]
+properties:
+  version:
+    const: 1
+  profiles:
+    type: array
+    minItems: 1
+    items:
+      type: object
+      additionalProperties: false
+      required: [id, filename, generator, target_bytes, purpose, sha256]
+      properties:
+        id: {type: string, pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$'}
+        filename: {type: string, pattern: '^[a-z0-9][a-z0-9-]*\.md$'}
+        generator:
+          enum: [prose-sections-v1, delimiter-storm-v1, long-lines-v1]
+        target_bytes: {type: integer, minimum: 1}
+        line_bytes: {type: integer, minimum: 1}
+        purpose: {type: string, minLength: 1}
+        sha256: {type: string, pattern: '^[0-9a-f]{64}$'}
