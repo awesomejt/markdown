@@ -4,6 +4,14 @@ This disposable spike compares parse-and-walk cost for Comrak, pulldown-cmark,
 and cmark-gfm. It is evidence for the parser decision, not production core
 scaffolding.
 
+For the native Mac comparison including Swift Markdown, see the
+[macOS report](../../docs/Parser-Evaluation-macOS.md). Build the existing probes
+with `bash spikes/feas002/build.sh`, build Swift with
+`swift build --package-path spikes/feas002/swift -c release`, then run
+`python3 spikes/feas002/benchmark_macos.py` from the root. The runner requires
+the fixture-tool Python dependencies and generated performance inputs. It
+uses Darwin `/usr/bin/time -l` byte units and is intentionally macOS-only.
+
 ## Reproduce
 
 From the repository root:

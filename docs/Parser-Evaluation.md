@@ -13,6 +13,11 @@ integration, and the first core implementation must measure the cost of
 turning pulldown-cmark's event stream into the product's immutable document
 model.
 
+The [macOS supplement](Parser-Evaluation-macOS.md) adds native Apple Silicon
+measurements, including Swift Markdown 0.9.0. It supports the latency
+recommendation but identifies repeated-parser peak RSS as a production risk
+to investigate; the original Linux measurements below remain unchanged.
+
 ## Candidates
 
 | Candidate | Shape | Strongest fit | Principal cost |
@@ -20,12 +25,13 @@ model.
 | pulldown-cmark 0.13.5 | Safe Rust pull/event parser with byte ranges | Lowest measured time/RSS; exact event offsets; natural input to a purpose-built semantic model | No mutable AST; alerts and product syntax need semantic passes |
 | Comrak 0.57.0 | Safe Rust arena AST derived from cmark-gfm | Richest built-in extension set, including front matter, math, alerts, and footnotes | More allocation; inline source positions carry documented reliability caveats |
 | cmark-gfm 0.29.0.gfm.13 | Portable C99 mutable AST and C API | Reference GFM behavior, mature C ABI, compact static probe | Manual memory boundary, fewer product extensions, higher measured RSS, old CMake policy friction |
-| Swift Markdown | Swift value-tree API backed by cmark-gfm | Idiomatic Apple-only document analysis | Duplicates parser semantics, cannot serve Windows/Linux, and adds another conversion layer |
+| Swift Markdown | Swift value-tree API backed by cmark-gfm | Idiomatic Swift document analysis | Adds Swift toolchain requirements to a shared core and another conversion layer |
 
 The Rust candidates were pinned by `Cargo.lock`. cmark-gfm was pinned to tag
-`0.29.0.gfm.13`, commit `587a12b`. Swift Markdown was assessed from its public
-API and implementation description; this Linux host has no Swift toolchain,
-so no Swift benchmark is claimed.
+`0.29.0.gfm.13`, commit `587a12b`. The original Linux evaluation assessed Swift
+Markdown from its public API only. The linked macOS supplement measures it.
+The previous description of Swift Markdown as Apple-only was incorrect;
+platform support alone does not disqualify it as a portable candidate.
 
 ## Measured results
 
@@ -77,8 +83,9 @@ incremental updates.
   alerts, or the product dialect. Its extension API is capable but moves more
   parsing and ownership work into C.
 - Swift Markdown inherits cmark-gfm parsing. Its immutable copy-on-write Swift
-  tree is attractive for an Apple-only application but would create a second
-  semantic implementation rather than a shared desktop contract.
+  tree is attractive for Swift applications. Using it only in the Apple adapter
+  alongside a Rust parser would create a second semantic implementation to
+  maintain against the shared desktop contract.
 
 ### Source mapping
 

@@ -14,9 +14,12 @@ design belong in `docs/` or `agents/`; runtime transcripts do not belong here.
 - Status: cross-machine handoff. FEAS-001, FEAS-002, and Linux FEAS-005 are
   complete. FEAS-003 on Windows and FEAS-004 on macOS are the only eligible
   next tasks; there is no active pass.
-- Blockers: no technical blocker. Progress now requires real Windows and macOS
-  hosts. Shared-core integration, the capability matrix, and GATE-001 are
+- Evaluation prerequisites: real Windows and macOS hosts. Shared-core
+  integration, the capability matrix, and GATE-001 are
   intentionally ordered after both native rendering evaluations.
+- Mac host setup: the project-state backend is missing. A one-time owner
+  exception allowed supplementary FEAS-002 benchmarks with `project.yaml`
+  unchanged; normal passes still require restoration of that backend.
 
 ## Durable context
 
@@ -155,3 +158,16 @@ sessions run FEAS-003 on a real Windows system and FEAS-004 on a real Mac. No
 shared-core integration, platform capability conclusion, or implementation
 baseline decision should proceed until both results are recorded. The task
 graph was tightened so only those two native evaluations are eligible.
+
+### 2026-10-24 — macOS FEAS-002 supplement
+
+On Apple M5 Max/macOS 27.0.1, release probes plus Swift Markdown 0.9.0
+completed 120 native runs. For 5 MiB prose, median parse/walk was 11.94 ms
+pulldown-cmark, 34.05 ms Comrak, 42.85 ms cmark-gfm, and 377.02 ms Swift
+Markdown. Keep pulldown-cmark as the lead feasibility candidate, but investigate
+repeated-parser RSS: its single-iteration peak was 63.63 MiB while repeated
+timing trials reached about 119 MiB. Swift Markdown is not Apple-only; the
+earlier platform exclusion was corrected. Details and limitations are in
+`docs/Parser-Evaluation-macOS.md`. Owner authorized this supplement without
+the absent state backend; no pass or task status changed. FEAS-004 is next
+on this Mac once normal pass coordination is restored.

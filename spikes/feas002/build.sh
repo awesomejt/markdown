@@ -24,16 +24,21 @@ cmake -S "${cmark_dir}" -B "${cmark_build}" \
   -DCMAKE_POLICY_VERSION_MINIMUM=3.5
 cmake --build "${cmark_build}" --parallel
 
+libraries=(
+  "${cmark_build}/src/libcmark-gfm.a"
+  "${cmark_build}/extensions/libcmark-gfm-extensions.a"
+)
+if [[ "$(uname -s)" != Darwin ]]; then
+  libraries=(-Wl,--start-group "${libraries[@]}" -Wl,--end-group)
+fi
+
 cc -O3 -DNDEBUG -std=c99 \
   -I "${cmark_dir}/src" \
   -I "${cmark_dir}/extensions" \
   -I "${cmark_build}/src" \
   -I "${cmark_build}/extensions" \
   "${repo_root}/spikes/feas002/cmark_probe.c" \
-  -Wl,--start-group \
-  "${cmark_build}/src/libcmark-gfm.a" \
-  "${cmark_build}/extensions/libcmark-gfm-extensions.a" \
-  -Wl,--end-group \
+  "${libraries[@]}" \
   -o "${work_dir}/cmark-probe"
 
 cargo build --locked --release \

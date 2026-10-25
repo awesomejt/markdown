@@ -58,6 +58,9 @@ pass at a time because the project concurrency limit is one.
   and maintainability. Completed 2026-10-24: pulldown-cmark is the lead Rust
   candidate for the next core/integration spikes; Comrak remains the semantic
   fallback/oracle and cmark-gfm the GFM conformance oracle.
+  Supplemental macOS measurements, including Swift Markdown, are recorded in
+  `docs/Parser-Evaluation-macOS.md`. They retain the lead recommendation and
+  require investigation of repeated-parser RSS before production acceptance.
 - **FEAS-003 — Prove Windows native rendering.** **Next on Windows.** Prototype the basic corpus in
   the proposed Windows-native text/layout stack; measure launch, layout,
   scrolling, selection, accessibility, and high-DPI behavior.

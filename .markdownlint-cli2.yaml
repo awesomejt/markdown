@@ -8,6 +8,6 @@ globs:
 ignores:
   - "target/**"
   - "build/**"
-  - ".build/**"
+  - "**/.build/**"
   - ".agents/chats/**"
   - "fixtures/markdown/**"

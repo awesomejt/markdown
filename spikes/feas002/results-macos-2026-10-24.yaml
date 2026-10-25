@@ -1,0 +1,380 @@
+schema_version: 1
+platform: macOS-27.0.1-arm64-arm-64bit-Mach-O
+method:
+  trials: 5
+  warmups_per_process: 1
+  iterations_per_trial: 10 (1 MiB), 3 (5 MiB)
+  timing: probe monotonic parse-and-walk interval; file read excluded
+  rss: Darwin /usr/bin/time -l maximum RSS in bytes; whole process
+performance:
+  prose-1mib:
+    comrak:
+      median_ms: 6.193454
+      min_ms: 6.161912
+      max_ms: 6.6079
+      median_peak_rss_bytes: 25100288
+      max_peak_rss_bytes: 26361856
+      units: 92236
+      positioned_units: 92236
+    pulldown:
+      median_ms: 2.394095
+      min_ms: 2.386545
+      max_ms: 2.438933
+      median_peak_rss_bytes: 69599232
+      max_peak_rss_bytes: 69599232
+      units: 116508
+      positioned_units: 116508
+    cmark-gfm:
+      median_ms: 8.59
+      min_ms: 8.3638
+      max_ms: 8.85
+      median_peak_rss_bytes: 26132480
+      max_peak_rss_bytes: 26165248
+      units: 92236
+      positioned_units: 92236
+    swift-markdown:
+      median_ms: 74.859854
+      min_ms: 74.346487
+      max_ms: 75.229241
+      median_peak_rss_bytes: 53264384
+      max_peak_rss_bytes: 53280768
+      units: 92236
+      positioned_units: 92236
+  prose-5mib:
+    comrak:
+      median_ms: 34.050555
+      min_ms: 33.983958
+      max_ms: 38.567847
+      median_peak_rss_bytes: 113852416
+      max_peak_rss_bytes: 119406592
+      units: 461178
+      positioned_units: 461178
+    pulldown:
+      median_ms: 11.936903
+      min_ms: 11.815208
+      max_ms: 12.16318
+      median_peak_rss_bytes: 125009920
+      max_peak_rss_bytes: 125009920
+      units: 582540
+      positioned_units: 582540
+    cmark-gfm:
+      median_ms: 42.849666
+      min_ms: 42.002
+      max_ms: 44.738666
+      median_peak_rss_bytes: 121503744
+      max_peak_rss_bytes: 121520128
+      units: 461178
+      positioned_units: 461178
+    swift-markdown:
+      median_ms: 377.018458
+      min_ms: 368.955347
+      max_ms: 387.205569
+      median_peak_rss_bytes: 240582656
+      max_peak_rss_bytes: 240697344
+      units: 461178
+      positioned_units: 461178
+  delimiter-storm-1mib:
+    comrak:
+      median_ms: 11.292287
+      min_ms: 11.110629
+      max_ms: 11.706079
+      median_peak_rss_bytes: 43040768
+      max_peak_rss_bytes: 43040768
+      units: 74019
+      positioned_units: 74019
+    pulldown:
+      median_ms: 4.970387
+      min_ms: 4.878183
+      max_ms: 5.042337
+      median_peak_rss_bytes: 122601472
+      max_peak_rss_bytes: 122601472
+      units: 246723
+      positioned_units: 246723
+    cmark-gfm:
+      median_ms: 14.6577
+      min_ms: 14.4802
+      max_ms: 15.1054
+      median_peak_rss_bytes: 48185344
+      max_peak_rss_bytes: 48185344
+      units: 74019
+      positioned_units: 74019
+    swift-markdown:
+      median_ms: 62.961491
+      min_ms: 62.140045
+      max_ms: 65.666916
+      median_peak_rss_bytes: 73318400
+      max_peak_rss_bytes: 75612160
+      units: 74019
+      positioned_units: 74019
+  long-lines-1mib:
+    comrak:
+      median_ms: 0.312183
+      min_ms: 0.310229
+      max_ms: 0.315616
+      median_peak_rss_bytes: 6651904
+      max_peak_rss_bytes: 6651904
+      units: 19
+      positioned_units: 19
+    pulldown:
+      median_ms: 0.23042
+      min_ms: 0.229708
+      max_ms: 0.234862
+      median_peak_rss_bytes: 3489792
+      max_peak_rss_bytes: 3489792
+      units: 20
+      positioned_units: 20
+    cmark-gfm:
+      median_ms: 0.6322
+      min_ms: 0.5786
+      max_ms: 0.6378
+      median_peak_rss_bytes: 5324800
+      max_peak_rss_bytes: 5341184
+      units: 19
+      positioned_units: 12
+    swift-markdown:
+      median_ms: 0.697516
+      min_ms: 0.64717
+      max_ms: 0.928112
+      median_peak_rss_bytes: 12599296
+      max_peak_rss_bytes: 12615680
+      units: 19
+      positioned_units: 12
+semantic_smoke:
+- case: gfm-tour
+  engine: comrak
+  units: 202
+  positioned_units: 202
+- case: gfm-tour
+  engine: pulldown
+  units: 305
+  positioned_units: 305
+- case: gfm-tour
+  engine: cmark-gfm
+  units: 230
+  positioned_units: 220
+- case: gfm-tour
+  engine: swift-markdown
+  units: 226
+  positioned_units: 215
+- case: unsafe-html
+  engine: comrak
+  units: 17
+  positioned_units: 17
+- case: unsafe-html
+  engine: pulldown
+  units: 31
+  positioned_units: 31
+- case: unsafe-html
+  engine: cmark-gfm
+  units: 17
+  positioned_units: 17
+- case: unsafe-html
+  engine: swift-markdown
+  units: 17
+  positioned_units: 17
+- case: code-fences
+  engine: comrak
+  units: 15
+  positioned_units: 15
+- case: code-fences
+  engine: pulldown
+  units: 27
+  positioned_units: 27
+- case: code-fences
+  engine: cmark-gfm
+  units: 15
+  positioned_units: 15
+- case: code-fences
+  engine: swift-markdown
+  units: 15
+  positioned_units: 15
+- case: math-alerts
+  engine: comrak
+  units: 22
+  positioned_units: 22
+- case: math-alerts
+  engine: pulldown
+  units: 40
+  positioned_units: 40
+- case: math-alerts
+  engine: cmark-gfm
+  units: 27
+  positioned_units: 23
+- case: math-alerts
+  engine: swift-markdown
+  units: 27
+  positioned_units: 23
+- case: inline-diagrams
+  engine: comrak
+  units: 27
+  positioned_units: 27
+- case: inline-diagrams
+  engine: pulldown
+  units: 45
+  positioned_units: 45
+- case: inline-diagrams
+  engine: cmark-gfm
+  units: 27
+  positioned_units: 27
+- case: inline-diagrams
+  engine: swift-markdown
+  units: 27
+  positioned_units: 27
+- case: voice-parity
+  engine: comrak
+  units: 70
+  positioned_units: 70
+- case: voice-parity
+  engine: pulldown
+  units: 156
+  positioned_units: 156
+- case: voice-parity
+  engine: cmark-gfm
+  units: 74
+  positioned_units: 72
+- case: voice-parity
+  engine: swift-markdown
+  units: 76
+  positioned_units: 74
+- case: unicode-filename
+  engine: comrak
+  units: 5
+  positioned_units: 5
+- case: unicode-filename
+  engine: pulldown
+  units: 6
+  positioned_units: 6
+- case: unicode-filename
+  engine: cmark-gfm
+  units: 5
+  positioned_units: 5
+- case: unicode-filename
+  engine: swift-markdown
+  units: 5
+  positioned_units: 5
+- case: nfd-filename
+  engine: comrak
+  units: 5
+  positioned_units: 5
+- case: nfd-filename
+  engine: pulldown
+  units: 6
+  positioned_units: 6
+- case: nfd-filename
+  engine: cmark-gfm
+  units: 5
+  positioned_units: 5
+- case: nfd-filename
+  engine: swift-markdown
+  units: 5
+  positioned_units: 5
+environment:
+  os: macOS 27.0.1 (26A434)
+  hardware: Mac17,6 / Apple M5 Max
+  architecture: arm64
+  memory_bytes: 51539607552
+  swift: 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1)
+  rustc: 1.99.1 (58cf8f9c3 2026-10-13)
+  clang: 21.0.0 (clang-2100.3.34.2)
+  cmake: 4.4.3
+  sdk: macOS 27.0
+  developer_tools: Command Line Tools; full Xcode absent
+  build_mode: release; C -O3; Rust locked release LTO; SwiftPM release
+dependencies:
+  comrak: 0.57.0
+  pulldown-cmark: 0.13.5
+  cmark-gfm: 0.29.0.gfm.13 / 587a12bb54d95ac37241377e6ddc93ea0e45439b
+  swift-markdown: 0.9.0 / 25cb61d3482054b09ae76ca4f281b1bfe7fe5a43
+  swift-cmark: 0.9.0 / 08ddb528923cc1a6527e02b7a1aee9e516ca749a
+memory_single_iteration:
+- engine: comrak
+  file: build/fixtures/performance/prose-5mib.md
+  bytes: 5242880
+  iterations: 1
+  elapsed_ns: 37490167
+  ns_per_iteration: 37490167
+  units: 461178
+  positioned_units: 461178
+  peak_rss_bytes: 113803264
+- engine: pulldown
+  file: build/fixtures/performance/prose-5mib.md
+  bytes: 5242880
+  iterations: 1
+  elapsed_ns: 11652084
+  ns_per_iteration: 11652084
+  units: 582540
+  positioned_units: 582540
+  peak_rss_bytes: 66715648
+- engine: cmark-gfm
+  file: build/fixtures/performance/prose-5mib.md
+  bytes: 5242880
+  iterations: 1
+  elapsed_ns: 42471000
+  ns_per_iteration: 42471000
+  units: 461178
+  positioned_units: 461178
+  peak_rss_bytes: 121389056
+- engine: swift-markdown
+  file: build/fixtures/performance/prose-5mib.md
+  bytes: 5242880
+  iterations: 1
+  elapsed_ns: 380747459
+  ns_per_iteration: 380747459
+  units: 461178
+  positioned_units: 461178
+  peak_rss_bytes: 240435200
+- engine: comrak
+  file: build/fixtures/performance/delimiter-storm-1mib.md
+  bytes: 1048576
+  iterations: 1
+  elapsed_ns: 13454875
+  ns_per_iteration: 13454875
+  units: 74019
+  positioned_units: 74019
+  peak_rss_bytes: 42827776
+- engine: pulldown
+  file: build/fixtures/performance/delimiter-storm-1mib.md
+  bytes: 1048576
+  iterations: 1
+  elapsed_ns: 4762750
+  ns_per_iteration: 4762750
+  units: 246723
+  positioned_units: 246723
+  peak_rss_bytes: 26460160
+- engine: cmark-gfm
+  file: build/fixtures/performance/delimiter-storm-1mib.md
+  bytes: 1048576
+  iterations: 1
+  elapsed_ns: 15604000
+  ns_per_iteration: 15604000
+  units: 74019
+  positioned_units: 74019
+  peak_rss_bytes: 47874048
+- engine: swift-markdown
+  file: build/fixtures/performance/delimiter-storm-1mib.md
+  bytes: 1048576
+  iterations: 1
+  elapsed_ns: 67259833
+  ns_per_iteration: 67259833
+  units: 74019
+  positioned_units: 74019
+  peak_rss_bytes: 73187328
+probe_binary_bytes:
+  combined_rust: 1041136
+  cmark_gfm: 283720
+  swift_markdown: 1669720
+workflow_exception: Owner explicitly authorized supplementary FEAS-002 benchmarks
+  without the missing state backend; project.yaml unchanged; no active pass created.
+limitations:
+- One Mac; warm caches; not cold launch, rendering, semantic-model construction, FFI,
+  signing, or packaging evidence.
+- Different API shapes, walks, enabled extensions and cmark versions; not identical
+  work or conformance proof.
+- Swift walks a value tree and accesses ranges; Rust Comrak walks twice and pulldown
+  counts events.
+- Peak RSS is whole process and includes runtime, input and allocator retention; not
+  live heap.
+- Single-iteration memory checks have one fresh-process observation per engine/input;
+  not five-trial medians.
+- Raw main-run trials are in ignored build/feas002-macos/trials.csv; eight extra memory
+  observations are preserved here.
