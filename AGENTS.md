@@ -6,7 +6,7 @@ are authoritative for this project.
 ## Required first reads
 
 1. `README.md`
-2. `MEMORY.md`
+2. `MEMORY.md` and `HANDOFF.md` for the latest session/platform handoff
 3. `project.yaml` through the state inspection command in
    `AGENT_WORKFLOW.md`
 4. `TODO.md`
