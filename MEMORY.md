@@ -11,16 +11,16 @@ design belong in `docs/` or `agents/`; runtime transcripts do not belong here.
 - Later platforms: iOS and iPadOS after the desktop contracts are stable.
 - Organization: one native monorepo with independent native UIs,
   shared specifications/fixtures/benchmarks, and a candidate portable core.
-- Status: cross-machine handoff. FEAS-001, FEAS-002, and Linux FEAS-005 are
-  complete. FEAS-003 on Windows and FEAS-004 on macOS are the only eligible
-  next tasks; there is no active pass.
+- Status: cross-machine handoff. FEAS-001, FEAS-002, macOS FEAS-004 and Linux
+  FEAS-005 are evaluated. FEAS-003 on Windows is the next dependency-ready
+  feasibility task; inspect `project.yaml` for current pass state.
 - Evaluation prerequisites: real Windows and macOS hosts. Shared-core
   integration, the capability matrix, and GATE-001 are
   intentionally ordered after both native rendering evaluations.
 - Mac host setup: the project-state skill/backend and workflow contract have
   been restored from the owner's Linux user-level Codex directory. Supported
-  inspection succeeds at revision 87 with no active/stale passes or warnings;
-  FEAS-003 and FEAS-004 are eligible. Use the normal pass lifecycle.
+  inspection works. Xcode 27.1 is installed and selected. Use the normal pass
+  lifecycle and re-inspect rather than relying on an earlier revision.
 
 ## Durable context
 
@@ -84,8 +84,9 @@ design belong in `docs/` or `agents/`; runtime transcripts do not belong here.
   cross-platform packaging and host-integration evidence from FEAS-006.
 - Select WinUI 3 with C# or C++/WinRT, the Windows document layout strategy,
   and the stable Rust boundary using measurements from a real Windows host.
-- Select AppKit/SwiftUI responsibilities, the macOS document layout strategy,
-  and the stable Rust/Swift boundary using measurements from a real Mac.
+- Confirm the AppKit/TextKit 2 lead renderer recommendation, selective SwiftUI
+  shell responsibilities and the stable Rust/Swift boundary at the accepted
+  gates. macOS FEAS-004 measured native layout; FEAS-006 still owns core interop.
 - Confirm Linux virtualized-block selection and AT-SPI behavior during LNX-001;
   a monolithic `GtkTextView` is already rejected for unbounded documents.
 - Confirm whether “native” allows narrowly scoped non-UI engines for diagrams
@@ -181,3 +182,19 @@ match; no Linux project files or local task-state fields were changed.
 The repository wrapper now inspects state successfully. The FEAS-004 workflow
 blocker is resolved; full Xcode 27.1 is also installed and selected. See
 `HANDOFF.md` for resume instructions.
+
+### 2026-10-24 — FEAS-004 macOS rendering
+
+On Apple M5 Max/macOS 27.0.1/Xcode 27.1, compared AppKit TextKit 1, TextKit 2,
+reusable text rows and a SwiftUI-hosted TextKit 2 surface in 80 successful
+native trials. All 60 continuous-text runs exported matching selections;
+all variants reached the end. Recommend TextKit 2 as the lead surface: 1 MiB
+first-draw median was 491 ms and 5 MiB end request about 0.8 ms, versus 2.55 s
+for TextKit 1. First draw is not full launch/presentation. Reusable rows save
+views but lack cross-row selection/navigation. Synchronous attributed-model
+construction, 5 MiB memory near 388 MiB, and long-line timer delays remain
+production risks. Owner confirmed audible VoiceOver reading; its original off
+state was restored. LLDB, Instruments and local development bundles passed
+their smoke checks; identity signing/notarization were not performed. Details
+are in `docs/macOS-Rendering-Evaluation.md`. Next: real Windows FEAS-003;
+shared-core and capability work still wait for Windows evidence.

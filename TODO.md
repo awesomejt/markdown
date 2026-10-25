@@ -10,13 +10,11 @@ throwaway prototypes under `spikes/` are expected.
 
 ## Immediate cross-machine handoff
 
-The current Linux pass is complete and no pass is active. Preserve and sync
-the present worktree before changing machines; the current changes have not
-been committed by the agent.
+Linux and macOS native rendering evaluations are complete. Preserve and sync
+the present worktree before changing machines; changes have not been committed
+by the agent. Inspect `project.yaml` for current pass/lease state.
 
-Only these tasks are eligible next:
-
-FEAS-003 and FEAS-004 may be completed in either order, but run one active
+FEAS-003 is the remaining dependency-ready feasibility task. Run one active
 pass at a time because the project concurrency limit is one.
 
 1. **On a real Windows system, run FEAS-003.** Re-inspect `project.yaml`, start
@@ -26,11 +24,12 @@ pass at a time because the project concurrency limit is one.
    cover launch/first content, memory, far-scroll and long-line behavior,
    selection/copy, Narrator/UI Automation, DPI changes, debugging, and a
    development package. Do not infer native results from Wine or cross-builds.
-2. **On a real Mac, run FEAS-004.** Re-inspect state, start FEAS-004, record the
-   exact macOS/Mac/Xcode/Swift/display environment, and compare AppKit text and
-   block-layout approaches with selective SwiftUI shell use. Exercise the same
-   corpus and measure launch, memory, navigation, selection/copy, VoiceOver,
-   Retina/scaling, lifecycle, debugging, signing, and a development package.
+2. **Carry forward the completed macOS FEAS-004 evidence.** The report in
+   `docs/macOS-Rendering-Evaluation.md` compares TextKit 1/2, reusable rows and
+   SwiftUI hosting, with named-host measurements, native selection/copy,
+   owner-confirmed VoiceOver reading, scale-2 display inspection, debugger,
+   profiler and local development bundles. Preserve its unverified production
+   behaviors and signing/distribution limits; do not treat them as passes.
 3. **Reconcile both reports in the monorepo.** Preserve platform deviations;
    do not force identical UI implementations. Confirm each pass is complete
    and `project.yaml` has no stale lease before selecting more work.
@@ -64,8 +63,12 @@ pass at a time because the project concurrency limit is one.
 - **FEAS-003 — Prove Windows native rendering.** **Next on Windows.** Prototype the basic corpus in
   the proposed Windows-native text/layout stack; measure launch, layout,
   scrolling, selection, accessibility, and high-DPI behavior.
-- **FEAS-004 — Prove macOS native rendering.** **Next on macOS.** Prototype the same corpus using
-  AppKit/SwiftUI candidates; measure equivalent native behaviors.
+- **FEAS-004 — Prove macOS native rendering.** Prototype the same corpus using
+  AppKit/SwiftUI candidates; measure equivalent native behaviors. Evaluated
+  2026-10-24 on Apple M5 Max/macOS 27.0.1: TextKit 2 is the lead document-surface
+  candidate; TextKit 1 far navigation stalls and reusable rows lose continuous
+  selection. See `docs/macOS-Rendering-Evaluation.md` for measured limits and
+  deferred production checks. Windows FEAS-003 is the remaining native evaluation.
 - **FEAS-005 — Prove Linux native rendering.** Prototype the same corpus using
   GTK/native Linux candidates; measure equivalent native behaviors across the
   selected desktop environments. Completed 2026-10-24 on KDE Wayland with an

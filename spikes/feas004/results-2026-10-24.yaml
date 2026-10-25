@@ -1,0 +1,554 @@
+schema_version: 1
+date: '2026-10-24'
+task: FEAS-004
+environment:
+  os: macOS 27.0.1 (26A434)
+  hardware: Mac17,6 / Apple M5 Max
+  architecture: arm64
+  memory_gib: 48
+  xcode: 27.1 (27A9275)
+  swift: 6.4 (swiftlang-6.4.0.34.1)
+  sdk: macOS 27.0
+  display:
+    pixels:
+    - 5120
+    - 2880
+    points:
+    - 2560
+    - 1440
+    backing_scale: 2
+    refresh_hz: 60
+method:
+  semantic_trials_per_variant: 1
+  performance_trials_per_variant: 3
+  variants:
+  - TextKit 1 / AppKit
+  - TextKit 2 / AppKit
+  - Reusable blocks / AppKit
+  - TextKit 2 / SwiftUI host
+  timeout_seconds: 20
+  rss: Darwin /usr/bin/time -l bytes; whole-process peak
+  first_draw: Swift top-level entry through first draw callback; excludes earlier
+    runtime/dyld startup; not presented frame
+  scroll: 60 timer intervals at nominal 60 Hz; main-thread delay, not display frame
+    pacing
+performance:
+  prose-1mib:
+    tk1-appkit:
+      read_ms: 0.53
+      parse_ms: 58.6318
+      adapter_ms: 305.8466
+      surface_setup_ms: 31.5808
+      entry_to_first_draw_ms: 520.5986
+      end_request_ms: 506.4628
+      timer_median_ms: 16.6659
+      timer_p95_ms: 17.4293
+      timer_max_ms: 17.6701
+      created_cells: 0
+      median_peak_rss_bytes: 196624384
+      all_end_checks_passed: true
+      continuous_selection: true
+      first_draw_range_ms:
+      - 520.2592
+      - 521.9758
+      maximum_timer_gap_ms: 17.7243
+    tk2-appkit:
+      read_ms: 0.5315
+      parse_ms: 58.7071
+      adapter_ms: 305.784
+      surface_setup_ms: 6.9954
+      entry_to_first_draw_ms: 490.5649
+      end_request_ms: 0.8887
+      timer_median_ms: 16.6654
+      timer_p95_ms: 17.1938
+      timer_max_ms: 17.7104
+      created_cells: 0
+      median_peak_rss_bytes: 176422912
+      all_end_checks_passed: true
+      continuous_selection: true
+      first_draw_range_ms:
+      - 488.7612
+      - 495.7164
+      maximum_timer_gap_ms: 17.7178
+    blocks-appkit:
+      read_ms: 0.5394
+      parse_ms: 58.742
+      adapter_ms: 309.2419
+      surface_setup_ms: 270.8147
+      entry_to_first_draw_ms: 760.1243
+      end_request_ms: 1.8801
+      timer_median_ms: 16.6664
+      timer_p95_ms: 17.2756
+      timer_max_ms: 17.7178
+      created_cells: 7
+      median_peak_rss_bytes: 166608896
+      all_end_checks_passed: true
+      continuous_selection: false
+      first_draw_range_ms:
+      - 757.0989
+      - 760.3276
+      maximum_timer_gap_ms: 17.7209
+    tk2-swiftui:
+      read_ms: 0.5391
+      parse_ms: 58.5389
+      adapter_ms: 304.3505
+      surface_setup_ms: 7.0138
+      entry_to_first_draw_ms: 492.2835
+      end_request_ms: 0.996
+      timer_median_ms: 16.6676
+      timer_p95_ms: 17.3708
+      timer_max_ms: 17.7158
+      created_cells: 0
+      median_peak_rss_bytes: 181354496
+      all_end_checks_passed: true
+      continuous_selection: true
+      first_draw_range_ms:
+      - 489.9519
+      - 511.4458
+      maximum_timer_gap_ms: 19.177
+  prose-5mib:
+    tk1-appkit:
+      read_ms: 2.26
+      parse_ms: 293.1467
+      adapter_ms: 1518.3673
+      surface_setup_ms: 85.656
+      entry_to_first_draw_ms: 2054.7142
+      end_request_ms: 2547.29
+      timer_median_ms: 16.6654
+      timer_p95_ms: 17.3584
+      timer_max_ms: 17.7154
+      created_cells: 0
+      median_peak_rss_bytes: 546160640
+      all_end_checks_passed: true
+      continuous_selection: true
+      first_draw_range_ms:
+      - 2030.4868
+      - 2065.042
+      maximum_timer_gap_ms: 17.7365
+    tk2-appkit:
+      read_ms: 2.307
+      parse_ms: 290.8765
+      adapter_ms: 1528.6826
+      surface_setup_ms: 20.4421
+      entry_to_first_draw_ms: 1992.2108
+      end_request_ms: 0.8087
+      timer_median_ms: 16.6665
+      timer_p95_ms: 17.1045
+      timer_max_ms: 17.7101
+      created_cells: 0
+      median_peak_rss_bytes: 406536192
+      all_end_checks_passed: true
+      continuous_selection: true
+      first_draw_range_ms:
+      - 1975.2665
+      - 1999.7496
+      maximum_timer_gap_ms: 17.8822
+    blocks-appkit:
+      read_ms: 2.3569
+      parse_ms: 303.0706
+      adapter_ms: 1553.5557
+      surface_setup_ms: 1352.4311
+      entry_to_first_draw_ms: 3370.0336
+      end_request_ms: 1.0799
+      timer_median_ms: 16.6663
+      timer_p95_ms: 17.1643
+      timer_max_ms: 17.7066
+      created_cells: 7
+      median_peak_rss_bytes: 379813888
+      all_end_checks_passed: true
+      continuous_selection: false
+      first_draw_range_ms:
+      - 3314.8155
+      - 3546.2098
+      maximum_timer_gap_ms: 17.7069
+    tk2-swiftui:
+      read_ms: 2.1993
+      parse_ms: 288.8675
+      adapter_ms: 1517.8392
+      surface_setup_ms: 20.584
+      entry_to_first_draw_ms: 1977.5813
+      end_request_ms: 0.9077
+      timer_median_ms: 16.6663
+      timer_p95_ms: 17.4281
+      timer_max_ms: 17.708
+      created_cells: 0
+      median_peak_rss_bytes: 410681344
+      all_end_checks_passed: true
+      continuous_selection: true
+      first_draw_range_ms:
+      - 1963.8152
+      - 1986.5324
+      maximum_timer_gap_ms: 19.1021
+  delimiter-storm-1mib:
+    tk1-appkit:
+      read_ms: 0.2751
+      parse_ms: 52.1361
+      adapter_ms: 229.8156
+      surface_setup_ms: 35.0385
+      entry_to_first_draw_ms: 434.1307
+      end_request_ms: 314.7197
+      timer_median_ms: 16.6667
+      timer_p95_ms: 17.071
+      timer_max_ms: 17.607
+      created_cells: 0
+      median_peak_rss_bytes: 200343552
+      all_end_checks_passed: true
+      continuous_selection: true
+      first_draw_range_ms:
+      - 431.4843
+      - 441.5091
+      maximum_timer_gap_ms: 17.7067
+    tk2-appkit:
+      read_ms: 0.2586
+      parse_ms: 52.5448
+      adapter_ms: 229.057
+      surface_setup_ms: 5.3551
+      entry_to_first_draw_ms: 397.4338
+      end_request_ms: 0.8418
+      timer_median_ms: 16.6681
+      timer_p95_ms: 17.0321
+      timer_max_ms: 17.7073
+      created_cells: 0
+      median_peak_rss_bytes: 187711488
+      all_end_checks_passed: true
+      continuous_selection: true
+      first_draw_range_ms:
+      - 393.9519
+      - 405.0357
+      maximum_timer_gap_ms: 17.7259
+    blocks-appkit:
+      read_ms: 0.2518
+      parse_ms: 52.0074
+      adapter_ms: 230.1262
+      surface_setup_ms: 247.9986
+      entry_to_first_draw_ms: 649.2536
+      end_request_ms: 2.2845
+      timer_median_ms: 16.6669
+      timer_p95_ms: 17.3312
+      timer_max_ms: 17.7102
+      created_cells: 10
+      median_peak_rss_bytes: 180584448
+      all_end_checks_passed: true
+      continuous_selection: false
+      first_draw_range_ms:
+      - 646.523
+      - 650.6982
+      maximum_timer_gap_ms: 17.7144
+    tk2-swiftui:
+      read_ms: 0.2445
+      parse_ms: 52.2288
+      adapter_ms: 229.5338
+      surface_setup_ms: 5.3841
+      entry_to_first_draw_ms: 403.9714
+      end_request_ms: 0.9028
+      timer_median_ms: 16.666
+      timer_p95_ms: 17.1411
+      timer_max_ms: 17.7283
+      created_cells: 0
+      median_peak_rss_bytes: 192774144
+      all_end_checks_passed: true
+      continuous_selection: true
+      first_draw_range_ms:
+      - 402.0519
+      - 413.938
+      maximum_timer_gap_ms: 17.733
+  long-lines-1mib:
+    tk1-appkit:
+      read_ms: 0.2637
+      parse_ms: 1.1309
+      adapter_ms: 2.0442
+      surface_setup_ms: 48.1922
+      entry_to_first_draw_ms: 162.0659
+      end_request_ms: 120.9349
+      timer_median_ms: 16.6656
+      timer_p95_ms: 17.4721
+      timer_max_ms: 17.7067
+      created_cells: 0
+      median_peak_rss_bytes: 140787712
+      all_end_checks_passed: true
+      continuous_selection: true
+      first_draw_range_ms:
+      - 159.2392
+      - 162.6959
+      maximum_timer_gap_ms: 17.7083
+    tk2-appkit:
+      read_ms: 0.24
+      parse_ms: 1.1552
+      adapter_ms: 2.1185
+      surface_setup_ms: 21.1541
+      entry_to_first_draw_ms: 162.5852
+      end_request_ms: 17.5902
+      timer_median_ms: 16.6674
+      timer_p95_ms: 27.3168
+      timer_max_ms: 34.6027
+      created_cells: 0
+      median_peak_rss_bytes: 209616896
+      all_end_checks_passed: true
+      continuous_selection: true
+      first_draw_range_ms:
+      - 157.2172
+      - 168.5229
+      maximum_timer_gap_ms: 34.6971
+    blocks-appkit:
+      read_ms: 0.263
+      parse_ms: 0.9474
+      adapter_ms: 2.0796
+      surface_setup_ms: 108.3021
+      entry_to_first_draw_ms: 219.277
+      end_request_ms: 1.5465
+      timer_median_ms: 16.6666
+      timer_p95_ms: 17.5168
+      timer_max_ms: 17.7078
+      created_cells: 2
+      median_peak_rss_bytes: 124256256
+      all_end_checks_passed: true
+      continuous_selection: false
+      first_draw_range_ms:
+      - 216.7608
+      - 223.414
+      maximum_timer_gap_ms: 17.7197
+    tk2-swiftui:
+      read_ms: 0.2532
+      parse_ms: 1.1764
+      adapter_ms: 2.0303
+      surface_setup_ms: 21.0133
+      entry_to_first_draw_ms: 176.2894
+      end_request_ms: 18.1935
+      timer_median_ms: 16.7089
+      timer_p95_ms: 33.4606
+      timer_max_ms: 34.8787
+      created_cells: 0
+      median_peak_rss_bytes: 214351872
+      all_end_checks_passed: true
+      continuous_selection: true
+      first_draw_range_ms:
+      - 171.8748
+      - 179.679
+      maximum_timer_gap_ms: 35.0306
+semantic_smoke:
+- case: gfm-tour
+  variant: tk1-appkit
+  first_draw_ms: 127.4831
+  copy_matches: true
+  ax_role: AXTextArea
+  end_check: true
+- case: gfm-tour
+  variant: tk2-appkit
+  first_draw_ms: 143.6017
+  copy_matches: true
+  ax_role: AXTextArea
+  end_check: true
+- case: gfm-tour
+  variant: blocks-appkit
+  first_draw_ms: 130.3237
+  copy_matches: null
+  ax_role: AXTable
+  end_check: true
+- case: gfm-tour
+  variant: tk2-swiftui
+  first_draw_ms: 132.0159
+  copy_matches: true
+  ax_role: AXTextArea
+  end_check: true
+- case: unsafe-html
+  variant: tk1-appkit
+  first_draw_ms: 125.7458
+  copy_matches: true
+  ax_role: AXTextArea
+  end_check: true
+- case: unsafe-html
+  variant: tk2-appkit
+  first_draw_ms: 119.1516
+  copy_matches: true
+  ax_role: AXTextArea
+  end_check: true
+- case: unsafe-html
+  variant: blocks-appkit
+  first_draw_ms: 130.7996
+  copy_matches: null
+  ax_role: AXTable
+  end_check: true
+- case: unsafe-html
+  variant: tk2-swiftui
+  first_draw_ms: 151.6349
+  copy_matches: true
+  ax_role: AXTextArea
+  end_check: true
+- case: code-fences
+  variant: tk1-appkit
+  first_draw_ms: 133.0041
+  copy_matches: true
+  ax_role: AXTextArea
+  end_check: true
+- case: code-fences
+  variant: tk2-appkit
+  first_draw_ms: 122.4344
+  copy_matches: true
+  ax_role: AXTextArea
+  end_check: true
+- case: code-fences
+  variant: blocks-appkit
+  first_draw_ms: 135.1826
+  copy_matches: null
+  ax_role: AXTable
+  end_check: true
+- case: code-fences
+  variant: tk2-swiftui
+  first_draw_ms: 128.6084
+  copy_matches: true
+  ax_role: AXTextArea
+  end_check: true
+- case: math-alerts
+  variant: tk1-appkit
+  first_draw_ms: 118.2173
+  copy_matches: true
+  ax_role: AXTextArea
+  end_check: true
+- case: math-alerts
+  variant: tk2-appkit
+  first_draw_ms: 128.7959
+  copy_matches: true
+  ax_role: AXTextArea
+  end_check: true
+- case: math-alerts
+  variant: blocks-appkit
+  first_draw_ms: 117.3308
+  copy_matches: null
+  ax_role: AXTable
+  end_check: true
+- case: math-alerts
+  variant: tk2-swiftui
+  first_draw_ms: 126.5263
+  copy_matches: true
+  ax_role: AXTextArea
+  end_check: true
+- case: inline-diagrams
+  variant: tk1-appkit
+  first_draw_ms: 122.1659
+  copy_matches: true
+  ax_role: AXTextArea
+  end_check: true
+- case: inline-diagrams
+  variant: tk2-appkit
+  first_draw_ms: 123.8407
+  copy_matches: true
+  ax_role: AXTextArea
+  end_check: true
+- case: inline-diagrams
+  variant: blocks-appkit
+  first_draw_ms: 120.159
+  copy_matches: null
+  ax_role: AXTable
+  end_check: true
+- case: inline-diagrams
+  variant: tk2-swiftui
+  first_draw_ms: 130.155
+  copy_matches: true
+  ax_role: AXTextArea
+  end_check: true
+- case: voice-parity
+  variant: tk1-appkit
+  first_draw_ms: 131.3035
+  copy_matches: true
+  ax_role: AXTextArea
+  end_check: true
+- case: voice-parity
+  variant: tk2-appkit
+  first_draw_ms: 123.1033
+  copy_matches: true
+  ax_role: AXTextArea
+  end_check: true
+- case: voice-parity
+  variant: blocks-appkit
+  first_draw_ms: 125.8874
+  copy_matches: null
+  ax_role: AXTable
+  end_check: true
+- case: voice-parity
+  variant: tk2-swiftui
+  first_draw_ms: 128.0731
+  copy_matches: true
+  ax_role: AXTextArea
+  end_check: true
+- case: unicode-filename
+  variant: tk1-appkit
+  first_draw_ms: 124.0825
+  copy_matches: true
+  ax_role: AXTextArea
+  end_check: true
+- case: unicode-filename
+  variant: tk2-appkit
+  first_draw_ms: 112.7107
+  copy_matches: true
+  ax_role: AXTextArea
+  end_check: true
+- case: unicode-filename
+  variant: blocks-appkit
+  first_draw_ms: 122.6016
+  copy_matches: null
+  ax_role: AXTable
+  end_check: true
+- case: unicode-filename
+  variant: tk2-swiftui
+  first_draw_ms: 125.6982
+  copy_matches: true
+  ax_role: AXTextArea
+  end_check: true
+- case: nfd-filename
+  variant: tk1-appkit
+  first_draw_ms: 119.0045
+  copy_matches: true
+  ax_role: AXTextArea
+  end_check: true
+- case: nfd-filename
+  variant: tk2-appkit
+  first_draw_ms: 119.5535
+  copy_matches: true
+  ax_role: AXTextArea
+  end_check: true
+- case: nfd-filename
+  variant: blocks-appkit
+  first_draw_ms: 134.5523
+  copy_matches: null
+  ax_role: AXTable
+  end_check: true
+- case: nfd-filename
+  variant: tk2-swiftui
+  first_draw_ms: 125.4018
+  copy_matches: true
+  ax_role: AXTextArea
+  end_check: true
+checks:
+  native_matrix_completed: 80
+  native_timeouts: 0
+  native_nonzero_exits: 0
+  text_selection_copy_matches: 60
+  textkit2_active_in_all_tk2_runs: true
+  voiceover:
+    original_state: 'off'
+    test_state: 'on'
+    restored_state: 'off'
+    audible_document_reading: confirmed by owner
+    caption_panel: already enabled; not changed
+    heading_rotor_and_large_documents: unverified
+  debugger: Debug build, LLDB breakpoint at main/source line, stack inspected, continued
+    to exit 0
+  profiler: Instruments Time Profiler trace recorded for native 1 MiB tk2 process
+  package: Four local arm64 .app bundles; default linker ad-hoc signature only, no
+    identity/team/resource seal, no notarization
+  lifecycle: 80 fresh process/window creation and automatic termination cycles; no
+    restoration implementation
+limitations:
+- Swift Markdown plus attributed adapter, not Rust/core FFI or product-model measurement.
+- Parsing, conversion and eager row sizing are synchronous; cancellation unimplemented.
+- 80 trials are serial in fixed variant order on one active desktop; warm caches,
+  no cold-launch claim.
+- Basic semantic presentation only; no full GFM conformance, raw HTML execution or
+  resource fetch.
+- Only one scale-2 5K 60 Hz display tested; mixed DPI, dynamic display changes and
+  other OS versions unverified.
+- Reusable rows omit continuous cross-row selection and heading navigation; full attributed
+  model still resident.
+- Timer delay is not display frame pacing; drag/trackpad, print and state restoration
+  remain unverified.
+probe_binary_bytes: 1798320

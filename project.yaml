@@ -1,11 +1,11 @@
 contract_version: project-state/v1
-revision: 87
+revision: 89
 project: &id002
   concurrency_limit: 1
   created_at: '2026-10-24T23:34:09.871478+00:00'
   project_ref: markdown-native
   status: active
-  updated_at: '2026-10-25T00:36:12.912940+00:00'
+  updated_at: '2026-10-25T03:52:46.168435+00:00'
   workflow_id: native-app-development
   workflow_version: '2'
 phases: &id004
@@ -133,7 +133,7 @@ tasks:
   - &id007
     active_pass_ref: null
     blockers: []
-    completed_at: null
+    completed_at: '2026-10-25T03:52:46.168435+00:00'
     created_at: '2026-10-24T23:34:32.887554+00:00'
     description: Prototype and profile the basic corpus using AppKit and SwiftUI candidates.
     id: 7a7c0c14-b717-4400-9404-b946ee4053cd
@@ -141,10 +141,10 @@ tasks:
     phase: feasibility
     priority: 90
     role: implementer
-    status: pending
+    status: completed
     task_key: FEAS-004
     title: Prove macOS native rendering
-    updated_at: '2026-10-24T23:34:32.887554+00:00'
+    updated_at: '2026-10-25T03:52:46.168435+00:00'
     validation_expectations: Launch, layout, scroll, selection, accessibility, scale, and package evidence.
   - &id008
     active_pass_ref: null
@@ -889,6 +889,50 @@ passes:
     completed_at: '2026-10-25T00:36:12.912940+00:00'
     lease_expires_at: null
     lease_version: 1
+  - &id021
+    id: 5cd2c874-c292-41cb-bd11-c9004ccaaa9e
+    sequence: 6
+    task_ref: 7a7c0c14-b717-4400-9404-b946ee4053cd
+    phase_ref: b19ec1c8-f0c0-4cee-b584-5c9247a96edd
+    actor: codex-macos
+    status: completed
+    outcome: completed
+    objective: Compare AppKit TextKit 1/2, reusable block layout and selective SwiftUI shell against frozen
+      corpus; record native metrics and remaining acceptance gaps.
+    summary: 'Evaluated native AppKit TextKit 1/2, reusable text rows and SwiftUI hosting on macOS: 80
+      successful corpus trials, 60 matching native text exports, native AX/scale-2 visual checks, owner-confirmed
+      VoiceOver reading with state restored, LLDB, Instruments and local development bundles. TextKit
+      2 is the lead hypothesis; production cancellation/model memory/selection and display limits are
+      explicitly recorded.'
+    handoff: null
+    validation_result:
+      status: passed
+      checks:
+        - release and debug Swift builds
+        - 80 native matrix trials with zero timeouts/nonzero exits; all end checks passed
+        - 60 native selection exports matched; all tk2 runs retained TextKit 2
+        - native AX and scale-2 visual inspection; VoiceOver reading confirmed by owner and off state
+          restored
+        - LLDB source breakpoint and successful continue; Instruments trace recorded
+        - development bundles assembled and ad-hoc signature inspected; no identity signing
+        - fixture/schema/hash and deterministic performance validation
+        - Python compile, local links, git diff --check, Markdown lint 24 files zero errors
+    evidence:
+      report: docs/macOS-Rendering-Evaluation.md
+      measurements: spikes/feas004/results-2026-10-24.yaml
+      reproduction: spikes/feas004/README.md
+      handoff: HANDOFF.md
+      residual_risk: Synchronous adapter, high large-file RSS, long-line timer gaps, row cross-block selection
+        loss; mixed scale, exact frame pacing, restoration and release signing unverified.
+      next_task: FEAS-003 on a real Windows host; FEAS-006/007 remain gated.
+    participants: []
+    blocker: null
+    execution_record: {}
+    started_at: '2026-10-25T03:31:47.586988+00:00'
+    last_heartbeat_at: null
+    completed_at: '2026-10-25T03:52:46.168435+00:00'
+    lease_expires_at: null
+    lease_version: 1
 idempotency:
   accept-d004-create:
     fingerprint: 24cf06b66fd828b04e394367502bdc20f99fdf17303eec73bb77dba723bdaa1f
@@ -1394,6 +1438,79 @@ idempotency:
           active_passes: 0
           stale_passes: 0
           eligible: 2
+          blocked: 0
+        warnings: []
+        recommended_action: select_new_task
+  7b4ec1a8-d016-4d1d-bc59-fd75f0f402ad:
+    fingerprint: f805788ba22a12b0436b0245f3e0c543b11189cb5cbe1f7e7f74317c8d88d4a2
+    response:
+      contract_version: project-state/v1
+      operation: start_pass
+      revision: 88
+      data:
+        pass: *id021
+        task: *id007
+      snapshot:
+        contract_version: project-state/v1
+        snapshot_at: '2026-10-25T03:31:47.587008+00:00'
+        revision: 88
+        project: *id002
+        current_phase: *id003
+        phases: *id004
+        active_tasks:
+          - *id007
+        working_tasks_without_active_lease: []
+        active_passes:
+          - *id021
+        stale_passes: []
+        blocked_tasks: []
+        eligible_tasks:
+          - *id006
+        latest_pass: *id021
+        queue_counts:
+          by_status:
+            completed: 5
+            pending: 25
+            working: 1
+          total: 31
+          active_passes: 1
+          stale_passes: 0
+          eligible: 1
+          blocked: 0
+        warnings: []
+        recommended_action: resume_active
+  0bc942bf-740c-41b2-9408-81f942ff85dd:
+    fingerprint: f2dd8f47c9defa5e76b706ee6fe091c44760078bb490a94ddbe382211f618c2c
+    response:
+      contract_version: project-state/v1
+      operation: finish_pass
+      revision: 89
+      data:
+        pass: *id021
+        task: *id007
+      snapshot:
+        contract_version: project-state/v1
+        snapshot_at: '2026-10-25T03:52:46.168448+00:00'
+        revision: 89
+        project: *id002
+        current_phase: *id003
+        phases: *id004
+        active_tasks: []
+        working_tasks_without_active_lease: []
+        active_passes: []
+        stale_passes: []
+        blocked_tasks: []
+        eligible_tasks:
+          - *id006
+        latest_pass: *id021
+        queue_counts:
+          by_status:
+            completed: 6
+            pending: 25
+          total: 31
+          active_passes: 0
+          stale_passes: 0
+          eligible: 1
           blocked: 0
         warnings: []
         recommended_action: select_new_task

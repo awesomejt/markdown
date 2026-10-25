@@ -1,7 +1,8 @@
 # Agent Session and Platform Handoff
 
-Updated: 2026-10-24, macOS session. Source baseline: `fcb5bc5`
-(`Added Handoff doc`). The worktree was clean before the backend-restoration update.
+Updated: 2026-10-24, macOS FEAS-004 session. Source baseline: `3606887`
+(`Update HANDOFF before FEAS-004`), plus the uncommitted FEAS-004 source,
+measurements, reports and state closeout. Do not omit those files when syncing.
 
 This file carries concise, commit-safe context between sessions and machines.
 It does not replace [project.yaml](project.yaml) for operational state,
@@ -15,8 +16,9 @@ Recheck the current host and state; observations below are a dated snapshot.
    preserve changes made by the owner or other sessions.
 2. Run the state inspection command below. The backend is now restored on this
    Mac. Recover any stale work before starting a pass.
-3. On macOS, select **FEAS-004**. On Windows, select **FEAS-003**. Run only one
-   active pass at a time. Neither evaluation has started in the recorded state.
+3. Continue **FEAS-003 on a real Windows host**. The macOS FEAS-004 evaluation
+   is complete; do not rerun it merely because the session changed. Run only
+   one active pass at a time and re-inspect state on the destination host.
 4. Keep FEAS-006, FEAS-007 and GATE-001 behind both native evaluations.
    Do not scaffold production applications or accept a production stack yet.
 
@@ -50,21 +52,23 @@ On another machine, recreate an environment with
 `tools/requirements-fixtures.txt` with that environment's Python. Virtual
 environments, downloaded dependencies and toolchains do not transfer in Git.
 
-The restored backend's supported inspection succeeded at revision **87**:
+Use the supported backend inspection for the latest revision and lease state.
+FEAS-004 closeout inspection succeeded at revision **89**: project active,
+no active/stale passes, no working tasks without leases, and no warnings.
+Only FEAS-003 is eligible.
 
 | Task | Recorded status | Evidence or next action |
 | --- | --- | --- |
 | FEAS-001 | Completed | Frozen corpus and validator |
 | FEAS-002 | Completed | Linux comparison plus committed macOS supplement |
 | FEAS-003 | Pending | Requires a real Windows host |
-| FEAS-004 | Pending | Next on this Mac; no rendering prototype exists yet |
+| FEAS-004 | Completed | AppKit/TextKit comparison and native checks; report below |
 | FEAS-005 | Completed | Linux native rendering evaluation |
-| FEAS-006 | Pending | Wait for FEAS-003 and FEAS-004 |
-| FEAS-007 | Pending | Wait for FEAS-003 and FEAS-004 |
+| FEAS-006 | Pending | Wait for Windows FEAS-003 |
+| FEAS-007 | Pending | Wait for Windows FEAS-003 |
 
-No active or stale passes, working tasks without leases, blockers or warnings
-were reported. FEAS-003 and FEAS-004 are eligible. Re-inspect before starting
-work; no task status or revision was changed by restoring the skill.
+FEAS-003 is the next dependency-ready task. The skill restoration itself did
+not mutate task state; FEAS-004 used the normal start/finish lifecycle.
 
 ## Owner instructions and authorization boundaries
 
@@ -76,6 +80,9 @@ work; no task status or revision was changed by restoring the skill.
 - An exception for FEAS-004 was requested, but **not approved**. The owner
   instead asked what software to install. The backend is now available, so no
   exception is needed: use the normal pass lifecycle for the authorized task.
+- The owner approved a temporary VoiceOver test and confirmed audible document
+  reading. Its original off state was restored and verified. This approval
+  does not authorize leaving accessibility settings changed.
 - This handoff file was explicitly requested for committing and transferring
   notes. No commit, push, signing or publishing was requested of the agent.
 - If the backend is still absent, follow the workflow's read-only restriction
@@ -155,7 +162,7 @@ Rechecked while writing this handoff:
   `/Applications/Xcode.app/Contents/Developer`.
 - Instruments and Accessibility Inspector exist inside Xcode. Earlier
   statements that Xcode was absent describe the benchmark session, not the
-  current host. Successful FEAS-004 profiling has not yet been demonstrated.
+  current host. FEAS-004 subsequently demonstrated LLDB and Instruments capture.
 - The parser benchmarks used Command Line Tools, Swift 6.4, Apple Clang
   21.0.0, Rust 1.99.1 and CMake 4.4.3. Re-record tool versions after the switch
   to Xcode; do not label the old measurements with the new toolchain.
@@ -179,31 +186,38 @@ export PATH="$CARGO_HOME/bin:$PATH"
 These paths assume the repository root and this host's existing ignored
 files. Install/recreate tools on a new machine instead of copying binaries.
 
-## FEAS-004 work still to do
+## FEAS-004 completed evidence and remaining production work
 
-No AppKit/SwiftUI rendering prototype, UI benchmark, VoiceOver evaluation,
-development package or FEAS-004 result report has been produced.
+See [macOS evaluation](docs/macOS-Rendering-Evaluation.md),
+[probe instructions](spikes/feas004/README.md) and
+[measurements](spikes/feas004/results-2026-10-24.yaml).
 
-After restoring coordination, start a bounded FEAS-004 pass and:
+Compared TextKit 1, TextKit 2, reusable text rows and a SwiftUI-hosted TextKit 2
+surface in 80 successful native trials with no timeouts. All end checks passed;
+all 60 continuous-text cases exported matching selections. The measured
+display was 5120×2880 pixels, scale 2, 60 Hz. The owner confirmed VoiceOver
+document reading; LLDB source debugging, Instruments Time Profiler capture
+and local development-bundle assembly/launch were exercised.
 
-1. Record Mac model, OS/build, Xcode/Swift versions, architecture, display
-   resolution, refresh rate and backing scale. Reuse the frozen corpus.
-2. Compare AppKit native text/layout and bounded or virtualized block
-   approaches, with SwiftUI used selectively for suitable shell surfaces.
-   TextKit 1 versus TextKit 2 is a candidate comparison, not an accepted design.
-3. Measure startup/first useful content, parse/model/presentation costs,
-   memory, far navigation, scroll pacing and pathological long-line behavior.
-   Distinguish draw callbacks from actual presented frames and enforce timeouts.
-4. Exercise selection/copy, heading navigation, keyboard commands, native
-   accessibility plus VoiceOver, Retina/scaling, lifecycle and debugging.
-   Record unrun checks as unproven. Do not equate an AX tree with screen-reader
-   usability. Be aware that accessing `NSTextView.layoutManager` can switch a
-   TextKit 2 view into compatibility mode; verify the active text system.
-5. Produce a local development bundle/package and document its limitations.
-   Ask before signing or publishing, as required by repository instructions.
-6. Record results, deviations and remaining risks; update durable context and
-   finish the pass through the state helper. FEAS-003 remains the next task
-   on Windows; shared-core integration still waits for both evaluations.
+Recommend AppKit/TextKit 2 as the lead macOS surface for the next accepted
+walking skeleton. On 5 MiB prose its median end request was 0.81 ms versus
+2547 ms for TextKit 1. Its first draw was about 1992 ms and peak RSS about
+388 MiB. Initial attributed conversion dominates; move work off the main
+thread and prove cancellation/incremental presentation. First draw is not
+cold launch or a presented frame. Long-line timer delay is not frame pacing.
+
+Reusable rows use few views but lack cross-row selection and heading
+navigation. The adapter deliberately simplifies Markdown and does not prove
+full semantic or accessibility conformance. Large-document VoiceOver/rotor
+behavior, dynamic/mixed scale, restoration, interactive frame pacing, memory
+reduction and Rust/Swift FFI remain future acceptance checks. Development
+bundles have only linker ad-hoc signatures: no identity signing, resource
+seal, notarization or distribution approval. No production baseline was accepted.
+
+Debug/release binaries, four local `.app` bundles, raw metrics/logs and a
+Time Profiler trace are under ignored `build/feas004/` and
+`spikes/feas004/.build/`. Rebuild on another machine; commit the source,
+lockfile, durable measurements, reports, memory, handoff and state together.
 
 ## Validation carried over
 

@@ -70,4 +70,7 @@ The following are not yet accepted:
 - GTK 4/gtk-rs for the Linux shell, with a virtualized semantic-block document
   renderer rather than one unbounded `GtkTextView`.
 - Windows and macOS framework/language choices after their measured spikes.
+- AppKit/TextKit 2 as the lead macOS document-surface candidate following
+  FEAS-004; selective SwiftUI hosting remains available, while synchronous
+  model construction, memory and pathological blocks need further work.
 - Tier 1 excludes Mermaid and D2 unless FEAS-005 proves a safe offline path.
