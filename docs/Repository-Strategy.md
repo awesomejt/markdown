@@ -5,6 +5,8 @@
 Use **one monorepo for the native application family**, while keeping the
 existing `markdown-viewer` web repository separate.
 
+**Decision status:** accepted by the owner on 2026-10-24 (D-004).
+
 The monorepo shares requirements, semantic contracts, fixture corpora,
 benchmarks, version policy, release metadata, and any proven portable core. It
 does **not** imply a shared UI toolkit. Windows, macOS, Linux, and iOS/iPadOS

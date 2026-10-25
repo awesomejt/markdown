@@ -10,6 +10,8 @@ throwaway prototypes under `spikes/` are expected.
 
 ### Requirements and feasibility
 
+- **DEC-001 — Accept native monorepo strategy.** Record owner approval of D-004
+  and align durable project documentation. Completed 2026-10-24.
 - **REQ-001 — Rebaseline requirements and repository strategy.** Extract the
   web project's functionality into phased native requirements; make Windows,
   macOS, and Linux first-class; document iOS constraints; recommend repository

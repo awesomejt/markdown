@@ -35,10 +35,10 @@ Each platform is optimized independently and may have documented capability
 differences. Requirements and functionality from `markdown-viewer` are the
 starting point; existing implementation code is not a reuse requirement.
 
-## Proposed D-004 — One native monorepo
+## D-004 — One native monorepo
 
 **Date:** 2026-10-24  
-**Status:** proposed; pending owner confirmation
+**Status:** accepted by owner
 
 Keep the native platform family in one repository with independent application
 trees for Windows, macOS, Linux, and iOS/iPadOS. Share requirements, semantic

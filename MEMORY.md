@@ -9,7 +9,7 @@ design belong in `docs/` or `agents/`; runtime transcripts do not belong here.
 - Product: local-first, read-only native Markdown reader.
 - First platforms: Windows, macOS, and Linux desktop applications.
 - Later platforms: iOS and iPadOS after the desktop contracts are stable.
-- Proposed organization: one native monorepo with independent native UIs,
+- Organization: one native monorepo with independent native UIs,
   shared specifications/fixtures/benchmarks, and a candidate portable core.
 - Status: planning baseline created; feasibility tasks are ready.
 - Blockers: none. Several design choices intentionally remain gated by spikes.
@@ -76,3 +76,9 @@ Reframed the project around extracted requirements and performance rather than
 code reuse. Windows, macOS, and Linux are first-class desktop targets; iOS and
 iPadOS follow. Recommended one monorepo with platform-native UIs, shared
 contracts and fixtures, and documented capability differences.
+
+### 2026-10-24 — monorepo accepted
+
+The owner accepted D-004: the native Windows, macOS, Linux, and later iOS/
+iPadOS applications will live in one repository while keeping their UI,
+platform adapters, builds, and release artifacts independent.
