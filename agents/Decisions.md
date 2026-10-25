@@ -84,6 +84,9 @@ The following are not yet accepted:
 - GTK 4/gtk-rs for the Linux shell, with a virtualized semantic-block document
   renderer rather than one unbounded `GtkTextView`.
 - Windows and macOS framework/language choices after their measured spikes.
+- WinUI 3 shell with bounded read-only rich edit and a virtualized semantic
+  block strategy to be proven for Windows; FEAS-003 does not select between
+  C# and C++/WinRT or accept cross-row selection/accessibility limitations.
 - AppKit/TextKit 2 as the lead macOS document-surface candidate following
   FEAS-004; selective SwiftUI hosting remains available, while synchronous
   model construction, memory and pathological blocks need further work.

@@ -99,7 +99,10 @@ fixtures remain consistent.
 Likely platform surfaces:
 
 - Windows: WinUI controls plus lower-level Windows text/rendering APIs where
-  profiling requires them.
+  profiling requires them. FEAS-003 supports a WinUI shell, bounded read-only
+  rich edit and virtualized-block investigation; a monolithic RichTextBlock is
+  not the universal large-document strategy. See the
+  [Windows evaluation](Windows-Rendering-Evaluation.md) for measured limits.
 - macOS: AppKit document/text/list primitives, with SwiftUI for suitable shell
   and settings surfaces.
 - Linux: GTK 4/libadwaita widgets and native text/layout facilities.

@@ -1,0 +1,4263 @@
+version: 1
+task: FEAS-003
+date: '2026-10-25'
+status: evaluated
+source_baseline: 016710638744a8c1fef55cbef5d5219f54f6cb3f
+production_baseline_accepted: false
+host:
+  os: Windows 11 Pro 26H2
+  build: '26300.9711'
+  architecture: x64
+  cpu: AMD Ryzen 9 5950X
+  physical_cores: 16
+  logical_processors: 32
+  ram_bytes: 68640882688
+  gpu: NVIDIA GeForce RTX 4080
+  gpu_driver: 32.0.16.1088
+  primary_mode_wmi:
+    width_px: 3840
+    height_px: 2160
+    refresh_hz: 30
+toolchain:
+  dotnet_sdk: 10.0.402
+  dotnet_runtime: 10.0.13
+  visual_studio: 2026 18.11.1
+  msvc: 14.51.36231
+  windows_sdk: 10.0.26100
+  windows_app_sdk: 2.5.1
+  sdk_buildtools: 10.0.28000.2705
+  markdig: 1.5.0
+  cppwinrt: 3.0.260818.1
+  cppwinrt_nupkg_sha256: a8993608ae9263a8288e1a1d9ee2684a5632f4acc59e1e89ddd86b3b889a7367
+corpus_origin:
+  repository: markdown-viewer
+  commit: 0ab59c0f7bf91730bf9683b47a5eb2658f331b00
+  license: Apache-2.0
+primary_comparison:
+  platform: Windows-11-10.0.26300-SP0
+  method: fresh process per trial, serial
+  timeout_seconds: 45
+  trials:
+  - surface: richtext
+    case: gfm-tour
+    trial: 1
+    exit_code: 0
+    timed_out: false
+    launch_to_first_checkpoint_ms: 850.4141000003074
+    launch_to_exit_ms: 1676.1130000004414
+    metrics:
+      host: C# WinUI
+      surface: richtext
+      input_name: gfm-tour.md
+      runtime: .NET 10.0.13
+      os: Microsoft Windows NT 10.0.26300.0
+      entry_to_window_ctor_ms: 137.7816
+      source_bytes: 2547
+      source_sha256: ca08e4d20c830884ff36bed95f1e8284a0fd1b1c43919eabc865646f79d733f1
+      read_ms: 1.5796
+      parse_ms: 108.6291
+      blocks: 70
+      text_utf16: 1992
+      adapter_ms: 2.0589
+      surface_setup_ms: 13.2792
+      entry_to_surface_loaded_ms: 392.6075
+      entry_to_render_callback_ms: 408.526
+      dpi_scale: 1.5
+      client_width_dip: 718.6666870117188
+      client_height_dip: 529.3333129882812
+      visual_nodes_initial: 56
+      realized_rows_initial: 0
+      uia_peer: ScrollViewer
+      working_set_bytes: 148496384
+      peak_working_set_bytes: 148496384
+      private_bytes: 104648704
+      managed_heap_bytes: 2500536
+      process_elapsed_ms: 1384.0537
+      selection_supported: true
+      selection_matches: true
+      selected_utf16: 2061
+      expected_utf16: 1992
+      select_all_ms: 1.1838
+      end_request_ms: 0.3749
+      end_reached: true
+      scrollable_height: 2116.6665954589844
+      end_offset: 2116.6665954589844
+      realized_rows_end: 0
+      navigation_timer_delay_max_ms: 17.1682
+      navigation_timer_delay_median_ms: 16.587
+  - surface: richtext
+    case: unsafe-html
+    trial: 1
+    exit_code: 0
+    timed_out: false
+    launch_to_first_checkpoint_ms: 716.1996000004365
+    launch_to_exit_ms: 1522.298600000795
+    metrics:
+      host: C# WinUI
+      surface: richtext
+      input_name: unsafe-html.md
+      runtime: .NET 10.0.13
+      os: Microsoft Windows NT 10.0.26300.0
+      entry_to_window_ctor_ms: 139.7872
+      source_bytes: 234
+      source_sha256: 19ab9ffc16d4a4eca0c022827c13e2adc8c068c28e4d60453041624f0f1d3017
+      read_ms: 1.3714
+      parse_ms: 78.0519
+      blocks: 9
+      text_utf16: 200
+      adapter_ms: 1.4098
+      surface_setup_ms: 10.4932
+      entry_to_surface_loaded_ms: 342.2947
+      entry_to_render_callback_ms: 351.997
+      dpi_scale: 1.5
+      client_width_dip: 718.6666870117188
+      client_height_dip: 529.3333129882812
+      visual_nodes_initial: 55
+      realized_rows_initial: 0
+      uia_peer: ScrollViewer
+      working_set_bytes: 146333696
+      peak_working_set_bytes: 146333696
+      private_bytes: 103866368
+      managed_heap_bytes: 2318112
+      process_elapsed_ms: 1329.5293
+      selection_supported: true
+      selection_matches: true
+      selected_utf16: 208
+      expected_utf16: 200
+      select_all_ms: 0.8122
+      end_request_ms: 0.3168
+      end_reached: true
+      scrollable_height: 0
+      end_offset: 0
+      realized_rows_end: 0
+      navigation_timer_delay_max_ms: 17.0306
+      navigation_timer_delay_median_ms: 16.068
+  - surface: richtext
+    case: code-fences
+    trial: 1
+    exit_code: 0
+    timed_out: false
+    launch_to_first_checkpoint_ms: 708.8747999996485
+    launch_to_exit_ms: 1517.3530000001847
+    metrics:
+      host: C# WinUI
+      surface: richtext
+      input_name: code-fences.md
+      runtime: .NET 10.0.13
+      os: Microsoft Windows NT 10.0.26300.0
+      entry_to_window_ctor_ms: 138.733
+      source_bytes: 315
+      source_sha256: 9c08dc12c7e36f5a7157ecf96752ca3b741fd85cee952b254716ad9178d18848
+      read_ms: 1.4255
+      parse_ms: 75.91
+      blocks: 9
+      text_utf16: 260
+      adapter_ms: 2.0437
+      surface_setup_ms: 12.4243
+      entry_to_surface_loaded_ms: 342.2432
+      entry_to_render_callback_ms: 353.131
+      dpi_scale: 1.5
+      client_width_dip: 718.6666870117188
+      client_height_dip: 529.3333129882812
+      visual_nodes_initial: 55
+      realized_rows_initial: 0
+      uia_peer: ScrollViewer
+      working_set_bytes: 146497536
+      peak_working_set_bytes: 146497536
+      private_bytes: 103395328
+      managed_heap_bytes: 2328584
+      process_elapsed_ms: 1332.9214
+      selection_supported: true
+      selection_matches: true
+      selected_utf16: 268
+      expected_utf16: 260
+      select_all_ms: 0.8968
+      end_request_ms: 0.3293
+      end_reached: true
+      scrollable_height: 0
+      end_offset: 0
+      realized_rows_end: 0
+      navigation_timer_delay_max_ms: 17.0821
+      navigation_timer_delay_median_ms: 16.2506
+  - surface: richtext
+    case: math-alerts
+    trial: 1
+    exit_code: 0
+    timed_out: false
+    launch_to_first_checkpoint_ms: 729.5336999995925
+    launch_to_exit_ms: 1537.569899999653
+    metrics:
+      host: C# WinUI
+      surface: richtext
+      input_name: math-alerts.md
+      runtime: .NET 10.0.13
+      os: Microsoft Windows NT 10.0.26300.0
+      entry_to_window_ctor_ms: 150.1738
+      source_bytes: 258
+      source_sha256: 1dbc8e31e6f0d2903c33edecbafeee0c1edfc336e8eb01f3b02466a7e3b68bfe
+      read_ms: 1.4358
+      parse_ms: 83.8388
+      blocks: 8
+      text_utf16: 162
+      adapter_ms: 1.4476
+      surface_setup_ms: 12.536
+      entry_to_surface_loaded_ms: 360.507
+      entry_to_render_callback_ms: 371.166
+      dpi_scale: 1.5
+      client_width_dip: 718.6666870117188
+      client_height_dip: 529.3333129882812
+      visual_nodes_initial: 55
+      realized_rows_initial: 0
+      uia_peer: ScrollViewer
+      working_set_bytes: 146046976
+      peak_working_set_bytes: 146046976
+      private_bytes: 103174144
+      managed_heap_bytes: 2221600
+      process_elapsed_ms: 1346.7085
+      selection_supported: true
+      selection_matches: true
+      selected_utf16: 169
+      expected_utf16: 162
+      select_all_ms: 0.8715
+      end_request_ms: 0.3161
+      end_reached: true
+      scrollable_height: 0
+      end_offset: 0
+      realized_rows_end: 0
+      navigation_timer_delay_max_ms: 16.8797
+      navigation_timer_delay_median_ms: 16.4866
+  - surface: richtext
+    case: inline-diagrams
+    trial: 1
+    exit_code: 0
+    timed_out: false
+    launch_to_first_checkpoint_ms: 720.5832999998165
+    launch_to_exit_ms: 1525.4152999996222
+    metrics:
+      host: C# WinUI
+      surface: richtext
+      input_name: inline-diagrams.md
+      runtime: .NET 10.0.13
+      os: Microsoft Windows NT 10.0.26300.0
+      entry_to_window_ctor_ms: 140.4474
+      source_bytes: 370
+      source_sha256: ab3d733ad731d90f09a94dfec7d4e925405826d50b796387681490adf8fa81b0
+      read_ms: 1.3818
+      parse_ms: 77.4628
+      blocks: 15
+      text_utf16: 284
+      adapter_ms: 1.4464
+      surface_setup_ms: 12.1715
+      entry_to_surface_loaded_ms: 347.7215
+      entry_to_render_callback_ms: 359.251
+      dpi_scale: 1.5
+      client_width_dip: 718.6666870117188
+      client_height_dip: 529.3333129882812
+      visual_nodes_initial: 56
+      realized_rows_initial: 0
+      uia_peer: ScrollViewer
+      working_set_bytes: 146989056
+      peak_working_set_bytes: 146989056
+      private_bytes: 102572032
+      managed_heap_bytes: 2295856
+      process_elapsed_ms: 1337.4612
+      selection_supported: true
+      selection_matches: true
+      selected_utf16: 298
+      expected_utf16: 284
+      select_all_ms: 0.9041
+      end_request_ms: 0.3677
+      end_reached: true
+      scrollable_height: 84.00003051757812
+      end_offset: 84.00003051757812
+      realized_rows_end: 0
+      navigation_timer_delay_max_ms: 16.5786
+      navigation_timer_delay_median_ms: 16.2785
+  - surface: richtext
+    case: voice-parity
+    trial: 1
+    exit_code: 0
+    timed_out: false
+    launch_to_first_checkpoint_ms: 708.0316000001403
+    launch_to_exit_ms: 1514.9148999998943
+    metrics:
+      host: C# WinUI
+      surface: richtext
+      input_name: voice-parity.md
+      runtime: .NET 10.0.13
+      os: Microsoft Windows NT 10.0.26300.0
+      entry_to_window_ctor_ms: 139.7793
+      source_bytes: 980
+      source_sha256: 6a7391b5d77138f8177b0c46f916cc62a3b627a7146a73bb5a9dc1713b94e781
+      read_ms: 1.3971
+      parse_ms: 79.9869
+      blocks: 23
+      text_utf16: 857
+      adapter_ms: 1.466
+      surface_setup_ms: 10.5365
+      entry_to_surface_loaded_ms: 341.6161
+      entry_to_render_callback_ms: 352.718
+      dpi_scale: 1.5
+      client_width_dip: 718.6666870117188
+      client_height_dip: 529.3333129882812
+      visual_nodes_initial: 56
+      realized_rows_initial: 0
+      uia_peer: ScrollViewer
+      working_set_bytes: 147185664
+      peak_working_set_bytes: 147185664
+      private_bytes: 103182336
+      managed_heap_bytes: 2328304
+      process_elapsed_ms: 1329.1327
+      selection_supported: true
+      selection_matches: true
+      selected_utf16: 879
+      expected_utf16: 857
+      select_all_ms: 0.9733
+      end_request_ms: 0.3617
+      end_reached: true
+      scrollable_height: 349.3333435058594
+      end_offset: 349.3333435058594
+      realized_rows_end: 0
+      navigation_timer_delay_max_ms: 17.2006
+      navigation_timer_delay_median_ms: 16.5436
+  - surface: richtext
+    case: unicode-filename
+    trial: 1
+    exit_code: 0
+    timed_out: false
+    launch_to_first_checkpoint_ms: 709.0502999999444
+    launch_to_exit_ms: 1495.6237000005785
+    metrics:
+      host: C# WinUI
+      surface: richtext
+      input_name: unicode-filename.md
+      runtime: .NET 10.0.13
+      os: Microsoft Windows NT 10.0.26300.0
+      entry_to_window_ctor_ms: 147.3034
+      source_bytes: 37
+      source_sha256: e84cc3de421115e7ae9cffe6902cc026353597ee48d4337d3c05cf47c2b91f23
+      read_ms: 1.44
+      parse_ms: 64.2414
+      blocks: 2
+      text_utf16: 33
+      adapter_ms: 1.4492
+      surface_setup_ms: 9.9387
+      entry_to_surface_loaded_ms: 326.9455
+      entry_to_render_callback_ms: 336.379
+      dpi_scale: 1.5
+      client_width_dip: 718.6666870117188
+      client_height_dip: 529.3333129882812
+      visual_nodes_initial: 55
+      realized_rows_initial: 0
+      uia_peer: ScrollViewer
+      working_set_bytes: 146046976
+      peak_working_set_bytes: 146046976
+      private_bytes: 103477248
+      managed_heap_bytes: 2311136
+      process_elapsed_ms: 1317.5195
+      selection_supported: true
+      selection_matches: true
+      selected_utf16: 34
+      expected_utf16: 33
+      select_all_ms: 0.7491
+      end_request_ms: 0.2974
+      end_reached: true
+      scrollable_height: 0
+      end_offset: 0
+      realized_rows_end: 0
+      navigation_timer_delay_max_ms: 16.9294
+      navigation_timer_delay_median_ms: 16.4085
+  - surface: richtext
+    case: nfd-filename
+    trial: 1
+    exit_code: 0
+    timed_out: false
+    launch_to_first_checkpoint_ms: 696.5504999998302
+    launch_to_exit_ms: 1504.498500000409
+    metrics:
+      host: C# WinUI
+      surface: richtext
+      input_name: nfd-filename.md
+      runtime: .NET 10.0.13
+      os: Microsoft Windows NT 10.0.26300.0
+      entry_to_window_ctor_ms: 135.908
+      source_bytes: 58
+      source_sha256: 582ffa0bdf7af54427f8756180b4b7f3a0d98567ad1bbbff4d83344105ba5626
+      read_ms: 1.3956
+      parse_ms: 63.8754
+      blocks: 2
+      text_utf16: 54
+      adapter_ms: 1.4161
+      surface_setup_ms: 9.9245
+      entry_to_surface_loaded_ms: 325.2877
+      entry_to_render_callback_ms: 334.214
+      dpi_scale: 1.5
+      client_width_dip: 718.6666870117188
+      client_height_dip: 529.3333129882812
+      visual_nodes_initial: 55
+      realized_rows_initial: 0
+      uia_peer: ScrollViewer
+      working_set_bytes: 146038784
+      peak_working_set_bytes: 146038784
+      private_bytes: 103686144
+      managed_heap_bytes: 2311632
+      process_elapsed_ms: 1311.3244
+      selection_supported: true
+      selection_matches: true
+      selected_utf16: 55
+      expected_utf16: 54
+      select_all_ms: 0.7473
+      end_request_ms: 0.3699
+      end_reached: true
+      scrollable_height: 0
+      end_offset: 0
+      realized_rows_end: 0
+      navigation_timer_delay_max_ms: 16.974
+      navigation_timer_delay_median_ms: 16.3731
+  - surface: richtext
+    case: prose-1mib
+    trial: 1
+    exit_code: 1
+    timed_out: true
+    launch_to_first_checkpoint_ms: 6207.775099999708
+    launch_to_exit_ms: 45298.63690000002
+    metrics:
+      host: C# WinUI
+      surface: richtext
+      input_name: prose-1mib.md
+      runtime: .NET 10.0.13
+      os: Microsoft Windows NT 10.0.26300.0
+      entry_to_window_ctor_ms: 145.7536
+      source_bytes: 1048576
+      source_sha256: 2f28d767468ec3980c286fbf983c732a00601717b9f7343a92ff0e4f4056581e
+      read_ms: 3.5122
+      parse_ms: 870.7817
+      blocks: 24272
+      text_utf16: 961193
+      adapter_ms: 21.1417
+      surface_setup_ms: 1019.1156
+      entry_to_surface_loaded_ms: 2167.9062
+      entry_to_render_callback_ms: 3611.443
+      dpi_scale: 1.5
+      client_width_dip: 718.6666870117188
+      client_height_dip: 529.3333129882812
+      visual_nodes_initial: 56
+      realized_rows_initial: 0
+      uia_peer: ScrollViewer
+      working_set_bytes: 684511232
+      peak_working_set_bytes: 748048384
+      private_bytes: 651030528
+      managed_heap_bytes: 67405544
+      process_elapsed_ms: 16237.2694
+      selection_supported: true
+      selection_matches: true
+      selected_utf16: 985466
+      expected_utf16: 961193
+      select_all_ms: 1049.4855
+      end_request_ms: 0.385
+      end_reached: true
+      scrollable_height: 852124.0208435059
+      end_offset: 852124.0208435059
+      realized_rows_end: 0
+  - surface: richtext
+    case: prose-1mib
+    trial: 2
+    exit_code: 1
+    timed_out: true
+    launch_to_first_checkpoint_ms: 6042.061299999659
+    launch_to_exit_ms: 45300.89029999999
+    metrics:
+      host: C# WinUI
+      surface: richtext
+      input_name: prose-1mib.md
+      runtime: .NET 10.0.13
+      os: Microsoft Windows NT 10.0.26300.0
+      entry_to_window_ctor_ms: 140.5149
+      source_bytes: 1048576
+      source_sha256: 2f28d767468ec3980c286fbf983c732a00601717b9f7343a92ff0e4f4056581e
+      read_ms: 2.8204
+      parse_ms: 856.9341
+      blocks: 24272
+      text_utf16: 961193
+      adapter_ms: 19.1909
+      surface_setup_ms: 1001.1249
+      entry_to_surface_loaded_ms: 2139.7179
+      entry_to_render_callback_ms: 3526.338
+      dpi_scale: 1.5
+      client_width_dip: 718.6666870117188
+      client_height_dip: 529.3333129882812
+      visual_nodes_initial: 56
+      realized_rows_initial: 0
+      uia_peer: ScrollViewer
+      working_set_bytes: 687128576
+      peak_working_set_bytes: 750043136
+      private_bytes: 652136448
+      managed_heap_bytes: 67264824
+      process_elapsed_ms: 15638.1051
+      selection_supported: true
+      selection_matches: true
+      selected_utf16: 985466
+      expected_utf16: 961193
+      select_all_ms: 997.8091
+      end_request_ms: 0.3827
+      end_reached: true
+      scrollable_height: 852124.0208435059
+      end_offset: 852124.0208435059
+      realized_rows_end: 0
+  - surface: richtext
+    case: prose-1mib
+    trial: 3
+    exit_code: 1
+    timed_out: true
+    launch_to_first_checkpoint_ms: 6826.75670000026
+    launch_to_exit_ms: 45278.761500000655
+    metrics:
+      host: C# WinUI
+      surface: richtext
+      input_name: prose-1mib.md
+      runtime: .NET 10.0.13
+      os: Microsoft Windows NT 10.0.26300.0
+      entry_to_window_ctor_ms: 143.7598
+      source_bytes: 1048576
+      source_sha256: 2f28d767468ec3980c286fbf983c732a00601717b9f7343a92ff0e4f4056581e
+      read_ms: 2.953
+      parse_ms: 925.2359
+      blocks: 24272
+      text_utf16: 961193
+      adapter_ms: 20.6843
+      surface_setup_ms: 1098.6689
+      entry_to_surface_loaded_ms: 2315.9107
+      entry_to_render_callback_ms: 3917.067
+      dpi_scale: 1.5
+      client_width_dip: 718.6666870117188
+      client_height_dip: 529.3333129882812
+      visual_nodes_initial: 56
+      realized_rows_initial: 0
+      uia_peer: ScrollViewer
+      working_set_bytes: 686469120
+      peak_working_set_bytes: 747569152
+      private_bytes: 652705792
+      managed_heap_bytes: 67268616
+      process_elapsed_ms: 16541.4372
+      selection_supported: true
+      selection_matches: true
+      selected_utf16: 985466
+      expected_utf16: 961193
+      select_all_ms: 1078.7409
+      end_request_ms: 0.3603
+      end_reached: true
+      scrollable_height: 852124.0208435059
+      end_offset: 852124.0208435059
+      realized_rows_end: 0
+  - surface: richtext
+    case: prose-5mib
+    trial: 1
+    exit_code: 1
+    timed_out: true
+    launch_to_first_checkpoint_ms: null
+    launch_to_exit_ms: 45384.4038999996
+  - surface: richtext
+    case: prose-5mib
+    trial: 2
+    exit_code: 1
+    timed_out: true
+    launch_to_first_checkpoint_ms: null
+    launch_to_exit_ms: 45422.208599999976
+  - surface: richtext
+    case: prose-5mib
+    trial: 3
+    exit_code: 1
+    timed_out: true
+    launch_to_first_checkpoint_ms: null
+    launch_to_exit_ms: 45404.81960000034
+  - surface: richtext
+    case: delimiter-storm-1mib
+    trial: 1
+    exit_code: 1
+    timed_out: true
+    launch_to_first_checkpoint_ms: 8943.209400000342
+    launch_to_exit_ms: 45247.2000000007
+    metrics:
+      host: C# WinUI
+      surface: richtext
+      input_name: delimiter-storm-1mib.md
+      runtime: .NET 10.0.13
+      os: Microsoft Windows NT 10.0.26300.0
+      entry_to_window_ctor_ms: 148.7242
+      source_bytes: 1048576
+      source_sha256: d0100b5e90ac68662cff1f76741bc619dbecee78c8174096aa93695f3520a757
+      read_ms: 8.8817
+      parse_ms: 4010.3946
+      blocks: 24673
+      text_utf16: 949886
+      adapter_ms: 32.6471
+      surface_setup_ms: 1131.1666
+      entry_to_surface_loaded_ms: 5453.4902
+      entry_to_render_callback_ms: 6831.548
+      dpi_scale: 1.5
+      client_width_dip: 718.6666870117188
+      client_height_dip: 529.3333129882812
+      visual_nodes_initial: 56
+      realized_rows_initial: 0
+      uia_peer: ScrollViewer
+      working_set_bytes: 682328064
+      peak_working_set_bytes: 725512192
+      private_bytes: 648982528
+      managed_heap_bytes: 75408600
+      process_elapsed_ms: 16393.5692
+      selection_supported: true
+      selection_matches: true
+      selected_utf16: 974558
+      expected_utf16: 949886
+      select_all_ms: 1035.0806
+      end_request_ms: 0.3689
+      end_reached: true
+      scrollable_height: 853292.0208435059
+      end_offset: 853292.0208435059
+      realized_rows_end: 0
+  - surface: richtext
+    case: delimiter-storm-1mib
+    trial: 2
+    exit_code: 1
+    timed_out: true
+    launch_to_first_checkpoint_ms: 8937.498999999661
+    launch_to_exit_ms: 45233.170399999835
+    metrics:
+      host: C# WinUI
+      surface: richtext
+      input_name: delimiter-storm-1mib.md
+      runtime: .NET 10.0.13
+      os: Microsoft Windows NT 10.0.26300.0
+      entry_to_window_ctor_ms: 137.7244
+      source_bytes: 1048576
+      source_sha256: d0100b5e90ac68662cff1f76741bc619dbecee78c8174096aa93695f3520a757
+      read_ms: 2.576
+      parse_ms: 4200.1851
+      blocks: 24673
+      text_utf16: 949886
+      adapter_ms: 33.6073
+      surface_setup_ms: 1007.8631
+      entry_to_surface_loaded_ms: 5500.3294
+      entry_to_render_callback_ms: 6907.782
+      dpi_scale: 1.5
+      client_width_dip: 718.6666870117188
+      client_height_dip: 529.3333129882812
+      visual_nodes_initial: 56
+      realized_rows_initial: 0
+      uia_peer: ScrollViewer
+      working_set_bytes: 679653376
+      peak_working_set_bytes: 726773760
+      private_bytes: 648032256
+      managed_heap_bytes: 75924720
+      process_elapsed_ms: 16868.19
+      selection_supported: true
+      selection_matches: true
+      selected_utf16: 974558
+      expected_utf16: 949886
+      select_all_ms: 1088.7294
+      end_request_ms: 0.4834
+      end_reached: true
+      scrollable_height: 853292.0208435059
+      end_offset: 853292.0208435059
+      realized_rows_end: 0
+  - surface: richtext
+    case: delimiter-storm-1mib
+    trial: 3
+    exit_code: 1
+    timed_out: true
+    launch_to_first_checkpoint_ms: 8819.915600000058
+    launch_to_exit_ms: 45223.95740000047
+    metrics:
+      host: C# WinUI
+      surface: richtext
+      input_name: delimiter-storm-1mib.md
+      runtime: .NET 10.0.13
+      os: Microsoft Windows NT 10.0.26300.0
+      entry_to_window_ctor_ms: 139.9202
+      source_bytes: 1048576
+      source_sha256: d0100b5e90ac68662cff1f76741bc619dbecee78c8174096aa93695f3520a757
+      read_ms: 2.4801
+      parse_ms: 4225.3623
+      blocks: 24673
+      text_utf16: 949886
+      adapter_ms: 33.5168
+      surface_setup_ms: 1009.5149
+      entry_to_surface_loaded_ms: 5521.3385
+      entry_to_render_callback_ms: 6789.244
+      dpi_scale: 1.5
+      client_width_dip: 718.6666870117188
+      client_height_dip: 529.3333129882812
+      visual_nodes_initial: 56
+      realized_rows_initial: 0
+      uia_peer: ScrollViewer
+      working_set_bytes: 681807872
+      peak_working_set_bytes: 727064576
+      private_bytes: 649244672
+      managed_heap_bytes: 75789192
+      process_elapsed_ms: 16566.7904
+      selection_supported: true
+      selection_matches: true
+      selected_utf16: 974558
+      expected_utf16: 949886
+      select_all_ms: 1072.4813
+      end_request_ms: 0.602
+      end_reached: true
+      scrollable_height: 853292.0208435059
+      end_offset: 853292.0208435059
+      realized_rows_end: 0
+  - surface: richtext
+    case: long-lines-1mib
+    trial: 1
+    exit_code: 0
+    timed_out: false
+    launch_to_first_checkpoint_ms: 4950.799399999596
+    launch_to_exit_ms: 13045.214699999633
+    metrics:
+      host: C# WinUI
+      surface: richtext
+      input_name: long-lines-1mib.md
+      runtime: .NET 10.0.13
+      os: Microsoft Windows NT 10.0.26300.0
+      entry_to_window_ctor_ms: 147.4141
+      source_bytes: 1048576
+      source_sha256: 457e4d3a4cc3e1c5afb07d2bc36afae173bb19839a7047450536459318b6cf77
+      read_ms: 8.5702
+      parse_ms: 76.3055
+      blocks: 2
+      text_utf16: 1048573
+      adapter_ms: 3.8123
+      surface_setup_ms: 10.0518
+      entry_to_surface_loaded_ms: 363.466
+      entry_to_render_callback_ms: 2693.607
+      dpi_scale: 1.5
+      client_width_dip: 718.6666870117188
+      client_height_dip: 529.3333129882812
+      visual_nodes_initial: 56
+      realized_rows_initial: 0
+      uia_peer: ScrollViewer
+      working_set_bytes: 287920128
+      peak_working_set_bytes: 311902208
+      private_bytes: 245518336
+      managed_heap_bytes: 19246232
+      process_elapsed_ms: 12811.0029
+      selection_supported: true
+      selection_matches: true
+      selected_utf16: 1048574
+      expected_utf16: 1048573
+      select_all_ms: 4.011
+      end_request_ms: 0.3641
+      end_reached: true
+      scrollable_height: 239675.33334350586
+      end_offset: 239675.33334350586
+      realized_rows_end: 0
+      navigation_timer_delay_max_ms: 509.3992
+      navigation_timer_delay_median_ms: 464.6711
+  - surface: richtext
+    case: long-lines-1mib
+    trial: 2
+    exit_code: 0
+    timed_out: false
+    launch_to_first_checkpoint_ms: 4800.625400000172
+    launch_to_exit_ms: 12837.093999999524
+    metrics:
+      host: C# WinUI
+      surface: richtext
+      input_name: long-lines-1mib.md
+      runtime: .NET 10.0.13
+      os: Microsoft Windows NT 10.0.26300.0
+      entry_to_window_ctor_ms: 146.3473
+      source_bytes: 1048576
+      source_sha256: 457e4d3a4cc3e1c5afb07d2bc36afae173bb19839a7047450536459318b6cf77
+      read_ms: 2.4295
+      parse_ms: 76.7641
+      blocks: 2
+      text_utf16: 1048573
+      adapter_ms: 3.9014
+      surface_setup_ms: 10.4184
+      entry_to_surface_loaded_ms: 343.9251
+      entry_to_render_callback_ms: 2599.14
+      dpi_scale: 1.5
+      client_width_dip: 718.6666870117188
+      client_height_dip: 529.3333129882812
+      visual_nodes_initial: 56
+      realized_rows_initial: 0
+      uia_peer: ScrollViewer
+      working_set_bytes: 287420416
+      peak_working_set_bytes: 311730176
+      private_bytes: 245628928
+      managed_heap_bytes: 19245448
+      process_elapsed_ms: 12593.0638
+      selection_supported: true
+      selection_matches: true
+      selected_utf16: 1048574
+      expected_utf16: 1048573
+      select_all_ms: 4.6252
+      end_request_ms: 0.3864
+      end_reached: true
+      scrollable_height: 239675.33334350586
+      end_offset: 239675.33334350586
+      realized_rows_end: 0
+      navigation_timer_delay_max_ms: 469.5033
+      navigation_timer_delay_median_ms: 464.1585
+  - surface: richtext
+    case: long-lines-1mib
+    trial: 3
+    exit_code: 0
+    timed_out: false
+    launch_to_first_checkpoint_ms: 5220.254400000158
+    launch_to_exit_ms: 13403.927399999702
+    metrics:
+      host: C# WinUI
+      surface: richtext
+      input_name: long-lines-1mib.md
+      runtime: .NET 10.0.13
+      os: Microsoft Windows NT 10.0.26300.0
+      entry_to_window_ctor_ms: 145.2993
+      source_bytes: 1048576
+      source_sha256: 457e4d3a4cc3e1c5afb07d2bc36afae173bb19839a7047450536459318b6cf77
+      read_ms: 2.3794
+      parse_ms: 88.8797
+      blocks: 2
+      text_utf16: 1048573
+      adapter_ms: 5.0189
+      surface_setup_ms: 10.8203
+      entry_to_surface_loaded_ms: 378.1638
+      entry_to_render_callback_ms: 2911.027
+      dpi_scale: 1.5
+      client_width_dip: 718.6666870117188
+      client_height_dip: 529.3333129882812
+      visual_nodes_initial: 56
+      realized_rows_initial: 0
+      uia_peer: ScrollViewer
+      working_set_bytes: 287395840
+      peak_working_set_bytes: 311902208
+      private_bytes: 245899264
+      managed_heap_bytes: 19229272
+      process_elapsed_ms: 13177.651
+      selection_supported: true
+      selection_matches: true
+      selected_utf16: 1048574
+      expected_utf16: 1048573
+      select_all_ms: 4.1823
+      end_request_ms: 0.364
+      end_reached: true
+      scrollable_height: 239675.33334350586
+      end_offset: 239675.33334350586
+      realized_rows_end: 0
+      navigation_timer_delay_max_ms: 491.171
+      navigation_timer_delay_median_ms: 465.5147
+  - surface: richedit
+    case: gfm-tour
+    trial: 1
+    exit_code: 0
+    timed_out: false
+    launch_to_first_checkpoint_ms: 784.3462000000727
+    launch_to_exit_ms: 1613.6080000005677
+    metrics:
+      host: C# WinUI
+      surface: richedit
+      input_name: gfm-tour.md
+      runtime: .NET 10.0.13
+      os: Microsoft Windows NT 10.0.26300.0
+      entry_to_window_ctor_ms: 142.5891
+      source_bytes: 2547
+      source_sha256: ca08e4d20c830884ff36bed95f1e8284a0fd1b1c43919eabc865646f79d733f1
+      read_ms: 1.5274
+      parse_ms: 110.3391
+      blocks: 70
+      text_utf16: 1992
+      adapter_ms: 1.7168
+      surface_setup_ms: 16.9773
+      entry_to_surface_loaded_ms: 402.1043
+      entry_to_render_callback_ms: 417.81
+      dpi_scale: 1.5
+      client_width_dip: 718.6666870117188
+      client_height_dip: 529.3333129882812
+      visual_nodes_initial: 61
+      realized_rows_initial: 0
+      uia_peer: RichEditBox
+      working_set_bytes: 149590016
+      peak_working_set_bytes: 149590016
+      private_bytes: 104218624
+      managed_heap_bytes: 2639864
+      process_elapsed_ms: 1400.2945
+      selection_supported: true
+      selection_matches: true
+      selected_utf16: 1992
+      expected_utf16: 1992
+      select_all_ms: 2.3973
+      end_request_ms: 1.4798
+      end_reached: true
+      scrollable_height: null
+      end_offset: null
+      realized_rows_end: 0
+      navigation_timer_delay_max_ms: 17.5711
+      navigation_timer_delay_median_ms: 16.5835
+  - surface: richedit
+    case: unsafe-html
+    trial: 1
+    exit_code: 0
+    timed_out: false
+    launch_to_first_checkpoint_ms: 729.8985000006724
+    launch_to_exit_ms: 1556.1416999998983
+    metrics:
+      host: C# WinUI
+      surface: richedit
+      input_name: unsafe-html.md
+      runtime: .NET 10.0.13
+      os: Microsoft Windows NT 10.0.26300.0
+      entry_to_window_ctor_ms: 135.1389
+      source_bytes: 234
+      source_sha256: 19ab9ffc16d4a4eca0c022827c13e2adc8c068c28e4d60453041624f0f1d3017
+      read_ms: 1.9936
+      parse_ms: 87.4673
+      blocks: 9
+      text_utf16: 200
+      adapter_ms: 1.5847
+      surface_setup_ms: 15.8196
+      entry_to_surface_loaded_ms: 354.9043
+      entry_to_render_callback_ms: 361.242
+      dpi_scale: 1.5
+      client_width_dip: 718.6666870117188
+      client_height_dip: 529.3333129882812
+      visual_nodes_initial: 31
+      realized_rows_initial: 0
+      uia_peer: RichEditBox
+      working_set_bytes: 143638528
+      peak_working_set_bytes: 143638528
+      private_bytes: 102244352
+      managed_heap_bytes: 2271184
+      process_elapsed_ms: 1349.7347
+      selection_supported: true
+      selection_matches: true
+      selected_utf16: 200
+      expected_utf16: 200
+      select_all_ms: 2.1709
+      end_request_ms: 0.7087
+      end_reached: true
+      scrollable_height: null
+      end_offset: null
+      realized_rows_end: 0
+      navigation_timer_delay_max_ms: 16.7492
+      navigation_timer_delay_median_ms: 16.3096
+  - surface: richedit
+    case: code-fences
+    trial: 1
+    exit_code: 0
+    timed_out: false
+    launch_to_first_checkpoint_ms: 710.5120999995052
+    launch_to_exit_ms: 1523.5963999994055
+    metrics:
+      host: C# WinUI
+      surface: richedit
+      input_name: code-fences.md
+      runtime: .NET 10.0.13
+      os: Microsoft Windows NT 10.0.26300.0
+      entry_to_window_ctor_ms: 139.2193
+      source_bytes: 315
+      source_sha256: 9c08dc12c7e36f5a7157ecf96752ca3b741fd85cee952b254716ad9178d18848
+      read_ms: 1.3281
+      parse_ms: 72.4138
+      blocks: 9
+      text_utf16: 260
+      adapter_ms: 1.598
+      surface_setup_ms: 17.5079
+      entry_to_surface_loaded_ms: 343.7798
+      entry_to_render_callback_ms: 351.78
+      dpi_scale: 1.5
+      client_width_dip: 718.6666870117188
+      client_height_dip: 529.3333129882812
+      visual_nodes_initial: 31
+      realized_rows_initial: 0
+      uia_peer: RichEditBox
+      working_set_bytes: 143474688
+      peak_working_set_bytes: 143474688
+      private_bytes: 101462016
+      managed_heap_bytes: 2394080
+      process_elapsed_ms: 1334.8261
+      selection_supported: true
+      selection_matches: true
+      selected_utf16: 260
+      expected_utf16: 260
+      select_all_ms: 1.9689
+      end_request_ms: 0.7927
+      end_reached: true
+      scrollable_height: null
+      end_offset: null
+      realized_rows_end: 0
+      navigation_timer_delay_max_ms: 17.4842
+      navigation_timer_delay_median_ms: 16.523
+  - surface: richedit
+    case: math-alerts
+    trial: 1
+    exit_code: 0
+    timed_out: false
+    launch_to_first_checkpoint_ms: 706.8959999996878
+    launch_to_exit_ms: 1508.330799999385
+    metrics:
+      host: C# WinUI
+      surface: richedit
+      input_name: math-alerts.md
+      runtime: .NET 10.0.13
+      os: Microsoft Windows NT 10.0.26300.0
+      entry_to_window_ctor_ms: 149.0047
+      source_bytes: 258
+      source_sha256: 1dbc8e31e6f0d2903c33edecbafeee0c1edfc336e8eb01f3b02466a7e3b68bfe
+      read_ms: 1.5189
+      parse_ms: 75.1994
+      blocks: 8
+      text_utf16: 162
+      adapter_ms: 1.3677
+      surface_setup_ms: 14.7231
+      entry_to_surface_loaded_ms: 342.1589
+      entry_to_render_callback_ms: 348.031
+      dpi_scale: 1.5
+      client_width_dip: 718.6666870117188
+      client_height_dip: 529.3333129882812
+      visual_nodes_initial: 31
+      realized_rows_initial: 0
+      uia_peer: RichEditBox
+      working_set_bytes: 143421440
+      peak_working_set_bytes: 143421440
+      private_bytes: 102277120
+      managed_heap_bytes: 2300568
+      process_elapsed_ms: 1325.9662
+      selection_supported: true
+      selection_matches: true
+      selected_utf16: 162
+      expected_utf16: 162
+      select_all_ms: 1.9024
+      end_request_ms: 0.6364
+      end_reached: true
+      scrollable_height: null
+      end_offset: null
+      realized_rows_end: 0
+      navigation_timer_delay_max_ms: 16.9873
+      navigation_timer_delay_median_ms: 16.4759
+  - surface: richedit
+    case: inline-diagrams
+    trial: 1
+    exit_code: 0
+    timed_out: false
+    launch_to_first_checkpoint_ms: 698.3434000003399
+    launch_to_exit_ms: 1509.7144000001208
+    metrics:
+      host: C# WinUI
+      surface: richedit
+      input_name: inline-diagrams.md
+      runtime: .NET 10.0.13
+      os: Microsoft Windows NT 10.0.26300.0
+      entry_to_window_ctor_ms: 144.1416
+      source_bytes: 370
+      source_sha256: ab3d733ad731d90f09a94dfec7d4e925405826d50b796387681490adf8fa81b0
+      read_ms: 1.3302
+      parse_ms: 69.1535
+      blocks: 15
+      text_utf16: 284
+      adapter_ms: 1.5288
+      surface_setup_ms: 16.1917
+      entry_to_surface_loaded_ms: 335.549
+      entry_to_render_callback_ms: 341.73
+      dpi_scale: 1.5
+      client_width_dip: 718.6666870117188
+      client_height_dip: 529.3333129882812
+      visual_nodes_initial: 31
+      realized_rows_initial: 0
+      uia_peer: RichEditBox
+      working_set_bytes: 143511552
+      peak_working_set_bytes: 143511552
+      private_bytes: 101638144
+      managed_heap_bytes: 2336760
+      process_elapsed_ms: 1322.0916
+      selection_supported: true
+      selection_matches: true
+      selected_utf16: 284
+      expected_utf16: 284
+      select_all_ms: 2.102
+      end_request_ms: 0.6432
+      end_reached: true
+      scrollable_height: null
+      end_offset: null
+      realized_rows_end: 0
+      navigation_timer_delay_max_ms: 17.1049
+      navigation_timer_delay_median_ms: 16.4262
+  - surface: richedit
+    case: voice-parity
+    trial: 1
+    exit_code: 0
+    timed_out: false
+    launch_to_first_checkpoint_ms: 730.5251000007047
+    launch_to_exit_ms: 1543.6532000003353
+    metrics:
+      host: C# WinUI
+      surface: richedit
+      input_name: voice-parity.md
+      runtime: .NET 10.0.13
+      os: Microsoft Windows NT 10.0.26300.0
+      entry_to_window_ctor_ms: 148.1301
+      source_bytes: 980
+      source_sha256: 6a7391b5d77138f8177b0c46f916cc62a3b627a7146a73bb5a9dc1713b94e781
+      read_ms: 1.4427
+      parse_ms: 80.7459
+      blocks: 23
+      text_utf16: 857
+      adapter_ms: 1.4165
+      surface_setup_ms: 14.1388
+      entry_to_surface_loaded_ms: 352.895
+      entry_to_render_callback_ms: 364.148
+      dpi_scale: 1.5
+      client_width_dip: 718.6666870117188
+      client_height_dip: 529.3333129882812
+      visual_nodes_initial: 61
+      realized_rows_initial: 0
+      uia_peer: RichEditBox
+      working_set_bytes: 149307392
+      peak_working_set_bytes: 149307392
+      private_bytes: 104742912
+      managed_heap_bytes: 2341904
+      process_elapsed_ms: 1345.3085
+      selection_supported: true
+      selection_matches: true
+      selected_utf16: 857
+      expected_utf16: 857
+      select_all_ms: 2.665
+      end_request_ms: 1.339
+      end_reached: true
+      scrollable_height: null
+      end_offset: null
+      realized_rows_end: 0
+      navigation_timer_delay_max_ms: 16.8396
+      navigation_timer_delay_median_ms: 16.5099
+  - surface: richedit
+    case: unicode-filename
+    trial: 1
+    exit_code: 0
+    timed_out: false
+    launch_to_first_checkpoint_ms: 697.2228999993604
+    launch_to_exit_ms: 1501.6564999996262
+    metrics:
+      host: C# WinUI
+      surface: richedit
+      input_name: unicode-filename.md
+      runtime: .NET 10.0.13
+      os: Microsoft Windows NT 10.0.26300.0
+      entry_to_window_ctor_ms: 141.4486
+      source_bytes: 37
+      source_sha256: e84cc3de421115e7ae9cffe6902cc026353597ee48d4337d3c05cf47c2b91f23
+      read_ms: 1.4526
+      parse_ms: 64.5234
+      blocks: 2
+      text_utf16: 33
+      adapter_ms: 1.3994
+      surface_setup_ms: 14.8839
+      entry_to_surface_loaded_ms: 331.2953
+      entry_to_render_callback_ms: 336.916
+      dpi_scale: 1.5
+      client_width_dip: 718.6666870117188
+      client_height_dip: 529.3333129882812
+      visual_nodes_initial: 31
+      realized_rows_initial: 0
+      uia_peer: RichEditBox
+      working_set_bytes: 142835712
+      peak_working_set_bytes: 142835712
+      private_bytes: 102518784
+      managed_heap_bytes: 2385592
+      process_elapsed_ms: 1316.2185
+      selection_supported: true
+      selection_matches: true
+      selected_utf16: 33
+      expected_utf16: 33
+      select_all_ms: 1.865
+      end_request_ms: 0.6824
+      end_reached: true
+      scrollable_height: null
+      end_offset: null
+      realized_rows_end: 0
+      navigation_timer_delay_max_ms: 17.5901
+      navigation_timer_delay_median_ms: 16.384
+  - surface: richedit
+    case: nfd-filename
+    trial: 1
+    exit_code: 0
+    timed_out: false
+    launch_to_first_checkpoint_ms: 708.719199999905
+    launch_to_exit_ms: 1509.6292000007452
+    metrics:
+      host: C# WinUI
+      surface: richedit
+      input_name: nfd-filename.md
+      runtime: .NET 10.0.13
+      os: Microsoft Windows NT 10.0.26300.0
+      entry_to_window_ctor_ms: 139.1888
+      source_bytes: 58
+      source_sha256: 582ffa0bdf7af54427f8756180b4b7f3a0d98567ad1bbbff4d83344105ba5626
+      read_ms: 2.1737
+      parse_ms: 73.6747
+      blocks: 2
+      text_utf16: 54
+      adapter_ms: 1.4923
+      surface_setup_ms: 15.9114
+      entry_to_surface_loaded_ms: 342.6556
+      entry_to_render_callback_ms: 349.751
+      dpi_scale: 1.5
+      client_width_dip: 718.6666870117188
+      client_height_dip: 529.3333129882812
+      visual_nodes_initial: 31
+      realized_rows_initial: 0
+      uia_peer: RichEditBox
+      working_set_bytes: 142798848
+      peak_working_set_bytes: 142798848
+      private_bytes: 101363712
+      managed_heap_bytes: 2262648
+      process_elapsed_ms: 1330.4854
+      selection_supported: true
+      selection_matches: true
+      selected_utf16: 54
+      expected_utf16: 54
+      select_all_ms: 2.2057
+      end_request_ms: 0.6359
+      end_reached: true
+      scrollable_height: null
+      end_offset: null
+      realized_rows_end: 0
+      navigation_timer_delay_max_ms: 17.0526
+      navigation_timer_delay_median_ms: 16.5151
+  - surface: richedit
+    case: prose-1mib
+    trial: 1
+    exit_code: 0
+    timed_out: false
+    launch_to_first_checkpoint_ms: 4223.724600000423
+    launch_to_exit_ms: 5071.335700000418
+    metrics:
+      host: C# WinUI
+      surface: richedit
+      input_name: prose-1mib.md
+      runtime: .NET 10.0.13
+      os: Microsoft Windows NT 10.0.26300.0
+      entry_to_window_ctor_ms: 147.0033
+      source_bytes: 1048576
+      source_sha256: 2f28d767468ec3980c286fbf983c732a00601717b9f7343a92ff0e4f4056581e
+      read_ms: 2.8531
+      parse_ms: 901.3451
+      blocks: 24272
+      text_utf16: 961193
+      adapter_ms: 22.1717
+      surface_setup_ms: 1637.7489
+      entry_to_surface_loaded_ms: 2811.7672
+      entry_to_render_callback_ms: 4092.105
+      dpi_scale: 1.5
+      client_width_dip: 718.6666870117188
+      client_height_dip: 529.3333129882812
+      visual_nodes_initial: 61
+      realized_rows_initial: 0
+      uia_peer: RichEditBox
+      working_set_bytes: 221200384
+      peak_working_set_bytes: 221200384
+      private_bytes: 173596672
+      managed_heap_bytes: 47774624
+      process_elapsed_ms: 4854.4356
+      selection_supported: true
+      selection_matches: true
+      selected_utf16: 961193
+      expected_utf16: 961193
+      select_all_ms: 5.0471
+      end_request_ms: 1.6794
+      end_reached: true
+      scrollable_height: null
+      end_offset: null
+      realized_rows_end: 0
+      navigation_timer_delay_max_ms: 18.2824
+      navigation_timer_delay_median_ms: 17.0553
+  - surface: richedit
+    case: prose-1mib
+    trial: 2
+    exit_code: 0
+    timed_out: false
+    launch_to_first_checkpoint_ms: 4028.2512000003408
+    launch_to_exit_ms: 4867.509400000017
+    metrics:
+      host: C# WinUI
+      surface: richedit
+      input_name: prose-1mib.md
+      runtime: .NET 10.0.13
+      os: Microsoft Windows NT 10.0.26300.0
+      entry_to_window_ctor_ms: 138.4099
+      source_bytes: 1048576
+      source_sha256: 2f28d767468ec3980c286fbf983c732a00601717b9f7343a92ff0e4f4056581e
+      read_ms: 2.5187
+      parse_ms: 883.6019
+      blocks: 24272
+      text_utf16: 961193
+      adapter_ms: 22.5012
+      surface_setup_ms: 1477.7056
+      entry_to_surface_loaded_ms: 2643.2744
+      entry_to_render_callback_ms: 3896.389
+      dpi_scale: 1.5
+      client_width_dip: 718.6666870117188
+      client_height_dip: 529.3333129882812
+      visual_nodes_initial: 61
+      realized_rows_initial: 0
+      uia_peer: RichEditBox
+      working_set_bytes: 221433856
+      peak_working_set_bytes: 221433856
+      private_bytes: 175255552
+      managed_heap_bytes: 47928136
+      process_elapsed_ms: 4659.2591
+      selection_supported: true
+      selection_matches: true
+      selected_utf16: 961193
+      expected_utf16: 961193
+      select_all_ms: 5.1604
+      end_request_ms: 1.6079
+      end_reached: true
+      scrollable_height: null
+      end_offset: null
+      realized_rows_end: 0
+      navigation_timer_delay_max_ms: 17.5788
+      navigation_timer_delay_median_ms: 17.0713
+  - surface: richedit
+    case: prose-1mib
+    trial: 3
+    exit_code: 0
+    timed_out: false
+    launch_to_first_checkpoint_ms: 4077.054600000338
+    launch_to_exit_ms: 4889.26580000043
+    metrics:
+      host: C# WinUI
+      surface: richedit
+      input_name: prose-1mib.md
+      runtime: .NET 10.0.13
+      os: Microsoft Windows NT 10.0.26300.0
+      entry_to_window_ctor_ms: 139.9047
+      source_bytes: 1048576
+      source_sha256: 2f28d767468ec3980c286fbf983c732a00601717b9f7343a92ff0e4f4056581e
+      read_ms: 2.6321
+      parse_ms: 863.6551
+      blocks: 24272
+      text_utf16: 961193
+      adapter_ms: 19.2859
+      surface_setup_ms: 1549.7721
+      entry_to_surface_loaded_ms: 2697.0459
+      entry_to_render_callback_ms: 3944.719
+      dpi_scale: 1.5
+      client_width_dip: 718.6666870117188
+      client_height_dip: 529.3333129882812
+      visual_nodes_initial: 61
+      realized_rows_initial: 0
+      uia_peer: RichEditBox
+      working_set_bytes: 220995584
+      peak_working_set_bytes: 220995584
+      private_bytes: 174759936
+      managed_heap_bytes: 47886664
+      process_elapsed_ms: 4699.308
+      selection_supported: true
+      selection_matches: true
+      selected_utf16: 961193
+      expected_utf16: 961193
+      select_all_ms: 4.58
+      end_request_ms: 1.5842
+      end_reached: true
+      scrollable_height: null
+      end_offset: null
+      realized_rows_end: 0
+      navigation_timer_delay_max_ms: 17.5988
+      navigation_timer_delay_median_ms: 16.5798
+  - surface: richedit
+    case: prose-5mib
+    trial: 1
+    exit_code: 1
+    timed_out: true
+    launch_to_first_checkpoint_ms: null
+    launch_to_exit_ms: 45067.54980000005
+  - surface: richedit
+    case: prose-5mib
+    trial: 2
+    exit_code: 1
+    timed_out: true
+    launch_to_first_checkpoint_ms: null
+    launch_to_exit_ms: 45062.767899999926
+  - surface: richedit
+    case: prose-5mib
+    trial: 3
+    exit_code: 1
+    timed_out: true
+    launch_to_first_checkpoint_ms: null
+    launch_to_exit_ms: 45081.2734000001
+  - surface: richedit
+    case: delimiter-storm-1mib
+    trial: 1
+    exit_code: 0
+    timed_out: false
+    launch_to_first_checkpoint_ms: 12705.35959999961
+    launch_to_exit_ms: 13567.03329999982
+    metrics:
+      host: C# WinUI
+      surface: richedit
+      input_name: delimiter-storm-1mib.md
+      runtime: .NET 10.0.13
+      os: Microsoft Windows NT 10.0.26300.0
+      entry_to_window_ctor_ms: 142.7462
+      source_bytes: 1048576
+      source_sha256: d0100b5e90ac68662cff1f76741bc619dbecee78c8174096aa93695f3520a757
+      read_ms: 2.4596
+      parse_ms: 4171.4933
+      blocks: 24673
+      text_utf16: 949886
+      adapter_ms: 33.3924
+      surface_setup_ms: 6716.2142
+      entry_to_surface_loaded_ms: 11181.8734
+      entry_to_render_callback_ms: 12555.812
+      dpi_scale: 1.5
+      client_width_dip: 718.6666870117188
+      client_height_dip: 529.3333129882812
+      visual_nodes_initial: 61
+      realized_rows_initial: 0
+      uia_peer: RichEditBox
+      working_set_bytes: 244436992
+      peak_working_set_bytes: 246509568
+      private_bytes: 199434240
+      managed_heap_bytes: 63466120
+      process_elapsed_ms: 13321.3811
+      selection_supported: true
+      selection_matches: true
+      selected_utf16: 949886
+      expected_utf16: 949886
+      select_all_ms: 5.3077
+      end_request_ms: 1.9895
+      end_reached: true
+      scrollable_height: null
+      end_offset: null
+      realized_rows_end: 0
+      navigation_timer_delay_max_ms: 17.7287
+      navigation_timer_delay_median_ms: 17.1166
+  - surface: richedit
+    case: delimiter-storm-1mib
+    trial: 2
+    exit_code: 0
+    timed_out: false
+    launch_to_first_checkpoint_ms: 12380.30499999968
+    launch_to_exit_ms: 13216.22380000008
+    metrics:
+      host: C# WinUI
+      surface: richedit
+      input_name: delimiter-storm-1mib.md
+      runtime: .NET 10.0.13
+      os: Microsoft Windows NT 10.0.26300.0
+      entry_to_window_ctor_ms: 144.4579
+      source_bytes: 1048576
+      source_sha256: d0100b5e90ac68662cff1f76741bc619dbecee78c8174096aa93695f3520a757
+      read_ms: 2.3791
+      parse_ms: 3958.1699
+      blocks: 24673
+      text_utf16: 949886
+      adapter_ms: 30.6198
+      surface_setup_ms: 6599.5589
+      entry_to_surface_loaded_ms: 10854.7394
+      entry_to_render_callback_ms: 12240.775
+      dpi_scale: 1.5
+      client_width_dip: 718.6666870117188
+      client_height_dip: 529.3333129882812
+      visual_nodes_initial: 61
+      realized_rows_initial: 0
+      uia_peer: RichEditBox
+      working_set_bytes: 244629504
+      peak_working_set_bytes: 246673408
+      private_bytes: 199462912
+      managed_heap_bytes: 63581560
+      process_elapsed_ms: 13006.2311
+      selection_supported: true
+      selection_matches: true
+      selected_utf16: 949886
+      expected_utf16: 949886
+      select_all_ms: 4.112
+      end_request_ms: 1.5564
+      end_reached: true
+      scrollable_height: null
+      end_offset: null
+      realized_rows_end: 0
+      navigation_timer_delay_max_ms: 17.7599
+      navigation_timer_delay_median_ms: 16.5557
+  - surface: richedit
+    case: delimiter-storm-1mib
+    trial: 3
+    exit_code: 0
+    timed_out: false
+    launch_to_first_checkpoint_ms: 12371.285299999727
+    launch_to_exit_ms: 13227.861100000155
+    metrics:
+      host: C# WinUI
+      surface: richedit
+      input_name: delimiter-storm-1mib.md
+      runtime: .NET 10.0.13
+      os: Microsoft Windows NT 10.0.26300.0
+      entry_to_window_ctor_ms: 140.7181
+      source_bytes: 1048576
+      source_sha256: d0100b5e90ac68662cff1f76741bc619dbecee78c8174096aa93695f3520a757
+      read_ms: 2.4819
+      parse_ms: 4006.4636
+      blocks: 24673
+      text_utf16: 949886
+      adapter_ms: 30.9017
+      surface_setup_ms: 6589.6112
+      entry_to_surface_loaded_ms: 10886.3483
+      entry_to_render_callback_ms: 12226.823
+      dpi_scale: 1.5
+      client_width_dip: 718.6666870117188
+      client_height_dip: 529.3333129882812
+      visual_nodes_initial: 61
+      realized_rows_initial: 0
+      uia_peer: RichEditBox
+      working_set_bytes: 244547584
+      peak_working_set_bytes: 246661120
+      private_bytes: 198328320
+      managed_heap_bytes: 63581776
+      process_elapsed_ms: 12993.4503
+      selection_supported: true
+      selection_matches: true
+      selected_utf16: 949886
+      expected_utf16: 949886
+      select_all_ms: 5.8747
+      end_request_ms: 1.4799
+      end_reached: true
+      scrollable_height: null
+      end_offset: null
+      realized_rows_end: 0
+      navigation_timer_delay_max_ms: 17.4952
+      navigation_timer_delay_median_ms: 16.8601
+  - surface: richedit
+    case: long-lines-1mib
+    trial: 1
+    exit_code: 0
+    timed_out: false
+    launch_to_first_checkpoint_ms: 7548.893500000304
+    launch_to_exit_ms: 8390.728399999716
+    metrics:
+      host: C# WinUI
+      surface: richedit
+      input_name: long-lines-1mib.md
+      runtime: .NET 10.0.13
+      os: Microsoft Windows NT 10.0.26300.0
+      entry_to_window_ctor_ms: 142.6577
+      source_bytes: 1048576
+      source_sha256: 457e4d3a4cc3e1c5afb07d2bc36afae173bb19839a7047450536459318b6cf77
+      read_ms: 2.6532
+      parse_ms: 76.4336
+      blocks: 2
+      text_utf16: 1048573
+      adapter_ms: 4.2415
+      surface_setup_ms: 100.566
+      entry_to_surface_loaded_ms: 443.5813
+      entry_to_render_callback_ms: 7398.627
+      dpi_scale: 1.5
+      client_width_dip: 718.6666870117188
+      client_height_dip: 529.3333129882812
+      visual_nodes_initial: 61
+      realized_rows_initial: 0
+      uia_peer: RichEditBox
+      working_set_bytes: 171204608
+      peak_working_set_bytes: 171204608
+      private_bytes: 125800448
+      managed_heap_bytes: 19427120
+      process_elapsed_ms: 8172.4049
+      selection_supported: true
+      selection_matches: true
+      selected_utf16: 1048573
+      expected_utf16: 1048573
+      select_all_ms: 4.1937
+      end_request_ms: 1.4713
+      end_reached: true
+      scrollable_height: null
+      end_offset: null
+      realized_rows_end: 0
+      navigation_timer_delay_max_ms: 18.7965
+      navigation_timer_delay_median_ms: 16.799
+  - surface: richedit
+    case: long-lines-1mib
+    trial: 2
+    exit_code: 0
+    timed_out: false
+    launch_to_first_checkpoint_ms: 7075.428899999679
+    launch_to_exit_ms: 7920.2450999991925
+    metrics:
+      host: C# WinUI
+      surface: richedit
+      input_name: long-lines-1mib.md
+      runtime: .NET 10.0.13
+      os: Microsoft Windows NT 10.0.26300.0
+      entry_to_window_ctor_ms: 136.1352
+      source_bytes: 1048576
+      source_sha256: 457e4d3a4cc3e1c5afb07d2bc36afae173bb19839a7047450536459318b6cf77
+      read_ms: 2.4612
+      parse_ms: 88.5425
+      blocks: 2
+      text_utf16: 1048573
+      adapter_ms: 4.1227
+      surface_setup_ms: 99.3193
+      entry_to_surface_loaded_ms: 445.6556
+      entry_to_render_callback_ms: 6936.703
+      dpi_scale: 1.5
+      client_width_dip: 718.6666870117188
+      client_height_dip: 529.3333129882812
+      visual_nodes_initial: 61
+      realized_rows_initial: 0
+      uia_peer: RichEditBox
+      working_set_bytes: 171196416
+      peak_working_set_bytes: 171196416
+      private_bytes: 125083648
+      managed_heap_bytes: 19428056
+      process_elapsed_ms: 7693.4831
+      selection_supported: true
+      selection_matches: true
+      selected_utf16: 1048573
+      expected_utf16: 1048573
+      select_all_ms: 4.13
+      end_request_ms: 1.6324
+      end_reached: true
+      scrollable_height: null
+      end_offset: null
+      realized_rows_end: 0
+      navigation_timer_delay_max_ms: 17.5252
+      navigation_timer_delay_median_ms: 16.522
+  - surface: richedit
+    case: long-lines-1mib
+    trial: 3
+    exit_code: 0
+    timed_out: false
+    launch_to_first_checkpoint_ms: 7820.540899999287
+    launch_to_exit_ms: 8644.85379999951
+    metrics:
+      host: C# WinUI
+      surface: richedit
+      input_name: long-lines-1mib.md
+      runtime: .NET 10.0.13
+      os: Microsoft Windows NT 10.0.26300.0
+      entry_to_window_ctor_ms: 150.7814
+      source_bytes: 1048576
+      source_sha256: 457e4d3a4cc3e1c5afb07d2bc36afae173bb19839a7047450536459318b6cf77
+      read_ms: 2.9176
+      parse_ms: 86.6023
+      blocks: 2
+      text_utf16: 1048573
+      adapter_ms: 4.1592
+      surface_setup_ms: 108.3332
+      entry_to_surface_loaded_ms: 468.624
+      entry_to_render_callback_ms: 7691.261
+      dpi_scale: 1.5
+      client_width_dip: 718.6666870117188
+      client_height_dip: 529.3333129882812
+      visual_nodes_initial: 61
+      realized_rows_initial: 0
+      uia_peer: RichEditBox
+      working_set_bytes: 171745280
+      peak_working_set_bytes: 171745280
+      private_bytes: 126857216
+      managed_heap_bytes: 19419880
+      process_elapsed_ms: 8448.8185
+      selection_supported: true
+      selection_matches: true
+      selected_utf16: 1048573
+      expected_utf16: 1048573
+      select_all_ms: 4.4104
+      end_request_ms: 1.6183
+      end_reached: true
+      scrollable_height: null
+      end_offset: null
+      realized_rows_end: 0
+      navigation_timer_delay_max_ms: 17.0982
+      navigation_timer_delay_median_ms: 16.4975
+  - surface: blocks
+    case: gfm-tour
+    trial: 1
+    exit_code: 0
+    timed_out: false
+    launch_to_first_checkpoint_ms: 752.6966000004904
+    launch_to_exit_ms: 1566.0133000001224
+    metrics:
+      host: C# WinUI
+      surface: blocks
+      input_name: gfm-tour.md
+      runtime: .NET 10.0.13
+      os: Microsoft Windows NT 10.0.26300.0
+      entry_to_window_ctor_ms: 137.517
+      source_bytes: 2547
+      source_sha256: ca08e4d20c830884ff36bed95f1e8284a0fd1b1c43919eabc865646f79d733f1
+      read_ms: 1.3929
+      parse_ms: 107.1896
+      blocks: 70
+      text_utf16: 1992
+      adapter_ms: 1.6703
+      surface_setup_ms: 11.9199
+      entry_to_surface_loaded_ms: 376.3182
+      entry_to_render_callback_ms: 404.502
+      dpi_scale: 1.5
+      client_width_dip: 718.6666870117188
+      client_height_dip: 529.3333129882812
+      visual_nodes_initial: 209
+      realized_rows_initial: 37
+      uia_peer: ListView
+      working_set_bytes: 152133632
+      peak_working_set_bytes: 152133632
+      private_bytes: 107184128
+      managed_heap_bytes: 2598656
+      process_elapsed_ms: 1365.0449
+      selection_supported: false
+      selection_matches: null
+      selected_utf16: null
+      expected_utf16: 1992
+      select_all_ms: 0.4302
+      end_request_ms: 0.4338
+      end_reached: true
+      scrollable_height: null
+      end_offset: null
+      realized_rows_end: 37
+      navigation_timer_delay_max_ms: 16.5974
+      navigation_timer_delay_median_ms: 16.1635
+  - surface: blocks
+    case: unsafe-html
+    trial: 1
+    exit_code: 0
+    timed_out: false
+    launch_to_first_checkpoint_ms: 720.7364000005327
+    launch_to_exit_ms: 1527.0276000001104
+    metrics:
+      host: C# WinUI
+      surface: blocks
+      input_name: unsafe-html.md
+      runtime: .NET 10.0.13
+      os: Microsoft Windows NT 10.0.26300.0
+      entry_to_window_ctor_ms: 139.8559
+      source_bytes: 234
+      source_sha256: 19ab9ffc16d4a4eca0c022827c13e2adc8c068c28e4d60453041624f0f1d3017
+      read_ms: 1.4289
+      parse_ms: 78.2357
+      blocks: 9
+      text_utf16: 200
+      adapter_ms: 1.4968
+      surface_setup_ms: 11.0231
+      entry_to_surface_loaded_ms: 347.6569
+      entry_to_render_callback_ms: 369.014
+      dpi_scale: 1.5
+      client_width_dip: 718.6666870117188
+      client_height_dip: 529.3333129882812
+      visual_nodes_initial: 67
+      realized_rows_initial: 9
+      uia_peer: ListView
+      working_set_bytes: 143560704
+      peak_working_set_bytes: 143560704
+      private_bytes: 103698432
+      managed_heap_bytes: 2343664
+      process_elapsed_ms: 1334.461
+      selection_supported: false
+      selection_matches: null
+      selected_utf16: null
+      expected_utf16: 200
+      select_all_ms: 0.4849
+      end_request_ms: 0.2911
+      end_reached: true
+      scrollable_height: null
+      end_offset: null
+      realized_rows_end: 9
+      navigation_timer_delay_max_ms: 16.938
+      navigation_timer_delay_median_ms: 16.5458
+  - surface: blocks
+    case: code-fences
+    trial: 1
+    exit_code: 0
+    timed_out: false
+    launch_to_first_checkpoint_ms: 730.7042000002184
+    launch_to_exit_ms: 1542.1575999998822
+    metrics:
+      host: C# WinUI
+      surface: blocks
+      input_name: code-fences.md
+      runtime: .NET 10.0.13
+      os: Microsoft Windows NT 10.0.26300.0
+      entry_to_window_ctor_ms: 155.8043
+      source_bytes: 315
+      source_sha256: 9c08dc12c7e36f5a7157ecf96752ca3b741fd85cee952b254716ad9178d18848
+      read_ms: 1.3847
+      parse_ms: 76.3217
+      blocks: 9
+      text_utf16: 260
+      adapter_ms: 1.6118
+      surface_setup_ms: 12.2316
+      entry_to_surface_loaded_ms: 359.7424
+      entry_to_render_callback_ms: 388.813
+      dpi_scale: 1.5
+      client_width_dip: 718.6666870117188
+      client_height_dip: 529.3333129882812
+      visual_nodes_initial: 97
+      realized_rows_initial: 9
+      uia_peer: ListView
+      working_set_bytes: 148615168
+      peak_working_set_bytes: 148615168
+      private_bytes: 105947136
+      managed_heap_bytes: 2353080
+      process_elapsed_ms: 1347.7464
+      selection_supported: false
+      selection_matches: null
+      selected_utf16: null
+      expected_utf16: 260
+      select_all_ms: 0.4464
+      end_request_ms: 0.2925
+      end_reached: true
+      scrollable_height: null
+      end_offset: null
+      realized_rows_end: 9
+      navigation_timer_delay_max_ms: 16.9936
+      navigation_timer_delay_median_ms: 16.5001
+  - surface: blocks
+    case: math-alerts
+    trial: 1
+    exit_code: 0
+    timed_out: false
+    launch_to_first_checkpoint_ms: 717.4543999999514
+    launch_to_exit_ms: 1514.4873999997799
+    metrics:
+      host: C# WinUI
+      surface: blocks
+      input_name: math-alerts.md
+      runtime: .NET 10.0.13
+      os: Microsoft Windows NT 10.0.26300.0
+      entry_to_window_ctor_ms: 142.9676
+      source_bytes: 258
+      source_sha256: 1dbc8e31e6f0d2903c33edecbafeee0c1edfc336e8eb01f3b02466a7e3b68bfe
+      read_ms: 1.4555
+      parse_ms: 83.6535
+      blocks: 8
+      text_utf16: 162
+      adapter_ms: 1.3809
+      surface_setup_ms: 10.8936
+      entry_to_surface_loaded_ms: 348.7467
+      entry_to_render_callback_ms: 369.767
+      dpi_scale: 1.5
+      client_width_dip: 718.6666870117188
+      client_height_dip: 529.3333129882812
+      visual_nodes_initial: 63
+      realized_rows_initial: 8
+      uia_peer: ListView
+      working_set_bytes: 142557184
+      peak_working_set_bytes: 142557184
+      private_bytes: 103231488
+      managed_heap_bytes: 2295552
+      process_elapsed_ms: 1333.6519
+      selection_supported: false
+      selection_matches: null
+      selected_utf16: null
+      expected_utf16: 162
+      select_all_ms: 0.4725
+      end_request_ms: 0.249
+      end_reached: true
+      scrollable_height: null
+      end_offset: null
+      realized_rows_end: 8
+      navigation_timer_delay_max_ms: 17.115
+      navigation_timer_delay_median_ms: 16.1966
+  - surface: blocks
+    case: inline-diagrams
+    trial: 1
+    exit_code: 0
+    timed_out: false
+    launch_to_first_checkpoint_ms: 718.7090999996144
+    launch_to_exit_ms: 1532.3538000002372
+    metrics:
+      host: C# WinUI
+      surface: blocks
+      input_name: inline-diagrams.md
+      runtime: .NET 10.0.13
+      os: Microsoft Windows NT 10.0.26300.0
+      entry_to_window_ctor_ms: 144.5882
+      source_bytes: 370
+      source_sha256: ab3d733ad731d90f09a94dfec7d4e925405826d50b796387681490adf8fa81b0
+      read_ms: 1.333
+      parse_ms: 68.9804
+      blocks: 15
+      text_utf16: 284
+      adapter_ms: 1.4515
+      surface_setup_ms: 11.2609
+      entry_to_surface_loaded_ms: 343.71
+      entry_to_render_callback_ms: 371.036
+      dpi_scale: 1.5
+      client_width_dip: 718.6666870117188
+      client_height_dip: 529.3333129882812
+      visual_nodes_initial: 121
+      realized_rows_initial: 15
+      uia_peer: ListView
+      working_set_bytes: 149028864
+      peak_working_set_bytes: 149028864
+      private_bytes: 105545728
+      managed_heap_bytes: 2417688
+      process_elapsed_ms: 1331.5302
+      selection_supported: false
+      selection_matches: null
+      selected_utf16: null
+      expected_utf16: 284
+      select_all_ms: 0.4446
+      end_request_ms: 0.3013
+      end_reached: true
+      scrollable_height: null
+      end_offset: null
+      realized_rows_end: 15
+      navigation_timer_delay_max_ms: 16.6808
+      navigation_timer_delay_median_ms: 16.4536
+  - surface: blocks
+    case: voice-parity
+    trial: 1
+    exit_code: 0
+    timed_out: false
+    launch_to_first_checkpoint_ms: 720.3342000002522
+    launch_to_exit_ms: 1535.5301999998119
+    metrics:
+      host: C# WinUI
+      surface: blocks
+      input_name: voice-parity.md
+      runtime: .NET 10.0.13
+      os: Microsoft Windows NT 10.0.26300.0
+      entry_to_window_ctor_ms: 137.1607
+      source_bytes: 980
+      source_sha256: 6a7391b5d77138f8177b0c46f916cc62a3b627a7146a73bb5a9dc1713b94e781
+      read_ms: 1.3232
+      parse_ms: 80.1343
+      blocks: 23
+      text_utf16: 857
+      adapter_ms: 1.4786
+      surface_setup_ms: 10.6758
+      entry_to_surface_loaded_ms: 344.3375
+      entry_to_render_callback_ms: 371.444
+      dpi_scale: 1.5
+      client_width_dip: 718.6666870117188
+      client_height_dip: 529.3333129882812
+      visual_nodes_initial: 153
+      realized_rows_initial: 23
+      uia_peer: ListView
+      working_set_bytes: 149905408
+      peak_working_set_bytes: 149905408
+      private_bytes: 105771008
+      managed_heap_bytes: 2384600
+      process_elapsed_ms: 1340.1105
+      selection_supported: false
+      selection_matches: null
+      selected_utf16: null
+      expected_utf16: 857
+      select_all_ms: 0.4243
+      end_request_ms: 0.252
+      end_reached: true
+      scrollable_height: null
+      end_offset: null
+      realized_rows_end: 23
+      navigation_timer_delay_max_ms: 16.5384
+      navigation_timer_delay_median_ms: 16.0863
+  - surface: blocks
+    case: unicode-filename
+    trial: 1
+    exit_code: 0
+    timed_out: false
+    launch_to_first_checkpoint_ms: 699.8690999998871
+    launch_to_exit_ms: 1506.715799999256
+    metrics:
+      host: C# WinUI
+      surface: blocks
+      input_name: unicode-filename.md
+      runtime: .NET 10.0.13
+      os: Microsoft Windows NT 10.0.26300.0
+      entry_to_window_ctor_ms: 144.8566
+      source_bytes: 37
+      source_sha256: e84cc3de421115e7ae9cffe6902cc026353597ee48d4337d3c05cf47c2b91f23
+      read_ms: 1.3723
+      parse_ms: 62.9604
+      blocks: 2
+      text_utf16: 33
+      adapter_ms: 1.3793
+      surface_setup_ms: 10.4247
+      entry_to_surface_loaded_ms: 328.4184
+      entry_to_render_callback_ms: 346.021
+      dpi_scale: 1.5
+      client_width_dip: 718.6666870117188
+      client_height_dip: 529.3333129882812
+      visual_nodes_initial: 39
+      realized_rows_initial: 2
+      uia_peer: ListView
+      working_set_bytes: 141271040
+      peak_working_set_bytes: 141271040
+      private_bytes: 101588992
+      managed_heap_bytes: 2303128
+      process_elapsed_ms: 1313.0353
+      selection_supported: false
+      selection_matches: null
+      selected_utf16: null
+      expected_utf16: 33
+      select_all_ms: 0.4282
+      end_request_ms: 0.2877
+      end_reached: true
+      scrollable_height: null
+      end_offset: null
+      realized_rows_end: 2
+      navigation_timer_delay_max_ms: 16.8507
+      navigation_timer_delay_median_ms: 16.2583
+  - surface: blocks
+    case: nfd-filename
+    trial: 1
+    exit_code: 0
+    timed_out: false
+    launch_to_first_checkpoint_ms: 699.2414999995162
+    launch_to_exit_ms: 1502.810199999658
+    metrics:
+      host: C# WinUI
+      surface: blocks
+      input_name: nfd-filename.md
+      runtime: .NET 10.0.13
+      os: Microsoft Windows NT 10.0.26300.0
+      entry_to_window_ctor_ms: 141.6706
+      source_bytes: 58
+      source_sha256: 582ffa0bdf7af54427f8756180b4b7f3a0d98567ad1bbbff4d83344105ba5626
+      read_ms: 1.3582
+      parse_ms: 64.1891
+      blocks: 2
+      text_utf16: 54
+      adapter_ms: 1.4388
+      surface_setup_ms: 11.6086
+      entry_to_surface_loaded_ms: 326.4357
+      entry_to_render_callback_ms: 346.697
+      dpi_scale: 1.5
+      client_width_dip: 718.6666870117188
+      client_height_dip: 529.3333129882812
+      visual_nodes_initial: 39
+      realized_rows_initial: 2
+      uia_peer: ListView
+      working_set_bytes: 141352960
+      peak_working_set_bytes: 141352960
+      private_bytes: 101937152
+      managed_heap_bytes: 2213216
+      process_elapsed_ms: 1313.0876
+      selection_supported: false
+      selection_matches: null
+      selected_utf16: null
+      expected_utf16: 54
+      select_all_ms: 0.4457
+      end_request_ms: 0.2881
+      end_reached: true
+      scrollable_height: null
+      end_offset: null
+      realized_rows_end: 2
+      navigation_timer_delay_max_ms: 17.0899
+      navigation_timer_delay_median_ms: 16.2338
+  - surface: blocks
+    case: prose-1mib
+    trial: 1
+    exit_code: 0
+    timed_out: false
+    launch_to_first_checkpoint_ms: 1539.830400000028
+    launch_to_exit_ms: 2381.688899999972
+    metrics:
+      host: C# WinUI
+      surface: blocks
+      input_name: prose-1mib.md
+      runtime: .NET 10.0.13
+      os: Microsoft Windows NT 10.0.26300.0
+      entry_to_window_ctor_ms: 137.5885
+      source_bytes: 1048576
+      source_sha256: 2f28d767468ec3980c286fbf983c732a00601717b9f7343a92ff0e4f4056581e
+      read_ms: 2.3362
+      parse_ms: 884.6706
+      blocks: 24272
+      text_utf16: 961193
+      adapter_ms: 22.1733
+      surface_setup_ms: 11.9219
+      entry_to_surface_loaded_ms: 1168.5293
+      entry_to_render_callback_ms: 1198.617
+      dpi_scale: 1.5
+      client_width_dip: 718.6666870117188
+      client_height_dip: 529.3333129882812
+      visual_nodes_initial: 193
+      realized_rows_initial: 33
+      uia_peer: ListView
+      working_set_bytes: 206995456
+      peak_working_set_bytes: 206995456
+      private_bytes: 162377728
+      managed_heap_bytes: 43851752
+      process_elapsed_ms: 2168.5757
+      selection_supported: false
+      selection_matches: null
+      selected_utf16: null
+      expected_utf16: 961193
+      select_all_ms: 0.5897
+      end_request_ms: 2.1036
+      end_reached: true
+      scrollable_height: null
+      end_offset: null
+      realized_rows_end: 35
+      navigation_timer_delay_max_ms: 18.4875
+      navigation_timer_delay_median_ms: 17.4932
+  - surface: blocks
+    case: prose-1mib
+    trial: 2
+    exit_code: 0
+    timed_out: false
+    launch_to_first_checkpoint_ms: 1547.5187000001824
+    launch_to_exit_ms: 2365.221200000633
+    metrics:
+      host: C# WinUI
+      surface: blocks
+      input_name: prose-1mib.md
+      runtime: .NET 10.0.13
+      os: Microsoft Windows NT 10.0.26300.0
+      entry_to_window_ctor_ms: 149.4388
+      source_bytes: 1048576
+      source_sha256: 2f28d767468ec3980c286fbf983c732a00601717b9f7343a92ff0e4f4056581e
+      read_ms: 2.7771
+      parse_ms: 877.9024
+      blocks: 24272
+      text_utf16: 961193
+      adapter_ms: 20.36
+      surface_setup_ms: 10.9851
+      entry_to_surface_loaded_ms: 1163.8837
+      entry_to_render_callback_ms: 1190.437
+      dpi_scale: 1.5
+      client_width_dip: 718.6666870117188
+      client_height_dip: 529.3333129882812
+      visual_nodes_initial: 201
+      realized_rows_initial: 35
+      uia_peer: ListView
+      working_set_bytes: 207622144
+      peak_working_set_bytes: 207622144
+      private_bytes: 163942400
+      managed_heap_bytes: 43981088
+      process_elapsed_ms: 2168.2668
+      selection_supported: false
+      selection_matches: null
+      selected_utf16: null
+      expected_utf16: 961193
+      select_all_ms: 0.5848
+      end_request_ms: 2.2405
+      end_reached: true
+      scrollable_height: null
+      end_offset: null
+      realized_rows_end: 35
+      navigation_timer_delay_max_ms: 17.9659
+      navigation_timer_delay_median_ms: 17.0135
+  - surface: blocks
+    case: prose-1mib
+    trial: 3
+    exit_code: 0
+    timed_out: false
+    launch_to_first_checkpoint_ms: 1558.3815999998478
+    launch_to_exit_ms: 2377.6716000002125
+    metrics:
+      host: C# WinUI
+      surface: blocks
+      input_name: prose-1mib.md
+      runtime: .NET 10.0.13
+      os: Microsoft Windows NT 10.0.26300.0
+      entry_to_window_ctor_ms: 139.1371
+      source_bytes: 1048576
+      source_sha256: 2f28d767468ec3980c286fbf983c732a00601717b9f7343a92ff0e4f4056581e
+      read_ms: 2.669
+      parse_ms: 901.7803
+      blocks: 24272
+      text_utf16: 961193
+      adapter_ms: 20.6071
+      surface_setup_ms: 12.4764
+      entry_to_surface_loaded_ms: 1191.302
+      entry_to_render_callback_ms: 1222.308
+      dpi_scale: 1.5
+      client_width_dip: 718.6666870117188
+      client_height_dip: 529.3333129882812
+      visual_nodes_initial: 193
+      realized_rows_initial: 33
+      uia_peer: ListView
+      working_set_bytes: 207142912
+      peak_working_set_bytes: 207142912
+      private_bytes: 164016128
+      managed_heap_bytes: 43939488
+      process_elapsed_ms: 2186.5654
+      selection_supported: false
+      selection_matches: null
+      selected_utf16: null
+      expected_utf16: 961193
+      select_all_ms: 0.5868
+      end_request_ms: 2.2052
+      end_reached: true
+      scrollable_height: null
+      end_offset: null
+      realized_rows_end: 35
+      navigation_timer_delay_max_ms: 18.6513
+      navigation_timer_delay_median_ms: 16.9785
+  - surface: blocks
+    case: prose-5mib
+    trial: 1
+    exit_code: 0
+    timed_out: false
+    launch_to_first_checkpoint_ms: 16485.11619999954
+    launch_to_exit_ms: 17365.47789999986
+    metrics:
+      host: C# WinUI
+      surface: blocks
+      input_name: prose-5mib.md
+      runtime: .NET 10.0.13
+      os: Microsoft Windows NT 10.0.26300.0
+      entry_to_window_ctor_ms: 154.6009
+      source_bytes: 5242880
+      source_sha256: 43086da373aa098b0a03817236f52c82d7b5383d7564ee41098e75c58246c715
+      read_ms: 9.3215
+      parse_ms: 15679.3456
+      blocks: 121362
+      text_utf16: 4805973
+      adapter_ms: 150.2635
+      surface_setup_ms: 13.5789
+      entry_to_surface_loaded_ms: 16116.6852
+      entry_to_render_callback_ms: 16145.564
+      dpi_scale: 1.5
+      client_width_dip: 718.6666870117188
+      client_height_dip: 529.3333129882812
+      visual_nodes_initial: 193
+      realized_rows_initial: 33
+      uia_peer: ListView
+      working_set_bytes: 368386048
+      peak_working_set_bytes: 368386048
+      private_bytes: 332500992
+      managed_heap_bytes: 209988384
+      process_elapsed_ms: 17134.5435
+      selection_supported: false
+      selection_matches: null
+      selected_utf16: null
+      expected_utf16: 4805973
+      select_all_ms: 1.2898
+      end_request_ms: 4.0622
+      end_reached: true
+      scrollable_height: null
+      end_offset: null
+      realized_rows_end: 33
+      navigation_timer_delay_max_ms: 22.6474
+      navigation_timer_delay_median_ms: 19.671
+  - surface: blocks
+    case: prose-5mib
+    trial: 2
+    exit_code: 0
+    timed_out: false
+    launch_to_first_checkpoint_ms: 16236.054799999692
+    launch_to_exit_ms: 17103.488699999616
+    metrics:
+      host: C# WinUI
+      surface: blocks
+      input_name: prose-5mib.md
+      runtime: .NET 10.0.13
+      os: Microsoft Windows NT 10.0.26300.0
+      entry_to_window_ctor_ms: 144.782
+      source_bytes: 5242880
+      source_sha256: 43086da373aa098b0a03817236f52c82d7b5383d7564ee41098e75c58246c715
+      read_ms: 7.7088
+      parse_ms: 15446.9493
+      blocks: 121362
+      text_utf16: 4805973
+      adapter_ms: 132.5808
+      surface_setup_ms: 11.0719
+      entry_to_surface_loaded_ms: 15862.3348
+      entry_to_render_callback_ms: 15891.224
+      dpi_scale: 1.5
+      client_width_dip: 718.6666870117188
+      client_height_dip: 529.3333129882812
+      visual_nodes_initial: 193
+      realized_rows_initial: 33
+      uia_peer: ListView
+      working_set_bytes: 368373760
+      peak_working_set_bytes: 368373760
+      private_bytes: 333381632
+      managed_heap_bytes: 209987248
+      process_elapsed_ms: 16877.653
+      selection_supported: false
+      selection_matches: null
+      selected_utf16: null
+      expected_utf16: 4805973
+      select_all_ms: 1.548
+      end_request_ms: 4.1142
+      end_reached: true
+      scrollable_height: null
+      end_offset: null
+      realized_rows_end: 33
+      navigation_timer_delay_max_ms: 20.7141
+      navigation_timer_delay_median_ms: 19.9905
+  - surface: blocks
+    case: prose-5mib
+    trial: 3
+    exit_code: 0
+    timed_out: false
+    launch_to_first_checkpoint_ms: 16644.37910000015
+    launch_to_exit_ms: 17517.488100000264
+    metrics:
+      host: C# WinUI
+      surface: blocks
+      input_name: prose-5mib.md
+      runtime: .NET 10.0.13
+      os: Microsoft Windows NT 10.0.26300.0
+      entry_to_window_ctor_ms: 146.9983
+      source_bytes: 5242880
+      source_sha256: 43086da373aa098b0a03817236f52c82d7b5383d7564ee41098e75c58246c715
+      read_ms: 7.7955
+      parse_ms: 15857.2051
+      blocks: 121362
+      text_utf16: 4805973
+      adapter_ms: 141.1731
+      surface_setup_ms: 11.1726
+      entry_to_surface_loaded_ms: 16272.7211
+      entry_to_render_callback_ms: 16298.94
+      dpi_scale: 1.5
+      client_width_dip: 718.6666870117188
+      client_height_dip: 529.3333129882812
+      visual_nodes_initial: 193
+      realized_rows_initial: 33
+      uia_peer: ListView
+      working_set_bytes: 368250880
+      peak_working_set_bytes: 368250880
+      private_bytes: 333004800
+      managed_heap_bytes: 209996792
+      process_elapsed_ms: 17294.7663
+      selection_supported: false
+      selection_matches: null
+      selected_utf16: null
+      expected_utf16: 4805973
+      select_all_ms: 1.4538
+      end_request_ms: 3.9147
+      end_reached: true
+      scrollable_height: null
+      end_offset: null
+      realized_rows_end: 33
+      navigation_timer_delay_max_ms: 22.0365
+      navigation_timer_delay_median_ms: 20.0276
+  - surface: blocks
+    case: delimiter-storm-1mib
+    trial: 1
+    exit_code: 0
+    timed_out: false
+    launch_to_first_checkpoint_ms: 4803.350199999841
+    launch_to_exit_ms: 5643.82519999981
+    metrics:
+      host: C# WinUI
+      surface: blocks
+      input_name: delimiter-storm-1mib.md
+      runtime: .NET 10.0.13
+      os: Microsoft Windows NT 10.0.26300.0
+      entry_to_window_ctor_ms: 140.3486
+      source_bytes: 1048576
+      source_sha256: d0100b5e90ac68662cff1f76741bc619dbecee78c8174096aa93695f3520a757
+      read_ms: 2.7221
+      parse_ms: 4130.2066
+      blocks: 24673
+      text_utf16: 949886
+      adapter_ms: 33.4646
+      surface_setup_ms: 12.1083
+      entry_to_surface_loaded_ms: 4433.2853
+      entry_to_render_callback_ms: 4464.49
+      dpi_scale: 1.5
+      client_width_dip: 718.6666870117188
+      client_height_dip: 529.3333129882812
+      visual_nodes_initial: 197
+      realized_rows_initial: 34
+      uia_peer: ListView
+      working_set_bytes: 220266496
+      peak_working_set_bytes: 220266496
+      private_bytes: 175509504
+      managed_heap_bytes: 45674264
+      process_elapsed_ms: 5422.9283
+      selection_supported: false
+      selection_matches: null
+      selected_utf16: null
+      expected_utf16: 949886
+      select_all_ms: 0.6047
+      end_request_ms: 1.1154
+      end_reached: true
+      scrollable_height: null
+      end_offset: null
+      realized_rows_end: 34
+      navigation_timer_delay_max_ms: 17.2255
+      navigation_timer_delay_median_ms: 16.4205
+  - surface: blocks
+    case: delimiter-storm-1mib
+    trial: 2
+    exit_code: 0
+    timed_out: false
+    launch_to_first_checkpoint_ms: 4714.19700000024
+    launch_to_exit_ms: 5544.142300000203
+    metrics:
+      host: C# WinUI
+      surface: blocks
+      input_name: delimiter-storm-1mib.md
+      runtime: .NET 10.0.13
+      os: Microsoft Windows NT 10.0.26300.0
+      entry_to_window_ctor_ms: 138.9288
+      source_bytes: 1048576
+      source_sha256: d0100b5e90ac68662cff1f76741bc619dbecee78c8174096aa93695f3520a757
+      read_ms: 2.9349
+      parse_ms: 4039.1404
+      blocks: 24673
+      text_utf16: 949886
+      adapter_ms: 31.46
+      surface_setup_ms: 11.312
+      entry_to_surface_loaded_ms: 4338.9333
+      entry_to_render_callback_ms: 4366.171
+      dpi_scale: 1.5
+      client_width_dip: 718.6666870117188
+      client_height_dip: 529.3333129882812
+      visual_nodes_initial: 197
+      realized_rows_initial: 34
+      uia_peer: ListView
+      working_set_bytes: 220012544
+      peak_working_set_bytes: 220012544
+      private_bytes: 175005696
+      managed_heap_bytes: 45641352
+      process_elapsed_ms: 5333.7335
+      selection_supported: false
+      selection_matches: null
+      selected_utf16: null
+      expected_utf16: 949886
+      select_all_ms: 0.6116
+      end_request_ms: 0.9987
+      end_reached: true
+      scrollable_height: null
+      end_offset: null
+      realized_rows_end: 34
+      navigation_timer_delay_max_ms: 17.1162
+      navigation_timer_delay_median_ms: 16.5186
+  - surface: blocks
+    case: delimiter-storm-1mib
+    trial: 3
+    exit_code: 0
+    timed_out: false
+    launch_to_first_checkpoint_ms: 4739.071199999671
+    launch_to_exit_ms: 5572.994199999812
+    metrics:
+      host: C# WinUI
+      surface: blocks
+      input_name: delimiter-storm-1mib.md
+      runtime: .NET 10.0.13
+      os: Microsoft Windows NT 10.0.26300.0
+      entry_to_window_ctor_ms: 140.94
+      source_bytes: 1048576
+      source_sha256: d0100b5e90ac68662cff1f76741bc619dbecee78c8174096aa93695f3520a757
+      read_ms: 2.3182
+      parse_ms: 4054.3188
+      blocks: 24673
+      text_utf16: 949886
+      adapter_ms: 30.431
+      surface_setup_ms: 11.0927
+      entry_to_surface_loaded_ms: 4356.8822
+      entry_to_render_callback_ms: 4383.311
+      dpi_scale: 1.5
+      client_width_dip: 718.6666870117188
+      client_height_dip: 529.3333129882812
+      visual_nodes_initial: 205
+      realized_rows_initial: 36
+      uia_peer: ListView
+      working_set_bytes: 219881472
+      peak_working_set_bytes: 219881472
+      private_bytes: 175353856
+      managed_heap_bytes: 45665712
+      process_elapsed_ms: 5353.8879
+      selection_supported: false
+      selection_matches: null
+      selected_utf16: null
+      expected_utf16: 949886
+      select_all_ms: 0.6237
+      end_request_ms: 1.1614
+      end_reached: true
+      scrollable_height: null
+      end_offset: null
+      realized_rows_end: 36
+      navigation_timer_delay_max_ms: 17.1897
+      navigation_timer_delay_median_ms: 16.2441
+  - surface: blocks
+    case: long-lines-1mib
+    trial: 1
+    exit_code: 0
+    timed_out: false
+    launch_to_first_checkpoint_ms: 2797.0266000002084
+    launch_to_exit_ms: 3641.706299999896
+    metrics:
+      host: C# WinUI
+      surface: blocks
+      input_name: long-lines-1mib.md
+      runtime: .NET 10.0.13
+      os: Microsoft Windows NT 10.0.26300.0
+      entry_to_window_ctor_ms: 140.4258
+      source_bytes: 1048576
+      source_sha256: 457e4d3a4cc3e1c5afb07d2bc36afae173bb19839a7047450536459318b6cf77
+      read_ms: 3.1279
+      parse_ms: 86.14
+      blocks: 2
+      text_utf16: 1048573
+      adapter_ms: 4.2886
+      surface_setup_ms: 12.1141
+      entry_to_surface_loaded_ms: 366.7747
+      entry_to_render_callback_ms: 586.886
+      dpi_scale: 1.5
+      client_width_dip: 718.6666870117188
+      client_height_dip: 529.3333129882812
+      visual_nodes_initial: 69
+      realized_rows_initial: 2
+      uia_peer: ListView
+      working_set_bytes: 214519808
+      peak_working_set_bytes: 214519808
+      private_bytes: 178368512
+      managed_heap_bytes: 15157088
+      process_elapsed_ms: 3420.1027
+      selection_supported: false
+      selection_matches: null
+      selected_utf16: null
+      expected_utf16: 1048573
+      select_all_ms: 0.6031
+      end_request_ms: 0.2883
+      end_reached: true
+      scrollable_height: null
+      end_offset: null
+      realized_rows_end: 2
+      navigation_timer_delay_max_ms: 17.078
+      navigation_timer_delay_median_ms: 16.4742
+  - surface: blocks
+    case: long-lines-1mib
+    trial: 2
+    exit_code: 0
+    timed_out: false
+    launch_to_first_checkpoint_ms: 2726.016200000231
+    launch_to_exit_ms: 3583.69280000079
+    metrics:
+      host: C# WinUI
+      surface: blocks
+      input_name: long-lines-1mib.md
+      runtime: .NET 10.0.13
+      os: Microsoft Windows NT 10.0.26300.0
+      entry_to_window_ctor_ms: 145.8215
+      source_bytes: 1048576
+      source_sha256: 457e4d3a4cc3e1c5afb07d2bc36afae173bb19839a7047450536459318b6cf77
+      read_ms: 2.3604
+      parse_ms: 76.5651
+      blocks: 2
+      text_utf16: 1048573
+      adapter_ms: 4.0734
+      surface_setup_ms: 10.9145
+      entry_to_surface_loaded_ms: 343.1707
+      entry_to_render_callback_ms: 543.299
+      dpi_scale: 1.5
+      client_width_dip: 718.6666870117188
+      client_height_dip: 529.3333129882812
+      visual_nodes_initial: 69
+      realized_rows_initial: 2
+      uia_peer: ListView
+      working_set_bytes: 214818816
+      peak_working_set_bytes: 214818816
+      private_bytes: 178774016
+      managed_heap_bytes: 15066912
+      process_elapsed_ms: 3345.8504
+      selection_supported: false
+      selection_matches: null
+      selected_utf16: null
+      expected_utf16: 1048573
+      select_all_ms: 0.6554
+      end_request_ms: 0.2786
+      end_reached: true
+      scrollable_height: null
+      end_offset: null
+      realized_rows_end: 2
+      navigation_timer_delay_max_ms: 16.6195
+      navigation_timer_delay_median_ms: 16.2502
+  - surface: blocks
+    case: long-lines-1mib
+    trial: 3
+    exit_code: 0
+    timed_out: false
+    launch_to_first_checkpoint_ms: 2726.0667000000467
+    launch_to_exit_ms: 3557.420000000093
+    metrics:
+      host: C# WinUI
+      surface: blocks
+      input_name: long-lines-1mib.md
+      runtime: .NET 10.0.13
+      os: Microsoft Windows NT 10.0.26300.0
+      entry_to_window_ctor_ms: 145.0603
+      source_bytes: 1048576
+      source_sha256: 457e4d3a4cc3e1c5afb07d2bc36afae173bb19839a7047450536459318b6cf77
+      read_ms: 2.318
+      parse_ms: 76.0458
+      blocks: 2
+      text_utf16: 1048573
+      adapter_ms: 3.9321
+      surface_setup_ms: 10.554
+      entry_to_surface_loaded_ms: 348.1735
+      entry_to_render_callback_ms: 547.954
+      dpi_scale: 1.5
+      client_width_dip: 718.6666870117188
+      client_height_dip: 529.3333129882812
+      visual_nodes_initial: 69
+      realized_rows_initial: 2
+      uia_peer: ListView
+      working_set_bytes: 214450176
+      peak_working_set_bytes: 214450176
+      private_bytes: 176979968
+      managed_heap_bytes: 15165264
+      process_elapsed_ms: 3344.9845
+      selection_supported: false
+      selection_matches: null
+      selected_utf16: null
+      expected_utf16: 1048573
+      select_all_ms: 0.7434
+      end_request_ms: 0.2938
+      end_reached: true
+      scrollable_height: null
+      end_offset: null
+      realized_rows_end: 2
+      navigation_timer_delay_max_ms: 16.7079
+      navigation_timer_delay_median_ms: 16.4298
+  probe_assembly_sha256: 2e19253cd2b012eeef756a4f2425881c8e519ef8b6a315f6636472081f7c594e
+  instrumentation_note: Automated binary predates interactive-only clipboard/display
+    hooks and additional phase checkpoints; same renderer/model/navigation algorithms.
+    Initial trials overlapped native compilation; timings are exploratory, not cold-cache
+    or controlled-host budgets.
+supplementary:
+  native_literal_host:
+  - host: C++/WinRT literal source
+    entry_to_render_callback_ms: 219.588
+    selection_matches: true
+    peak_working_set_bytes: 101801984
+    dpi_scale: 1.5
+  - host: C++/WinRT literal source
+    entry_to_render_callback_ms: 203.585
+    selection_matches: true
+    peak_working_set_bytes: 97816576
+    dpi_scale: 1.5
+  - host: C++/WinRT literal source
+    entry_to_render_callback_ms: 205.163
+    selection_matches: true
+    peak_working_set_bytes: 95842304
+    dpi_scale: 1.5
+  unicode_exact_spelling_open:
+  - case: unicode-filename
+    normalization: NFC
+    surface: richtext
+    source_sha256: e84cc3de421115e7ae9cffe6902cc026353597ee48d4337d3c05cf47c2b91f23
+    selection_matches: true
+    end_reached: true
+  - case: unicode-filename
+    normalization: NFC
+    surface: richedit
+    source_sha256: e84cc3de421115e7ae9cffe6902cc026353597ee48d4337d3c05cf47c2b91f23
+    selection_matches: true
+    end_reached: true
+  - case: unicode-filename
+    normalization: NFC
+    surface: blocks
+    source_sha256: e84cc3de421115e7ae9cffe6902cc026353597ee48d4337d3c05cf47c2b91f23
+    selection_matches: null
+    end_reached: true
+  - case: nfd-filename
+    normalization: NFC
+    surface: richtext
+    source_sha256: 582ffa0bdf7af54427f8756180b4b7f3a0d98567ad1bbbff4d83344105ba5626
+    selection_matches: true
+    end_reached: true
+  - case: nfd-filename
+    normalization: NFC
+    surface: richedit
+    source_sha256: 582ffa0bdf7af54427f8756180b4b7f3a0d98567ad1bbbff4d83344105ba5626
+    selection_matches: true
+    end_reached: true
+  - case: nfd-filename
+    normalization: NFC
+    surface: blocks
+    source_sha256: 582ffa0bdf7af54427f8756180b4b7f3a0d98567ad1bbbff4d83344105ba5626
+    selection_matches: null
+    end_reached: true
+  - case: nfd-filename
+    normalization: NFD
+    surface: richtext
+    source_sha256: 582ffa0bdf7af54427f8756180b4b7f3a0d98567ad1bbbff4d83344105ba5626
+    selection_matches: true
+    end_reached: true
+  - case: nfd-filename
+    normalization: NFD
+    surface: richedit
+    source_sha256: 582ffa0bdf7af54427f8756180b4b7f3a0d98567ad1bbbff4d83344105ba5626
+    selection_matches: true
+    end_reached: true
+  - case: nfd-filename
+    normalization: NFD
+    surface: blocks
+    source_sha256: 582ffa0bdf7af54427f8756180b4b7f3a0d98567ad1bbbff4d83344105ba5626
+    selection_matches: null
+    end_reached: true
+  final_surface_smoke:
+  - host: C# WinUI
+    surface: richtext
+    input_name: gfm-tour.md
+    runtime: .NET 10.0.13
+    os: Microsoft Windows NT 10.0.26300.0
+    entry_to_window_ctor_ms: 138.2674
+    source_bytes: 2547
+    source_sha256: ca08e4d20c830884ff36bed95f1e8284a0fd1b1c43919eabc865646f79d733f1
+    read_ms: 1.2991
+    phase: ready
+    working_set_bytes: 150945792
+    peak_working_set_bytes: 150945792
+    private_bytes: 105111552
+    managed_heap_bytes: 2770864
+    process_elapsed_ms: 4830.8713
+    parse_ms: 94.2285
+    blocks: 70
+    text_utf16: 1992
+    adapter_ms: 1.916
+    surface_setup_ms: 12.1641
+    entry_to_surface_loaded_ms: 434.4886
+    entry_to_render_callback_ms: 448.419
+    dpi_scale: 1.5
+    client_width_dip: 718.6666870117188
+    client_height_dip: 529.3333129882812
+    visual_nodes_initial: 56
+    realized_rows_initial: 0
+    uia_peer: ScrollViewer
+    content_uia_peer: RichTextBlock
+    content_uia_text_pattern: true
+    display_sweep:
+    - scale: 1.5
+      width_dip: 652
+      height_dip: 462.6666564941406
+      work_x_px: 0
+      work_y_px: 0
+      work_width_px: 3840
+      work_height_px: 2088
+    - scale: 1.5
+      width_dip: 652
+      height_dip: 462.6666564941406
+      work_x_px: 3840
+      work_y_px: 0
+      work_width_px: 3840
+      work_height_px: 2088
+    - scale: 1.5
+      width_dip: 652
+      height_dip: 462.6666564941406
+      work_x_px: -3840
+      work_y_px: 0
+      work_width_px: 3840
+      work_height_px: 2088
+    display_sweep_restored_geometry: true
+    dark_theme_applied: true
+    light_theme_applied: true
+    selection_supported: true
+    selection_matches: true
+    selected_utf16: 2061
+    expected_utf16: 1992
+    select_all_ms: 1.0865
+    end_request_ms: 0.3782
+    end_reached: true
+    scrollable_height: 2116.6665954589844
+    end_offset: 2116.6665954589844
+    realized_rows_end: 0
+    navigation_timer_delay_max_ms: 17.2246
+    navigation_timer_delay_median_ms: 16.9106
+  - host: C# WinUI
+    surface: richedit
+    input_name: gfm-tour.md
+    runtime: .NET 10.0.13
+    os: Microsoft Windows NT 10.0.26300.0
+    entry_to_window_ctor_ms: 143.6745
+    source_bytes: 2547
+    source_sha256: ca08e4d20c830884ff36bed95f1e8284a0fd1b1c43919eabc865646f79d733f1
+    read_ms: 1.6587
+    phase: ready
+    working_set_bytes: 149938176
+    peak_working_set_bytes: 149938176
+    private_bytes: 104058880
+    managed_heap_bytes: 2688840
+    process_elapsed_ms: 1396.2978
+    parse_ms: 96.1994
+    blocks: 70
+    text_utf16: 1992
+    adapter_ms: 1.7348
+    surface_setup_ms: 17.186
+    entry_to_surface_loaded_ms: 434.7963
+    entry_to_render_callback_ms: 449.584
+    dpi_scale: 1.5
+    client_width_dip: 718.6666870117188
+    client_height_dip: 529.3333129882812
+    visual_nodes_initial: 61
+    realized_rows_initial: 0
+    uia_peer: RichEditBox
+    content_uia_peer: RichEditBox
+    content_uia_text_pattern: false
+    selection_supported: true
+    selection_matches: true
+    selected_utf16: 1992
+    expected_utf16: 1992
+    select_all_ms: 2.0302
+    end_request_ms: 1.2648
+    end_reached: true
+    scrollable_height: null
+    end_offset: null
+    realized_rows_end: 0
+    navigation_timer_delay_max_ms: 17.652
+    navigation_timer_delay_median_ms: 16.842
+  - host: C# WinUI
+    surface: blocks
+    input_name: gfm-tour.md
+    runtime: .NET 10.0.13
+    os: Microsoft Windows NT 10.0.26300.0
+    entry_to_window_ctor_ms: 144.9346
+    source_bytes: 2547
+    source_sha256: ca08e4d20c830884ff36bed95f1e8284a0fd1b1c43919eabc865646f79d733f1
+    read_ms: 1.3511
+    phase: ready
+    working_set_bytes: 151887872
+    peak_working_set_bytes: 151887872
+    private_bytes: 108654592
+    managed_heap_bytes: 2754512
+    process_elapsed_ms: 1405.8054
+    parse_ms: 106.2003
+    blocks: 70
+    text_utf16: 1992
+    adapter_ms: 1.8358
+    surface_setup_ms: 10.6054
+    entry_to_surface_loaded_ms: 440.3302
+    entry_to_render_callback_ms: 470.589
+    dpi_scale: 1.5
+    client_width_dip: 718.6666870117188
+    client_height_dip: 529.3333129882812
+    visual_nodes_initial: 201
+    realized_rows_initial: 35
+    uia_peer: ListView
+    content_uia_peer: ListView
+    content_uia_text_pattern: false
+    selection_supported: false
+    selection_matches: null
+    selected_utf16: null
+    expected_utf16: 1992
+    select_all_ms: 0.4528
+    end_request_ms: 0.4593
+    end_reached: true
+    scrollable_height: null
+    end_offset: null
+    realized_rows_end: 35
+    navigation_timer_delay_max_ms: 17.0779
+    navigation_timer_delay_median_ms: 16.5198
+  final_semantic_trials:
+    platform: Windows-11-10.0.26300-SP0
+    method: fresh process per trial, serial
+    probe_assembly_sha256: 0a020339d9a6f736c46d1dfc44ddd98f1449707275b3aa945e1199e91f4e1820
+    timeout_seconds: 45
+    trials:
+    - surface: richtext
+      case: gfm-tour
+      trial: 1
+      exit_code: 0
+      timed_out: false
+      launch_to_first_checkpoint_ms: 797.816100000091
+      launch_to_exit_ms: 1609.952499999963
+      metrics:
+        host: C# WinUI
+        surface: richtext
+        input_name: gfm-tour.md
+        runtime: .NET 10.0.13
+        os: Microsoft Windows NT 10.0.26300.0
+        entry_to_window_ctor_ms: 139.7425
+        source_bytes: 2547
+        source_sha256: ca08e4d20c830884ff36bed95f1e8284a0fd1b1c43919eabc865646f79d733f1
+        read_ms: 1.4334
+        phase: ready
+        working_set_bytes: 148996096
+        peak_working_set_bytes: 148996096
+        private_bytes: 106020864
+        managed_heap_bytes: 2566000
+        process_elapsed_ms: 1387.0765
+        parse_ms: 93.5586
+        blocks: 70
+        text_utf16: 1992
+        adapter_ms: 1.7692
+        surface_setup_ms: 11.2392
+        entry_to_render_callback_ms: 442.67
+        entry_to_surface_loaded_ms: 428.0125
+        dpi_scale: 1.5
+        client_width_dip: 718.6666870117188
+        client_height_dip: 529.3333129882812
+        visual_nodes_initial: 56
+        realized_rows_initial: 0
+        uia_peer: ScrollViewer
+        content_uia_peer: RichTextBlock
+        content_uia_text_pattern: true
+        selection_supported: true
+        selection_matches: true
+        selected_utf16: 2061
+        expected_utf16: 1992
+        select_all_ms: 0.8475
+        end_request_ms: 0.3898
+        end_reached: true
+        scrollable_height: 2116.6665954589844
+        end_offset: 2116.6665954589844
+        realized_rows_end: 0
+        navigation_timer_delay_max_ms: 17.0528
+        navigation_timer_delay_median_ms: 16.0591
+    - surface: richtext
+      case: unsafe-html
+      trial: 1
+      exit_code: 0
+      timed_out: false
+      launch_to_first_checkpoint_ms: 750.8035000000746
+      launch_to_exit_ms: 1554.8341999992772
+      metrics:
+        host: C# WinUI
+        surface: richtext
+        input_name: unsafe-html.md
+        runtime: .NET 10.0.13
+        os: Microsoft Windows NT 10.0.26300.0
+        entry_to_window_ctor_ms: 137.2113
+        source_bytes: 234
+        source_sha256: 19ab9ffc16d4a4eca0c022827c13e2adc8c068c28e4d60453041624f0f1d3017
+        read_ms: 1.6555
+        phase: ready
+        working_set_bytes: 146055168
+        peak_working_set_bytes: 146055168
+        private_bytes: 103383040
+        managed_heap_bytes: 2278720
+        process_elapsed_ms: 1373.0397
+        parse_ms: 84.1929
+        blocks: 9
+        text_utf16: 200
+        adapter_ms: 1.7803
+        surface_setup_ms: 9.373
+        entry_to_render_callback_ms: 425.376
+        entry_to_surface_loaded_ms: 414.3814
+        dpi_scale: 1.5
+        client_width_dip: 718.6666870117188
+        client_height_dip: 529.3333129882812
+        visual_nodes_initial: 55
+        realized_rows_initial: 0
+        uia_peer: ScrollViewer
+        content_uia_peer: RichTextBlock
+        content_uia_text_pattern: true
+        selection_supported: true
+        selection_matches: true
+        selected_utf16: 208
+        expected_utf16: 200
+        select_all_ms: 0.7946
+        end_request_ms: 0.2882
+        end_reached: true
+        scrollable_height: 0
+        end_offset: 0
+        realized_rows_end: 0
+        navigation_timer_delay_max_ms: 16.8455
+        navigation_timer_delay_median_ms: 16.2235
+    - surface: richtext
+      case: code-fences
+      trial: 1
+      exit_code: 0
+      timed_out: false
+      launch_to_first_checkpoint_ms: 722.1976999999242
+      launch_to_exit_ms: 1523.9769999998316
+      metrics:
+        host: C# WinUI
+        surface: richtext
+        input_name: code-fences.md
+        runtime: .NET 10.0.13
+        os: Microsoft Windows NT 10.0.26300.0
+        entry_to_window_ctor_ms: 142.6173
+        source_bytes: 315
+        source_sha256: 9c08dc12c7e36f5a7157ecf96752ca3b741fd85cee952b254716ad9178d18848
+        read_ms: 1.4714
+        phase: ready
+        working_set_bytes: 146317312
+        peak_working_set_bytes: 146317312
+        private_bytes: 102883328
+        managed_heap_bytes: 2375664
+        process_elapsed_ms: 1340.583
+        parse_ms: 66.9745
+        blocks: 9
+        text_utf16: 260
+        adapter_ms: 1.6329
+        surface_setup_ms: 9.9924
+        entry_to_render_callback_ms: 396.166
+        entry_to_surface_loaded_ms: 386.5122
+        dpi_scale: 1.5
+        client_width_dip: 718.6666870117188
+        client_height_dip: 529.3333129882812
+        visual_nodes_initial: 55
+        realized_rows_initial: 0
+        uia_peer: ScrollViewer
+        content_uia_peer: RichTextBlock
+        content_uia_text_pattern: true
+        selection_supported: true
+        selection_matches: true
+        selected_utf16: 268
+        expected_utf16: 260
+        select_all_ms: 0.7911
+        end_request_ms: 0.3026
+        end_reached: true
+        scrollable_height: 0
+        end_offset: 0
+        realized_rows_end: 0
+        navigation_timer_delay_max_ms: 16.6192
+        navigation_timer_delay_median_ms: 16.2138
+    - surface: richtext
+      case: math-alerts
+      trial: 1
+      exit_code: 0
+      timed_out: false
+      launch_to_first_checkpoint_ms: 751.0684000008041
+      launch_to_exit_ms: 1550.4601000002367
+      metrics:
+        host: C# WinUI
+        surface: richtext
+        input_name: math-alerts.md
+        runtime: .NET 10.0.13
+        os: Microsoft Windows NT 10.0.26300.0
+        entry_to_window_ctor_ms: 138.8601
+        source_bytes: 258
+        source_sha256: 1dbc8e31e6f0d2903c33edecbafeee0c1edfc336e8eb01f3b02466a7e3b68bfe
+        read_ms: 1.6731
+        phase: ready
+        working_set_bytes: 146628608
+        peak_working_set_bytes: 146628608
+        private_bytes: 102653952
+        managed_heap_bytes: 2328488
+        process_elapsed_ms: 1368.4032
+        parse_ms: 83.5319
+        blocks: 8
+        text_utf16: 162
+        adapter_ms: 1.8839
+        surface_setup_ms: 10.0385
+        entry_to_render_callback_ms: 421.974
+        entry_to_surface_loaded_ms: 411.5616
+        dpi_scale: 1.5
+        client_width_dip: 718.6666870117188
+        client_height_dip: 529.3333129882812
+        visual_nodes_initial: 55
+        realized_rows_initial: 0
+        uia_peer: ScrollViewer
+        content_uia_peer: RichTextBlock
+        content_uia_text_pattern: true
+        selection_supported: true
+        selection_matches: true
+        selected_utf16: 169
+        expected_utf16: 162
+        select_all_ms: 0.7594
+        end_request_ms: 0.3602
+        end_reached: true
+        scrollable_height: 0
+        end_offset: 0
+        realized_rows_end: 0
+        navigation_timer_delay_max_ms: 17.037
+        navigation_timer_delay_median_ms: 16.4636
+    - surface: richtext
+      case: inline-diagrams
+      trial: 1
+      exit_code: 0
+      timed_out: false
+      launch_to_first_checkpoint_ms: 730.3475999997318
+      launch_to_exit_ms: 1543.4153999995033
+      metrics:
+        host: C# WinUI
+        surface: richtext
+        input_name: inline-diagrams.md
+        runtime: .NET 10.0.13
+        os: Microsoft Windows NT 10.0.26300.0
+        entry_to_window_ctor_ms: 142.4028
+        source_bytes: 370
+        source_sha256: ab3d733ad731d90f09a94dfec7d4e925405826d50b796387681490adf8fa81b0
+        read_ms: 1.3479
+        phase: ready
+        working_set_bytes: 147107840
+        peak_working_set_bytes: 147107840
+        private_bytes: 103038976
+        managed_heap_bytes: 2410272
+        process_elapsed_ms: 1348.335
+        parse_ms: 66.4416
+        blocks: 15
+        text_utf16: 284
+        adapter_ms: 1.6733
+        surface_setup_ms: 10.3053
+        entry_to_render_callback_ms: 401.496
+        entry_to_surface_loaded_ms: 391.1807
+        dpi_scale: 1.5
+        client_width_dip: 718.6666870117188
+        client_height_dip: 529.3333129882812
+        visual_nodes_initial: 56
+        realized_rows_initial: 0
+        uia_peer: ScrollViewer
+        content_uia_peer: RichTextBlock
+        content_uia_text_pattern: true
+        selection_supported: true
+        selection_matches: true
+        selected_utf16: 298
+        expected_utf16: 284
+        select_all_ms: 0.7548
+        end_request_ms: 0.7685
+        end_reached: true
+        scrollable_height: 84.00003051757812
+        end_offset: 84.00003051757812
+        realized_rows_end: 0
+        navigation_timer_delay_max_ms: 16.6892
+        navigation_timer_delay_median_ms: 16.4348
+    - surface: richtext
+      case: voice-parity
+      trial: 1
+      exit_code: 0
+      timed_out: false
+      launch_to_first_checkpoint_ms: 741.499699999622
+      launch_to_exit_ms: 1549.0545000002385
+      metrics:
+        host: C# WinUI
+        surface: richtext
+        input_name: voice-parity.md
+        runtime: .NET 10.0.13
+        os: Microsoft Windows NT 10.0.26300.0
+        entry_to_window_ctor_ms: 136.8454
+        source_bytes: 980
+        source_sha256: 6a7391b5d77138f8177b0c46f916cc62a3b627a7146a73bb5a9dc1713b94e781
+        read_ms: 1.2967
+        phase: ready
+        working_set_bytes: 147324928
+        peak_working_set_bytes: 147324928
+        private_bytes: 103071744
+        managed_heap_bytes: 2459688
+        process_elapsed_ms: 1358.5177
+        parse_ms: 78.276
+        blocks: 23
+        text_utf16: 857
+        adapter_ms: 1.5878
+        surface_setup_ms: 10.5126
+        entry_to_render_callback_ms: 415.043
+        entry_to_surface_loaded_ms: 402.9097
+        dpi_scale: 1.5
+        client_width_dip: 718.6666870117188
+        client_height_dip: 529.3333129882812
+        visual_nodes_initial: 56
+        realized_rows_initial: 0
+        uia_peer: ScrollViewer
+        content_uia_peer: RichTextBlock
+        content_uia_text_pattern: true
+        selection_supported: true
+        selection_matches: true
+        selected_utf16: 879
+        expected_utf16: 857
+        select_all_ms: 0.8134
+        end_request_ms: 0.3528
+        end_reached: true
+        scrollable_height: 349.3333435058594
+        end_offset: 349.3333435058594
+        realized_rows_end: 0
+        navigation_timer_delay_max_ms: 17.1503
+        navigation_timer_delay_median_ms: 16.5202
+    - surface: richtext
+      case: unicode-filename
+      trial: 1
+      exit_code: 0
+      timed_out: false
+      launch_to_first_checkpoint_ms: 730.0272000002224
+      launch_to_exit_ms: 1548.9196000007723
+      metrics:
+        host: C# WinUI
+        surface: richtext
+        input_name: unicode-filename.md
+        runtime: .NET 10.0.13
+        os: Microsoft Windows NT 10.0.26300.0
+        entry_to_window_ctor_ms: 141.2363
+        source_bytes: 37
+        source_sha256: e84cc3de421115e7ae9cffe6902cc026353597ee48d4337d3c05cf47c2b91f23
+        read_ms: 1.2865
+        phase: ready
+        working_set_bytes: 145723392
+        peak_working_set_bytes: 145723392
+        private_bytes: 102498304
+        managed_heap_bytes: 2261728
+        process_elapsed_ms: 1347.3411
+        parse_ms: 63.7457
+        blocks: 2
+        text_utf16: 33
+        adapter_ms: 1.5283
+        surface_setup_ms: 9.36
+        entry_to_render_callback_ms: 400.372
+        entry_to_surface_loaded_ms: 391.3139
+        dpi_scale: 1.5
+        client_width_dip: 718.6666870117188
+        client_height_dip: 529.3333129882812
+        visual_nodes_initial: 55
+        realized_rows_initial: 0
+        uia_peer: ScrollViewer
+        content_uia_peer: RichTextBlock
+        content_uia_text_pattern: true
+        selection_supported: true
+        selection_matches: true
+        selected_utf16: 34
+        expected_utf16: 33
+        select_all_ms: 0.7623
+        end_request_ms: 0.318
+        end_reached: true
+        scrollable_height: 0
+        end_offset: 0
+        realized_rows_end: 0
+        navigation_timer_delay_max_ms: 17.0564
+        navigation_timer_delay_median_ms: 16.1673
+    - surface: richtext
+      case: nfd-filename
+      trial: 1
+      exit_code: 0
+      timed_out: false
+      launch_to_first_checkpoint_ms: 718.3090999997148
+      launch_to_exit_ms: 1529.0900999998485
+      metrics:
+        host: C# WinUI
+        surface: richtext
+        input_name: nfd-filename.md
+        runtime: .NET 10.0.13
+        os: Microsoft Windows NT 10.0.26300.0
+        entry_to_window_ctor_ms: 140.9562
+        source_bytes: 58
+        source_sha256: 582ffa0bdf7af54427f8756180b4b7f3a0d98567ad1bbbff4d83344105ba5626
+        read_ms: 1.3214
+        phase: ready
+        working_set_bytes: 146096128
+        peak_working_set_bytes: 146096128
+        private_bytes: 103231488
+        managed_heap_bytes: 2394032
+        process_elapsed_ms: 1333.8945
+        parse_ms: 61.2177
+        blocks: 2
+        text_utf16: 54
+        adapter_ms: 1.6289
+        surface_setup_ms: 9.0349
+        entry_to_render_callback_ms: 389.59
+        entry_to_surface_loaded_ms: 379.8971
+        dpi_scale: 1.5
+        client_width_dip: 718.6666870117188
+        client_height_dip: 529.3333129882812
+        visual_nodes_initial: 55
+        realized_rows_initial: 0
+        uia_peer: ScrollViewer
+        content_uia_peer: RichTextBlock
+        content_uia_text_pattern: true
+        selection_supported: true
+        selection_matches: true
+        selected_utf16: 55
+        expected_utf16: 54
+        select_all_ms: 0.7686
+        end_request_ms: 0.3425
+        end_reached: true
+        scrollable_height: 0
+        end_offset: 0
+        realized_rows_end: 0
+        navigation_timer_delay_max_ms: 16.5406
+        navigation_timer_delay_median_ms: 16.0159
+    - surface: richedit
+      case: gfm-tour
+      trial: 1
+      exit_code: 0
+      timed_out: false
+      launch_to_first_checkpoint_ms: 771.6121000003113
+      launch_to_exit_ms: 1572.8788000005807
+      metrics:
+        host: C# WinUI
+        surface: richedit
+        input_name: gfm-tour.md
+        runtime: .NET 10.0.13
+        os: Microsoft Windows NT 10.0.26300.0
+        entry_to_window_ctor_ms: 142.7183
+        source_bytes: 2547
+        source_sha256: ca08e4d20c830884ff36bed95f1e8284a0fd1b1c43919eabc865646f79d733f1
+        read_ms: 1.3983
+        phase: ready
+        working_set_bytes: 149819392
+        peak_working_set_bytes: 149819392
+        private_bytes: 103518208
+        managed_heap_bytes: 2697144
+        process_elapsed_ms: 1392.3472
+        parse_ms: 105.0696
+        blocks: 70
+        text_utf16: 1992
+        adapter_ms: 2.4467
+        surface_setup_ms: 15.4331
+        entry_to_render_callback_ms: 448.351
+        entry_to_surface_loaded_ms: 434.8605
+        dpi_scale: 1.5
+        client_width_dip: 718.6666870117188
+        client_height_dip: 529.3333129882812
+        visual_nodes_initial: 61
+        realized_rows_initial: 0
+        uia_peer: RichEditBox
+        content_uia_peer: RichEditBox
+        content_uia_text_pattern: false
+        selection_supported: true
+        selection_matches: true
+        selected_utf16: 1992
+        expected_utf16: 1992
+        select_all_ms: 2.1577
+        end_request_ms: 1.3639
+        end_reached: true
+        scrollable_height: null
+        end_offset: null
+        realized_rows_end: 0
+        navigation_timer_delay_max_ms: 17.0159
+        navigation_timer_delay_median_ms: 16.4908
+    - surface: richedit
+      case: unsafe-html
+      trial: 1
+      exit_code: 0
+      timed_out: false
+      launch_to_first_checkpoint_ms: 753.3119999998235
+      launch_to_exit_ms: 1566.0311999999976
+      metrics:
+        host: C# WinUI
+        surface: richedit
+        input_name: unsafe-html.md
+        runtime: .NET 10.0.13
+        os: Microsoft Windows NT 10.0.26300.0
+        entry_to_window_ctor_ms: 145.9468
+        source_bytes: 234
+        source_sha256: 19ab9ffc16d4a4eca0c022827c13e2adc8c068c28e4d60453041624f0f1d3017
+        read_ms: 1.3275
+        phase: ready
+        working_set_bytes: 142938112
+        peak_working_set_bytes: 142938112
+        private_bytes: 102375424
+        managed_heap_bytes: 2295840
+        process_elapsed_ms: 1369.6371
+        parse_ms: 85.678
+        blocks: 9
+        text_utf16: 200
+        adapter_ms: 1.5822
+        surface_setup_ms: 12.9133
+        entry_to_render_callback_ms: 419.05
+        entry_to_surface_loaded_ms: 413.1987
+        dpi_scale: 1.5
+        client_width_dip: 718.6666870117188
+        client_height_dip: 529.3333129882812
+        visual_nodes_initial: 31
+        realized_rows_initial: 0
+        uia_peer: RichEditBox
+        content_uia_peer: RichEditBox
+        content_uia_text_pattern: false
+        selection_supported: true
+        selection_matches: true
+        selected_utf16: 200
+        expected_utf16: 200
+        select_all_ms: 2.5689
+        end_request_ms: 0.6962
+        end_reached: true
+        scrollable_height: null
+        end_offset: null
+        realized_rows_end: 0
+        navigation_timer_delay_max_ms: 16.9838
+        navigation_timer_delay_median_ms: 16.4144
+    - surface: richedit
+      case: code-fences
+      trial: 1
+      exit_code: 0
+      timed_out: false
+      launch_to_first_checkpoint_ms: 719.2253999992317
+      launch_to_exit_ms: 1525.5129999995916
+      metrics:
+        host: C# WinUI
+        surface: richedit
+        input_name: code-fences.md
+        runtime: .NET 10.0.13
+        os: Microsoft Windows NT 10.0.26300.0
+        entry_to_window_ctor_ms: 138.5223
+        source_bytes: 315
+        source_sha256: 9c08dc12c7e36f5a7157ecf96752ca3b741fd85cee952b254716ad9178d18848
+        read_ms: 1.4509
+        phase: ready
+        working_set_bytes: 142979072
+        peak_working_set_bytes: 142979072
+        private_bytes: 101122048
+        managed_heap_bytes: 2335280
+        process_elapsed_ms: 1342.9933
+        parse_ms: 66.4988
+        blocks: 9
+        text_utf16: 260
+        adapter_ms: 1.5583
+        surface_setup_ms: 15.6083
+        entry_to_render_callback_ms: 394.456
+        entry_to_surface_loaded_ms: 388.2939
+        dpi_scale: 1.5
+        client_width_dip: 718.6666870117188
+        client_height_dip: 529.3333129882812
+        visual_nodes_initial: 31
+        realized_rows_initial: 0
+        uia_peer: RichEditBox
+        content_uia_peer: RichEditBox
+        content_uia_text_pattern: false
+        selection_supported: true
+        selection_matches: true
+        selected_utf16: 260
+        expected_utf16: 260
+        select_all_ms: 2.0721
+        end_request_ms: 0.6061
+        end_reached: true
+        scrollable_height: null
+        end_offset: null
+        realized_rows_end: 0
+        navigation_timer_delay_max_ms: 17.0151
+        navigation_timer_delay_median_ms: 16.3035
+    - surface: richedit
+      case: math-alerts
+      trial: 1
+      exit_code: 0
+      timed_out: false
+      launch_to_first_checkpoint_ms: 751.7383999993399
+      launch_to_exit_ms: 1553.8835999996081
+      metrics:
+        host: C# WinUI
+        surface: richedit
+        input_name: math-alerts.md
+        runtime: .NET 10.0.13
+        os: Microsoft Windows NT 10.0.26300.0
+        entry_to_window_ctor_ms: 140.2601
+        source_bytes: 258
+        source_sha256: 1dbc8e31e6f0d2903c33edecbafeee0c1edfc336e8eb01f3b02466a7e3b68bfe
+        read_ms: 1.5032
+        phase: ready
+        working_set_bytes: 143175680
+        peak_working_set_bytes: 143175680
+        private_bytes: 102952960
+        managed_heap_bytes: 2336600
+        process_elapsed_ms: 1370.9454
+        parse_ms: 82.11
+        blocks: 8
+        text_utf16: 162
+        adapter_ms: 1.6762
+        surface_setup_ms: 14.5423
+        entry_to_render_callback_ms: 422.002
+        entry_to_surface_loaded_ms: 415.3667
+        dpi_scale: 1.5
+        client_width_dip: 718.6666870117188
+        client_height_dip: 529.3333129882812
+        visual_nodes_initial: 31
+        realized_rows_initial: 0
+        uia_peer: RichEditBox
+        content_uia_peer: RichEditBox
+        content_uia_text_pattern: false
+        selection_supported: true
+        selection_matches: true
+        selected_utf16: 162
+        expected_utf16: 162
+        select_all_ms: 1.8955
+        end_request_ms: 0.7309
+        end_reached: true
+        scrollable_height: null
+        end_offset: null
+        realized_rows_end: 0
+        navigation_timer_delay_max_ms: 17.0964
+        navigation_timer_delay_median_ms: 16.5034
+    - surface: richedit
+      case: inline-diagrams
+      trial: 1
+      exit_code: 0
+      timed_out: false
+      launch_to_first_checkpoint_ms: 740.2130999998917
+      launch_to_exit_ms: 1553.1963000003088
+      metrics:
+        host: C# WinUI
+        surface: richedit
+        input_name: inline-diagrams.md
+        runtime: .NET 10.0.13
+        os: Microsoft Windows NT 10.0.26300.0
+        entry_to_window_ctor_ms: 136.0696
+        source_bytes: 370
+        source_sha256: ab3d733ad731d90f09a94dfec7d4e925405826d50b796387681490adf8fa81b0
+        read_ms: 1.3953
+        phase: ready
+        working_set_bytes: 143704064
+        peak_working_set_bytes: 143704064
+        private_bytes: 102215680
+        managed_heap_bytes: 2385528
+        process_elapsed_ms: 1364.3384
+        parse_ms: 76.3133
+        blocks: 15
+        text_utf16: 284
+        adapter_ms: 1.5897
+        surface_setup_ms: 14.5077
+        entry_to_render_callback_ms: 415.397
+        entry_to_surface_loaded_ms: 409.0813
+        dpi_scale: 1.5
+        client_width_dip: 718.6666870117188
+        client_height_dip: 529.3333129882812
+        visual_nodes_initial: 31
+        realized_rows_initial: 0
+        uia_peer: RichEditBox
+        content_uia_peer: RichEditBox
+        content_uia_text_pattern: false
+        selection_supported: true
+        selection_matches: true
+        selected_utf16: 284
+        expected_utf16: 284
+        select_all_ms: 1.9025
+        end_request_ms: 0.6903
+        end_reached: true
+        scrollable_height: null
+        end_offset: null
+        realized_rows_end: 0
+        navigation_timer_delay_max_ms: 17.0929
+        navigation_timer_delay_median_ms: 16.3526
+    - surface: richedit
+      case: voice-parity
+      trial: 1
+      exit_code: 0
+      timed_out: false
+      launch_to_first_checkpoint_ms: 762.6689999997325
+      launch_to_exit_ms: 1578.3257000002777
+      metrics:
+        host: C# WinUI
+        surface: richedit
+        input_name: voice-parity.md
+        runtime: .NET 10.0.13
+        os: Microsoft Windows NT 10.0.26300.0
+        entry_to_window_ctor_ms: 139.5383
+        source_bytes: 980
+        source_sha256: 6a7391b5d77138f8177b0c46f916cc62a3b627a7146a73bb5a9dc1713b94e781
+        read_ms: 1.3913
+        phase: ready
+        working_set_bytes: 149401600
+        peak_working_set_bytes: 149401600
+        private_bytes: 103727104
+        managed_heap_bytes: 2492216
+        process_elapsed_ms: 1376.2489
+        parse_ms: 90.2185
+        blocks: 23
+        text_utf16: 857
+        adapter_ms: 1.6565
+        surface_setup_ms: 14.4705
+        entry_to_render_callback_ms: 425.842
+        entry_to_surface_loaded_ms: 414.9309
+        dpi_scale: 1.5
+        client_width_dip: 718.6666870117188
+        client_height_dip: 529.3333129882812
+        visual_nodes_initial: 61
+        realized_rows_initial: 0
+        uia_peer: RichEditBox
+        content_uia_peer: RichEditBox
+        content_uia_text_pattern: false
+        selection_supported: true
+        selection_matches: true
+        selected_utf16: 857
+        expected_utf16: 857
+        select_all_ms: 2.0302
+        end_request_ms: 1.3414
+        end_reached: true
+        scrollable_height: null
+        end_offset: null
+        realized_rows_end: 0
+        navigation_timer_delay_max_ms: 17.3457
+        navigation_timer_delay_median_ms: 16.4818
+    - surface: richedit
+      case: unicode-filename
+      trial: 1
+      exit_code: 0
+      timed_out: false
+      launch_to_first_checkpoint_ms: 720.6975000008242
+      launch_to_exit_ms: 1522.808200000327
+      metrics:
+        host: C# WinUI
+        surface: richedit
+        input_name: unicode-filename.md
+        runtime: .NET 10.0.13
+        os: Microsoft Windows NT 10.0.26300.0
+        entry_to_window_ctor_ms: 137.4835
+        source_bytes: 37
+        source_sha256: e84cc3de421115e7ae9cffe6902cc026353597ee48d4337d3c05cf47c2b91f23
+        read_ms: 1.3645
+        phase: ready
+        working_set_bytes: 142827520
+        peak_working_set_bytes: 142827520
+        private_bytes: 100929536
+        managed_heap_bytes: 2291992
+        process_elapsed_ms: 1344.4347
+        parse_ms: 61.9519
+        blocks: 2
+        text_utf16: 33
+        adapter_ms: 1.6054
+        surface_setup_ms: 13.1734
+        entry_to_render_callback_ms: 390.777
+        entry_to_surface_loaded_ms: 385.1552
+        dpi_scale: 1.5
+        client_width_dip: 718.6666870117188
+        client_height_dip: 529.3333129882812
+        visual_nodes_initial: 31
+        realized_rows_initial: 0
+        uia_peer: RichEditBox
+        content_uia_peer: RichEditBox
+        content_uia_text_pattern: false
+        selection_supported: true
+        selection_matches: true
+        selected_utf16: 33
+        expected_utf16: 33
+        select_all_ms: 2.6254
+        end_request_ms: 0.6893
+        end_reached: true
+        scrollable_height: null
+        end_offset: null
+        realized_rows_end: 0
+        navigation_timer_delay_max_ms: 17.4589
+        navigation_timer_delay_median_ms: 16.5258
+    - surface: richedit
+      case: nfd-filename
+      trial: 1
+      exit_code: 0
+      timed_out: false
+      launch_to_first_checkpoint_ms: 730.1386999997703
+      launch_to_exit_ms: 1554.022100000111
+      metrics:
+        host: C# WinUI
+        surface: richedit
+        input_name: nfd-filename.md
+        runtime: .NET 10.0.13
+        os: Microsoft Windows NT 10.0.26300.0
+        entry_to_window_ctor_ms: 142.4963
+        source_bytes: 58
+        source_sha256: 582ffa0bdf7af54427f8756180b4b7f3a0d98567ad1bbbff4d83344105ba5626
+        read_ms: 1.3126
+        phase: ready
+        working_set_bytes: 142790656
+        peak_working_set_bytes: 142790656
+        private_bytes: 100925440
+        managed_heap_bytes: 2292168
+        process_elapsed_ms: 1354.1156
+        parse_ms: 68.4873
+        blocks: 2
+        text_utf16: 54
+        adapter_ms: 1.5447
+        surface_setup_ms: 14.1861
+        entry_to_render_callback_ms: 403.418
+        entry_to_surface_loaded_ms: 397.2502
+        dpi_scale: 1.5
+        client_width_dip: 718.6666870117188
+        client_height_dip: 529.3333129882812
+        visual_nodes_initial: 31
+        realized_rows_initial: 0
+        uia_peer: RichEditBox
+        content_uia_peer: RichEditBox
+        content_uia_text_pattern: false
+        selection_supported: true
+        selection_matches: true
+        selected_utf16: 54
+        expected_utf16: 54
+        select_all_ms: 2.7009
+        end_request_ms: 0.6422
+        end_reached: true
+        scrollable_height: null
+        end_offset: null
+        realized_rows_end: 0
+        navigation_timer_delay_max_ms: 17.1417
+        navigation_timer_delay_median_ms: 16.3559
+    - surface: blocks
+      case: gfm-tour
+      trial: 1
+      exit_code: 0
+      timed_out: false
+      launch_to_first_checkpoint_ms: 783.6645000006683
+      launch_to_exit_ms: 1595.6074000005174
+      metrics:
+        host: C# WinUI
+        surface: blocks
+        input_name: gfm-tour.md
+        runtime: .NET 10.0.13
+        os: Microsoft Windows NT 10.0.26300.0
+        entry_to_window_ctor_ms: 140.953
+        source_bytes: 2547
+        source_sha256: ca08e4d20c830884ff36bed95f1e8284a0fd1b1c43919eabc865646f79d733f1
+        read_ms: 1.2516
+        phase: ready
+        working_set_bytes: 151330816
+        peak_working_set_bytes: 151330816
+        private_bytes: 108544000
+        managed_heap_bytes: 2779160
+        process_elapsed_ms: 1399.5248
+        parse_ms: 105.1134
+        blocks: 70
+        text_utf16: 1992
+        adapter_ms: 2.1706
+        surface_setup_ms: 9.6127
+        entry_to_render_callback_ms: 464.576
+        entry_to_surface_loaded_ms: 436.0575
+        dpi_scale: 1.5
+        client_width_dip: 718.6666870117188
+        client_height_dip: 529.3333129882812
+        visual_nodes_initial: 209
+        realized_rows_initial: 37
+        uia_peer: ListView
+        content_uia_peer: ListView
+        content_uia_text_pattern: false
+        selection_supported: false
+        selection_matches: null
+        selected_utf16: null
+        expected_utf16: 1992
+        select_all_ms: 0.4283
+        end_request_ms: 0.3862
+        end_reached: true
+        scrollable_height: null
+        end_offset: null
+        realized_rows_end: 37
+        navigation_timer_delay_max_ms: 17.3095
+        navigation_timer_delay_median_ms: 16.6996
+    - surface: blocks
+      case: unsafe-html
+      trial: 1
+      exit_code: 0
+      timed_out: false
+      launch_to_first_checkpoint_ms: 742.1280000007755
+      launch_to_exit_ms: 1561.6875000005166
+      metrics:
+        host: C# WinUI
+        surface: blocks
+        input_name: unsafe-html.md
+        runtime: .NET 10.0.13
+        os: Microsoft Windows NT 10.0.26300.0
+        entry_to_window_ctor_ms: 140.141
+        source_bytes: 234
+        source_sha256: 19ab9ffc16d4a4eca0c022827c13e2adc8c068c28e4d60453041624f0f1d3017
+        read_ms: 1.2642
+        phase: ready
+        working_set_bytes: 142389248
+        peak_working_set_bytes: 142389248
+        private_bytes: 103571456
+        managed_heap_bytes: 2285840
+        process_elapsed_ms: 1359.3416
+        parse_ms: 76.4446
+        blocks: 9
+        text_utf16: 200
+        adapter_ms: 1.8107
+        surface_setup_ms: 10.0539
+        entry_to_render_callback_ms: 425.263
+        entry_to_surface_loaded_ms: 404.5058
+        dpi_scale: 1.5
+        client_width_dip: 718.6666870117188
+        client_height_dip: 529.3333129882812
+        visual_nodes_initial: 67
+        realized_rows_initial: 9
+        uia_peer: ListView
+        content_uia_peer: ListView
+        content_uia_text_pattern: false
+        selection_supported: false
+        selection_matches: null
+        selected_utf16: null
+        expected_utf16: 200
+        select_all_ms: 0.4249
+        end_request_ms: 0.2903
+        end_reached: true
+        scrollable_height: null
+        end_offset: null
+        realized_rows_end: 9
+        navigation_timer_delay_max_ms: 17.0332
+        navigation_timer_delay_median_ms: 16.1615
+    - surface: blocks
+      case: code-fences
+      trial: 1
+      exit_code: 0
+      timed_out: false
+      launch_to_first_checkpoint_ms: 741.8082000003778
+      launch_to_exit_ms: 1541.5716000006796
+      metrics:
+        host: C# WinUI
+        surface: blocks
+        input_name: code-fences.md
+        runtime: .NET 10.0.13
+        os: Microsoft Windows NT 10.0.26300.0
+        entry_to_window_ctor_ms: 144.8558
+        source_bytes: 315
+        source_sha256: 9c08dc12c7e36f5a7157ecf96752ca3b741fd85cee952b254716ad9178d18848
+        read_ms: 1.267
+        phase: ready
+        working_set_bytes: 148422656
+        peak_working_set_bytes: 148426752
+        private_bytes: 104751104
+        managed_heap_bytes: 2435064
+        process_elapsed_ms: 1356.4571
+        parse_ms: 68.1531
+        blocks: 9
+        text_utf16: 260
+        adapter_ms: 1.5252
+        surface_setup_ms: 10.1316
+        entry_to_render_callback_ms: 425.611
+        entry_to_surface_loaded_ms: 396.3485
+        dpi_scale: 1.5
+        client_width_dip: 718.6666870117188
+        client_height_dip: 529.3333129882812
+        visual_nodes_initial: 97
+        realized_rows_initial: 9
+        uia_peer: ListView
+        content_uia_peer: ListView
+        content_uia_text_pattern: false
+        selection_supported: false
+        selection_matches: null
+        selected_utf16: null
+        expected_utf16: 260
+        select_all_ms: 0.5376
+        end_request_ms: 0.2824
+        end_reached: true
+        scrollable_height: null
+        end_offset: null
+        realized_rows_end: 9
+        navigation_timer_delay_max_ms: 17.0785
+        navigation_timer_delay_median_ms: 16.3234
+    - surface: blocks
+      case: math-alerts
+      trial: 1
+      exit_code: 0
+      timed_out: false
+      launch_to_first_checkpoint_ms: 741.2813000000824
+      launch_to_exit_ms: 1536.349599999994
+      metrics:
+        host: C# WinUI
+        surface: blocks
+        input_name: math-alerts.md
+        runtime: .NET 10.0.13
+        os: Microsoft Windows NT 10.0.26300.0
+        entry_to_window_ctor_ms: 140.9927
+        source_bytes: 258
+        source_sha256: 1dbc8e31e6f0d2903c33edecbafeee0c1edfc336e8eb01f3b02466a7e3b68bfe
+        read_ms: 1.3627
+        phase: ready
+        working_set_bytes: 142016512
+        peak_working_set_bytes: 142016512
+        private_bytes: 103133184
+        managed_heap_bytes: 2311472
+        process_elapsed_ms: 1361.6829
+        parse_ms: 81.9601
+        blocks: 8
+        text_utf16: 162
+        adapter_ms: 1.5646
+        surface_setup_ms: 10.3876
+        entry_to_render_callback_ms: 426.436
+        entry_to_surface_loaded_ms: 404.1099
+        dpi_scale: 1.5
+        client_width_dip: 718.6666870117188
+        client_height_dip: 529.3333129882812
+        visual_nodes_initial: 63
+        realized_rows_initial: 8
+        uia_peer: ListView
+        content_uia_peer: ListView
+        content_uia_text_pattern: false
+        selection_supported: false
+        selection_matches: null
+        selected_utf16: null
+        expected_utf16: 162
+        select_all_ms: 0.518
+        end_request_ms: 0.244
+        end_reached: true
+        scrollable_height: null
+        end_offset: null
+        realized_rows_end: 8
+        navigation_timer_delay_max_ms: 16.5719
+        navigation_timer_delay_median_ms: 16.0785
+    - surface: blocks
+      case: inline-diagrams
+      trial: 1
+      exit_code: 0
+      timed_out: false
+      launch_to_first_checkpoint_ms: 751.8896999999924
+      launch_to_exit_ms: 1551.578900000095
+      metrics:
+        host: C# WinUI
+        surface: blocks
+        input_name: inline-diagrams.md
+        runtime: .NET 10.0.13
+        os: Microsoft Windows NT 10.0.26300.0
+        entry_to_window_ctor_ms: 136.6407
+        source_bytes: 370
+        source_sha256: ab3d733ad731d90f09a94dfec7d4e925405826d50b796387681490adf8fa81b0
+        read_ms: 1.2536
+        phase: ready
+        working_set_bytes: 149184512
+        peak_working_set_bytes: 149184512
+        private_bytes: 106450944
+        managed_heap_bytes: 2451304
+        process_elapsed_ms: 1366.8748
+        parse_ms: 74.3454
+        blocks: 15
+        text_utf16: 284
+        adapter_ms: 1.6119
+        surface_setup_ms: 10.179
+        entry_to_render_callback_ms: 432.106
+        entry_to_surface_loaded_ms: 405.9842
+        dpi_scale: 1.5
+        client_width_dip: 718.6666870117188
+        client_height_dip: 529.3333129882812
+        visual_nodes_initial: 121
+        realized_rows_initial: 15
+        uia_peer: ListView
+        content_uia_peer: ListView
+        content_uia_text_pattern: false
+        selection_supported: false
+        selection_matches: null
+        selected_utf16: null
+        expected_utf16: 284
+        select_all_ms: 0.4555
+        end_request_ms: 0.2385
+        end_reached: true
+        scrollable_height: null
+        end_offset: null
+        realized_rows_end: 15
+        navigation_timer_delay_max_ms: 16.6668
+        navigation_timer_delay_median_ms: 16.1974
+    - surface: blocks
+      case: voice-parity
+      trial: 1
+      exit_code: 0
+      timed_out: false
+      launch_to_first_checkpoint_ms: 752.0626000004995
+      launch_to_exit_ms: 1559.817800000019
+      metrics:
+        host: C# WinUI
+        surface: blocks
+        input_name: voice-parity.md
+        runtime: .NET 10.0.13
+        os: Microsoft Windows NT 10.0.26300.0
+        entry_to_window_ctor_ms: 141.7689
+        source_bytes: 980
+        source_sha256: 6a7391b5d77138f8177b0c46f916cc62a3b627a7146a73bb5a9dc1713b94e781
+        read_ms: 1.6171
+        phase: ready
+        working_set_bytes: 149950464
+        peak_working_set_bytes: 149950464
+        private_bytes: 106917888
+        managed_heap_bytes: 2531456
+        process_elapsed_ms: 1371.6997
+        parse_ms: 78.5348
+        blocks: 23
+        text_utf16: 857
+        adapter_ms: 1.6295
+        surface_setup_ms: 9.5768
+        entry_to_render_callback_ms: 436.118
+        entry_to_surface_loaded_ms: 410.2291
+        dpi_scale: 1.5
+        client_width_dip: 718.6666870117188
+        client_height_dip: 529.3333129882812
+        visual_nodes_initial: 153
+        realized_rows_initial: 23
+        uia_peer: ListView
+        content_uia_peer: ListView
+        content_uia_text_pattern: false
+        selection_supported: false
+        selection_matches: null
+        selected_utf16: null
+        expected_utf16: 857
+        select_all_ms: 0.4331
+        end_request_ms: 0.2978
+        end_reached: true
+        scrollable_height: null
+        end_offset: null
+        realized_rows_end: 23
+        navigation_timer_delay_max_ms: 17.0559
+        navigation_timer_delay_median_ms: 16.4885
+    - surface: blocks
+      case: unicode-filename
+      trial: 1
+      exit_code: 0
+      timed_out: false
+      launch_to_first_checkpoint_ms: 739.9385999997321
+      launch_to_exit_ms: 1557.0371000003433
+      metrics:
+        host: C# WinUI
+        surface: blocks
+        input_name: unicode-filename.md
+        runtime: .NET 10.0.13
+        os: Microsoft Windows NT 10.0.26300.0
+        entry_to_window_ctor_ms: 137.4417
+        source_bytes: 37
+        source_sha256: e84cc3de421115e7ae9cffe6902cc026353597ee48d4337d3c05cf47c2b91f23
+        read_ms: 1.7516
+        phase: ready
+        working_set_bytes: 141148160
+        peak_working_set_bytes: 141148160
+        private_bytes: 101142528
+        managed_heap_bytes: 2352672
+        process_elapsed_ms: 1357.4686
+        parse_ms: 64.3036
+        blocks: 2
+        text_utf16: 33
+        adapter_ms: 1.5477
+        surface_setup_ms: 11.8705
+        entry_to_render_callback_ms: 414.624
+        entry_to_surface_loaded_ms: 395.5294
+        dpi_scale: 1.5
+        client_width_dip: 718.6666870117188
+        client_height_dip: 529.3333129882812
+        visual_nodes_initial: 39
+        realized_rows_initial: 2
+        uia_peer: ListView
+        content_uia_peer: ListView
+        content_uia_text_pattern: false
+        selection_supported: false
+        selection_matches: null
+        selected_utf16: null
+        expected_utf16: 33
+        select_all_ms: 0.4398
+        end_request_ms: 0.2387
+        end_reached: true
+        scrollable_height: null
+        end_offset: null
+        realized_rows_end: 2
+        navigation_timer_delay_max_ms: 17.0833
+        navigation_timer_delay_median_ms: 16.2434
+    - surface: blocks
+      case: nfd-filename
+      trial: 1
+      exit_code: 0
+      timed_out: false
+      launch_to_first_checkpoint_ms: 730.2879000008033
+      launch_to_exit_ms: 1547.5150000002031
+      metrics:
+        host: C# WinUI
+        surface: blocks
+        input_name: nfd-filename.md
+        runtime: .NET 10.0.13
+        os: Microsoft Windows NT 10.0.26300.0
+        entry_to_window_ctor_ms: 135.7279
+        source_bytes: 58
+        source_sha256: 582ffa0bdf7af54427f8756180b4b7f3a0d98567ad1bbbff4d83344105ba5626
+        read_ms: 1.2537
+        phase: ready
+        working_set_bytes: 141664256
+        peak_working_set_bytes: 141664256
+        private_bytes: 101834752
+        managed_heap_bytes: 2246912
+        process_elapsed_ms: 1344.7775
+        parse_ms: 68.9277
+        blocks: 2
+        text_utf16: 54
+        adapter_ms: 1.6365
+        surface_setup_ms: 9.6106
+        entry_to_render_callback_ms: 406.323
+        entry_to_surface_loaded_ms: 389.7905
+        dpi_scale: 1.5
+        client_width_dip: 718.6666870117188
+        client_height_dip: 529.3333129882812
+        visual_nodes_initial: 39
+        realized_rows_initial: 2
+        uia_peer: ListView
+        content_uia_peer: ListView
+        content_uia_text_pattern: false
+        selection_supported: false
+        selection_matches: null
+        selected_utf16: null
+        expected_utf16: 54
+        select_all_ms: 0.4311
+        end_request_ms: 0.2362
+        end_reached: true
+        scrollable_height: null
+        end_offset: null
+        realized_rows_end: 2
+        navigation_timer_delay_max_ms: 16.767
+        navigation_timer_delay_median_ms: 16.1734
+  clipboard:
+    native_keyboard_copy_owner_performed: true
+    matches_adapter_text: true
+    contents_recorded: false
+  narrator:
+    audible_document_reading_owner_confirmed: true
+    originally_running: false
+    restored_off_owner_confirmed: true
+    restored_off_process_check: true
+  five_mib_phase_diagnostics:
+  - host: C# WinUI
+    surface: richtext
+    input_name: prose-5mib.md
+    runtime: .NET 10.0.13
+    os: Microsoft Windows NT 10.0.26300.0
+    entry_to_window_ctor_ms: 137.5906
+    source_bytes: 5242880
+    source_sha256: 43086da373aa098b0a03817236f52c82d7b5383d7564ee41098e75c58246c715
+    read_ms: 8.3315
+    phase: layout
+    working_set_bytes: 609124352
+    peak_working_set_bytes: 609124352
+    private_bytes: 589049856
+    managed_heap_bytes: 178074984
+    process_elapsed_ms: 22768.1783
+    parse_ms: 15702.405
+    blocks: 121362
+    text_utf16: 4805973
+    adapter_ms: 126.3889
+    surface_setup_ms: 6611.3943
+    timed_out: true
+    timeout_seconds: 45
+  - host: C# WinUI
+    surface: richedit
+    input_name: prose-5mib.md
+    runtime: .NET 10.0.13
+    os: Microsoft Windows NT 10.0.26300.0
+    entry_to_window_ctor_ms: 146.3941
+    source_bytes: 5242880
+    source_sha256: 43086da373aa098b0a03817236f52c82d7b5383d7564ee41098e75c58246c715
+    read_ms: 7.6648
+    phase: surface_setup
+    working_set_bytes: 348520448
+    peak_working_set_bytes: 348520448
+    private_bytes: 322891776
+    managed_heap_bytes: 209860624
+    process_elapsed_ms: 15700.6384
+    parse_ms: 15245.4535
+    blocks: 121362
+    text_utf16: 4805973
+    adapter_ms: 132.0666
+    timed_out: true
+    timeout_seconds: 45
+  source_debugging:
+    source_breakpoint: true
+    source: NativeProbe.cpp
+    line: 97
+    engine: Win32 debugging API and DbgHelp PDB lines
+  package:
+    format: unsigned framework-dependent local development ZIP
+    folder: build/feas003/packages/development-g7zclqo9
+    archive_sha256: 5dc8f6b47c4c9e465b22a69963ec82b7bb702ba8c9e260e19df81002941ae525
+    archive_bytes: 14988485
+    launches:
+    - surface: richtext
+      exit_code: 0
+      selection_matches: true
+      end_reached: true
+    - surface: richedit
+      exit_code: 0
+      selection_matches: true
+      end_reached: true
+    - surface: blocks
+      exit_code: 0
+      selection_matches: null
+      end_reached: true
+    zip_integrity: passed
+    clean_machine_tested: false
+    signed: false
+  profiling:
+    wpr_initially_idle: true
+    capture_succeeded: false
+    error_code: '0xc5585011'
+    reason: Failed to enable the policy to profile system performance
+    policy_changed: false
+    wpr_finally_idle: true
+  external_ui_automation:
+    computer_use_native_pipe_available: false
+    recovery_attempts_exhausted: true
+    full_external_pattern_inspection_verified: false
+  bound_virtual_text_checks:
+  - host: C# WinUI
+    surface: blocks
+    input_name: gfm-tour.md
+    runtime: .NET 10.0.13
+    os: Microsoft Windows NT 10.0.26300.0
+    entry_to_window_ctor_ms: 143.2057
+    source_bytes: 2547
+    source_sha256: ca08e4d20c830884ff36bed95f1e8284a0fd1b1c43919eabc865646f79d733f1
+    read_ms: 1.6616
+    phase: ready
+    working_set_bytes: 151355392
+    peak_working_set_bytes: 151355392
+    private_bytes: 108163072
+    managed_heap_bytes: 2680688
+    process_elapsed_ms: 1413.4344
+    parse_ms: 105.4576
+    blocks: 70
+    text_utf16: 1992
+    adapter_ms: 1.8176
+    surface_setup_ms: 9.9326
+    entry_to_render_callback_ms: 474.847
+    entry_to_surface_loaded_ms: 449.7842
+    dpi_scale: 1.5
+    client_width_dip: 718.6666870117188
+    client_height_dip: 529.3333129882812
+    visual_nodes_initial: 201
+    realized_rows_initial: 35
+    realized_bound_text_nodes: 33
+    realized_bound_text_matches: 33
+    realized_bound_text_utf16: 520
+    uia_peer: ListView
+    content_uia_peer: ListView
+    content_uia_text_pattern: false
+    selection_supported: false
+    selection_matches: null
+    selected_utf16: null
+    expected_utf16: 1992
+    select_all_ms: 0.4922
+    end_request_ms: 0.311
+    end_reached: true
+    scrollable_height: null
+    end_offset: null
+    realized_rows_end: 37
+    navigation_timer_delay_max_ms: 17.0142
+    navigation_timer_delay_median_ms: 16.5501
+  - host: C# WinUI
+    surface: blocks
+    input_name: prose-1mib.md
+    runtime: .NET 10.0.13
+    os: Microsoft Windows NT 10.0.26300.0
+    entry_to_window_ctor_ms: 142.035
+    source_bytes: 1048576
+    source_sha256: 2f28d767468ec3980c286fbf983c732a00601717b9f7343a92ff0e4f4056581e
+    read_ms: 2.3526
+    phase: ready
+    working_set_bytes: 207790080
+    peak_working_set_bytes: 207790080
+    private_bytes: 163901440
+    managed_heap_bytes: 44465008
+    process_elapsed_ms: 2200.207
+    parse_ms: 865.0336
+    blocks: 24272
+    text_utf16: 961193
+    adapter_ms: 22.2991
+    surface_setup_ms: 10.7771
+    entry_to_render_callback_ms: 1254.046
+    entry_to_surface_loaded_ms: 1225.0271
+    dpi_scale: 1.5
+    client_width_dip: 718.6666870117188
+    client_height_dip: 529.3333129882812
+    visual_nodes_initial: 193
+    realized_rows_initial: 33
+    realized_bound_text_nodes: 32
+    realized_bound_text_matches: 32
+    realized_bound_text_utf16: 1313
+    uia_peer: ListView
+    content_uia_peer: ListView
+    content_uia_text_pattern: false
+    selection_supported: false
+    selection_matches: null
+    selected_utf16: null
+    expected_utf16: 961193
+    select_all_ms: 0.5981
+    end_request_ms: 2.104
+    end_reached: true
+    scrollable_height: null
+    end_offset: null
+    realized_rows_end: 35
+    navigation_timer_delay_max_ms: 18.5076
+    navigation_timer_delay_median_ms: 17.0049
+limitations:
+- Cold-cache launch and GPU presentation not measured
+- Timer/navigation delays are not display frame pacing
+- Initial primary trials overlapped native compilation
+- Markdig adapter is synchronous and not the proposed production parser
+- Virtualized rows have no cross-row selection or proven full reading order
+- RichEditBox end check uses caret, not final glyph visibility
+- Three tested displays all use 150% scale; mixed DPI remains unverified
+- C++ literal host is not an equivalent Markdown implementation
+- No managed/Visual Studio UI/Rust FFI debugger proof
+- No clean-machine/MSIX/signing/publishing proof
+- WPR capture blocked by profiling policy; no CPU stack attribution
+validation:
+  locked_nuget_restore: passed
+  managed_release_build: passed, zero warnings/errors
+  managed_debug_build_and_launch: passed, zero warnings/errors; no source-stepping
+    claim
+  native_source_pdb_debug: passed
+  final_semantic_trials: 24
+  fixture_validation: 8 semantic cases, 4 performance profiles, 3 generated paths
+  path_regressions: 4 passed
+  state_regressions: 8 passed, 1 POSIX-specific skip
+  python_compilation: passed
+  markdown_lint: 27 files, zero errors
+  whitespace: passed
+  local_documentation_links: passed
+  measurement_source_hashes: passed
+  narrator_final_state: 'off'
+  wpr_final_state: idle
+state_closeout:
+  revision: 94
+  project_status: active
+  active_passes: 0
+  stale_passes: 0
+  unleased_working_tasks: 0
+  warnings: []
+  eligible_tasks:
+  - FEAS-006
+  - FEAS-007

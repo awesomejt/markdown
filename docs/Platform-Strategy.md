@@ -24,6 +24,12 @@ points for spikes, not preapproved dependencies.
 
 Primary references:
 
+Windows FEAS-003 has now exercised C# WinUI surfaces and a C++/WinRT literal
+host on real Windows. Both hosts are feasible; the native smoke is not a
+language-performance comparison. Preserve the large-document, global selection,
+mixed-DPI and accessibility limits in the
+[Windows evaluation](Windows-Rendering-Evaluation.md) until FEAS-006/GATE-001.
+
 - [WinUI 3](https://learn.microsoft.com/en-us/windows/apps/winui)
 - [AppKit](https://developer.apple.com/documentation/AppKit)
 - [SwiftUI/UIKit integration](https://developer.apple.com/documentation/swiftui/uikit-integration)

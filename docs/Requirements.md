@@ -130,6 +130,15 @@ tasks replace them with measurements on named systems.
 
 ## Platform capability matrix
 
+Windows FEAS-003 records the following **spike limitations**, not released
+product support. See [the evaluation](Windows-Rendering-Evaluation.md).
+
+| Capability | User impact | Rationale/evidence | Fallback and next acceptance check |
+| --- | --- | --- | --- |
+| Unbounded continuous text | Long waits/stalls on large documents | Continuous controls time out on 5 MiB; rich text also stalls during 1 MiB navigation | Keep rich edit as bounded-document candidate; prove off-thread parsing and incremental blocks in WIN-001 |
+| Selection across virtualized blocks | Cannot select/copy the whole document in block mode | Independent native text rows have no shared selection model | Implement document-wide selection and UIA reading order; do not silently ship the spike behavior |
+| Mixed DPI and large-document accessibility | Behavior outside the sampled configuration is unverified | Three displays tested at 150%; basic Narrator reading confirmed, full external UIA inspection unavailable | Require mixed-scale, font-size and large-document screen-reader tests before release acceptance |
+
 | Capability | Windows | macOS | Linux | iOS/iPadOS |
 | --- | --- | --- | --- | --- |
 | Open arbitrary local folder | Native picker/shell; normal desktop access | Native picker; sandbox rules depend on distribution | Native chooser/portal; sandbox rules depend on packaging | Files/document picker only; security-scoped/provider access |

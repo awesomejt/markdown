@@ -1,8 +1,9 @@
 # Agent Session and Platform Handoff
 
-Updated: 2026-10-25, Windows fixture and state portability repairs. Source
-baseline: `c17acb2`, plus the uncommitted fixture/tooling/documentation/state
-changes described below. Preserve those changes when syncing.
+Updated: 2026-10-25, Windows FEAS-003 evaluation. Source baseline:
+`016710638744a8c1fef55cbef5d5219f54f6cb3f`, plus this uncommitted spike,
+report, measurements, documentation and supported state closeout. Preserve the
+source/lockfile/evidence together; ignored binaries are rebuildable.
 
 This file carries concise, commit-safe context between sessions and machines.
 It does not replace [project.yaml](project.yaml) for operational state,
@@ -12,49 +13,56 @@ Recheck the current host and state; observations below are a dated snapshot.
 
 ## Resume here
 
-Windows update: Developer Mode, Visual Studio 2026/MSVC, Windows SDKs, .NET 10,
-Rust MSVC, WPA and the pinned fixture Python dependencies are installed.
-Accessibility Insights was not detected in the last readiness check.
-State coordination is restored by an owner-requested portability repair.
-The installed Windows backend is patched and its original is backed up beside
-it. On each other host, apply `tools/patch_project_state_backend.py` before
-using the wrapper; it validates the original/patched hashes and will not replace
-unknown local edits. The Mac's installed backend was not changed by the isolated
-Mac regression run. Use `--platform-info` to confirm Python runtime detection.
-The fixture-only exception is finished; subsequent work uses the normal lifecycle.
+FEAS-003 closed at revision **94**: project active, no active/stale passes, no
+unleased working tasks and no warnings. FEAS-006 and FEAS-007 were eligible;
+re-inspect before selecting the next pass.
 
-The fixture fix stores content under ASCII names and generates Unicode paths
-at test time. Run these in Windows Git Bash:
+1. Read the repository's required references and inspect Git status.
+2. Inspect `project.yaml` with the current host's environment. Recover any
+   stale state before starting one pass; the concurrency limit is one.
+3. Continue FEAS-006 shared-core integration, then FEAS-007 capability
+   reconciliation. Windows FEAS-003, macOS FEAS-004 and Linux FEAS-005 are
+   evaluated; do not rerun them merely because the host/session changed.
+4. Keep production scaffolding/stack acceptance behind GATE-001 and owner
+   approval. FEAS-003 found significant renderer/adapter limits, not a finished
+   Windows implementation.
+
+Windows evidence is in [the evaluation](docs/Windows-Rendering-Evaluation.md),
+[probe README](spikes/feas003/README.md) and
+[durable measurements](spikes/feas003/results-2026-10-25.yaml). The 60-trial
+comparison completed 48 trials and retained 12 timeouts. Continuous rich edit
+is a bounded-document candidate; virtualized rows need global selection/UIA
+reading order. The provisional synchronous Markdig adapter is not a production
+parser. C#/C++ hosts work, but the literal C++ smoke is not a language benchmark.
+
+The owner confirmed audible Narrator reading and restored it off. Native copy
+matched the GFM fixture; the corrected DPI hook traversed three displays at
+150% and restored geometry. Mixed DPI, full external UIA, managed/FFI debugging,
+real input frame pacing and clean-machine installation remain unverified.
+Computer Use's native pipe was unavailable after recovery attempts. WPR capture
+failed on profiling policy (`0xc5585011`); no policy changed and no recording
+remains. Native source/PDB debugging and unsigned development-folder launches
+passed. No signing, registration, publishing or production baseline was accepted.
+
+Windows setup: Developer Mode; Visual Studio 2026/MSVC; Windows SDKs; .NET 10;
+Rust MSVC; WPA; Accessibility Insights 1.1.2924.1; pinned fixture Python packages.
+Raw metrics, diagnostics, packages and binaries are under ignored `build/feas003/`.
+
+The state backend is patched on Windows. On another host, apply the guarded
+repository patch to the installed skill and verify runtime detection before
+coordination. The Mac's installed backend was not changed by its isolated test.
+No previous exception authorizes bypassing the normal lifecycle now.
 
 ```sh
-.build/feasibility-venv/Scripts/python.exe tools/validate_fixtures.py
-.build/feasibility-venv/Scripts/python.exe tools/test_path_fixtures.py
-.build/feasibility-venv/Scripts/python.exe tools/generate_path_fixtures.py --check
 .build/feasibility-venv/Scripts/python.exe tools/project_state.py --platform-info
-.build/feasibility-venv/Scripts/python.exe tools/test_project_state.py
+.build/feasibility-venv/Scripts/python.exe tools/project_state.py --file project.yaml inspect
+.build/feasibility-venv/Scripts/python.exe tools/validate_fixtures.py
 ```
 
-Windows checks passed: eight semantic cases, four performance profiles, three
-generated paths and four regression tests. Re-run on Linux/macOS; no new native
-evidence was collected there. See [fixture instructions](fixtures/README.md).
-The fixture fix did not mutate revision 89. TOOL-001 subsequently used supported
-state operations after the initial backend bootstrap and completed at revision
-92: project active, no active/stale passes, no unleased working tasks, no warnings;
-only FEAS-003 eligible. Re-inspect rather than assuming this snapshot is current.
-The native Windows and isolated Mac state
-suites each passed eight checks and skipped the other platform's specific check.
-Linux state testing remains outstanding. See `AGENT_WORKFLOW.md` for setup and
-write-durability limitations. The historical Mac snapshot below predates TOOL-001.
-
-1. Read [AGENTS.md](AGENTS.md) and its required references. Inspect Git status;
-   preserve changes made by the owner or other sessions.
-2. Run the state inspection command below after confirming backend support on
-   the current host. Recover any stale work before starting a pass.
-3. Continue **FEAS-003 on a real Windows host**. The macOS FEAS-004 evaluation
-   is complete; do not rerun it merely because the session changed. Run only
-   one active pass at a time and re-inspect state on the destination host.
-4. Keep FEAS-006, FEAS-007 and GATE-001 behind both native evaluations.
-   Do not scaffold production applications or accept a production stack yet.
+Use `bin/python` in a Linux/macOS environment. The corpus has ASCII tracked
+filenames and generates Unicode path tests dynamically; original hashes and
+provenance remain frozen. The workflow/fixture portability checks and Linux
+rerun limitations remain documented in `AGENT_WORKFLOW.md` and `fixtures/README.md`.
 
 ## State and workflow setup
 
@@ -89,20 +97,21 @@ environments, downloaded dependencies and toolchains do not transfer in Git.
 Use the supported backend inspection for the latest revision and lease state.
 FEAS-004 closeout inspection succeeded at revision **89**: project active,
 no active/stale passes, no working tasks without leases, and no warnings.
-Only FEAS-003 is eligible.
+At that historical snapshot only FEAS-003 was eligible; use current inspection now.
 
 | Task | Recorded status | Evidence or next action |
 | --- | --- | --- |
 | FEAS-001 | Completed | Frozen corpus and validator |
 | FEAS-002 | Completed | Linux comparison plus committed macOS supplement |
-| FEAS-003 | Pending | Requires a real Windows host |
+| FEAS-003 | Completed | Windows report and 60-trial comparison; limits retained |
 | FEAS-004 | Completed | AppKit/TextKit comparison and native checks; report below |
 | FEAS-005 | Completed | Linux native rendering evaluation |
-| FEAS-006 | Pending | Wait for Windows FEAS-003 |
-| FEAS-007 | Pending | Wait for Windows FEAS-003 |
+| FEAS-006 | Pending | Next: shared-core boundary and packages |
+| FEAS-007 | Pending | Capability reconciliation after native evaluations |
 
-FEAS-003 is the next dependency-ready task. The skill restoration itself did
-not mutate task state; FEAS-004 used the normal start/finish lifecycle.
+FEAS-006 is the next recommended task after Windows closeout. The skill
+restoration itself did not mutate state; FEAS-004 and FEAS-003 used the normal
+start/finish lifecycle. Historical revisions below are not current inspections.
 
 ## Owner instructions and authorization boundaries
 

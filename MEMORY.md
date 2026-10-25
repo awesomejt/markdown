@@ -11,12 +11,12 @@ design belong in `docs/` or `agents/`; runtime transcripts do not belong here.
 - Later platforms: iOS and iPadOS after the desktop contracts are stable.
 - Organization: one native monorepo with independent native UIs,
   shared specifications/fixtures/benchmarks, and a candidate portable core.
-- Status: cross-machine handoff. FEAS-001, FEAS-002, macOS FEAS-004 and Linux
-  FEAS-005 are evaluated. FEAS-003 on Windows is the next dependency-ready
-  feasibility task; inspect `project.yaml` for current pass state.
-- Evaluation prerequisites: real Windows and macOS hosts. Shared-core
-  integration, the capability matrix, and GATE-001 are
-  intentionally ordered after both native rendering evaluations.
+- Status: FEAS-001 through FEAS-005 are evaluated on their named hosts,
+  including Windows FEAS-003. FEAS-006/FEAS-007 follow; inspect `project.yaml`
+  for pass state and dependency readiness. No production baseline is accepted.
+- The required real Windows and macOS renderer evidence is now recorded.
+  Shared-core integration and the capability matrix can proceed; GATE-001
+  still waits for their results and the owner's architecture decision.
 - Mac host setup: the project-state skill/backend and workflow contract have
   been restored from the owner's Linux user-level Codex directory. Supported
   inspection works. Xcode 27.1 is installed and selected. Use the normal pass
@@ -80,9 +80,18 @@ design belong in `docs/` or `agents/`; runtime transcripts do not belong here.
   the likely interop boundary. None of these recommendations becomes an
   accepted production baseline until FEAS-006 and GATE-001.
 - Platform UI code is intentionally native rather than forced into one common
-  language: GTK 4/gtk-rs is the Linux recommendation; Windows must compare the
-  suitable WinUI 3 host options; macOS should measure AppKit with SwiftUI only
-  where it helps. iOS/iPadOS remain later Swift/UIKit/SwiftUI work.
+  language: GTK 4/gtk-rs is the Linux recommendation; Windows FEAS-003 supports
+  WinUI with C# or C++/WinRT hosts, and macOS FEAS-004 favors AppKit/TextKit 2.
+  iOS/iPadOS remain later Swift/UIKit/SwiftUI work.
+- Windows FEAS-003 compared rich text, read-only rich edit and virtualized
+  rows in 60 native trials. Twelve timed out; 5 MiB continuous controls did
+  not reach a render callback within 45 seconds. Rich edit navigates bounded
+  text better, while blocks realize few views but lack document-wide selection.
+  Markdig is only a slow synchronous spike adapter, not a production choice.
+  Native clipboard, owner-confirmed Narrator, same-scale three-display sweep,
+  source/PDB debugging and development-folder launches passed. Mixed DPI,
+  full external UIA, managed/FFI debugging and clean deployment remain unverified;
+  WPR capture was blocked by profiling policy. See the Windows evaluation.
 - The owner requires real target-host evidence from Windows and macOS before
   further architecture decisions. `project.yaml` therefore makes FEAS-003 and
   FEAS-004 prerequisites of FEAS-006 and FEAS-007 as well as GATE-001.
@@ -117,6 +126,23 @@ design belong in `docs/` or `agents/`; runtime transcripts do not belong here.
   shared core expands; Apple XCFramework concerns are one part of that matrix.
 
 ## Run log
+
+### 2026-10-25 — Windows FEAS-003 rendering
+
+On Ryzen 9 5950X/64 GiB/RTX 4080/Windows 11 26300.9711, the WinUI spike
+completed 48 of 60 primary trials, preserving 12 timeouts. At 1 MiB prose,
+entry-to-render medians were 3.61 s rich text, 3.94 s rich edit and 1.20 s
+virtualized rows. At 5 MiB, block mode rendered in about 16.15 s, dominated
+by roughly 15.68 s in the provisional Markdig adapter. All 34 reached
+continuous selections matched; blocks have no global selection. The owner
+confirmed Narrator audio and turned it off afterward; clipboard comparison
+and a corrected three-display 150% sweep passed. C++ literal host and native
+source/PDB debug smokes passed without establishing a host-language winner.
+No signing/publishing was performed. Reports, lockfile, source and durable
+measurements are in `spikes/feas003/` and `docs/Windows-Rendering-Evaluation.md`.
+FEAS-003 closed at revision 94 with no active/stale passes, no unleased working
+tasks and no warnings. Next: FEAS-006; FEAS-007 is also dependency-ready.
+GATE-001 remains unaccepted.
 
 ### 2026-10-25 — portable state coordination
 

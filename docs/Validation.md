@@ -52,7 +52,11 @@ promises:
   presented.
 - Offline tests fail on unexpected network access.
 
-FEAS-003 replaces these hypotheses with measured budgets and named devices.
+FEAS-003 records named Windows measurements in
+[the Windows evaluation](Windows-Rendering-Evaluation.md). The spike does not
+meet the 1 MiB/500 ms hypothesis: synchronous adapter parsing and layout remain
+too expensive. These observations do not approve slower release budgets;
+GATE-001 must set credible budgets after the core/incremental rendering work.
 
 ## Required evidence format
 

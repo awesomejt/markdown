@@ -30,6 +30,8 @@ Start with:
   lead core/parser recommendation.
 - [Linux rendering evaluation](docs/Linux-Rendering-Evaluation.md) — GTK 4
   feasibility, native behavior, and large-document limits.
+- [Windows rendering evaluation](docs/Windows-Rendering-Evaluation.md) — WinUI
+  text surfaces, virtualization, host checks and measured limits.
 - [macOS rendering evaluation](docs/macOS-Rendering-Evaluation.md) — AppKit
   TextKit comparisons, native interaction, memory, and development bundles.
 - [TODO](TODO.md) — human-readable roadmap; `project.yaml` is task-state truth.

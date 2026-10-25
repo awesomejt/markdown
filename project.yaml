@@ -1,11 +1,11 @@
 contract_version: project-state/v1
-revision: 92
+revision: 94
 project: &id002
   concurrency_limit: 1
   created_at: '2026-10-24T23:34:09.871478+00:00'
   project_ref: markdown-native
   status: active
-  updated_at: '2026-10-25T06:14:15.252593+00:00'
+  updated_at: '2026-10-25T07:20:42.646932+00:00'
   workflow_id: native-app-development
   workflow_version: '2'
 phases: &id004
@@ -117,7 +117,7 @@ tasks:
   - &id006
     active_pass_ref: null
     blockers: []
-    completed_at: null
+    completed_at: '2026-10-25T07:20:42.646932+00:00'
     created_at: '2026-10-24T23:34:32.765163+00:00'
     description: Prototype and profile the basic corpus in the proposed Windows-native stack.
     id: 251ba860-fe9e-401d-988f-94f36154db01
@@ -125,10 +125,10 @@ tasks:
     phase: feasibility
     priority: 90
     role: implementer
-    status: pending
+    status: completed
     task_key: FEAS-003
     title: Prove Windows native rendering
-    updated_at: '2026-10-24T23:34:32.765163+00:00'
+    updated_at: '2026-10-25T07:20:42.646932+00:00'
     validation_expectations: Launch, layout, scroll, selection, accessibility, DPI, and package evidence.
   - &id007
     active_pass_ref: null
@@ -995,6 +995,59 @@ passes:
     completed_at: '2026-10-25T06:14:15.252593+00:00'
     lease_expires_at: null
     lease_version: 1
+  - &id024
+    id: 4db0bed5-8605-408a-a4fc-3e210180557e
+    sequence: 8
+    task_ref: 251ba860-fe9e-401d-988f-94f36154db01
+    phase_ref: b19ec1c8-f0c0-4cee-b584-5c9247a96edd
+    actor: codex-windows
+    status: completed
+    outcome: completed
+    objective: Compare native WinUI document layout surfaces and C#/C++ host feasibility on this Windows
+      system; record rendering, scroll, selection, accessibility, DPI, debugger and development-package
+      evidence and limits.
+    summary: 'Evaluated native Windows WinUI rendering: 60 primary trials (48 completed, 12 preserved
+      timeouts), three surfaces, bounded C++ host, owner-confirmed Narrator, clipboard, same-scale multi-display
+      and theme checks, Unicode exact opens, native PDB/source debugging and unsigned development-folder
+      launches. Large-document and validation limits documented; no production baseline accepted.'
+    handoff: null
+    validation_result: feasibility evaluation complete; runtime failures and unverified capabilities retained
+      explicitly
+    evidence:
+      report: docs/Windows-Rendering-Evaluation.md
+      source_and_reproduction: spikes/feas003/README.md
+      measurements: spikes/feas003/results-2026-10-25.yaml
+      checks:
+        - Locked NuGet restore and zero-warning managed Debug/Release builds
+        - Native C++/WinRT build, three host smokes and Win32/DbgHelp source breakpoint
+        - '60 primary trials: 24 semantic and 36 performance; 12 timeouts retained'
+        - 24 final semantic trials completed; bound virtual text checked against model
+        - 9 generated Unicode exact-spelling opens across all three surfaces
+        - Native keyboard clipboard comparison matched; owner confirmed Narrator and restored off
+        - Three 150% display areas traversed; geometry restored; theme cycle passed
+        - 'Final unsigned package: three native launches, dependency license metadata and ZIP integrity
+          passed'
+        - Fixture validator, deterministic profiles, four path regressions and state regression suite
+          passed
+        - Python compilation, local documentation links, source hashes, private-path exclusion, Markdown
+          lint and diff whitespace checks passed
+      remaining_limits:
+        - Virtualized cross-block selection and full reading order not implemented
+        - Mixed DPI, true input/display frame pacing, managed/FFI/Visual Studio UI debugging and clean
+          deployment remain unverified
+        - External Computer Use native pipe unavailable after recovery
+        - WPR CPU capture blocked by profiling policy 0xc5585011; no policy changed and WPR remained idle
+      recommendation: WinUI shell remains viable; bounded rich edit plus incremental semantic-block investigation.
+        Keep C# and C++ host options until FEAS-006; do not accept production Markdig or monolithic rich
+        text.
+    participants: []
+    blocker: null
+    execution_record: {}
+    started_at: '2026-10-25T06:30:47.541844+00:00'
+    last_heartbeat_at: null
+    completed_at: '2026-10-25T07:20:42.646932+00:00'
+    lease_expires_at: null
+    lease_version: 1
 idempotency:
   accept-d004-create:
     fingerprint: 24cf06b66fd828b04e394367502bdc20f99fdf17303eec73bb77dba723bdaa1f
@@ -1681,6 +1734,79 @@ idempotency:
           active_passes: 0
           stale_passes: 0
           eligible: 1
+          blocked: 0
+        warnings: []
+        recommended_action: select_new_task
+  feas003-start-ea299f42-5c85-45b5-a459-974314156ce9:
+    fingerprint: 9ac6051fb5f75c12289fe84ab1a9df2de14a320bf46113856673978d53f5482b
+    response:
+      contract_version: project-state/v1
+      operation: start_pass
+      revision: 93
+      data:
+        pass: *id024
+        task: *id006
+      snapshot:
+        contract_version: project-state/v1
+        snapshot_at: '2026-10-25T06:30:47.541889+00:00'
+        revision: 93
+        project: *id002
+        current_phase: *id003
+        phases: *id004
+        active_tasks:
+          - *id006
+        working_tasks_without_active_lease: []
+        active_passes:
+          - *id024
+        stale_passes: []
+        blocked_tasks: []
+        eligible_tasks: []
+        latest_pass: *id024
+        queue_counts:
+          by_status:
+            completed: 7
+            working: 1
+            pending: 24
+          total: 32
+          active_passes: 1
+          stale_passes: 0
+          eligible: 0
+          blocked: 0
+        warnings: []
+        recommended_action: resume_active
+  feas003-finish-020487dc-68a0-4240-b21c-b57a8c1faeeb:
+    fingerprint: e29415a37413890f58b6066e4472c28ad0bbf651749cb76a0489180d6d9d232c
+    response:
+      contract_version: project-state/v1
+      operation: finish_pass
+      revision: 94
+      data:
+        pass: *id024
+        task: *id006
+      snapshot:
+        contract_version: project-state/v1
+        snapshot_at: '2026-10-25T07:20:42.646956+00:00'
+        revision: 94
+        project: *id002
+        current_phase: *id003
+        phases: *id004
+        active_tasks: []
+        working_tasks_without_active_lease: []
+        active_passes: []
+        stale_passes: []
+        blocked_tasks: []
+        eligible_tasks:
+          - *id009
+          - *id010
+        latest_pass: *id024
+        queue_counts:
+          by_status:
+            completed: 8
+            pending: 24
+          total: 32
+          active_passes: 0
+          stale_passes: 0
+          eligible: 2
           blocked: 0
         warnings: []
         recommended_action: select_new_task

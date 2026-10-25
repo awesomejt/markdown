@@ -10,20 +10,20 @@ throwaway prototypes under `spikes/` are expected.
 
 ## Immediate cross-machine handoff
 
-Linux and macOS native rendering evaluations are complete. Preserve and sync
+Linux, macOS and Windows native rendering evaluations are complete. Preserve and sync
 the present worktree before changing machines; changes have not been committed
 by the agent. Inspect `project.yaml` for current pass/lease state.
 
-FEAS-003 is the remaining dependency-ready feasibility task. Run one active
-pass at a time because the project concurrency limit is one.
+FEAS-006 and FEAS-007 follow the native evaluations. Run one active pass at a
+time because the project concurrency limit is one; re-inspect live state.
 
-1. **On a real Windows system, run FEAS-003.** Re-inspect `project.yaml`, start
-   the FEAS-003 pass, record exact Windows build/hardware/display scaling and
-   toolchain versions, then compare the native WinUI 3 host and document-layout
-   choices against the frozen semantic and performance corpus. Evidence must
-   cover launch/first content, memory, far-scroll and long-line behavior,
-   selection/copy, Narrator/UI Automation, DPI changes, debugging, and a
-   development package. Do not infer native results from Wine or cross-builds.
+1. **Carry forward Windows FEAS-003.** The report in
+   `docs/Windows-Rendering-Evaluation.md` records 60 native trials, continuous
+   text versus virtualized blocks, C#/C++ host smokes, owner-confirmed Narrator,
+   clipboard, same-scale multi-display checks, source/PDB debugging and a local
+   development package. Preserve the 12 timeouts and unverified mixed-DPI,
+   external UIA, managed-debugging and profiling behaviors. No production stack
+   was accepted.
 2. **Carry forward the completed macOS FEAS-004 evidence.** The report in
    `docs/macOS-Rendering-Evaluation.md` compares TextKit 1/2, reusable rows and
    SwiftUI hosting, with named-host measurements, native selection/copy,
@@ -67,15 +67,16 @@ pass at a time because the project concurrency limit is one.
   Supplemental macOS measurements, including Swift Markdown, are recorded in
   `docs/Parser-Evaluation-macOS.md`. They retain the lead recommendation and
   require investigation of repeated-parser RSS before production acceptance.
-- **FEAS-003 — Prove Windows native rendering.** **Next on Windows.** Prototype the basic corpus in
-  the proposed Windows-native text/layout stack; measure launch, layout,
-  scrolling, selection, accessibility, and high-DPI behavior.
+- **FEAS-003 — Prove Windows native rendering.** Evaluated 2026-10-25 on
+  Windows 11/Ryzen 9 5950X: WinUI 3 shell viable; rich edit is a bounded-document
+  candidate and block virtualization needs global selection/accessibility.
+  See `docs/Windows-Rendering-Evaluation.md` for failures and remaining checks.
 - **FEAS-004 — Prove macOS native rendering.** Prototype the same corpus using
   AppKit/SwiftUI candidates; measure equivalent native behaviors. Evaluated
   2026-10-24 on Apple M5 Max/macOS 27.0.1: TextKit 2 is the lead document-surface
   candidate; TextKit 1 far navigation stalls and reusable rows lose continuous
   selection. See `docs/macOS-Rendering-Evaluation.md` for measured limits and
-  deferred production checks. Windows FEAS-003 is the remaining native evaluation.
+  deferred production checks. All three desktop renderer evaluations are now recorded.
 - **FEAS-005 — Prove Linux native rendering.** Prototype the same corpus using
   GTK/native Linux candidates; measure equivalent native behaviors across the
   selected desktop environments. Completed 2026-10-24 on KDE Wayland with an
@@ -118,7 +119,10 @@ pass at a time because the project concurrency limit is one.
 
 - **WIN-001 — Windows single-document skeleton.** Native file open, core call,
   basic GFM blocks, outline, theme/text controls, selection, accessibility,
-  external refresh, and a development package.
+  external refresh, and a development package. Following FEAS-003, prove
+  off-thread bounded parsing/cancellation and virtualized blocks with global
+  selection and UIA reading order; exercise mixed DPI, font scaling and real
+  input frame pacing before accepting a large-document strategy.
 - **MAC-001 — macOS single-document skeleton.** Equivalent native macOS slice
   with AppKit/SwiftUI responsibilities decided from measurements.
 - **LNX-001 — Linux single-document skeleton.** Equivalent native Linux slice
