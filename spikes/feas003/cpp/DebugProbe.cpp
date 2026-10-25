@@ -11,6 +11,9 @@ int wmain(int argc, wchar_t** argv)
 {
     if (argc != 4) return 2;
     std::wstring command = L"\"" + std::wstring(argv[1]) + L"\" \"" + argv[2] + L"\"";
+#ifdef FEAS006
+    command += L" --debug-break";
+#endif
     STARTUPINFOW startup{sizeof(startup)}; PROCESS_INFORMATION process{};
     wchar_t previous[32768]; auto length = GetEnvironmentVariableW(L"FEAS003_DEBUG_BREAK", previous, 32768);
     SetEnvironmentVariableW(L"FEAS003_DEBUG_BREAK", L"1");
@@ -40,6 +43,15 @@ int wmain(int argc, wchar_t** argv)
             break;
         case CREATE_THREAD_DEBUG_EVENT: CloseHandle(event.u.CreateThread.hThread); break;
         case LOAD_DLL_DEBUG_EVENT:
+#ifdef FEAS006
+            if (event.u.LoadDll.hFile) {
+                wchar_t file[32768];
+                DWORD length = GetFinalPathNameByHandleW(event.u.LoadDll.hFile,file,32768,FILE_NAME_NORMALIZED);
+                if (length && length < 32768 && std::wstring(file).find(L"feas006_core.dll") != std::wstring::npos)
+                    SymLoadModuleExW(process.hProcess,event.u.LoadDll.hFile,file,nullptr,
+                        reinterpret_cast<DWORD64>(event.u.LoadDll.lpBaseOfDll),0,nullptr,0);
+            }
+#endif
             if (event.u.LoadDll.hFile) CloseHandle(event.u.LoadDll.hFile);
             break;
         case EXCEPTION_DEBUG_EVENT:
@@ -48,9 +60,18 @@ int wmain(int argc, wchar_t** argv)
                 IMAGEHLP_LINE64 location{sizeof(location)}; DWORD displacement = 0;
                 auto address = reinterpret_cast<DWORD64>(event.u.Exception.ExceptionRecord.ExceptionAddress);
                 if (SymGetLineFromAddr64(process.hProcess, address, &displacement, &location)
+#ifdef FEAS006
+                    && std::string(location.FileName).find("lib.rs") != std::string::npos)
+#else
                     && std::string(location.FileName).find("NativeProbe.cpp") != std::string::npos)
+#endif
                 {
-                    source = "NativeProbe.cpp"; line = location.LineNumber; found = true;
+#ifdef FEAS006
+                    source = "rust/src/lib.rs";
+#else
+                    source = "NativeProbe.cpp";
+#endif
+                    line = location.LineNumber; found = true;
                     // Stop before bootstrap/window creation; do not interrupt a manual UI check.
                     TerminateProcess(process.hProcess, 0);
                 }

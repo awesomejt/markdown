@@ -3,9 +3,11 @@ using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+#if !FEAS006
 using Markdig;
 using Markdig.Syntax;
 using Markdig.Syntax.Inlines;
+#endif
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Automation.Peers;
@@ -68,6 +70,9 @@ public sealed class ProbeWindow : Window
     string plain = "";
     long rendered;
     double firstLoadedMs;
+#if FEAS006
+    Feas006.NativeCancellation? activeCoreCancellation;
+#endif
 
     public ProbeWindow()
     {
@@ -76,6 +81,9 @@ public sealed class ProbeWindow : Window
         input = Path.GetFullPath(args.ElementAtOrDefault(1) ?? "fixtures/markdown/foundation/gfm-tour.md");
         output = args.ElementAtOrDefault(2);
         Title = $"FEAS-003 {mode} — {Path.GetFileName(input)}";
+#if FEAS006
+        Title = $"FEAS-006 Rust/{mode} — {Path.GetFileName(input)}";
+#endif
         AppWindow.Resize(new Windows.Graphics.SizeInt32(1100, 850));
         metrics["host"] = "C# WinUI";
         metrics["surface"] = mode;
@@ -92,6 +100,10 @@ public sealed class ProbeWindow : Window
         AddButton(commands, "Go to end", () => GoToEnd());
         AddButton(commands, "Go to top", () => GoToTop());
         AddButton(commands, "Toggle theme", () => root.RequestedTheme = root.ActualTheme == ElementTheme.Dark ? ElementTheme.Light : ElementTheme.Dark);
+#if FEAS006
+        AddButton(commands, "Cancel parse", () => activeCoreCancellation?.Request());
+        Closed += (_, _) => activeCoreCancellation?.Request();
+#endif
         Grid.SetRow(commands, 1); root.Children.Add(commands);
         Content = root;
         root.KeyDown += async (_, key) => {
@@ -119,12 +131,51 @@ public sealed class ProbeWindow : Window
         {
             var timer = Stopwatch.StartNew();
             var bytes = File.ReadAllBytes(input);
+#if !FEAS006
             string markdown = Encoding.UTF8.GetString(bytes);
+#endif
             metrics["source_bytes"] = bytes.Length;
             metrics["source_sha256"] = Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant();
             metrics["read_ms"] = timer.Elapsed.TotalMilliseconds;
             metrics["phase"] = "parse"; Save();
             timer.Restart();
+#if FEAS006
+            var uiTicks = 0;
+            var heartbeat = DispatcherQueue.CreateTimer();
+            heartbeat.Interval = TimeSpan.FromMilliseconds(16);
+            heartbeat.Tick += (_, _) => uiTicks++;
+            heartbeat.Start();
+            Feas006.CoreDocument nativeDocument;
+            try
+            {
+                using var cancellation = new Feas006.NativeCancellation();
+                activeCoreCancellation = cancellation;
+                if (Program.Args.Contains("--cancel-before-parse")) cancellation.Request();
+                nativeDocument = await Task.Run(() => Feas006.Core.ParseAndCopy(bytes, cancellation));
+            }
+            finally { heartbeat.Stop(); activeCoreCancellation = null; }
+            metrics["host"] = "C# WinUI / Rust C ABI v1";
+            metrics["core_off_ui_thread"] = true;
+            metrics["core_probe_hooks"] = Feas006.Core.Abi.ProbeHooks;
+            metrics["ui_heartbeat_ticks_during_core"] = uiTicks;
+            metrics["scheduled_core_and_copy_ms"] = timer.Elapsed.TotalMilliseconds;
+            metrics["parse_ms"] = nativeDocument.CoreMs;
+            metrics["core_parse_model_ms"] = nativeDocument.CoreMs;
+            metrics["native_call_ms"] = nativeDocument.NativeCallMs;
+            metrics["managed_copy_decode_ms"] = nativeDocument.CopyDecodeMs;
+            metrics["native_text_bytes"] = nativeDocument.TextBytes;
+            metrics["native_table_bytes"] = nativeDocument.TableBytes;
+            timer.Restart();
+            blocks.AddRange(nativeDocument.Blocks.Select(b => new DocBlock(b.Text, (int)b.HeadingLevel, b.Kind == 2)));
+            plain = string.Join("\n", blocks.Select(b => b.Text));
+            metrics["adapter_ms"] = nativeDocument.CopyDecodeMs + timer.Elapsed.TotalMilliseconds;
+            if (Feas006.Core.Abi.ProbeHooks != 0)
+            {
+                Feas006.Core.Ensure(Feas006.NativeApi.ProbeLive(out ulong snapshots, out ulong cancellations));
+                metrics["native_snapshots_live_before_ui"] = snapshots;
+                metrics["native_tokens_live_before_ui"] = cancellations;
+            }
+#else
             var document = Markdown.Parse(markdown, new MarkdownPipelineBuilder().UseAdvancedExtensions().Build());
             metrics["parse_ms"] = timer.Elapsed.TotalMilliseconds;
             metrics["phase"] = "adapter"; Save();
@@ -134,6 +185,9 @@ public sealed class ProbeWindow : Window
             metrics["blocks"] = blocks.Count;
             metrics["text_utf16"] = plain.Length;
             metrics["adapter_ms"] = timer.Elapsed.TotalMilliseconds;
+#endif
+            metrics["blocks"] = blocks.Count;
+            metrics["text_utf16"] = plain.Length;
             metrics["phase"] = "surface_setup"; Save();
             timer.Restart();
             MakeSurface();
@@ -170,6 +224,10 @@ public sealed class ProbeWindow : Window
             if (Program.Args.Contains("--theme-cycle")) await CycleThemes();
             if (output != null && !Program.Args.Contains("--interactive")) await Measure();
         }
+#if FEAS006
+        catch (Feas006.CoreException ex) when (ex.Status == Feas006.CoreStatus.Cancelled)
+        { metrics["cancelled"] = true; Save(); status.Text = "Core parse cancelled"; if (output != null) Close(); }
+#endif
         catch (Exception ex) { metrics["error"] = ex.ToString(); Save(); status.Text = ex.Message; if (output != null) Close(); }
     }
 
@@ -180,6 +238,7 @@ public sealed class ProbeWindow : Window
         CompositionTarget.Rendering -= OnRendering;
     }
 
+#if !FEAS006
     void AddBlocks(ContainerBlock container)
     {
         foreach (var block in container)
@@ -212,6 +271,7 @@ public sealed class ProbeWindow : Window
         return text.ToString();
     }
 
+#endif
     void MakeSurface()
     {
         switch (mode)

@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType><AssemblyName>Feas006WindowsProbe</AssemblyName>
+    <RootNamespace>WindowsRenderingProbe</RootNamespace>
+    <TargetFramework>net10.0-windows10.0.26100.0</TargetFramework>
+    <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier><Platforms>x64</Platforms>
+    <UseWinUI>true</UseWinUI><WinUISDKReferences>false</WinUISDKReferences>
+    <DefineConstants>$(DefineConstants);DISABLE_XAML_GENERATED_MAIN;FEAS006</DefineConstants>
+    <WindowsPackageType>None</WindowsPackageType><WindowsAppSDKSelfContained>false</WindowsAppSDKSelfContained>
+    <ApplicationManifest>../../../feas003/csharp/app.manifest</ApplicationManifest>
+    <ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable><AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+    <PublishTrimmed>false</PublishTrimmed><PublishReadyToRun>false</PublishReadyToRun>
+    <BaseOutputPath>../../../../build/feas006/winui/</BaseOutputPath>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../../feas003/csharp/Program.cs" Link="Program.cs" />
+    <Compile Include="../CoreInterop.cs" Link="CoreInterop.cs" />
+    <ApplicationDefinition Include="../../../feas003/csharp/App.xaml" Link="App.xaml" />
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.5.1" />
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.2705" />
+  </ItemGroup>
+</Project>

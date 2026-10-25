@@ -14,8 +14,9 @@ Linux, macOS and Windows native rendering evaluations are complete. Preserve and
 the present worktree before changing machines; changes have not been committed
 by the agent. Inspect `project.yaml` for current pass/lease state.
 
-FEAS-006 and FEAS-007 follow the native evaluations. Run one active pass at a
-time because the project concurrency limit is one; re-inspect live state.
+FEAS-006 has a completed Windows checkpoint; native macOS/Linux integrations
+remain. Resume that partial task before selecting other work. Run one active
+pass at a time because the project concurrency limit is one; inspect live state.
 
 1. **Carry forward Windows FEAS-003.** The report in
    `docs/Windows-Rendering-Evaluation.md` records 60 native trials, continuous
@@ -33,9 +34,10 @@ time because the project concurrency limit is one; re-inspect live state.
 3. **Reconcile both reports in the monorepo.** Preserve platform deviations;
    do not force identical UI implementations. Confirm each pass is complete
    and `project.yaml` has no stale lease before selecting more work.
-4. **Then run FEAS-006 and FEAS-007.** Prove the Rust core boundary/packages on
-   all desktop hosts, finish the capability matrix, and only then ask the owner
-   to accept or revise the GATE-001 baseline.
+4. **Resume FEAS-006 on macOS/Linux, then FEAS-007.** The Windows Rust/C ABI
+   checkpoint is in `docs/Shared-Core-Windows-Evaluation.md`; it does not close
+   the all-desktop task. Prove the remaining native bindings/packages, finish
+   the capability matrix, then ask the owner to accept or revise GATE-001.
 
 ### Requirements and feasibility
 
@@ -87,6 +89,10 @@ time because the project concurrency limit is one; re-inspect live state.
   FEAS-004. Package and consume a minimal
   candidate core on Windows, macOS, and Linux. Measure call/copy overhead,
   lifecycle, errors, cancellation, debugging, and release packaging.
+  Windows checkpoint evaluated 2026-10-25: Rust C ABI, C#/C++ ownership,
+  errors/cancellation, WinUI integration and local package passed; continuous
+  controls retain layout failures. Resume native Swift/AppKit and GTK portions
+  before completing this task. See `docs/Shared-Core-Windows-Evaluation.md`.
 - **FEAS-007 — Complete the platform capability matrix.** Starts only after
   FEAS-003 and FEAS-004. Test advanced
   rendering, file watching, network folders, background work, print/export,

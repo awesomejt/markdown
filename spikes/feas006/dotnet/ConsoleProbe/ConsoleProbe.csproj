@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType><TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable><AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <BaseOutputPath>../../../../build/feas006/console/</BaseOutputPath>
+  </PropertyGroup>
+  <ItemGroup><Compile Include="../CoreInterop.cs" Link="CoreInterop.cs" /></ItemGroup>
+</Project>

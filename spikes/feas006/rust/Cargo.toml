@@ -1,0 +1,20 @@
+[package]
+name = "feas006-core"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+probe-hooks = []
+
+[dependencies]
+pulldown-cmark = { version = "=0.13.5", default-features = false }
+
+[profile.release]
+debug = 2
+panic = "unwind"
+lto = "thin"
+codegen-units = 1

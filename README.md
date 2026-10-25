@@ -32,6 +32,8 @@ Start with:
   feasibility, native behavior, and large-document limits.
 - [Windows rendering evaluation](docs/Windows-Rendering-Evaluation.md) — WinUI
   text surfaces, virtualization, host checks and measured limits.
+- [Windows core integration](docs/Shared-Core-Windows-Evaluation.md) — Rust C
+  ABI, ownership, cancellation and WinUI timing; macOS/Linux portions pending.
 - [macOS rendering evaluation](docs/macOS-Rendering-Evaluation.md) — AppKit
   TextKit comparisons, native interaction, memory, and development bundles.
 - [TODO](TODO.md) — human-readable roadmap; `project.yaml` is task-state truth.

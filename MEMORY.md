@@ -11,9 +11,10 @@ design belong in `docs/` or `agents/`; runtime transcripts do not belong here.
 - Later platforms: iOS and iPadOS after the desktop contracts are stable.
 - Organization: one native monorepo with independent native UIs,
   shared specifications/fixtures/benchmarks, and a candidate portable core.
-- Status: FEAS-001 through FEAS-005 are evaluated on their named hosts,
-  including Windows FEAS-003. FEAS-006/FEAS-007 follow; inspect `project.yaml`
-  for pass state and dependency readiness. No production baseline is accepted.
+- Status: FEAS-001 through FEAS-005 are evaluated. FEAS-006 has a completed
+  Windows checkpoint but remains partial for native macOS/Linux integration;
+  resume it before selecting other work. Inspect `project.yaml` for the live
+  pass/handoff state. No production baseline or ABI is accepted.
 - The required real Windows and macOS renderer evidence is now recorded.
   Shared-core integration and the capability matrix can proceed; GATE-001
   still waits for their results and the owner's architecture decision.
@@ -92,6 +93,14 @@ design belong in `docs/` or `agents/`; runtime transcripts do not belong here.
   source/PDB debugging and development-folder launches passed. Mixed DPI,
   full external UIA, managed/FFI debugging and clean deployment remain unverified;
   WPR capture was blocked by profiling policy. See the Windows evaluation.
+- FEAS-006 Windows proves an experimental bulk C ABI with Rust-owned immutable
+  snapshots, C# SafeHandle/C++ RAII cleanup and off-thread WinUI consumption.
+  Virtualized 1 MiB/5 MiB prose rendered at about 381/459 ms authored-entry
+  callbacks; Rust parse/model was about 9.5/42.6 ms. Continuous controls still
+  stall. Handles return to zero through lifecycle/cancellation/panic tests;
+  native Rust source/PDB debugging and a normal-DLL package passed. The model
+  has snapshot-local IDs and incomplete semantic coverage; Mac/Linux native
+  hosts/packages are still required. See the shared-core Windows report.
 - The owner requires real target-host evidence from Windows and macOS before
   further architecture decisions. `project.yaml` therefore makes FEAS-003 and
   FEAS-004 prerequisites of FEAS-006 and FEAS-007 as well as GATE-001.
@@ -126,6 +135,24 @@ design belong in `docs/` or `agents/`; runtime transcripts do not belong here.
   shared core expands; Apple XCFramework concerns are one part of that matrix.
 
 ## Run log
+
+### 2026-10-25 — FEAS-006 Windows checkpoint
+
+Built Rust/pulldown-cmark 0.13.5 behind a versioned value-only C ABI and consumed
+it from C# and C++ on native Windows. Validated byte/structure negotiation,
+status errors, allocator ownership, 1,000 sequential and 400 concurrent loads,
+ten in-flight cancellations, panic containment and native source/PDB resolution.
+The 41 GUI trials include 37 completions, one intended cancellation and three
+retained continuous-control timeouts. Virtualized 5 MiB entry-to-render was
+about 459 ms, with 42.6 ms core work and 19.9 ms managed copy/decode; this is
+not a cold-launch/presentation or equivalent-frontend language comparison.
+Fixed inline-math source preservation after an outline mismatch; all eight
+final outline contracts pass. Fresh unsigned packages use the normal DLL,
+exclude probe exports/Markdig, and launch C#/C++ callers locally. Overall
+FEAS-006 remains partial pending native macOS/Swift and Linux/GTK evidence.
+Closed the Windows pass as partial at revision 96: no active/stale passes or
+warnings. FEAS-006 intentionally remains working without a lease, with an exact
+handoff; resume/recover it before selecting new work.
 
 ### 2026-10-25 — Windows FEAS-003 rendering
 

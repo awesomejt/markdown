@@ -1,11 +1,11 @@
 contract_version: project-state/v1
-revision: 94
+revision: 96
 project: &id002
   concurrency_limit: 1
   created_at: '2026-10-24T23:34:09.871478+00:00'
   project_ref: markdown-native
   status: active
-  updated_at: '2026-10-25T07:20:42.646932+00:00'
+  updated_at: '2026-10-25T08:28:00.399080+00:00'
   workflow_id: native-app-development
   workflow_version: '2'
 phases: &id004
@@ -174,10 +174,10 @@ tasks:
     phase: feasibility
     priority: 85
     role: implementer
-    status: pending
+    status: working
     task_key: FEAS-006
     title: Prove shared-core integration
-    updated_at: '2026-10-24T23:34:33.146100+00:00'
+    updated_at: '2026-10-25T08:28:00.399080+00:00'
     validation_expectations: Call/copy cost, lifecycle, error, cancellation, debugging, and release package
       evidence.
   - &id010
@@ -1048,6 +1048,40 @@ passes:
     completed_at: '2026-10-25T07:20:42.646932+00:00'
     lease_expires_at: null
     lease_version: 1
+  - &id025
+    id: 69098103-4fb7-43fb-a264-50159de54896
+    sequence: 9
+    task_ref: 83e4817e-976a-47f4-8f42-47d1ae925aa1
+    phase_ref: b19ec1c8-f0c0-4cee-b584-5c9247a96edd
+    actor: codex-windows
+    status: completed
+    outcome: partial
+    objective: 'Windows portion only: versioned Rust C ABI, native/C# ownership and error/cancellation
+      tests, WinUI integration with parse/copy/layout separation, memory and source/PDB debugging, and
+      local unsigned package. Leave native Mac/Linux acceptance open.'
+    summary: Windows shared-core C ABI checkpoint evaluated with C#/C++/WinUI, ownership/error/cancellation/debug
+      and unsigned normal-DLL package evidence. Native macOS/Swift and Linux/GTK acceptance remains.
+    handoff: Resume FEAS-006 on native macOS/Swift/AppKit and Linux/GTK; exact handoff in HANDOFF.md and
+      .agents/handoffs/feas006-windows.md. Build/package and rerun layout, allocator, errors, cancellation,
+      lifecycle, call/copy and source-debug checks on each named host.
+    validation_result: Windows checkpoint passed within documented limits; three continuous-control timeouts
+      retained. All-desktop acceptance incomplete.
+    evidence:
+      report: docs/Shared-Core-Windows-Evaluation.md
+      measurements: spikes/feas006/results-windows-2026-10-25.yaml
+      reproduction: spikes/feas006/README.md
+      checks: Rust debug/release6each; fmt; Clippy; C#/C++ ABI; 8 outlines; 1000 lifetime +400 concurrent;
+        10 cancellation; native Rust/PDB; normal-DLL package3GUI+C++; fixtures/state/path/Python/Markdown/whitespace
+        checks.
+      remaining: Native macOS/Swift/AppKit and Linux/GTK integrations, packages and validation.
+    participants: []
+    blocker: null
+    execution_record: {}
+    started_at: '2026-10-25T07:30:01.170454+00:00'
+    last_heartbeat_at: null
+    completed_at: '2026-10-25T08:28:00.399080+00:00'
+    lease_expires_at: null
+    lease_version: 1
 idempotency:
   accept-d004-create:
     fingerprint: 24cf06b66fd828b04e394367502bdc20f99fdf17303eec73bb77dba723bdaa1f
@@ -1810,3 +1844,78 @@ idempotency:
           blocked: 0
         warnings: []
         recommended_action: select_new_task
+  feas006-windows-start-c3bbde11-5edf-460d-8a80-917e98721173:
+    fingerprint: 5e87fa1bf1ca31ed6ce3319718fd3871c53a2af8b31a36e5bfe7515a354dba36
+    response:
+      contract_version: project-state/v1
+      operation: start_pass
+      revision: 95
+      data:
+        pass: *id025
+        task: *id009
+      snapshot:
+        contract_version: project-state/v1
+        snapshot_at: '2026-10-25T07:30:01.170509+00:00'
+        revision: 95
+        project: *id002
+        current_phase: *id003
+        phases: *id004
+        active_tasks:
+          - *id009
+        working_tasks_without_active_lease: []
+        active_passes:
+          - *id025
+        stale_passes: []
+        blocked_tasks: []
+        eligible_tasks:
+          - *id010
+        latest_pass: *id025
+        queue_counts:
+          by_status:
+            completed: 8
+            working: 1
+            pending: 23
+          total: 32
+          active_passes: 1
+          stale_passes: 0
+          eligible: 1
+          blocked: 0
+        warnings: []
+        recommended_action: resume_active
+  feas006-windows-finish-69098103:
+    fingerprint: 2d8a7cbdce07148ad52d4cfb0a8888b57af4c673823c5c663b7f61146be9b542
+    response:
+      contract_version: project-state/v1
+      operation: finish_pass
+      revision: 96
+      data:
+        pass: *id025
+        task: *id009
+      snapshot:
+        contract_version: project-state/v1
+        snapshot_at: '2026-10-25T08:28:00.399101+00:00'
+        revision: 96
+        project: *id002
+        current_phase: *id003
+        phases: *id004
+        active_tasks: []
+        working_tasks_without_active_lease:
+          - *id009
+        active_passes: []
+        stale_passes: []
+        blocked_tasks: []
+        eligible_tasks:
+          - *id010
+        latest_pass: *id025
+        queue_counts:
+          by_status:
+            completed: 8
+            working: 1
+            pending: 23
+          total: 32
+          active_passes: 0
+          stale_passes: 0
+          eligible: 1
+          blocked: 0
+        warnings: []
+        recommended_action: recover_stale_task

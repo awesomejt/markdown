@@ -1,9 +1,10 @@
 # Agent Session and Platform Handoff
 
-Updated: 2026-10-25, Windows FEAS-003 evaluation. Source baseline:
-`016710638744a8c1fef55cbef5d5219f54f6cb3f`, plus this uncommitted spike,
-report, measurements, documentation and supported state closeout. Preserve the
-source/lockfile/evidence together; ignored binaries are rebuildable.
+Updated: 2026-10-25, FEAS-006 Windows checkpoint. Source baseline:
+`2821ff532d6defebde69bcd204721d509a8ef2fa`, plus this uncommitted shared-core
+spike, the small FEAS-003 reuse hooks, evidence, documentation and state handoff.
+Preserve source/locks/header/measurements together; do not transfer environments
+or build products to another platform.
 
 This file carries concise, commit-safe context between sessions and machines.
 It does not replace [project.yaml](project.yaml) for operational state,
@@ -13,19 +14,51 @@ Recheck the current host and state; observations below are a dated snapshot.
 
 ## Resume here
 
-FEAS-003 closed at revision **94**: project active, no active/stale passes, no
-unleased working tasks and no warnings. FEAS-006 and FEAS-007 were eligible;
-re-inspect before selecting the next pass.
+FEAS-006 Windows is evaluated; the all-desktop task remains **partial**.
+Resume its explicit handoff on native macOS and Linux. The partial outcome
+releases the pass lease while retaining logical ownership of FEAS-006; this is
+intentional recovery state, not permission to bypass it for another task.
+Inspect before resuming and recover only genuinely expired work.
+
+Closeout inspection: revision **96**, project active, no active/stale passes
+and no warnings. The backend reports FEAS-006 under
+`working_tasks_without_active_lease` and recommends `recover_stale_task` because
+`partial` preserves its working status. This pass has an explicit handoff;
+resume/recover that same task before selecting another one.
 
 1. Read the repository's required references and inspect Git status.
 2. Inspect `project.yaml` with the current host's environment. Recover any
    stale state before starting one pass; the concurrency limit is one.
-3. Continue FEAS-006 shared-core integration, then FEAS-007 capability
-   reconciliation. Windows FEAS-003, macOS FEAS-004 and Linux FEAS-005 are
+3. Resume FEAS-006 on native macOS/Swift and Linux/GTK, then FEAS-007
+   capability reconciliation. Windows FEAS-003, macOS FEAS-004 and Linux FEAS-005 are
    evaluated; do not rerun them merely because the host/session changed.
 4. Keep production scaffolding/stack acceptance behind GATE-001 and owner
    approval. FEAS-003 found significant renderer/adapter limits, not a finished
    Windows implementation.
+
+The Windows shared-core checkpoint is in
+[the report](docs/Shared-Core-Windows-Evaluation.md),
+[spike instructions](spikes/feas006/README.md) and
+[measurements](spikes/feas006/results-windows-2026-10-25.yaml). The C ABI receives
+UTF-8 bytes/limits/cancellation capabilities only. C# copies values and frees
+Rust snapshots before UI construction; C++ uses the same header/ownership rules.
+At 5 MiB, virtualized authored-entry-to-render was about 459 ms, including about
+42.6 ms core parse/model and 19.9 ms managed copy/decode. Continuous WinUI
+controls retain layout stalls; cross-row selection/accessibility remains open.
+
+Six Rust debug/release tests, Clippy, C#/C++ ABI clients, 1,000 sequential plus
+400 concurrent loads, ten in-flight cancellation tests, fixed-message panic
+containment, eight corrected outline contracts and Rust source/PDB debugging
+passed. A fresh local package uses the normal DLL (probe exports disabled),
+contains no Markdig runtime, and launches all three WinUI variants and the native
+client. No signing, installation, registration or publishing was performed.
+
+Next host: build Rust natively, verify ABI sizes/version and matching allocator
+cleanup, then integrate a native Swift/AppKit value adapter and package. On
+Linux use a native GTK host against the same facade. Re-run errors, cancellation,
+repeated sessions and source debugging there. Do not infer native acceptance
+from the portable crate or Windows DLL. The model has snapshot-local IDs and
+partial semantics; GATE-001 still owns the production model/ABI decision.
 
 Windows evidence is in [the evaluation](docs/Windows-Rendering-Evaluation.md),
 [probe README](spikes/feas003/README.md) and
@@ -106,10 +139,10 @@ At that historical snapshot only FEAS-003 was eligible; use current inspection n
 | FEAS-003 | Completed | Windows report and 60-trial comparison; limits retained |
 | FEAS-004 | Completed | AppKit/TextKit comparison and native checks; report below |
 | FEAS-005 | Completed | Linux native rendering evaluation |
-| FEAS-006 | Pending | Next: shared-core boundary and packages |
+| FEAS-006 | Partial | Windows evaluated; resume native Mac/Linux bindings/packages |
 | FEAS-007 | Pending | Capability reconciliation after native evaluations |
 
-FEAS-006 is the next recommended task after Windows closeout. The skill
+Resume the FEAS-006 partial handoff before selecting other work. The skill
 restoration itself did not mutate state; FEAS-004 and FEAS-003 used the normal
 start/finish lifecycle. Historical revisions below are not current inspections.
 

@@ -124,6 +124,12 @@ should be coarse enough to avoid per-node FFI chatter and unnecessary copies.
 The Linux app may call a Rust core directly, but it must still respect the same
 public facade used to test the other hosts.
 
+The [FEAS-006 Windows checkpoint](Shared-Core-Windows-Evaluation.md) exercises
+an experimental C ABI with two owned value buffers, negotiated layouts,
+matching-allocator release and cooperative cancellation. It supports continuing
+the feasibility work; its flat model/snapshot-local IDs are not the production
+semantic contract. macOS/Linux host/package acceptance and GATE-001 remain open.
+
 ## Platform capability deviations
 
 The app queries a static/build-time capability set and, where needed, runtime

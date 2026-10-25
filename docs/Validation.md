@@ -25,6 +25,12 @@
   and Swift concurrency checking.
 - Confirm symbols and package contents; record exact Xcode/Rust versions.
 
+FEAS-006's [Windows checkpoint](Shared-Core-Windows-Evaluation.md) includes
+C#/C++ ABI/layout checks, typed failures, handle cleanup, in-flight cancellation,
+panic containment, native source/PDB debugging and normal-DLL package launches.
+It does not substitute for Swift/AppKit and GTK package tests, mixed managed/Rust
+IDE stepping, full semantic conformance or clean-machine deployment.
+
 ### Native platform UI changes
 
 - Platform-native format/lint/static-analysis rules selected at GATE-001.
