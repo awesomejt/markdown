@@ -13,7 +13,8 @@ are authoritative for this project.
 5. `docs/Requirements.md` and `docs/Repository-Strategy.md`
 6. The documents directly related to the selected task
 7. `docs/Architecture.md` and `docs/Implementation-Plan.md` for design,
-   sequencing, dependency, or platform work
+   sequencing, dependency, or platform work; read `docs/Delivery-Workflow.md`
+   before core or later implementation work
 
 Also inspect `git status` before editing. Preserve user changes and keep
 unrelated changes out of the task.
@@ -39,6 +40,10 @@ resolve it before changing implementation.
 - Use the pass lifecycle in `AGENT_WORKFLOW.md`; recover stale work before
   selecting new work.
 - Keep changes focused, reviewable, and covered by proportionate validation.
+- From core implementation onward, execute small platform-focused delivery
+  phases, each with a feature branch and PR. Follow `docs/Delivery-Workflow.md`
+  and post a separate `/grok review` PR comment once ready; resolve feedback
+  before reporting merge readiness.
 - Do not claim cross-platform behavior without evidence on the named platform.
 - Treat `markdown-viewer` as a read-only reference unless the task explicitly
   includes that repository.
@@ -49,8 +54,11 @@ resolve it before changing implementation.
   decision record.
 - Never commit credentials, signing identities, provisioning profiles,
   transcripts, private runtime state, or user document contents.
-- Ask before production changes, publishing, signing, external communication,
-  destructive operations, or expanding to another repository.
+- Ask before production deployment, publishing, signing, unrelated external
+  communication, destructive operations, or expanding to another repository.
+  The owner has authorized scoped phase commits, branch pushes, PR updates and
+  Grok review comments under `docs/Delivery-Workflow.md`; merge requires explicit
+  owner authorization.
 
 ## Architecture guardrails
 
@@ -82,5 +90,9 @@ A task is complete only when:
 5. The active pass is finished in `project.yaml` with evidence and no orphaned
    working state.
 
+For core and later delivery tasks, completion also requires actual review
+disposition and an owner-authorized merge; code-ready review waits are partial.
+
 Report the concrete outcome, checks run, blocking issues, residual risk, and
-the next dependency-ready task. Do not push unless the owner asks.
+the next dependency-ready task. Push only within the standing delivery-workflow
+authorization or another explicit owner request.

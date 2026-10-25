@@ -12,6 +12,18 @@ It does not replace [project.yaml](project.yaml) for operational state,
 context, or [agents/Decisions.md](agents/Decisions.md) for accepted decisions.
 Recheck the current host and state; observations below are a dated snapshot.
 
+## Future implementation workflow (owner decision, 2026-10-25)
+
+After GATE-001, use the small platform-focused phase catalog in
+[Implementation-Plan.md](docs/Implementation-Plan.md) and the branch/PR lifecycle
+in [Delivery-Workflow.md](docs/Delivery-Workflow.md). Each phase gets a feature
+branch and PR; post a separate comment exactly `/grok review` once ready, address
+feedback and wait for owner merge approval. Batch ready work on the current OS.
+Record branch/PR/reviewed head/checks and resume instructions before switching.
+GATE-001 closeout must materialize the initial child-task graph through the
+helper, including early native tasks in the portable-core bucket. This policy
+edit does not change the current revision-98 FEAS-006 Linux handoff below.
+
 ## Resume here
 
 FEAS-006 Windows and macOS are evaluated; the all-desktop task remains **partial**.

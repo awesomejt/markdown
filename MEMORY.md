@@ -31,6 +31,17 @@ design belong in `docs/` or `agents/`; runtime transcripts do not belong here.
   host. Windows and isolated native Mac regression suites passed on 2026-10-25;
   Linux rerun is outstanding. Use `--platform-info` to verify the selected path.
 
+## Implementation workflow decision (2026-10-25)
+
+D-007: after GATE-001, use small platform-focused delivery phases, each with its
+own feature branch and PR. Batch dependency-ready phases on the current host.
+Post a separate `/grok review` comment when ready, resolve actual feedback and
+wait for owner merge approval. Scoped phase pushes/PR/review actions are already
+authorized. See `docs/Delivery-Workflow.md` and `docs/Implementation-Plan.md`.
+Materialize child tasks at prerequisite gates through the helper; early native
+foundation tasks belong in the portable-core bucket. Today's FEAS-006 state is
+unchanged; Linux integration remains the next execution work.
+
 ## Durable context
 
 - The related `markdown-viewer` repository was reviewed at commit `0ab59c0`

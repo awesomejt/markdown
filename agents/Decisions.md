@@ -74,6 +74,27 @@ Record actual on-disk spelling and canonical-equivalent lookup results on each
 host; filesystem observations do not replace native adapter conformance tests.
 Disable Git line-ending conversion for the frozen fixture corpus.
 
+## D-007 — Small platform phases with branch and PR review
+
+**Date:** 2026-10-25
+
+**Status:** accepted by owner request
+
+Starting after GATE-001, divide core and application implementation into bounded
+delivery phases, grouped by platform where possible to support booting between
+hosts. Each phase uses a feature branch and PR. Once ready, post a separate PR
+comment exactly `/grok review`, assess the actual review and address findings;
+owner merge authorization remains required. Scoped phase commits, pushes, PR
+updates and review comments are authorized as routine steps of this workflow.
+
+Use `docs/Delivery-Workflow.md` and the catalog in `docs/Implementation-Plan.md`.
+Retain broad state buckets and aggregate milestones; materialize their smaller
+execution tasks through supported helper operations at prerequisite gates.
+Early native foundation tasks share the portable-core bucket so host batching
+works with active-bucket selection. Preserve all-platform gates, native evidence
+and concurrency one. This decision changes future workflow, not today's partial
+FEAS-006 handoff or the unaccepted production baseline.
+
 ## Proposed decisions for GATE-001
 
 The following are not yet accepted:

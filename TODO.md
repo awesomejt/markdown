@@ -3,6 +3,16 @@
 `project.yaml` is authoritative for live status, dependencies, blockers,
 leases, and passes. This document defines task scope and acceptance criteria.
 
+## Implementation delivery policy (after GATE-001)
+
+CORE/WIN/MAC/LNX/IOS entries below are aggregate milestones. Execute the small,
+platform-focused delivery phases in [the catalog](docs/Implementation-Plan.md),
+batching ready work on the current OS. Each delivery phase uses one feature
+branch and PR. Once ready, post a separate PR comment exactly `/grok review`,
+address the feedback, and obtain owner merge approval. Follow
+[Delivery-Workflow.md](docs/Delivery-Workflow.md) for branch, review and handoff
+rules. Current feasibility state is unchanged.
+
 ## Current gate: requirements and feasibility
 
 No production application or shared core is scaffolded before GATE-001. Small
@@ -105,7 +115,10 @@ pass at a time because the project concurrency limit is one; inspect live state.
   unavailable per platform.
 - **GATE-001 — Accept implementation baseline.** Record core/parser choice,
   facade, desktop UI stacks, baseline OS/architectures, performance budgets,
-  package formats, platform order, and advanced-feature scope.
+  package formats, platform order, and advanced-feature scope. Before closeout,
+  validate and materialize the initial acyclic delivery-task graph through the
+  state helper (including early native tasks in the portable-core bucket);
+  preserve aggregate acceptance and test expansion on disposable state first.
 
 ### Portable contract and core
 
@@ -140,6 +153,7 @@ pass at a time because the project concurrency limit is one; inspect live state.
   with GTK/desktop integration and supported environment assumptions recorded.
 - **DESK-001 — Cross-desktop skeleton gate.** Compare semantics and performance,
   fix contract bias, document deviations, and choose the MVP deepening order.
+  Before closeout, materialize the platform MVP delivery tasks and dependencies.
 
 ### Desktop basic MVPs
 
@@ -183,10 +197,17 @@ REQ-001 -> FEAS-001 -> FEAS-002 ---------------------------+
                                          +-> FEAS-007 ------+
        \-> FEAS-005 (Linux renderer) -----------------------+
 
-GATE-001 -> CORE-001 -> CORE-002 -> CORE-003/CORE-004
-CORE-003 + CORE-004 -> CORE-005 -> CORE-006
-CORE-006 -> WIN-001 + MAC-001 + LNX-001 -> DESK-001
-DESK-001 -> WIN-002 + MAC-002 + LNX-002 -> DESK-002 -> DESK-003
+GATE-001 -> CORE-001A -> CORE-002A -> CORE-003A -> CORE-004A -> CORE-006A
+CORE-003A -> CORE-003B; CORE-004A -> CORE-005A -> CORE-005B
+CORE-001A -> each host 001A; CORE-006A + own 001A -> own 001B -> ... -> 001I
+CORE-005A -> own 001F; CORE-003B -> own 001I
+all CORE + WIN/MAC/LNX-001 aggregate acceptance -> DESK-001
+DESK-001 -> each host 002A -> ... -> 002F -> platform 002 aggregate
+CORE-005B -> own 002C; all platform 002 aggregates -> DESK-002 -> DESK-003
 DESK-002 -> IOS-001 -> IOS-002
 DESK-002 -> ADV-001/ADV-002/ADV-003/ADV-004
 ```
+
+The abbreviated chains above are orientation only; the catalog defines precise
+child dependencies (including independent branches). The live state still
+represents the pre-GATE-001 queue until supported graph expansion at the gate.

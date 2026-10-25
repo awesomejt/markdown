@@ -124,7 +124,20 @@ unowned `working` task.
 ## Git workflow
 
 - Branch names: `<type>/<task-key-lowercase>-<slug>`.
-- Prefer one task per branch and focused Conventional Commits.
+- From core implementation onward, use one small delivery phase per feature
+  branch and PR, following [Delivery-Workflow.md](docs/Delivery-Workflow.md).
+  Use the platform-focused catalog in `docs/Implementation-Plan.md`, not one
+  branch for an entire aggregate roadmap milestone.
+- Use focused Conventional Commits. When the PR is ready, post a separate
+  conversation comment exactly `/grok review`; verify the request, assess actual
+  feedback, fix valid findings and request review again after source changes.
+  Keep review/merge waits as partial passes with resumable handoffs.
+- Expand future delivery-task graphs at their prerequisite gate through the
+  helper; do not rewrite today's feasibility queue for a future policy.
 - Never stage unrelated user changes.
 - Run task checks before asking for review; record exact commands.
-- Do not merge, tag, sign, publish, or push without owner authorization.
+- The owner has authorized scoped implementation phase commits, branch pushes,
+  PR creation/updates and the Grok review comments under Delivery-Workflow.md.
+  Merge, tag, sign, publish and unrelated external actions still require owner
+  authorization. Carry post-merge state closeout in the next feature PR or a
+  housekeeping PR; never push closeout directly to `main`.
