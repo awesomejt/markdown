@@ -13,7 +13,8 @@ design belong in `docs/` or `agents/`; runtime transcripts do not belong here.
   shared specifications/fixtures/benchmarks, and a candidate portable core.
 - Status: GATE-001 is completed; CORE-001A is the selected delivery task on
   `feat/core-001a-workspace-ci`. Workspace/common checks/CI definitions are the
-  scope, with no parser/model implementation or native app shell yet. Follow
+  scope, with no parser/model implementation or native app shell yet. PR #1:
+  https://github.com/awesomejt/markdown/pull/1 (inspect checks/review/merge status). Follow
   `docs/Development.md`; task remains partial until owner-authorized PR merge.
 - License: owner selected Apache-2.0 for implementation source (D-019).
 - The required real Windows, macOS, and Linux renderer and shared-core

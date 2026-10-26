@@ -1,11 +1,11 @@
 contract_version: project-state/v1
-revision: 274
+revision: 275
 project: &id002
   concurrency_limit: 1
   created_at: '2026-10-24T23:34:09.871478+00:00'
   project_ref: markdown-native
-  status: working
-  updated_at: '2026-10-26T20:35:29.067873+00:00'
+  status: active
+  updated_at: '2026-10-26T20:43:37.567375+00:00'
   workflow_id: native-app-development
   workflow_version: '2'
 phases: &id004
@@ -24,7 +24,7 @@ phases: &id004
     started_at: '2026-10-24T23:34:09.871478+00:00'
     status: completed
     version: 2
-  - &id102
+  - &id101
     completed_at: null
     completion_pass_ref: null
     evidence: {}
@@ -684,7 +684,7 @@ tasks:
     created_at: '2026-10-26T20:08:49.680653+00:00'
     updated_at: '2026-10-26T20:08:49.680653+00:00'
     completed_at: null
-  - &id103
+  - &id102
     id: 69ad4689-3160-4790-93a9-80ce3529904d
     task_key: CORE-001A
     title: 'Shared: Accepted workspace, common checks, dependency/license inventory and platform-isolated
@@ -702,10 +702,10 @@ tasks:
       preserve resource/FFI boundaries and accepted budgets. Record actual host/version/results. Do not
       claim unrun native checks or complete before reviewed owner-authorized merge.'
     status: working
-    active_pass_ref: 4e3f7f86-7a21-4ba9-a8b2-8ae0ff353371
+    active_pass_ref: null
     blockers: []
     created_at: '2026-10-26T20:27:23.650301+00:00'
-    updated_at: '2026-10-26T20:35:29.067873+00:00'
+    updated_at: '2026-10-26T20:43:37.567375+00:00'
     completed_at: null
   - id: 110601df-889c-46f1-b76e-d7542f66ebf1
     task_key: CORE-002A
@@ -1376,8 +1376,7 @@ tasks:
     created_at: '2026-10-26T20:27:37.852631+00:00'
     updated_at: '2026-10-26T20:27:37.852631+00:00'
     completed_at: null
-  - &id001
-    id: 5f484073-f083-404e-bb0d-47cdc3531582
+  - id: 5f484073-f083-404e-bb0d-47cdc3531582
     task_key: LNX-001I
     title: 'LNX native: Local development artifact, license inventory and relocated launch'
     description: 'LNX native: Local development artifact, license inventory and relocated launch; full
@@ -1398,7 +1397,7 @@ tasks:
     created_at: '2026-10-26T20:27:38.351267+00:00'
     updated_at: '2026-10-26T20:27:38.351267+00:00'
     completed_at: null
-  - &id007
+  - &id001
     id: 60153c41-1692-4e54-ab8c-b336189a2dfc
     task_key: WIN-001I
     title: 'WIN native: Local development artifact, license inventory and relocated launch'
@@ -1420,7 +1419,7 @@ tasks:
     created_at: '2026-10-26T20:27:38.850099+00:00'
     updated_at: '2026-10-26T20:27:38.850099+00:00'
     completed_at: null
-  - &id008
+  - &id007
     id: a8f5c6e5-6b96-4df0-8cef-92aa70977a80
     task_key: LNX-001D1
     title: 'LNX native early accessibility gate: Prove native document/heading semantics, off-screen heading
@@ -1601,371 +1600,371 @@ relationships:
   - predecessor_task_ref: e1fd74e4-e50f-40a2-b3ef-6c5c9e473636
     successor_task_ref: a367af92-b334-4cd8-b26b-1ea9c5e1b33e
     relationship: blocks
-  - &id009
+  - &id008
     predecessor_task_ref: 69ad4689-3160-4790-93a9-80ce3529904d
     successor_task_ref: db740a43-d5ce-4730-86b0-b30557061ad9
     relationship: blocks
-  - &id010
+  - &id009
     predecessor_task_ref: 69ad4689-3160-4790-93a9-80ce3529904d
     successor_task_ref: 110601df-889c-46f1-b76e-d7542f66ebf1
     relationship: blocks
-  - &id011
+  - &id010
     predecessor_task_ref: 69ad4689-3160-4790-93a9-80ce3529904d
     successor_task_ref: 48dad44a-1ef5-44e6-b6a6-d471e4df28e0
     relationship: blocks
-  - &id012
+  - &id011
     predecessor_task_ref: 69ad4689-3160-4790-93a9-80ce3529904d
     successor_task_ref: 3830e4e9-eaae-4bb2-90e2-b21ac69ef490
     relationship: blocks
-  - &id013
+  - &id012
     predecessor_task_ref: 69ad4689-3160-4790-93a9-80ce3529904d
     successor_task_ref: 68c3e783-a238-4097-860a-a2a919ce18aa
     relationship: blocks
-  - &id014
+  - &id013
     predecessor_task_ref: 110601df-889c-46f1-b76e-d7542f66ebf1
     successor_task_ref: 7f790cf6-b945-4af0-996f-6e2457b3eefa
     relationship: blocks
-  - &id015
+  - &id014
     predecessor_task_ref: 110601df-889c-46f1-b76e-d7542f66ebf1
     successor_task_ref: ca01a619-cc00-46ab-90e8-7f46a71f0f5a
     relationship: blocks
-  - &id016
+  - &id015
     predecessor_task_ref: ca01a619-cc00-46ab-90e8-7f46a71f0f5a
     successor_task_ref: 9eddf711-4c6a-499c-841f-61caa539bfd6
     relationship: blocks
-  - &id017
+  - &id016
     predecessor_task_ref: ca01a619-cc00-46ab-90e8-7f46a71f0f5a
     successor_task_ref: 0aeb0130-32f9-412e-b8d1-84a06f47994d
     relationship: blocks
-  - &id018
+  - &id017
     predecessor_task_ref: ca01a619-cc00-46ab-90e8-7f46a71f0f5a
     successor_task_ref: 518cc68b-22b8-4cea-9318-5cc47a9e057f
     relationship: blocks
-  - &id019
+  - &id018
     predecessor_task_ref: 0aeb0130-32f9-412e-b8d1-84a06f47994d
     successor_task_ref: 9eddf711-4c6a-499c-841f-61caa539bfd6
     relationship: blocks
-  - &id020
+  - &id019
     predecessor_task_ref: 0aeb0130-32f9-412e-b8d1-84a06f47994d
     successor_task_ref: 5f484073-f083-404e-bb0d-47cdc3531582
+    relationship: blocks
+  - &id020
+    predecessor_task_ref: 0aeb0130-32f9-412e-b8d1-84a06f47994d
+    successor_task_ref: c0b96200-63b0-4c5e-ba44-7ad2af237969
     relationship: blocks
   - &id021
     predecessor_task_ref: 0aeb0130-32f9-412e-b8d1-84a06f47994d
-    successor_task_ref: c0b96200-63b0-4c5e-ba44-7ad2af237969
-    relationship: blocks
-  - &id022
-    predecessor_task_ref: 0aeb0130-32f9-412e-b8d1-84a06f47994d
     successor_task_ref: 60153c41-1692-4e54-ab8c-b336189a2dfc
     relationship: blocks
-  - &id023
+  - &id022
     predecessor_task_ref: 518cc68b-22b8-4cea-9318-5cc47a9e057f
     successor_task_ref: b50794e3-b295-42ab-8bb5-91893ba0027d
     relationship: blocks
-  - &id024
+  - &id023
     predecessor_task_ref: 518cc68b-22b8-4cea-9318-5cc47a9e057f
     successor_task_ref: 1b089091-ddce-4673-91d0-cc2155e61214
     relationship: blocks
-  - &id025
+  - &id024
     predecessor_task_ref: 518cc68b-22b8-4cea-9318-5cc47a9e057f
     successor_task_ref: 5ad47bf1-e8a9-4762-b1eb-90ea604e7f00
     relationship: blocks
-  - &id026
+  - &id025
     predecessor_task_ref: 1b089091-ddce-4673-91d0-cc2155e61214
     successor_task_ref: 4581ad91-b265-411c-801d-fe3933d9c151
     relationship: blocks
-  - &id027
+  - &id026
     predecessor_task_ref: 1b089091-ddce-4673-91d0-cc2155e61214
     successor_task_ref: 90abb79b-6859-46b8-b7d5-68f9bb6c2ce2
     relationship: blocks
-  - &id028
+  - &id027
     predecessor_task_ref: 1b089091-ddce-4673-91d0-cc2155e61214
     successor_task_ref: 1ff3b387-6d0d-408f-a329-5c154fea1126
+    relationship: blocks
+  - &id028
+    predecessor_task_ref: 1b089091-ddce-4673-91d0-cc2155e61214
+    successor_task_ref: 4d40535e-b3fb-4b9c-9c8f-c782045458a5
     relationship: blocks
   - &id029
     predecessor_task_ref: 1b089091-ddce-4673-91d0-cc2155e61214
-    successor_task_ref: 4d40535e-b3fb-4b9c-9c8f-c782045458a5
-    relationship: blocks
-  - &id030
-    predecessor_task_ref: 1b089091-ddce-4673-91d0-cc2155e61214
     successor_task_ref: f52ec302-4df5-4a47-a627-e1c48d25feab
     relationship: blocks
-  - &id031
+  - &id030
     predecessor_task_ref: 90abb79b-6859-46b8-b7d5-68f9bb6c2ce2
     successor_task_ref: 4581ad91-b265-411c-801d-fe3933d9c151
     relationship: blocks
-  - &id032
+  - &id031
     predecessor_task_ref: 5ad47bf1-e8a9-4762-b1eb-90ea604e7f00
     successor_task_ref: de7cb42e-014a-48a7-aa22-80000717a4ea
+    relationship: blocks
+  - &id032
+    predecessor_task_ref: 5ad47bf1-e8a9-4762-b1eb-90ea604e7f00
+    successor_task_ref: 1640f71f-aa13-44fe-8a16-4a87fdd9582b
     relationship: blocks
   - &id033
     predecessor_task_ref: 5ad47bf1-e8a9-4762-b1eb-90ea604e7f00
-    successor_task_ref: 1640f71f-aa13-44fe-8a16-4a87fdd9582b
+    successor_task_ref: f4de6b40-7de3-45a0-9252-8e1b79378aee
     relationship: blocks
   - &id034
     predecessor_task_ref: 5ad47bf1-e8a9-4762-b1eb-90ea604e7f00
-    successor_task_ref: f4de6b40-7de3-45a0-9252-8e1b79378aee
-    relationship: blocks
-  - &id035
-    predecessor_task_ref: 5ad47bf1-e8a9-4762-b1eb-90ea604e7f00
     successor_task_ref: b15b9818-0bbc-4081-b4ab-d6b284bd44b8
     relationship: blocks
-  - &id036
+  - &id035
     predecessor_task_ref: b2418f32-3f60-4bbd-9a74-0cdf6b6aecc4
     successor_task_ref: 69ad4689-3160-4790-93a9-80ce3529904d
     relationship: blocks
-  - &id037
+  - &id036
     predecessor_task_ref: 48dad44a-1ef5-44e6-b6a6-d471e4df28e0
     successor_task_ref: db740a43-d5ce-4730-86b0-b30557061ad9
+    relationship: blocks
+  - &id037
+    predecessor_task_ref: 48dad44a-1ef5-44e6-b6a6-d471e4df28e0
+    successor_task_ref: a5d4fd1b-fccb-418f-bdd4-41a1f3cc346a
     relationship: blocks
   - &id038
     predecessor_task_ref: 48dad44a-1ef5-44e6-b6a6-d471e4df28e0
-    successor_task_ref: a5d4fd1b-fccb-418f-bdd4-41a1f3cc346a
+    successor_task_ref: 1640f71f-aa13-44fe-8a16-4a87fdd9582b
     relationship: blocks
   - &id039
-    predecessor_task_ref: 48dad44a-1ef5-44e6-b6a6-d471e4df28e0
-    successor_task_ref: 1640f71f-aa13-44fe-8a16-4a87fdd9582b
+    predecessor_task_ref: 1640f71f-aa13-44fe-8a16-4a87fdd9582b
+    successor_task_ref: de7cb42e-014a-48a7-aa22-80000717a4ea
     relationship: blocks
   - &id040
     predecessor_task_ref: 1640f71f-aa13-44fe-8a16-4a87fdd9582b
-    successor_task_ref: de7cb42e-014a-48a7-aa22-80000717a4ea
+    successor_task_ref: a5d4fd1b-fccb-418f-bdd4-41a1f3cc346a
     relationship: blocks
   - &id041
     predecessor_task_ref: 1640f71f-aa13-44fe-8a16-4a87fdd9582b
-    successor_task_ref: a5d4fd1b-fccb-418f-bdd4-41a1f3cc346a
+    successor_task_ref: b4fab97a-a429-42af-818a-811fdd2d0d8a
     relationship: blocks
   - &id042
-    predecessor_task_ref: 1640f71f-aa13-44fe-8a16-4a87fdd9582b
-    successor_task_ref: b4fab97a-a429-42af-818a-811fdd2d0d8a
+    predecessor_task_ref: b4fab97a-a429-42af-818a-811fdd2d0d8a
+    successor_task_ref: a5d4fd1b-fccb-418f-bdd4-41a1f3cc346a
     relationship: blocks
   - &id043
     predecessor_task_ref: b4fab97a-a429-42af-818a-811fdd2d0d8a
-    successor_task_ref: a5d4fd1b-fccb-418f-bdd4-41a1f3cc346a
+    successor_task_ref: 22cbed0e-6fa3-450d-9dbf-9ef6e43f2ee9
     relationship: blocks
   - &id044
-    predecessor_task_ref: b4fab97a-a429-42af-818a-811fdd2d0d8a
-    successor_task_ref: 22cbed0e-6fa3-450d-9dbf-9ef6e43f2ee9
+    predecessor_task_ref: 22cbed0e-6fa3-450d-9dbf-9ef6e43f2ee9
+    successor_task_ref: a5d4fd1b-fccb-418f-bdd4-41a1f3cc346a
     relationship: blocks
   - &id045
     predecessor_task_ref: 22cbed0e-6fa3-450d-9dbf-9ef6e43f2ee9
-    successor_task_ref: a5d4fd1b-fccb-418f-bdd4-41a1f3cc346a
+    successor_task_ref: a8f5c6e5-6b96-4df0-8cef-92aa70977a80
     relationship: blocks
   - &id046
     predecessor_task_ref: 22cbed0e-6fa3-450d-9dbf-9ef6e43f2ee9
-    successor_task_ref: a8f5c6e5-6b96-4df0-8cef-92aa70977a80
+    successor_task_ref: ae4d3668-a02d-41b5-a259-63b4416dad8b
     relationship: blocks
   - &id047
     predecessor_task_ref: 22cbed0e-6fa3-450d-9dbf-9ef6e43f2ee9
-    successor_task_ref: ae4d3668-a02d-41b5-a259-63b4416dad8b
+    successor_task_ref: 1ff3b387-6d0d-408f-a329-5c154fea1126
     relationship: blocks
   - &id048
-    predecessor_task_ref: 22cbed0e-6fa3-450d-9dbf-9ef6e43f2ee9
-    successor_task_ref: 1ff3b387-6d0d-408f-a329-5c154fea1126
+    predecessor_task_ref: a8f5c6e5-6b96-4df0-8cef-92aa70977a80
+    successor_task_ref: a5d4fd1b-fccb-418f-bdd4-41a1f3cc346a
     relationship: blocks
   - &id049
     predecessor_task_ref: a8f5c6e5-6b96-4df0-8cef-92aa70977a80
-    successor_task_ref: a5d4fd1b-fccb-418f-bdd4-41a1f3cc346a
+    successor_task_ref: ae4d3668-a02d-41b5-a259-63b4416dad8b
     relationship: blocks
   - &id050
     predecessor_task_ref: a8f5c6e5-6b96-4df0-8cef-92aa70977a80
-    successor_task_ref: ae4d3668-a02d-41b5-a259-63b4416dad8b
+    successor_task_ref: 1ff3b387-6d0d-408f-a329-5c154fea1126
     relationship: blocks
   - &id051
-    predecessor_task_ref: a8f5c6e5-6b96-4df0-8cef-92aa70977a80
-    successor_task_ref: 1ff3b387-6d0d-408f-a329-5c154fea1126
+    predecessor_task_ref: ae4d3668-a02d-41b5-a259-63b4416dad8b
+    successor_task_ref: a5d4fd1b-fccb-418f-bdd4-41a1f3cc346a
     relationship: blocks
   - &id052
     predecessor_task_ref: ae4d3668-a02d-41b5-a259-63b4416dad8b
-    successor_task_ref: a5d4fd1b-fccb-418f-bdd4-41a1f3cc346a
+    successor_task_ref: bd69e601-a4d2-469c-9334-3648a0b75640
     relationship: blocks
   - &id053
-    predecessor_task_ref: ae4d3668-a02d-41b5-a259-63b4416dad8b
-    successor_task_ref: bd69e601-a4d2-469c-9334-3648a0b75640
+    predecessor_task_ref: 1ff3b387-6d0d-408f-a329-5c154fea1126
+    successor_task_ref: a5d4fd1b-fccb-418f-bdd4-41a1f3cc346a
     relationship: blocks
   - &id054
     predecessor_task_ref: 1ff3b387-6d0d-408f-a329-5c154fea1126
-    successor_task_ref: a5d4fd1b-fccb-418f-bdd4-41a1f3cc346a
+    successor_task_ref: bd69e601-a4d2-469c-9334-3648a0b75640
     relationship: blocks
   - &id055
-    predecessor_task_ref: 1ff3b387-6d0d-408f-a329-5c154fea1126
-    successor_task_ref: bd69e601-a4d2-469c-9334-3648a0b75640
+    predecessor_task_ref: bd69e601-a4d2-469c-9334-3648a0b75640
+    successor_task_ref: a5d4fd1b-fccb-418f-bdd4-41a1f3cc346a
     relationship: blocks
   - &id056
     predecessor_task_ref: bd69e601-a4d2-469c-9334-3648a0b75640
-    successor_task_ref: a5d4fd1b-fccb-418f-bdd4-41a1f3cc346a
+    successor_task_ref: 83d1a575-8746-40fa-8af5-d2299f064e6e
     relationship: blocks
   - &id057
-    predecessor_task_ref: bd69e601-a4d2-469c-9334-3648a0b75640
-    successor_task_ref: 83d1a575-8746-40fa-8af5-d2299f064e6e
+    predecessor_task_ref: 83d1a575-8746-40fa-8af5-d2299f064e6e
+    successor_task_ref: a5d4fd1b-fccb-418f-bdd4-41a1f3cc346a
     relationship: blocks
   - &id058
     predecessor_task_ref: 83d1a575-8746-40fa-8af5-d2299f064e6e
-    successor_task_ref: a5d4fd1b-fccb-418f-bdd4-41a1f3cc346a
-    relationship: blocks
-  - &id059
-    predecessor_task_ref: 83d1a575-8746-40fa-8af5-d2299f064e6e
     successor_task_ref: 5f484073-f083-404e-bb0d-47cdc3531582
     relationship: blocks
-  - &id060
+  - &id059
     predecessor_task_ref: 5f484073-f083-404e-bb0d-47cdc3531582
     successor_task_ref: a5d4fd1b-fccb-418f-bdd4-41a1f3cc346a
     relationship: blocks
-  - &id061
+  - &id060
     predecessor_task_ref: 3830e4e9-eaae-4bb2-90e2-b21ac69ef490
     successor_task_ref: db740a43-d5ce-4730-86b0-b30557061ad9
+    relationship: blocks
+  - &id061
+    predecessor_task_ref: 3830e4e9-eaae-4bb2-90e2-b21ac69ef490
+    successor_task_ref: 8efd0e35-a702-4d88-850c-0af71563e59b
     relationship: blocks
   - &id062
     predecessor_task_ref: 3830e4e9-eaae-4bb2-90e2-b21ac69ef490
-    successor_task_ref: 8efd0e35-a702-4d88-850c-0af71563e59b
+    successor_task_ref: f4de6b40-7de3-45a0-9252-8e1b79378aee
     relationship: blocks
   - &id063
-    predecessor_task_ref: 3830e4e9-eaae-4bb2-90e2-b21ac69ef490
-    successor_task_ref: f4de6b40-7de3-45a0-9252-8e1b79378aee
+    predecessor_task_ref: f4de6b40-7de3-45a0-9252-8e1b79378aee
+    successor_task_ref: de7cb42e-014a-48a7-aa22-80000717a4ea
     relationship: blocks
   - &id064
     predecessor_task_ref: f4de6b40-7de3-45a0-9252-8e1b79378aee
-    successor_task_ref: de7cb42e-014a-48a7-aa22-80000717a4ea
+    successor_task_ref: 8efd0e35-a702-4d88-850c-0af71563e59b
     relationship: blocks
   - &id065
     predecessor_task_ref: f4de6b40-7de3-45a0-9252-8e1b79378aee
-    successor_task_ref: 8efd0e35-a702-4d88-850c-0af71563e59b
+    successor_task_ref: 74757c17-25e5-42a0-bdd4-1e99f1be797d
     relationship: blocks
   - &id066
-    predecessor_task_ref: f4de6b40-7de3-45a0-9252-8e1b79378aee
-    successor_task_ref: 74757c17-25e5-42a0-bdd4-1e99f1be797d
+    predecessor_task_ref: 74757c17-25e5-42a0-bdd4-1e99f1be797d
+    successor_task_ref: 8efd0e35-a702-4d88-850c-0af71563e59b
     relationship: blocks
   - &id067
     predecessor_task_ref: 74757c17-25e5-42a0-bdd4-1e99f1be797d
-    successor_task_ref: 8efd0e35-a702-4d88-850c-0af71563e59b
+    successor_task_ref: d1511def-de5a-4970-a929-61f6229a14ca
     relationship: blocks
   - &id068
-    predecessor_task_ref: 74757c17-25e5-42a0-bdd4-1e99f1be797d
-    successor_task_ref: d1511def-de5a-4970-a929-61f6229a14ca
+    predecessor_task_ref: d1511def-de5a-4970-a929-61f6229a14ca
+    successor_task_ref: 8efd0e35-a702-4d88-850c-0af71563e59b
     relationship: blocks
   - &id069
     predecessor_task_ref: d1511def-de5a-4970-a929-61f6229a14ca
-    successor_task_ref: 8efd0e35-a702-4d88-850c-0af71563e59b
+    successor_task_ref: fc3ff3bf-e0ae-4d4b-bd88-ae1f768431b3
     relationship: blocks
   - &id070
     predecessor_task_ref: d1511def-de5a-4970-a929-61f6229a14ca
-    successor_task_ref: fc3ff3bf-e0ae-4d4b-bd88-ae1f768431b3
+    successor_task_ref: 4d40535e-b3fb-4b9c-9c8f-c782045458a5
     relationship: blocks
   - &id071
-    predecessor_task_ref: d1511def-de5a-4970-a929-61f6229a14ca
-    successor_task_ref: 4d40535e-b3fb-4b9c-9c8f-c782045458a5
+    predecessor_task_ref: fc3ff3bf-e0ae-4d4b-bd88-ae1f768431b3
+    successor_task_ref: 8efd0e35-a702-4d88-850c-0af71563e59b
     relationship: blocks
   - &id072
     predecessor_task_ref: fc3ff3bf-e0ae-4d4b-bd88-ae1f768431b3
-    successor_task_ref: 8efd0e35-a702-4d88-850c-0af71563e59b
+    successor_task_ref: b14e09db-c306-4208-a38a-9282137b0a79
     relationship: blocks
   - &id073
-    predecessor_task_ref: fc3ff3bf-e0ae-4d4b-bd88-ae1f768431b3
-    successor_task_ref: b14e09db-c306-4208-a38a-9282137b0a79
+    predecessor_task_ref: 4d40535e-b3fb-4b9c-9c8f-c782045458a5
+    successor_task_ref: 8efd0e35-a702-4d88-850c-0af71563e59b
     relationship: blocks
   - &id074
     predecessor_task_ref: 4d40535e-b3fb-4b9c-9c8f-c782045458a5
-    successor_task_ref: 8efd0e35-a702-4d88-850c-0af71563e59b
+    successor_task_ref: b14e09db-c306-4208-a38a-9282137b0a79
     relationship: blocks
   - &id075
-    predecessor_task_ref: 4d40535e-b3fb-4b9c-9c8f-c782045458a5
-    successor_task_ref: b14e09db-c306-4208-a38a-9282137b0a79
+    predecessor_task_ref: b14e09db-c306-4208-a38a-9282137b0a79
+    successor_task_ref: 8efd0e35-a702-4d88-850c-0af71563e59b
     relationship: blocks
   - &id076
     predecessor_task_ref: b14e09db-c306-4208-a38a-9282137b0a79
-    successor_task_ref: 8efd0e35-a702-4d88-850c-0af71563e59b
+    successor_task_ref: dd9edd33-6bf2-4100-add9-c370294dd1a0
     relationship: blocks
   - &id077
-    predecessor_task_ref: b14e09db-c306-4208-a38a-9282137b0a79
-    successor_task_ref: dd9edd33-6bf2-4100-add9-c370294dd1a0
+    predecessor_task_ref: dd9edd33-6bf2-4100-add9-c370294dd1a0
+    successor_task_ref: 8efd0e35-a702-4d88-850c-0af71563e59b
     relationship: blocks
   - &id078
     predecessor_task_ref: dd9edd33-6bf2-4100-add9-c370294dd1a0
-    successor_task_ref: 8efd0e35-a702-4d88-850c-0af71563e59b
-    relationship: blocks
-  - &id079
-    predecessor_task_ref: dd9edd33-6bf2-4100-add9-c370294dd1a0
     successor_task_ref: c0b96200-63b0-4c5e-ba44-7ad2af237969
     relationship: blocks
-  - &id080
+  - &id079
     predecessor_task_ref: c0b96200-63b0-4c5e-ba44-7ad2af237969
     successor_task_ref: 8efd0e35-a702-4d88-850c-0af71563e59b
     relationship: blocks
-  - &id081
+  - &id080
     predecessor_task_ref: 68c3e783-a238-4097-860a-a2a919ce18aa
     successor_task_ref: db740a43-d5ce-4730-86b0-b30557061ad9
     relationship: blocks
-  - &id082
+  - &id081
     predecessor_task_ref: 68c3e783-a238-4097-860a-a2a919ce18aa
     successor_task_ref: d9d5fc63-260e-4bb0-8ac6-13a232a620f1
     relationship: blocks
-  - &id083
+  - &id082
     predecessor_task_ref: 68c3e783-a238-4097-860a-a2a919ce18aa
     successor_task_ref: b15b9818-0bbc-4081-b4ab-d6b284bd44b8
     relationship: blocks
-  - &id084
+  - &id083
     predecessor_task_ref: b15b9818-0bbc-4081-b4ab-d6b284bd44b8
     successor_task_ref: de7cb42e-014a-48a7-aa22-80000717a4ea
     relationship: blocks
-  - &id085
+  - &id084
     predecessor_task_ref: b15b9818-0bbc-4081-b4ab-d6b284bd44b8
     successor_task_ref: d9d5fc63-260e-4bb0-8ac6-13a232a620f1
     relationship: blocks
-  - &id086
+  - &id085
     predecessor_task_ref: b15b9818-0bbc-4081-b4ab-d6b284bd44b8
     successor_task_ref: 205b667b-5e55-4abb-8ce7-d705e6c1c2c0
     relationship: blocks
-  - &id087
+  - &id086
     predecessor_task_ref: 205b667b-5e55-4abb-8ce7-d705e6c1c2c0
     successor_task_ref: d9d5fc63-260e-4bb0-8ac6-13a232a620f1
     relationship: blocks
-  - &id088
+  - &id087
     predecessor_task_ref: 205b667b-5e55-4abb-8ce7-d705e6c1c2c0
     successor_task_ref: 2cffeb46-9f11-449f-8597-5250e02fb1c2
     relationship: blocks
-  - &id089
+  - &id088
     predecessor_task_ref: 2cffeb46-9f11-449f-8597-5250e02fb1c2
     successor_task_ref: d9d5fc63-260e-4bb0-8ac6-13a232a620f1
     relationship: blocks
-  - &id090
+  - &id089
     predecessor_task_ref: 2cffeb46-9f11-449f-8597-5250e02fb1c2
     successor_task_ref: 5bd12d3e-f7a8-41fd-a887-a8b4183e9890
     relationship: blocks
-  - &id091
+  - &id090
     predecessor_task_ref: 2cffeb46-9f11-449f-8597-5250e02fb1c2
     successor_task_ref: f52ec302-4df5-4a47-a627-e1c48d25feab
     relationship: blocks
-  - &id092
+  - &id091
     predecessor_task_ref: 5bd12d3e-f7a8-41fd-a887-a8b4183e9890
     successor_task_ref: d9d5fc63-260e-4bb0-8ac6-13a232a620f1
     relationship: blocks
-  - &id093
+  - &id092
     predecessor_task_ref: 5bd12d3e-f7a8-41fd-a887-a8b4183e9890
     successor_task_ref: 35bb5a1b-3eec-44c3-b149-73b037c4f30d
+    relationship: blocks
+  - &id093
+    predecessor_task_ref: f52ec302-4df5-4a47-a627-e1c48d25feab
+    successor_task_ref: d9d5fc63-260e-4bb0-8ac6-13a232a620f1
     relationship: blocks
   - &id094
     predecessor_task_ref: f52ec302-4df5-4a47-a627-e1c48d25feab
-    successor_task_ref: d9d5fc63-260e-4bb0-8ac6-13a232a620f1
+    successor_task_ref: 35bb5a1b-3eec-44c3-b149-73b037c4f30d
     relationship: blocks
   - &id095
-    predecessor_task_ref: f52ec302-4df5-4a47-a627-e1c48d25feab
-    successor_task_ref: 35bb5a1b-3eec-44c3-b149-73b037c4f30d
+    predecessor_task_ref: 35bb5a1b-3eec-44c3-b149-73b037c4f30d
+    successor_task_ref: d9d5fc63-260e-4bb0-8ac6-13a232a620f1
     relationship: blocks
   - &id096
     predecessor_task_ref: 35bb5a1b-3eec-44c3-b149-73b037c4f30d
-    successor_task_ref: d9d5fc63-260e-4bb0-8ac6-13a232a620f1
+    successor_task_ref: 4f59ed47-c146-4610-83d1-05d1a8e503bd
     relationship: blocks
   - &id097
-    predecessor_task_ref: 35bb5a1b-3eec-44c3-b149-73b037c4f30d
-    successor_task_ref: 4f59ed47-c146-4610-83d1-05d1a8e503bd
+    predecessor_task_ref: 4f59ed47-c146-4610-83d1-05d1a8e503bd
+    successor_task_ref: d9d5fc63-260e-4bb0-8ac6-13a232a620f1
     relationship: blocks
   - &id098
     predecessor_task_ref: 4f59ed47-c146-4610-83d1-05d1a8e503bd
-    successor_task_ref: d9d5fc63-260e-4bb0-8ac6-13a232a620f1
-    relationship: blocks
-  - &id099
-    predecessor_task_ref: 4f59ed47-c146-4610-83d1-05d1a8e503bd
     successor_task_ref: 60153c41-1692-4e54-ab8c-b336189a2dfc
     relationship: blocks
-  - &id100
+  - &id099
     predecessor_task_ref: 60153c41-1692-4e54-ab8c-b336189a2dfc
     successor_task_ref: d9d5fc63-260e-4bb0-8ac6-13a232a620f1
     relationship: blocks
@@ -3043,7 +3042,7 @@ passes:
     completed_at: '2026-10-26T20:29:36.826206+00:00'
     lease_expires_at: null
     lease_version: 1
-  - &id101
+  - &id100
     id: 768b1f15-0468-440e-894f-5462d1c717db
     sequence: 26
     task_ref: b2418f32-3f60-4bbd-9a74-0cdf6b6aecc4
@@ -3074,66 +3073,55 @@ passes:
     completed_at: '2026-10-26T20:35:27.978177+00:00'
     lease_expires_at: null
     lease_version: 1
-  - &id104
+  - &id103
     id: 4e3f7f86-7a21-4ba9-a8b2-8ae0ff353371
     sequence: 27
     task_ref: 69ad4689-3160-4790-93a9-80ce3529904d
     phase_ref: f1e4c757-a3fc-4cfd-810b-4cbed98586c8
     actor: codex-macos
-    status: active
-    outcome: null
+    status: completed
+    outcome: partial
     objective: Set up accepted Rust workspace, common validation entry points, dependency/license inventory
       and platform-isolated CI definitions; validate locally on Mac and through the feature PR, then request
       Grok review. Native shells are separate tasks.
-    summary: null
-    handoff: null
-    validation_result: null
-    evidence: {}
+    summary: 'CORE-001A implemented on feature branch and draft PR #1: Rust workspace, Apache-2.0 source
+      license approved by owner, common/core checks, dependency/license gate and host-filtered CI. Local
+      checks passed. Hosted CI and Grok review/owner merge remain.'
+    handoff: Resume CORE-001A on feat/core-001a-workspace-ci, https://github.com/awesomejt/markdown/pull/1.
+      Inspect current head/CI. Keep draft until required hosted checks pass, mark ready, post exact /grok
+      review and verify receipt. Inspect actual feedback; resume a pass before source fixes, rerun checks
+      and request review on new ready head. Finish task only after owner-authorized merge. Do not start
+      CORE-002A or complete aggregate CORE-001. GitHub connector PR creation returned 403; authenticated
+      gh CLI is the authorized write fallback. Review receipts may remain in PR discussion without another
+      source commit.
+    validation_result:
+      checks:
+        - 'Mac Rust 1.99.1/Python 3.14.7/Node 24.14.0: tools/check.py all passed'
+        - 4 path, 19 capability, 3 host-filter and 5 dependency-policy regressions passed
+        - Empty core Cargo debug/release unit/doc harnesses pass; zero behavior tests claimed
+        - Fixture/capability validation, local links, Markdown lint, fmt, Clippy and whitespace passed
+        - actionlint v1.7.7 passed
+      pending:
+        - Latest hosted Linux/macOS/Windows checks
+        - Grok request and actual review findings disposition
+        - Owner-authorized merge
+    evidence:
+      pr: https://github.com/awesomejt/markdown/pull/1
+      branch: feat/core-001a-workspace-ci
+      development: docs/Development.md
+      dependencies: docs/Dependencies.md
+      baseline: docs/Implementation-Baseline.md
+      gate_approval: D-018
+      license_approval: D-019
     participants: []
     blocker: null
     execution_record: {}
     started_at: '2026-10-26T20:35:29.067873+00:00'
     last_heartbeat_at: null
-    completed_at: null
-    lease_expires_at: '2026-10-26T22:35:29.067873+00:00'
+    completed_at: '2026-10-26T20:43:37.567375+00:00'
+    lease_expires_at: null
     lease_version: 1
 idempotency:
-  fa8b5042-1e78-462b-954b-9d8fd5158ca4:
-    fingerprint: 3f3c076f38dc4dbc00066e708a5c619ba7e1c8974687062b39d61749b94bfb73
-    response:
-      contract_version: project-state/v1
-      operation: create_task
-      revision: 175
-      data:
-        task: *id001
-      snapshot:
-        contract_version: project-state/v1
-        snapshot_at: '2026-10-26T20:27:38.351433+00:00'
-        revision: 175
-        project: *id002
-        current_phase: *id003
-        phases: *id004
-        active_tasks:
-          - *id005
-        working_tasks_without_active_lease: []
-        active_passes:
-          - *id006
-        stale_passes: []
-        blocked_tasks: []
-        eligible_tasks: []
-        latest_pass: *id006
-        queue_counts:
-          by_status:
-            completed: 14
-            working: 1
-            pending: 56
-          total: 71
-          active_passes: 1
-          stale_passes: 0
-          eligible: 0
-          blocked: 0
-        warnings: []
-        recommended_action: resume_active
   efdf1d78-968c-41e0-a4a9-b6d42171a2c2:
     fingerprint: 80c70e9c137e71f84a127a97f8d706ed7cd9dea28cedd015eb955aba5812f28d
     response:
@@ -3141,7 +3129,7 @@ idempotency:
       operation: create_task
       revision: 176
       data:
-        task: *id007
+        task: *id001
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-26T20:27:38.850290+00:00'
@@ -3177,7 +3165,7 @@ idempotency:
       operation: create_task
       revision: 177
       data:
-        task: *id008
+        task: *id007
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-26T20:27:39.356019+00:00'
@@ -3213,7 +3201,7 @@ idempotency:
       operation: add_dependency
       revision: 178
       data:
-        relationship: *id009
+        relationship: *id008
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-26T20:27:40.068807+00:00'
@@ -3249,7 +3237,7 @@ idempotency:
       operation: add_dependency
       revision: 179
       data:
-        relationship: *id010
+        relationship: *id009
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-26T20:27:40.572274+00:00'
@@ -3285,7 +3273,7 @@ idempotency:
       operation: add_dependency
       revision: 180
       data:
-        relationship: *id011
+        relationship: *id010
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-26T20:27:41.076550+00:00'
@@ -3321,7 +3309,7 @@ idempotency:
       operation: add_dependency
       revision: 181
       data:
-        relationship: *id012
+        relationship: *id011
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-26T20:27:41.577303+00:00'
@@ -3357,7 +3345,7 @@ idempotency:
       operation: add_dependency
       revision: 182
       data:
-        relationship: *id013
+        relationship: *id012
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-26T20:27:42.090094+00:00'
@@ -3393,7 +3381,7 @@ idempotency:
       operation: add_dependency
       revision: 183
       data:
-        relationship: *id014
+        relationship: *id013
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-26T20:27:42.593328+00:00'
@@ -3429,7 +3417,7 @@ idempotency:
       operation: add_dependency
       revision: 184
       data:
-        relationship: *id015
+        relationship: *id014
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-26T20:27:43.111164+00:00'
@@ -3465,7 +3453,7 @@ idempotency:
       operation: add_dependency
       revision: 185
       data:
-        relationship: *id016
+        relationship: *id015
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-26T20:27:43.614979+00:00'
@@ -3501,7 +3489,7 @@ idempotency:
       operation: add_dependency
       revision: 186
       data:
-        relationship: *id017
+        relationship: *id016
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-26T20:27:44.122785+00:00'
@@ -3537,7 +3525,7 @@ idempotency:
       operation: add_dependency
       revision: 187
       data:
-        relationship: *id018
+        relationship: *id017
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-26T20:27:44.627928+00:00'
@@ -3573,7 +3561,7 @@ idempotency:
       operation: add_dependency
       revision: 188
       data:
-        relationship: *id019
+        relationship: *id018
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-26T20:27:45.133685+00:00'
@@ -3609,7 +3597,7 @@ idempotency:
       operation: add_dependency
       revision: 189
       data:
-        relationship: *id020
+        relationship: *id019
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-26T20:27:45.638777+00:00'
@@ -3645,7 +3633,7 @@ idempotency:
       operation: add_dependency
       revision: 190
       data:
-        relationship: *id021
+        relationship: *id020
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-26T20:27:46.147159+00:00'
@@ -3681,7 +3669,7 @@ idempotency:
       operation: add_dependency
       revision: 191
       data:
-        relationship: *id022
+        relationship: *id021
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-26T20:27:46.660283+00:00'
@@ -3717,7 +3705,7 @@ idempotency:
       operation: add_dependency
       revision: 192
       data:
-        relationship: *id023
+        relationship: *id022
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-26T20:27:47.169420+00:00'
@@ -3753,7 +3741,7 @@ idempotency:
       operation: add_dependency
       revision: 193
       data:
-        relationship: *id024
+        relationship: *id023
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-26T20:27:47.679586+00:00'
@@ -3789,7 +3777,7 @@ idempotency:
       operation: add_dependency
       revision: 194
       data:
-        relationship: *id025
+        relationship: *id024
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-26T20:27:48.196946+00:00'
@@ -3825,7 +3813,7 @@ idempotency:
       operation: add_dependency
       revision: 195
       data:
-        relationship: *id026
+        relationship: *id025
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-26T20:27:48.704359+00:00'
@@ -3861,7 +3849,7 @@ idempotency:
       operation: add_dependency
       revision: 196
       data:
-        relationship: *id027
+        relationship: *id026
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-26T20:27:49.214204+00:00'
@@ -3897,7 +3885,7 @@ idempotency:
       operation: add_dependency
       revision: 197
       data:
-        relationship: *id028
+        relationship: *id027
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-26T20:27:49.721155+00:00'
@@ -3933,7 +3921,7 @@ idempotency:
       operation: add_dependency
       revision: 198
       data:
-        relationship: *id029
+        relationship: *id028
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-26T20:27:50.227760+00:00'
@@ -3969,7 +3957,7 @@ idempotency:
       operation: add_dependency
       revision: 199
       data:
-        relationship: *id030
+        relationship: *id029
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-26T20:27:50.757243+00:00'
@@ -4005,7 +3993,7 @@ idempotency:
       operation: add_dependency
       revision: 200
       data:
-        relationship: *id031
+        relationship: *id030
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-26T20:27:51.270651+00:00'
@@ -4041,7 +4029,7 @@ idempotency:
       operation: add_dependency
       revision: 201
       data:
-        relationship: *id032
+        relationship: *id031
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-26T20:27:51.780094+00:00'
@@ -4077,7 +4065,7 @@ idempotency:
       operation: add_dependency
       revision: 202
       data:
-        relationship: *id033
+        relationship: *id032
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-26T20:27:52.290282+00:00'
@@ -4113,7 +4101,7 @@ idempotency:
       operation: add_dependency
       revision: 203
       data:
-        relationship: *id034
+        relationship: *id033
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-26T20:27:52.800064+00:00'
@@ -4149,7 +4137,7 @@ idempotency:
       operation: add_dependency
       revision: 204
       data:
-        relationship: *id035
+        relationship: *id034
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-26T20:27:53.319013+00:00'
@@ -4185,7 +4173,7 @@ idempotency:
       operation: add_dependency
       revision: 205
       data:
-        relationship: *id036
+        relationship: *id035
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-26T20:27:53.827291+00:00'
@@ -4221,7 +4209,7 @@ idempotency:
       operation: add_dependency
       revision: 206
       data:
-        relationship: *id037
+        relationship: *id036
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-26T20:27:54.336640+00:00'
@@ -4257,7 +4245,7 @@ idempotency:
       operation: add_dependency
       revision: 207
       data:
-        relationship: *id038
+        relationship: *id037
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-26T20:27:54.856136+00:00'
@@ -4293,7 +4281,7 @@ idempotency:
       operation: add_dependency
       revision: 208
       data:
-        relationship: *id039
+        relationship: *id038
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-26T20:27:55.368840+00:00'
@@ -4329,7 +4317,7 @@ idempotency:
       operation: add_dependency
       revision: 209
       data:
-        relationship: *id040
+        relationship: *id039
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-26T20:27:55.880916+00:00'
@@ -4365,7 +4353,7 @@ idempotency:
       operation: add_dependency
       revision: 210
       data:
-        relationship: *id041
+        relationship: *id040
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-26T20:27:56.388856+00:00'
@@ -4401,7 +4389,7 @@ idempotency:
       operation: add_dependency
       revision: 211
       data:
-        relationship: *id042
+        relationship: *id041
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-26T20:27:56.901699+00:00'
@@ -4437,7 +4425,7 @@ idempotency:
       operation: add_dependency
       revision: 212
       data:
-        relationship: *id043
+        relationship: *id042
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-26T20:27:57.412414+00:00'
@@ -4473,7 +4461,7 @@ idempotency:
       operation: add_dependency
       revision: 213
       data:
-        relationship: *id044
+        relationship: *id043
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-26T20:27:57.923486+00:00'
@@ -4509,7 +4497,7 @@ idempotency:
       operation: add_dependency
       revision: 214
       data:
-        relationship: *id045
+        relationship: *id044
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-26T20:27:58.449756+00:00'
@@ -4545,7 +4533,7 @@ idempotency:
       operation: add_dependency
       revision: 215
       data:
-        relationship: *id046
+        relationship: *id045
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-26T20:27:58.965307+00:00'
@@ -4581,7 +4569,7 @@ idempotency:
       operation: add_dependency
       revision: 216
       data:
-        relationship: *id047
+        relationship: *id046
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-26T20:27:59.484775+00:00'
@@ -4617,7 +4605,7 @@ idempotency:
       operation: add_dependency
       revision: 217
       data:
-        relationship: *id048
+        relationship: *id047
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-26T20:27:59.999000+00:00'
@@ -4653,7 +4641,7 @@ idempotency:
       operation: add_dependency
       revision: 218
       data:
-        relationship: *id049
+        relationship: *id048
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-26T20:28:00.511961+00:00'
@@ -4689,7 +4677,7 @@ idempotency:
       operation: add_dependency
       revision: 219
       data:
-        relationship: *id050
+        relationship: *id049
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-26T20:28:01.025904+00:00'
@@ -4725,7 +4713,7 @@ idempotency:
       operation: add_dependency
       revision: 220
       data:
-        relationship: *id051
+        relationship: *id050
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-26T20:28:01.541636+00:00'
@@ -4761,7 +4749,7 @@ idempotency:
       operation: add_dependency
       revision: 221
       data:
-        relationship: *id052
+        relationship: *id051
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-26T20:28:02.057329+00:00'
@@ -4797,7 +4785,7 @@ idempotency:
       operation: add_dependency
       revision: 222
       data:
-        relationship: *id053
+        relationship: *id052
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-26T20:28:02.572254+00:00'
@@ -4833,7 +4821,7 @@ idempotency:
       operation: add_dependency
       revision: 223
       data:
-        relationship: *id054
+        relationship: *id053
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-26T20:28:03.093655+00:00'
@@ -4869,7 +4857,7 @@ idempotency:
       operation: add_dependency
       revision: 224
       data:
-        relationship: *id055
+        relationship: *id054
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-26T20:28:03.622287+00:00'
@@ -4905,7 +4893,7 @@ idempotency:
       operation: add_dependency
       revision: 225
       data:
-        relationship: *id056
+        relationship: *id055
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-26T20:28:04.136617+00:00'
@@ -4941,7 +4929,7 @@ idempotency:
       operation: add_dependency
       revision: 226
       data:
-        relationship: *id057
+        relationship: *id056
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-26T20:28:04.652180+00:00'
@@ -4977,7 +4965,7 @@ idempotency:
       operation: add_dependency
       revision: 227
       data:
-        relationship: *id058
+        relationship: *id057
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-26T20:28:05.168477+00:00'
@@ -5013,7 +5001,7 @@ idempotency:
       operation: add_dependency
       revision: 228
       data:
-        relationship: *id059
+        relationship: *id058
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-26T20:28:05.682373+00:00'
@@ -5049,7 +5037,7 @@ idempotency:
       operation: add_dependency
       revision: 229
       data:
-        relationship: *id060
+        relationship: *id059
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-26T20:28:06.196970+00:00'
@@ -5085,7 +5073,7 @@ idempotency:
       operation: add_dependency
       revision: 230
       data:
-        relationship: *id061
+        relationship: *id060
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-26T20:28:06.712978+00:00'
@@ -5121,7 +5109,7 @@ idempotency:
       operation: add_dependency
       revision: 231
       data:
-        relationship: *id062
+        relationship: *id061
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-26T20:28:07.233741+00:00'
@@ -5157,7 +5145,7 @@ idempotency:
       operation: add_dependency
       revision: 232
       data:
-        relationship: *id063
+        relationship: *id062
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-26T20:28:07.755224+00:00'
@@ -5193,7 +5181,7 @@ idempotency:
       operation: add_dependency
       revision: 233
       data:
-        relationship: *id064
+        relationship: *id063
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-26T20:28:08.270362+00:00'
@@ -5229,7 +5217,7 @@ idempotency:
       operation: add_dependency
       revision: 234
       data:
-        relationship: *id065
+        relationship: *id064
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-26T20:28:08.797063+00:00'
@@ -5265,7 +5253,7 @@ idempotency:
       operation: add_dependency
       revision: 235
       data:
-        relationship: *id066
+        relationship: *id065
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-26T20:28:09.315954+00:00'
@@ -5301,7 +5289,7 @@ idempotency:
       operation: add_dependency
       revision: 236
       data:
-        relationship: *id067
+        relationship: *id066
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-26T20:28:09.832720+00:00'
@@ -5337,7 +5325,7 @@ idempotency:
       operation: add_dependency
       revision: 237
       data:
-        relationship: *id068
+        relationship: *id067
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-26T20:28:10.346764+00:00'
@@ -5373,7 +5361,7 @@ idempotency:
       operation: add_dependency
       revision: 238
       data:
-        relationship: *id069
+        relationship: *id068
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-26T20:28:10.865384+00:00'
@@ -5409,7 +5397,7 @@ idempotency:
       operation: add_dependency
       revision: 239
       data:
-        relationship: *id070
+        relationship: *id069
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-26T20:28:11.393160+00:00'
@@ -5445,7 +5433,7 @@ idempotency:
       operation: add_dependency
       revision: 240
       data:
-        relationship: *id071
+        relationship: *id070
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-26T20:28:11.910322+00:00'
@@ -5481,7 +5469,7 @@ idempotency:
       operation: add_dependency
       revision: 241
       data:
-        relationship: *id072
+        relationship: *id071
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-26T20:28:12.429002+00:00'
@@ -5517,7 +5505,7 @@ idempotency:
       operation: add_dependency
       revision: 242
       data:
-        relationship: *id073
+        relationship: *id072
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-26T20:28:12.943420+00:00'
@@ -5553,7 +5541,7 @@ idempotency:
       operation: add_dependency
       revision: 243
       data:
-        relationship: *id074
+        relationship: *id073
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-26T20:28:13.459620+00:00'
@@ -5589,7 +5577,7 @@ idempotency:
       operation: add_dependency
       revision: 244
       data:
-        relationship: *id075
+        relationship: *id074
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-26T20:28:13.988781+00:00'
@@ -5625,7 +5613,7 @@ idempotency:
       operation: add_dependency
       revision: 245
       data:
-        relationship: *id076
+        relationship: *id075
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-26T20:28:14.508315+00:00'
@@ -5661,7 +5649,7 @@ idempotency:
       operation: add_dependency
       revision: 246
       data:
-        relationship: *id077
+        relationship: *id076
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-26T20:28:15.029358+00:00'
@@ -5697,7 +5685,7 @@ idempotency:
       operation: add_dependency
       revision: 247
       data:
-        relationship: *id078
+        relationship: *id077
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-26T20:28:15.554309+00:00'
@@ -5733,7 +5721,7 @@ idempotency:
       operation: add_dependency
       revision: 248
       data:
-        relationship: *id079
+        relationship: *id078
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-26T20:28:16.074505+00:00'
@@ -5769,7 +5757,7 @@ idempotency:
       operation: add_dependency
       revision: 249
       data:
-        relationship: *id080
+        relationship: *id079
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-26T20:28:16.592726+00:00'
@@ -5805,7 +5793,7 @@ idempotency:
       operation: add_dependency
       revision: 250
       data:
-        relationship: *id081
+        relationship: *id080
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-26T20:28:17.115809+00:00'
@@ -5841,7 +5829,7 @@ idempotency:
       operation: add_dependency
       revision: 251
       data:
-        relationship: *id082
+        relationship: *id081
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-26T20:28:17.635603+00:00'
@@ -5877,7 +5865,7 @@ idempotency:
       operation: add_dependency
       revision: 252
       data:
-        relationship: *id083
+        relationship: *id082
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-26T20:28:18.153746+00:00'
@@ -5913,7 +5901,7 @@ idempotency:
       operation: add_dependency
       revision: 253
       data:
-        relationship: *id084
+        relationship: *id083
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-26T20:28:18.673668+00:00'
@@ -5949,7 +5937,7 @@ idempotency:
       operation: add_dependency
       revision: 254
       data:
-        relationship: *id085
+        relationship: *id084
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-26T20:28:19.207876+00:00'
@@ -5985,7 +5973,7 @@ idempotency:
       operation: add_dependency
       revision: 255
       data:
-        relationship: *id086
+        relationship: *id085
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-26T20:28:19.736656+00:00'
@@ -6021,7 +6009,7 @@ idempotency:
       operation: add_dependency
       revision: 256
       data:
-        relationship: *id087
+        relationship: *id086
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-26T20:28:20.258355+00:00'
@@ -6057,7 +6045,7 @@ idempotency:
       operation: add_dependency
       revision: 257
       data:
-        relationship: *id088
+        relationship: *id087
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-26T20:28:20.778365+00:00'
@@ -6093,7 +6081,7 @@ idempotency:
       operation: add_dependency
       revision: 258
       data:
-        relationship: *id089
+        relationship: *id088
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-26T20:28:21.299765+00:00'
@@ -6129,7 +6117,7 @@ idempotency:
       operation: add_dependency
       revision: 259
       data:
-        relationship: *id090
+        relationship: *id089
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-26T20:28:21.819417+00:00'
@@ -6165,7 +6153,7 @@ idempotency:
       operation: add_dependency
       revision: 260
       data:
-        relationship: *id091
+        relationship: *id090
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-26T20:28:22.339060+00:00'
@@ -6201,7 +6189,7 @@ idempotency:
       operation: add_dependency
       revision: 261
       data:
-        relationship: *id092
+        relationship: *id091
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-26T20:28:22.861050+00:00'
@@ -6237,7 +6225,7 @@ idempotency:
       operation: add_dependency
       revision: 262
       data:
-        relationship: *id093
+        relationship: *id092
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-26T20:28:23.384412+00:00'
@@ -6273,7 +6261,7 @@ idempotency:
       operation: add_dependency
       revision: 263
       data:
-        relationship: *id094
+        relationship: *id093
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-26T20:28:23.910292+00:00'
@@ -6309,7 +6297,7 @@ idempotency:
       operation: add_dependency
       revision: 264
       data:
-        relationship: *id095
+        relationship: *id094
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-26T20:28:24.450852+00:00'
@@ -6345,7 +6333,7 @@ idempotency:
       operation: add_dependency
       revision: 265
       data:
-        relationship: *id096
+        relationship: *id095
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-26T20:28:24.977546+00:00'
@@ -6381,7 +6369,7 @@ idempotency:
       operation: add_dependency
       revision: 266
       data:
-        relationship: *id097
+        relationship: *id096
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-26T20:28:25.503612+00:00'
@@ -6417,7 +6405,7 @@ idempotency:
       operation: add_dependency
       revision: 267
       data:
-        relationship: *id098
+        relationship: *id097
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-26T20:28:26.025526+00:00'
@@ -6453,7 +6441,7 @@ idempotency:
       operation: add_dependency
       revision: 268
       data:
-        relationship: *id099
+        relationship: *id098
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-26T20:28:26.548132+00:00'
@@ -6489,7 +6477,7 @@ idempotency:
       operation: add_dependency
       revision: 269
       data:
-        relationship: *id100
+        relationship: *id099
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-26T20:28:27.072363+00:00'
@@ -6561,7 +6549,7 @@ idempotency:
       operation: start_pass
       revision: 271
       data:
-        pass: *id101
+        pass: *id100
         task: *id005
       snapshot:
         contract_version: project-state/v1
@@ -6574,11 +6562,11 @@ idempotency:
           - *id005
         working_tasks_without_active_lease: []
         active_passes:
-          - *id101
+          - *id100
         stale_passes: []
         blocked_tasks: []
         eligible_tasks: []
-        latest_pass: *id101
+        latest_pass: *id100
         queue_counts:
           by_status:
             completed: 14
@@ -6598,7 +6586,7 @@ idempotency:
       operation: finish_pass
       revision: 272
       data:
-        pass: *id101
+        pass: *id100
         task: *id005
       snapshot:
         contract_version: project-state/v1
@@ -6613,7 +6601,7 @@ idempotency:
         stale_passes: []
         blocked_tasks: []
         eligible_tasks: []
-        latest_pass: *id101
+        latest_pass: *id100
         queue_counts:
           by_status:
             completed: 15
@@ -6638,7 +6626,7 @@ idempotency:
         snapshot_at: '2026-10-26T20:35:28.515946+00:00'
         revision: 273
         project: *id002
-        current_phase: *id102
+        current_phase: *id101
         phases: *id004
         active_tasks: []
         working_tasks_without_active_lease: []
@@ -6646,8 +6634,8 @@ idempotency:
         stale_passes: []
         blocked_tasks: []
         eligible_tasks:
-          - *id103
-        latest_pass: *id101
+          - *id102
+        latest_pass: *id100
         queue_counts:
           by_status:
             completed: 15
@@ -6666,24 +6654,24 @@ idempotency:
       operation: start_pass
       revision: 274
       data:
-        pass: *id104
-        task: *id103
+        pass: *id103
+        task: *id102
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-26T20:35:29.067908+00:00'
         revision: 274
         project: *id002
-        current_phase: *id102
+        current_phase: *id101
         phases: *id004
         active_tasks:
-          - *id103
+          - *id102
         working_tasks_without_active_lease: []
         active_passes:
-          - *id104
+          - *id103
         stale_passes: []
         blocked_tasks: []
         eligible_tasks: []
-        latest_pass: *id104
+        latest_pass: *id103
         queue_counts:
           by_status:
             completed: 15
@@ -6696,3 +6684,39 @@ idempotency:
           blocked: 0
         warnings: []
         recommended_action: resume_active
+  790cdb8a-73d3-4025-9351-8730f21b4a2f:
+    fingerprint: 4d8c04d552ad72faec4bbb4319031d690c7a0dde8301cc8f9d460706e0d9e82f
+    response:
+      contract_version: project-state/v1
+      operation: finish_pass
+      revision: 275
+      data:
+        pass: *id103
+        task: *id102
+      snapshot:
+        contract_version: project-state/v1
+        snapshot_at: '2026-10-26T20:43:37.567387+00:00'
+        revision: 275
+        project: *id002
+        current_phase: *id101
+        phases: *id004
+        active_tasks: []
+        working_tasks_without_active_lease:
+          - *id102
+        active_passes: []
+        stale_passes: []
+        blocked_tasks: []
+        eligible_tasks: []
+        latest_pass: *id103
+        queue_counts:
+          by_status:
+            completed: 15
+            pending: 57
+            working: 1
+          total: 73
+          active_passes: 0
+          stale_passes: 0
+          eligible: 0
+          blocked: 0
+        warnings: []
+        recommended_action: recover_stale_task
