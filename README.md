@@ -43,6 +43,8 @@ Start with:
 - [Platform capability evaluation](docs/Platform-Capability-Evaluation.md) —
   FEAS-007 per-platform matrix for files, lifecycle, diagrams, output and
   packaging, with sources and next checks.
+- [Core extension evaluation](docs/Core-Extension-Evaluation.md) — FEAS-010
+  front matter, math, alerts and voice-over syntax on pulldown-cmark.
 - [Feasibility review](docs/Feasibility-Review.md) — REV-001 quality check
   of FEAS-001–007, reproduced evidence and recommendations for GATE-001.
 - [TODO](TODO.md) — human-readable roadmap; `project.yaml` is task-state truth.

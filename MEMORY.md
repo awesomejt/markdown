@@ -11,7 +11,7 @@ design belong in `docs/` or `agents/`; runtime transcripts do not belong here.
 - Later platforms: iOS and iPadOS after the desktop contracts are stable.
 - Organization: one native monorepo with independent native UIs,
   shared specifications/fixtures/benchmarks, and a candidate portable core.
-- Status: FEAS-001 through FEAS-007 and REV-001 are complete. GATE-001 is
+- Status: FEAS-001 through FEAS-007, FEAS-010 and REV-001 are complete. GATE-001 is
   partially decided: D-008 to D-013 are accepted. Three owner-added spikes,
   FEAS-008 (renderer and Windows language), FEAS-009 (diagram and math
   engines) and FEAS-010 (core extensions), block its remaining items. No
@@ -131,6 +131,12 @@ FEAS-007 capability reconciliation is complete; GATE-001 is next.
   about 11.4 seconds, reinforcing the virtualized-renderer requirement. GDB
   source frames and a stripped/path-scanned adjacent-library package passed on
   the named host. See the shared-core Linux report.
+- FEAS-010 (2026-10-25) recommends keeping pulldown-cmark. All product syntax
+  works as shared passes with exact spans: 8 of 8 cases (Comrak 7 of 8), and
+  39 ms at 5 MiB with every pass versus 104 ms for Comrak. Never enable its YAML
+  metadata option: it accepts `---` blocks mid-document and hides a setext
+  heading. Detect front matter on line 1 in shared code. Unbalanced inline math
+  stays text. Keep voice scans bounded; the first scanner was quadratic.
 - REV-001 (2026-10-25) found the feasibility evidence sound: Linux reruns and
   raw-data recomputation matched every checked report value. On Linux/glibc,
   repeated parses keep RSS flat (pulldown-cmark 40 MiB from 1 to 20 parses), so
@@ -196,6 +202,17 @@ Items below that these supersede are kept for history.
   Apple XCFramework concerns remain open.
 
 ## Run log
+
+### 2026-10-25 — FEAS-010 core extensions
+
+Built `spikes/feas010`: pulldown-cmark and Comrak adapters into one
+intermediate form, with shared passes for front matter, slugs, link policy,
+alerts, fences and VO0 voice-over syntax. pulldown-cmark passed all 8 frozen
+cases and Comrak 7, with 0 span failures; 13 misparse tests pass on both.
+Found that pulldown-cmark's metadata option hides mid-document content,
+replaced it with a shared first-line detector, and fixed a quadratic scanner.
+Benchmarked five trials per mode. Recommendation recorded, not accepted:
+GATE-001 decides. Next: FEAS-008 Linux part or FEAS-009.
 
 ### 2026-10-25 — GATE-001 decisions, part 1
 

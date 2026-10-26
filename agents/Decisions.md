@@ -186,5 +186,7 @@ GATE-001 stays open until these are decided from spike evidence:
   existing engines (D2 in Go) and custom Rust implementations, aiming for the
   best-performing safe path. A D2 port must stay MPL-2.0 file by file; Mermaid
   and KaTeX are MIT. Go and web-engine use are not accepted yet.
-- **Core extension approach,** from FEAS-010.
+- **Core extension approach,** from FEAS-010. Its evaluation recommends keeping
+  pulldown-cmark with shared extension passes and its YAML metadata option
+  disabled; see `docs/Core-Extension-Evaluation.md`. Not yet accepted.
 - **Budget numbers,** from FEAS-008 using the D-012 metric.

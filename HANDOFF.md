@@ -19,8 +19,8 @@ GATE-001 is partially decided: D-008 to D-013 in
 [Decisions.md](agents/Decisions.md) are accepted. Its remaining items wait on
 three owner-added spikes, which `project.yaml` makes block the gate:
 
-- **FEAS-010** — core syntax extensions on pulldown-cmark. Runs on any host,
-  including this Linux machine.
+- **FEAS-010** — done: keep pulldown-cmark with shared extension passes; see
+  [Core-Extension-Evaluation.md](docs/Core-Extension-Evaluation.md).
 - **FEAS-008** — virtualized renderer on Linux and Windows, the Windows C#,
   Native AOT and C++/WinRT comparison, and a WebView document baseline. Do the
   Linux part here, then the Windows part on the Windows machine.

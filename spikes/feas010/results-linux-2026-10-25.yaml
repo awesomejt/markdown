@@ -1,0 +1,111 @@
+schema_version: 1
+task: FEAS-010
+date: '2026-10-25'
+status: evaluated
+production_baseline_accepted: false
+environment:
+  os: CachyOS Linux rolling
+  kernel: 7.3.0-4-cachyos
+  architecture: x86_64
+  cpu: AMD Ryzen 9 5950X 16-Core Processor
+  rustc: 1.99.1
+  python: 3.14.8
+candidates:
+  pulldown-cmark:
+    version: 0.13.5
+    options: tables, footnotes, strikethrough, tasklists, GFM blockquote kinds, math
+    yaml_metadata_option: disabled; front matter detected by the shared pass
+  comrak:
+    version: 0.57.0
+    options: strikethrough, table, autolink, tasklist, footnotes, math_dollars, math_code, alerts, front_matter_delimiter
+corpus_origin:
+  repository: markdown-viewer
+  commit: 0ab59c0f7bf91730bf9683b47a5eb2658f331b00
+conformance:
+  cases: 8
+  pulldown-cmark:
+    passed: 8
+    failed: 0
+    span_checks: 88
+    span_failures: 0
+  comrak:
+    passed: 7
+    failed: 1
+    span_checks: 89
+    span_failures: 0
+    failures:
+      - case: math-alerts
+        check: feature_counts.math_inline
+        expected: 2
+        got: 3
+        cause: Comrak parses brace-unbalanced inline math; pulldown-cmark requires balanced braces.
+  not_evaluated:
+    - code_fences.valid needs a diagram engine (FEAS-009)
+    - security policy and invariants belong to the renderer
+    - path_semantics belong to platform filesystem tests
+misparse_tests:
+  count: 13
+  result: all pass on both engines
+  covers:
+    - lowercase bold label is not a speaker; front-matter speakers list allows mixed case
+    - digit-only, [sic] and task-marker brackets are not directions
+    - a defined reference turns [beat] into a link, not a direction
+    - links, inline code, math and headings are excluded from voice syntax
+    - notes match before directions
+    - voice syntax is inert without the mdv script opt-in
+    - aliases, nested maps and duplicate keys reject properties; the line-scan opt-in still works
+    - unclosed or mid-document --- blocks are never front matter
+    - alert look-alikes and empty alerts are plain quotes
+    - both engines produce identical voice spans
+raw_parser_behavior:
+  note: before the shared passes; correct column follows GitHub and markdown-viewer
+  cases:
+    - case: alert marker followed by text
+      pulldown-cmark: plain quote
+      comrak: alert
+      correct: plain quote
+    - case: empty alert
+      pulldown-cmark: alert
+      comrak: alert
+      correct: plain quote
+    - case: brace-unbalanced inline math
+      pulldown-cmark: text
+      comrak: math
+      correct: text, per the frozen expectation
+    - case: front matter closed by ...
+      pulldown-cmark: front matter
+      comrak: not front matter
+      correct: not front matter
+    - case: --- block after the first line
+      pulldown-cmark: front matter, hiding a setext heading
+      comrak: not front matter
+      correct: not front matter
+median_ms:
+  method: five fresh processes; one warmup; 10 iterations at 1 MiB, 3 at 5 MiB
+  prose-1mib:
+    pulldown-cmark: {parse: 4.61, full: 7.24, script: 9.84}
+    comrak: {parse: 10.71, full: 14.81, script: 17.30}
+  prose-5mib:
+    pulldown-cmark: {parse: 22.49, full: 38.86, script: 53.85}
+    comrak: {parse: 85.85, full: 104.17, script: 122.93}
+  delimiter-storm-1mib:
+    pulldown-cmark: {parse: 8.87, full: 14.00, script: 16.43}
+    comrak: {parse: 21.78, full: 29.54, script: 32.11}
+  long-lines-1mib:
+    pulldown-cmark: {parse: 0.25, full: 0.26, script: 2.69}
+    comrak: {parse: 0.53, full: 0.60, script: 3.66}
+adapter_lines:
+  note: non-blank, non-comment lines; shared passes are reused by both
+  pulldown-cmark_adapter: 229
+  comrak_adapter: 184
+  shared_passes: 545
+  tests: 162
+defects_found_and_fixed:
+  - pulldown-cmark YAML metadata option accepts --- blocks anywhere; replaced by a first-line shared detector
+  - the first voice scanner was quadratic (per-line newline recount and unbounded marker search); fixed with a line index and a 256-byte marker window
+limitations:
+  - One Linux workstation; comparative, not release budgets.
+  - The semantic model is a spike projection, not the CORE-002 contract.
+  - Front matter types plain booleans, null and integers; markdown-viewer keeps all values as text.
+  - Diagram validity, KaTeX diagnostics, HTML sanitization and renderer behavior are out of scope.
+  - Voice A/V layout, colours, word counts and teleprompter timing are presentation work.

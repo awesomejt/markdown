@@ -126,7 +126,8 @@ project concurrency limit is one.
   fences and other custom syntax with exact spans, and compare with Comrak.
   Acceptance: each extension passes its semantic expectation with span checks,
   costs are measured on the performance corpus, and a recommendation keeps or
-  replaces pulldown-cmark.
+  replaces pulldown-cmark. Evaluated 2026-10-25: keep pulldown-cmark; see
+  `docs/Core-Extension-Evaluation.md`.
 - **FEAS-008 — Prove virtualized native renderer and Windows host language.**
   Owner-added at GATE-001; runs on Linux and Windows. Acceptance: whole-document
   selection and Ctrl+A copy of 5 MiB; Orca and Narrator reading order
