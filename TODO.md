@@ -21,11 +21,17 @@ throwaway prototypes under `spikes/` are expected.
 
 ## Immediate cross-machine handoff
 
-Linux, macOS and Windows native rendering and shared-core integration evaluations
-are complete. Preserve and sync the present worktree before changing machines;
-changes have not been committed by the agent. Inspect `project.yaml` for current
-pass/lease state. FEAS-007 is recorded; GATE-001 is next. Run one active pass at a time because the
-project concurrency limit is one.
+Linux, macOS and Windows native rendering, shared-core integration and
+virtualized-renderer (FEAS-008) evaluations are complete, as are FEAS-007,
+FEAS-010 and REV-001. GATE-001 is partially decided and blocked only by
+FEAS-009, which is next. Its proposed host plan is in `HANDOFF.md`: macOS
+first, then short Windows and Linux passes. Preserve and sync the worktree
+before changing machines; the agent does not commit unless asked. Inspect
+`project.yaml` for pass and lease state. Run one active pass at a time,
+because the project concurrency limit is one.
+
+The numbered steps below are the earlier handoff for GATE-001 preparation,
+kept as a record; steps 1–3 are done.
 
 1. **Carry forward Windows FEAS-003.** The report in
    `docs/Windows-Rendering-Evaluation.md` records 60 native trials, continuous

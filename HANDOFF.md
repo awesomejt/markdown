@@ -32,8 +32,21 @@ three owner-added spikes, which `project.yaml` makes block the gate:
   - Open for WIN-001: Narrator reads each row twice, and whole-tree UIA
     searches time out at 5 MiB.
   - Recommendations only; GATE-001 decides.
-- **FEAS-009** — next, on any host. Mermaid, D2 and math: an offscreen web
-  engine, existing engines and custom Rust implementations.
+- **FEAS-009** — next. Mermaid, D2 and math: an offscreen web engine,
+  existing engines and custom Rust implementations. Proposed host plan (not
+  yet confirmed by the owner):
+  1. **macOS first, as the main pass.** The iOS-fit criterion can only be
+     measured there: Xcode, the iOS simulator or a device, JavaScriptCore
+     without a view, `WKWebView`, and building D2's Go for iOS. The
+     platform-neutral comparisons also belong in this pass: fidelity against
+     reference renders, sanitization, licensing, port effort and Rust/Go
+     latency.
+  2. **Short Windows and Linux passes after it.** The "offscreen web engine"
+     option is a different engine on each OS (WebView2, WebKitGTK and
+     WebKit/JavaScriptCore), as in FEAS-008. Measure compile latency, memory
+     and package cost of each OS's engine and the in-process D2 Go library
+     there; don't infer them from the Mac.
+  Close the Mac pass as `partial` with that handoff, as FEAS-008 did.
 
 Their acceptance criteria are in `TODO.md`. Measure with the D-012 metric:
 launch to presented content, cold and warm, at least five runs with spread.
@@ -122,7 +135,9 @@ The Rust-owned bulk C ABI passed C# SafeHandle/C++ RAII cleanup, 1,000 sequentia
 and 400 concurrent loads, ten observed-entry cancellations, panic containment,
 all eight outlines, native Rust source/PDB debugging and a normal-DLL package.
 Virtualized 1/5 MiB authored-entry callbacks were about 381/459 ms. Continuous
-controls still stall, and cross-row selection/UIA reading order remain open.
+controls still stall. FEAS-008 Windows has since shown document-wide selection,
+UIA reading order and Narrator navigation over virtualized rows; see its
+report.
 
 macOS evidence is in
 [Shared-Core-macOS-Evaluation.md](docs/Shared-Core-macOS-Evaluation.md) and

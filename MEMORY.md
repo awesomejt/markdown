@@ -30,6 +30,17 @@ design belong in `docs/` or `agents/`; runtime transcripts do not belong here.
   `tools/patch_project_state_backend.py` reproduces the reviewed patch on each
   host. Windows, isolated native Mac, and native Linux regression suites passed
   on 2026-10-25. Use `--platform-info` to verify the selected path.
+- Windows host facts from FEAS-008 (2026-10-26):
+  - Agent shells are not elevated. Cold-cache runs (standby purge) need the
+    owner to run the harness from an elevated terminal.
+  - Developer Mode is on, so Python `os.symlink` works; PowerShell 5.1
+    `New-Item -ItemType SymbolicLink` still needs admin.
+  - The feasibility venv has no pip, and markdownlint-cli2 is not installed.
+  - Native AOT linking needs `vswhere` on `PATH`; `build_windows.py` adds it.
+  - Displays are three 2560×1440 at 150%.
+  - Use the native UIA3 client (`UiaProbe.exe`), not Windows PowerShell's
+    managed UIA, which lacks `HeadingLevel`.
+  - Use forward slashes in Git Bash commands given to the owner.
 
 ## Implementation workflow decision (2026-10-25)
 
@@ -180,9 +191,19 @@ FEAS-007 capability reconciliation is complete; GATE-001 is next.
 
 GATE-001 (2026-10-25) accepted D-008 to D-013: the Rust/pulldown-cmark core,
 the C ABI, the stacks, MVP baselines and packaging, the shared metric, v1 scope
-and MVP order. Still open, pending spikes: the main document surface (native
-preferred, WebView baseline measured in FEAS-008), the Windows host language,
-the diagram and math engines, the core extension approach and budget numbers.
+and MVP order. Still open: the main document surface, the Windows host
+language, the diagram and math engines, the core extension approach and the
+budget numbers. Each now has a spike recommendation except diagrams and math,
+which wait for FEAS-009; none is accepted:
+
+- Document surface: a native virtualized list on Linux and Windows
+  (FEAS-008), not a WebView.
+- Windows host language: C# Native AOT, with C++/WinRT as the fallback
+  (FEAS-008).
+- Core extension approach: pulldown-cmark with shared passes (FEAS-010).
+- Budgets proposed by FEAS-008: warm at most 400 ms, cold at most 700 ms,
+  off-screen jumps at most 150 ms.
+
 Items below that these supersede are kept for history.
 
 - Confirm the order in which the three desktop MVPs are deepened after their
@@ -206,6 +227,10 @@ Items below that these supersede are kept for history.
 
 - A rich native attributed-text document can become slow or inaccessible if
   represented as one monolithic view.
+- Virtualized document lists make the app own accessibility structure. Open
+  gaps: Orca H heading navigation on Linux; on Windows, Narrator reading each
+  row twice, and whole-tree UIA searches exceeding the provider timeout at
+  5 MiB.
 - Parser source ranges may be insufficient for every web behavior; the core
   model needs stable block identities and explicit source mapping.
 - iOS security-scoped bookmarks can become stale and require user recovery.
