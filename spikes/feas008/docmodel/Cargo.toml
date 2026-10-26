@@ -1,0 +1,11 @@
+[package]
+name = "feas008-docmodel"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+pulldown-cmark = { workspace = true }
+
+[features]
+html = ["pulldown-cmark/html"]

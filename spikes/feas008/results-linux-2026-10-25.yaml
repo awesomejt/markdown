@@ -1,0 +1,407 @@
+schema_version: 1
+task: FEAS-008
+platform_part: linux
+date: '2026-10-25'
+status: evaluated
+production_baseline_accepted: false
+environment:
+  os: CachyOS Linux rolling
+  kernel: 7.3.0-4-cachyos
+  glibc: '2.44'
+  architecture: x86_64
+  cpu: AMD Ryzen 9 5950X (16 cores, 32 threads)
+  ram_gib: 64
+  gpu: NVIDIA RTX 4080
+  session: KDE Plasma Wayland, compositor scale 1
+  window: 1200x900, 260 px outline
+  gtk: 4.24.1
+  pango: 1.58.2
+  gtk_rs: 0.11.5 (v4_14 API)
+  webkitgtk: 2.54.2 (webkit6 0.6.1)
+  orca: '51.1'
+  at_spi: 2.62.1
+  rustc: 1.99.1
+  pulldown_cmark: 0.13.5
+metric:
+  definition: 'D-012 launch to presented content: CLOCK_MONOTONIC before spawn to compositor presentation
+    time of the first frame containing document rows (GDK frame timings); paint time is used when the
+    compositor reports none'
+  cold: page cache evicted with posix_fadvise DONTNEED for every file the app maps or opens plus theme,
+    font-cache and shader-cache files; not a full drop_caches
+  warm: one discarded launch, then five
+  runs_per_mode: 5
+  webview_presented: first toplevel frame after an injected double-requestAnimationFrame message; approximates
+    WebKit first content
+native:
+  prose-1mib:
+    cold_launch_to_presented_ms:
+      median: 528.2
+      min: 523.1
+      max: 538.0
+      stdev: 7.1
+      values:
+      - 528.2
+      - 523.1
+      - 524.1
+      - 538.0
+      - 537.3
+    warm_launch_to_presented_ms:
+      median: 288.9
+      min: 288.2
+      max: 303.0
+      stdev: 6.4
+      values:
+      - 288.2
+      - 288.5
+      - 288.9
+      - 303.0
+      - 289.7
+    warm_launch_to_paint_median_ms: 278.8
+    warm_parse_median_ms: 14.7
+    warm_peak_rss_median_mib: 206.9
+    warm_jump_to_presented_ms:
+      median: 37.8
+      max: 44.0
+      runs: 25
+    presentation_time_runs: 10
+    runs: 10
+    automated_checks_ok: true
+    cold_eviction:
+      files: 1081
+      set_mib: 284.0
+      max_resident_mib_after_evict: 0.2
+  prose-5mib:
+    cold_launch_to_presented_ms:
+      median: 551.3
+      min: 544.9
+      max: 562.7
+      stdev: 6.7
+      values:
+      - 544.9
+      - 550.5
+      - 562.7
+      - 556.4
+      - 551.3
+    warm_launch_to_presented_ms:
+      median: 301.5
+      min: 287.0
+      max: 302.9
+      stdev: 6.7
+      values:
+      - 287.0
+      - 302.0
+      - 301.0
+      - 302.9
+      - 301.5
+    warm_launch_to_paint_median_ms: 289.9
+    warm_parse_median_ms: 58.0
+    warm_peak_rss_median_mib: 264.2
+    warm_jump_to_presented_ms:
+      median: 37.7
+      max: 38.4
+      runs: 25
+    presentation_time_runs: 10
+    runs: 10
+    automated_checks_ok: true
+    cold_eviction:
+      files: 1081
+      set_mib: 288.0
+      max_resident_mib_after_evict: 0.2
+  long-lines-1mib:
+    cold_launch_to_presented_ms:
+      median: 623.0
+      min: 618.4
+      max: 638.3
+      stdev: 7.9
+      values:
+      - 628.1
+      - 620.8
+      - 623.0
+      - 638.3
+      - 618.4
+    warm_launch_to_presented_ms:
+      median: 373.3
+      min: 372.4
+      max: 374.5
+      stdev: 1.0
+      values:
+      - 374.2
+      - 372.5
+      - 372.4
+      - 374.5
+      - 373.3
+    warm_launch_to_paint_median_ms: 361.3
+    warm_parse_median_ms: 1.1
+    warm_peak_rss_median_mib: 201.4
+    warm_jump_to_presented_ms:
+      median: 38.4
+      max: 136.7
+      runs: 25
+    presentation_time_runs: 10
+    runs: 10
+    automated_checks_ok: true
+    cold_eviction:
+      files: 1079
+      set_mib: 284.0
+      max_resident_mib_after_evict: 0.2
+webview:
+  prose-1mib:
+    cold_launch_to_presented_ms:
+      median: 1735.0
+      min: 1718.4
+      max: 13203.1
+      stdev: 5114.5
+      values:
+      - 1890.6
+      - 1727.6
+      - 1735.0
+      - 1718.4
+      - 13203.1
+    warm_launch_to_presented_ms:
+      median: 951.9
+      min: 933.7
+      max: 970.2
+      stdev: 15.5
+      values:
+      - 951.9
+      - 970.2
+      - 933.7
+      - 964.0
+      - 939.7
+    warm_launch_to_paint_median_ms: 934.7
+    warm_parse_median_ms: 21.7
+    warm_peak_rss_median_mib: 482.3
+    warm_jump_to_presented_ms:
+      median: 63.4
+      max: 124.9
+      runs: 15
+    presentation_time_runs: 10
+    runs: 10
+    automated_checks_ok: true
+    cold_eviction:
+      files: 1136
+      set_mib: 282.8
+      max_resident_mib_after_evict: 0.2
+  prose-5mib:
+    cold_launch_to_presented_ms:
+      median: 3428.0
+      min: 3402.9
+      max: 3461.8
+      stdev: 21.6
+      values:
+      - 3402.9
+      - 3432.6
+      - 3428.0
+      - 3419.4
+      - 3461.8
+    warm_launch_to_presented_ms:
+      median: 2897.7
+      min: 2871.8
+      max: 2911.4
+      stdev: 17.7
+      values:
+      - 2897.7
+      - 2871.8
+      - 2911.4
+      - 2879.7
+      - 2909.3
+    warm_launch_to_paint_median_ms: 2897.7
+    warm_parse_median_ms: 95.1
+    warm_peak_rss_median_mib: 819.5
+    warm_jump_to_presented_ms:
+      median: 62.2
+      max: 597.0
+      runs: 15
+    presentation_time_runs: 0
+    runs: 10
+    automated_checks_ok: true
+    cold_eviction:
+      files: 1136
+      set_mib: 286.8
+      max_resident_mib_after_evict: 0.2
+  long-lines-1mib:
+    cold_launch_to_presented_ms:
+      median: 1822.2
+      min: 1819.2
+      max: 1846.1
+      stdev: 12.6
+      values:
+      - 1839.1
+      - 1846.1
+      - 1819.2
+      - 1819.2
+      - 1822.2
+    warm_launch_to_presented_ms:
+      median: 1290.5
+      min: 1270.6
+      max: 1297.3
+      stdev: 10.2
+      values:
+      - 1290.5
+      - 1287.4
+      - 1297.3
+      - 1292.7
+      - 1270.6
+    warm_launch_to_paint_median_ms: 1258.3
+    warm_parse_median_ms: 2.7
+    warm_peak_rss_median_mib: 414.9
+    warm_jump_to_presented_ms:
+      median: 28.5
+      max: 66.5
+      runs: 15
+    presentation_time_runs: 10
+    runs: 10
+    automated_checks_ok: false
+    cold_eviction:
+      files: 1136
+      set_mib: 282.8
+      max_resident_mib_after_evict: 0.2
+outliers:
+- First cold native prose-1mib run of the first sweep took 8078 ms; not reproduced in two later sweeps
+  (cold max 538-545 ms). Retained in the superseded sweep log only.
+- First cold WebView prose-1mib run took 13203 ms (included in the values above).
+- 'WebView prose-5mib: the compositor reported no presentation time in any run; values are paint times.'
+design_constraint:
+  realized_rows: GtkListView realizes about 205 rows regardless of row height; AT-SPI exposes only the
+    about 30 on-screen rows
+  label_minimum_width: wrapped GtkLabel minimum-width measurement cost about 18x raw Pango layout; width-chars
+    40 removes it
+  fragments: at most 1024 bytes at a newline or space; unbreakable runs cut at 512 bytes and shown with
+    character wrapping
+  sweep_single_launch_ms:
+    before_width_chars:
+      long_lines_512: 2036
+      long_lines_1024: 6377
+      long_lines_2048: 23709
+      long_lines_4096: timeout >60000
+      long_paragraph_512: 667
+      long_paragraph_1024: 1049
+      long_paragraph_4096: 3469
+    with_width_chars:
+      long_lines_char_wrap_512: 350
+      long_lines_char_wrap_1024: 468
+      long_paragraph_1024: 348
+      long_paragraph_4096: 666
+      prose_5mib: 247
+  accessibility_cost: disabling GTK accessibility or row labels changed long-paragraph launch by under
+    7 percent
+functional_checks:
+  select_all_copy_5mib:
+    text_markdown_equals_source_bytes: 5242880
+    text_plain_equals_model_bytes: 5170055
+    verified_with: wl-paste from a separate process after owner Ctrl+A, Ctrl+C
+    automated_copy_ms_5mib: about 9
+  sampled_rows: 5 rows per run at 10-100 percent of the document; displayed label text equals the model
+    fragment and the copy at its offset, in every run
+  find: model search of 5 MiB in about 8 ms; off-screen match scrolled, selected and presented
+  outline_and_fragment_jumps: off-screen headings presented with focus in about 36-55 ms, aligned to the
+    viewport top except where the document end prevents it
+  images:
+    presented:
+    - img/gradient.png 240x120
+    blocked_by_model:
+    - remote https
+    - ../ escape
+    - absolute path
+    - svg
+    - data URI
+    refused_by_host_adapter:
+    - symlink resolving outside folder
+    - text file named .png
+    - PNG header claiming 20000x20000
+    - missing file
+  links:
+    fragment: jump
+    missing_fragment: ignored
+    https_mailto: system handler (gtk UriLauncher)
+    relative_md: local document intent, opening not implemented
+    blocked:
+    - 'javascript:'
+    - 'file:'
+    - 'data:'
+    - ../../ escape
+  atspi:
+  - document: fixtures/markdown/foundation/gfm-tour.md
+    after: top
+    first_model_item: 0
+    exposed_rows: 30
+    contiguous_model_order: true
+    label_text_equals_row_name: true
+    row_descriptions:
+      paragraph: 9
+      list item: 13
+      heading level 1: 1
+      heading level 2: 4
+      heading level 3: 1
+      quote: 2
+  - document: build/feas008/media/media-links.md
+    after: top
+    first_model_item: 0
+    exposed_rows: 25
+    contiguous_model_order: true
+    label_text_equals_row_name: true
+    row_descriptions:
+      heading level 1: 1
+      paragraph: 1
+      heading level 2: 4
+      image: 10
+      list item: 9
+  - document: build/fixtures/performance/prose-5mib.md
+    after: top
+    first_model_item: 0
+    exposed_rows: 30
+    contiguous_model_order: true
+    label_text_equals_row_name: true
+    row_descriptions:
+      heading level 2: 6
+      paragraph: 6
+      list item: 18
+  - document: build/fixtures/performance/prose-5mib.md
+    after: item 60000
+    first_model_item: 60000
+    exposed_rows: 31
+    contiguous_model_order: true
+    label_text_equals_row_name: true
+    row_descriptions:
+      heading level 2: 7
+      paragraph: 6
+      list item: 18
+  - document: build/fixtures/performance/prose-5mib.md
+    after: item 121361
+    first_model_item: 121332
+    exposed_rows: 30
+    contiguous_model_order: true
+    label_text_equals_row_name: true
+    row_descriptions:
+      list item: 18
+      heading level 2: 6
+      paragraph: 6
+  owner_confirmed:
+  - mouse drag selection with auto-scroll, Shift+click extension, click and Esc clear, reselection replaces
+  - keyboard row navigation with plain Up/Down and selection extension
+  - Ctrl+A/Ctrl+C of 5 MiB (clipboard verified externally)
+  - find, outline click/arrow/Enter, fragment and blocked links, image policy display
+  - Orca reads rows in order while moving with Down
+  owner_found_and_fixed:
+  - drag lost its anchor on an empty first update
+  - row label gesture stole the drag after a few pixels
+  - GtkLabel kept merged highlight attributes so clear and reselect failed visually
+  - plain Up/Down did not move between rows
+  - heading jumps scrolled minimally instead of aligning to the top
+  - outline arrows had no visible selection
+  open:
+  - Orca H structural heading navigation does nothing in the native view
+  - Orca Say All past the visible screen not confirmed
+  - Orca on the WebView build not compared
+  - GNOME, X11, fractional scaling and RTL/IME not tested
+webview_checks:
+  copy: real Ctrl+A/Ctrl+C put text/html and text/plain (2054 characters, whole tour) on the clipboard;
+    no Markdown flavor; synthetic editing-command copy was unreliable under Wayland
+  find_5mib_first_result_ms: 328
+  policy: CSP default-src none, page scripts disabled, mdv-res scheme reusing host containment checks,
+    navigation gated by link policy; symlink, forged and missing images refused
+implementation_size_lines:
+  counting: physical lines after cargo fmt, comments included
+  shared_model: 955 including 212 test lines and 68 HTML-rendering lines
+  native_host: 1770 plus a 49-line list model; the final 335 lines are automation and control-mode probes
+  webview_host: 471; the final 130 lines are automation

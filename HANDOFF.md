@@ -1,10 +1,9 @@
 # Agent Session and Platform Handoff
 
-Updated: 2026-10-25, FEAS-007 completion. Source baseline: `6847fb4`
-(`FEAS-006 - Linux feasibility done`) plus the uncommitted FEAS-007 matrix,
-validator, documentation and project-state closeout. Preserve the checked-in
-FEAS-006 source, locks, measurements and reports; never transfer build products
-or environments between platforms.
+Updated: 2026-10-25, FEAS-008 Linux part. Source baseline: `2203330`
+(`FEAS-010 on Linux`) plus the uncommitted `spikes/feas008`, its report and
+state/doc updates. Preserve the checked-in source, locks, measurements and
+reports; never transfer build products or environments between platforms.
 
 This file carries concise, commit-safe context between sessions. It does not
 replace [project.yaml](project.yaml) for operational state,
@@ -21,9 +20,17 @@ three owner-added spikes, which `project.yaml` makes block the gate:
 
 - **FEAS-010** — done: keep pulldown-cmark with shared extension passes; see
   [Core-Extension-Evaluation.md](docs/Core-Extension-Evaluation.md).
-- **FEAS-008** — virtualized renderer on Linux and Windows, the Windows C#,
-  Native AOT and C++/WinRT comparison, and a WebView document baseline. Do the
-  Linux part here, then the Windows part on the Windows machine.
+- **FEAS-008** — Linux part done: see
+  [Virtualized-Renderer-Linux-Evaluation.md](docs/Virtualized-Renderer-Linux-Evaluation.md)
+  and `spikes/feas008/results-linux-2026-10-25.yaml`. Recommendation: native
+  `GtkListView` over bounded fragments; WebKitGTK was 3.3–9.6× slower warm.
+  The pass ended `partial`. **Windows part next, on the Windows machine:**
+  WinUI 3 virtualized view in C# JIT, Native AOT and C++/WinRT, a WebView2
+  baseline, Narrator and UIA reading order, and the same D-012 cold/warm
+  protocol. Reuse `spikes/feas008/docmodel` and its policy and fixture
+  generator; port the checks in `native/src/main.rs` `automated()`. Expect
+  the same traps: hosts that realize far more rows than are visible, label
+  measurement cost, and Wayland-style clipboard limits on synthetic copy.
 - **FEAS-009** — Mermaid, D2 and math: an offscreen web engine, existing
   engines and custom Rust implementations.
 

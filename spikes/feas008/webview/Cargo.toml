@@ -1,0 +1,11 @@
+[package]
+name = "feas008-webview"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+feas008-docmodel = { path = "../docmodel", features = ["html"] }
+gtk = { workspace = true }
+webkit6 = "=0.6.1"
+serde_json = "=1.0.145"

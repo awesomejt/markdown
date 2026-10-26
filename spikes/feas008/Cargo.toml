@@ -1,0 +1,13 @@
+[workspace]
+resolver = "3"
+members = ["docmodel", "native", "webview"]
+default-members = ["docmodel", "native"]
+
+[workspace.dependencies]
+gtk = { package = "gtk4", version = "=0.11.5", features = ["v4_14"] }
+pulldown-cmark = { version = "=0.13.5", default-features = false }
+
+[profile.release]
+codegen-units = 1
+lto = "thin"
+debug = 1

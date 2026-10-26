@@ -12,9 +12,9 @@ design belong in `docs/` or `agents/`; runtime transcripts do not belong here.
 - Organization: one native monorepo with independent native UIs,
   shared specifications/fixtures/benchmarks, and a candidate portable core.
 - Status: FEAS-001 through FEAS-007, FEAS-010 and REV-001 are complete. GATE-001 is
-  partially decided: D-008 to D-013 are accepted. Three owner-added spikes,
-  FEAS-008 (renderer and Windows language), FEAS-009 (diagram and math
-  engines) and FEAS-010 (core extensions), block its remaining items. No
+  partially decided: D-008 to D-013 are accepted. Owner-added spikes FEAS-008
+  (renderer and Windows language; Linux part done, Windows part next) and
+  FEAS-009 (diagram and math engines) block its remaining items. No
   production code before the gate closes. Inspect `project.yaml` for state.
 - The required real Windows, macOS, and Linux renderer and shared-core
   integration evidence is recorded, and the capability matrix reconciles it.
@@ -202,6 +202,19 @@ Items below that these supersede are kept for history.
   Apple XCFramework concerns remain open.
 
 ## Run log
+
+### 2026-10-25 — FEAS-008 Linux part
+
+Built `spikes/feas008`: an owned-value block model, a gtk-rs `GtkListView`
+renderer and a WebKitGTK baseline over the same model and policy. Native warm
+launch to presented content was 289/302/373 ms (1 MiB, 5 MiB, long lines) and
+cold 528–623 ms; WebKitGTK was 952/2898/1291 ms warm at 2.1–3.1× the memory.
+GTK keeps about 205 rows realized, so fragments are bounded (1 KiB, 512 B
+unbreakable) and labels need `width-chars`; without it a 1 MiB line timed out.
+The owner verified drag/keyboard selection, 5 MiB Ctrl+A copy (byte-exact via
+`wl-paste`), find, outline, links, images and Orca row reading. Six defects the
+owner found were fixed. Orca H navigation fails; Say All past the screen is
+unconfirmed. Recommendation only. Next: FEAS-008 on Windows, or FEAS-009.
 
 ### 2026-10-25 — FEAS-010 core extensions
 
