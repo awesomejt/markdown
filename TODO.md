@@ -11,7 +11,7 @@ batching ready work on the current OS. Each delivery phase uses one feature
 branch and PR. Once ready, post a separate PR comment exactly `/grok review`,
 address the feedback, and obtain owner merge approval. Follow
 [Delivery-Workflow.md](docs/Delivery-Workflow.md) for branch, review and handoff
-rules. Current feasibility state is unchanged.
+rules. FEAS-007 capability reconciliation is the next feasibility task.
 
 ## Current gate: requirements and feasibility
 
@@ -20,13 +20,11 @@ throwaway prototypes under `spikes/` are expected.
 
 ## Immediate cross-machine handoff
 
-Linux, macOS and Windows native rendering evaluations are complete. Preserve and sync
-the present worktree before changing machines; changes have not been committed
-by the agent. Inspect `project.yaml` for current pass/lease state.
-
-FEAS-006 has completed Windows and macOS checkpoints; native Linux/GTK integration
-remains. Resume that partial task before selecting other work. Run one active
-pass at a time because the project concurrency limit is one; inspect live state.
+Linux, macOS and Windows native rendering and shared-core integration evaluations
+are complete. Preserve and sync the present worktree before changing machines;
+changes have not been committed by the agent. Inspect `project.yaml` for current
+pass/lease state. FEAS-007 is next. Run one active pass at a time because the
+project concurrency limit is one.
 
 1. **Carry forward Windows FEAS-003.** The report in
    `docs/Windows-Rendering-Evaluation.md` records 60 native trials, continuous
@@ -41,14 +39,13 @@ pass at a time because the project concurrency limit is one; inspect live state.
    owner-confirmed VoiceOver reading, scale-2 display inspection, debugger,
    profiler and local development bundles. Preserve its unverified production
    behaviors and signing/distribution limits; do not treat them as passes.
-3. **Reconcile both reports in the monorepo.** Preserve platform deviations;
+3. **Reconcile the platform reports in the monorepo.** Preserve deviations;
    do not force identical UI implementations. Confirm each pass is complete
    and `project.yaml` has no stale lease before selecting more work.
-4. **Resume FEAS-006 on Linux, then FEAS-007.** The Windows and Mac Rust/C ABI
-   checkpoints are in `docs/Shared-Core-Windows-Evaluation.md` and
-   `docs/Shared-Core-macOS-Evaluation.md`; they do not close the all-desktop task.
-   Prove the remaining native binding/package, finish
-   the capability matrix, then ask the owner to accept or revise GATE-001.
+4. **Continue with FEAS-007.** The Windows, macOS and Linux Rust/C ABI
+   checkpoints are in the three `docs/Shared-Core-*-Evaluation.md` reports.
+   Reconcile the capability matrix, then ask the owner to accept or revise
+   GATE-001.
 
 ### Requirements and feasibility
 
@@ -106,8 +103,12 @@ pass at a time because the project concurrency limit is one; inspect live state.
   Swift/AppKit ownership, cancellation, concurrency, live source debugging and
   relocated normal-library bundles passed. Repeated native RSS grows in empty
   malloc regions despite zero handles; no production mitigation is accepted.
-  Resume the native GTK portion before completing this task. See
-  `docs/Shared-Core-Windows-Evaluation.md` and `docs/Shared-Core-macOS-Evaluation.md`.
+  Linux checkpoint evaluated 2026-10-25: a separate gtk-rs host consumed the C
+  facade with negotiated layouts, copied ownership, lifecycle/error/panic/
+  cancellation coverage, GTK timing, Rust source debugging and a stripped,
+  path-scanned relocated normal-library package. The monolithic long-line case
+  retained an 11.4-second layout delay; no production ABI/model or renderer is
+  accepted. See the three `docs/Shared-Core-*-Evaluation.md` reports.
 - **FEAS-007 — Complete the platform capability matrix.** Starts only after
   FEAS-003 and FEAS-004. Test advanced
   rendering, file watching, network folders, background work, print/export,

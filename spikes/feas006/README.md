@@ -1,8 +1,9 @@
 # FEAS-006 shared-core boundary spike
 
-Windows and macOS portions evaluated; native Linux/GTK bindings and packages
-remain required before FEAS-006 closes. This is an experimental ABI/model, not the
-production semantic contract or an accepted stack.
+Windows, macOS, and Linux portions are evaluated. This is an experimental
+ABI/model and feasibility package set, not the production semantic contract or
+an accepted stack. See the platform reports and checked-in result summaries for
+durable findings; FEAS-007 and GATE-001 remain separate work.
 
 ## Build and verify on macOS
 
@@ -80,8 +81,43 @@ linker ad-hoc signatures are present; identity signing, resource sealing,
 notarization, installation and publishing are not performed. The declared
 macOS 13 floor is unverified; native evidence names the tested OS/architecture.
 
-FEAS-006 remains partial until the Linux/GTK portion is recorded. Do not run
-Windows builders here or substitute Mac source for Linux native evidence.
+The macOS checkpoint is complete. Do not run Windows builders here or substitute
+Mac source for another platform's native evidence.
+
+## Build and verify on Linux
+
+Use native x86-64 Linux with Rust, a C compiler, GTK 4 development files,
+GDB, ELF tools and the fixture Python dependencies. The gtk-rs host loads the
+exported C ABI at runtime; it does not link to or call the Rust crate directly.
+
+```sh
+python3 spikes/feas006/build_linux.py
+build/feas006/linux/probe/feas006-linux-host \
+  --self-test build/fixtures/performance/prose-5mib.md
+python3 spikes/feas006/measure_linux.py
+python3 spikes/feas006/package_linux.py > build/feas006/linux/package.json
+```
+
+The host defaults to `libfeas006_core.so` beside its own executable. `--core`
+accepts an explicit diagnostic path for repository tooling only; packages and
+relocation checks do not use it or a global loader override. Probe and normal
+libraries are built separately, and only the normal library is packaged. The
+package script rejects probe exports, copies dependency licenses from both
+locked Rust graphs, checks ELF dependencies, relocates to a fresh temporary
+directory, and runs console plus GTK smokes there. Packaged ELF copies have
+DWARF removed and are scanned for checkout-path bytes; unstripped debug builds
+remain separately under ignored `build/feas006/linux/debug/`. Every relocated
+command runs without `LD_LIBRARY_PATH`. System GTK remains an
+external runtime dependency; no distro floor, installation, signing, sandbox,
+or publishing behavior is established.
+
+GTK parsing/copying runs on a worker. The checkpoint records a
+`host-copy-released` phase before synchronous `GtkTextBuffer` construction, so
+an externally retained layout timeout does not hide successful ownership
+release. A `first-useful-tick` is a GTK main-loop callback, not GPU presentation
+or cold launch. The monolithic text surface retains FEAS-005's known limits and
+is not the LNX-001 virtualized renderer. The in-flight cancellation case passes
+only when probe counters observe native entry and the parse returns `Cancelled`.
 
 ## Build and verify on Windows
 
@@ -211,15 +247,17 @@ FEAS-003 Win32/DbgHelp harness in Rust-DLL mode. It resolves a breakpoint in a
 Rust export reached from C++, then terminates that owned debuggee. This proves
 native Rust source/PDB availability, not mixed managed/Rust stepping in an IDE.
 
-## Next native-host acceptance
+## Evaluation status and next gate
 
-Carry this source, locks, header, measurements and handoff through Git; do not
-transfer binaries or environments between platforms. The native Mac checkpoint
-is now in [the report](../../docs/Shared-Core-macOS-Evaluation.md). On Linux
-prove the same facade from the native GTK host rather than assuming a
-direct Rust call proves the C boundary. Recheck panic strategy, symbol visibility,
-layout and allocator behavior on that host. Keep FEAS-006 partial until Linux
-report/package evidence exists; GATE-001 remains unaccepted.
+Carry source, locks, header, checked-in summaries and reports through Git; do
+not transfer binaries or environments between platforms. Native checkpoints
+are recorded in the
+[Windows](../../docs/Shared-Core-Windows-Evaluation.md),
+[macOS](../../docs/Shared-Core-macOS-Evaluation.md), and
+[Linux](../../docs/Shared-Core-Linux-Evaluation.md) reports. FEAS-006 establishes
+feasibility on the named hosts only. FEAS-007 must reconcile the platform
+capability matrix, and GATE-001 must accept or reject the production language,
+model, facade, native stacks, budgets and platform scope.
 
 References: [Rust FFI](https://doc.rust-lang.org/nomicon/ffi.html),
 [.NET native interop](https://learn.microsoft.com/en-us/dotnet/standard/native-interop/best-practices).

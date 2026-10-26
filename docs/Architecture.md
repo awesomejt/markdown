@@ -124,11 +124,15 @@ should be coarse enough to avoid per-node FFI chatter and unnecessary copies.
 The Linux app may call a Rust core directly, but it must still respect the same
 public facade used to test the other hosts.
 
-The [FEAS-006 Windows checkpoint](Shared-Core-Windows-Evaluation.md) exercises
-an experimental C ABI with two owned value buffers, negotiated layouts,
-matching-allocator release and cooperative cancellation. It supports continuing
-the feasibility work; its flat model/snapshot-local IDs are not the production
-semantic contract. macOS/Linux host/package acceptance and GATE-001 remain open.
+The FEAS-006 checkpoints exercise one experimental C ABI on
+[Windows](Shared-Core-Windows-Evaluation.md),
+[macOS](Shared-Core-macOS-Evaluation.md), and
+[Linux](Shared-Core-Linux-Evaluation.md) with two owned value buffers,
+negotiated layouts, matching-allocator release and cooperative cancellation.
+All three native hosts copied values and released core owners before UI work;
+normal-library relocation and native source debugging passed on the named
+systems. This supports the GATE-001 decision, but the flat model, snapshot-local
+IDs, package constraints, and spike ABI are not the production semantic contract.
 
 ## Platform capability deviations
 

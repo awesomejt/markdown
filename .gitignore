@@ -1,6 +1,7 @@
 # Agent runtime state
 .agents/requests/
 .agents/handoffs/
+.agents/loop/
 .agents/chats/*.md
 project.yaml.lock
 

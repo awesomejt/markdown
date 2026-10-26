@@ -11,13 +11,12 @@ design belong in `docs/` or `agents/`; runtime transcripts do not belong here.
 - Later platforms: iOS and iPadOS after the desktop contracts are stable.
 - Organization: one native monorepo with independent native UIs,
   shared specifications/fixtures/benchmarks, and a candidate portable core.
-- Status: FEAS-001 through FEAS-005 are evaluated. FEAS-006 has completed
-  Windows and macOS checkpoints but remains partial for native Linux integration;
-  resume it before selecting other work. Inspect `project.yaml` for the live
-  pass/handoff state. No production baseline or ABI is accepted.
-- The required real Windows and macOS renderer evidence is now recorded.
-  Shared-core integration and the capability matrix can proceed; GATE-001
-  still waits for their results and the owner's architecture decision.
+- Status: FEAS-001 through FEAS-006 are evaluated on their required native
+  hosts. FEAS-007 is the next dependency-ready task. Inspect `project.yaml` for
+  the live pass/handoff state. No production baseline or ABI is accepted.
+- The required real Windows, macOS, and Linux renderer and shared-core
+  integration evidence is recorded. The capability matrix can proceed;
+  GATE-001 still waits for FEAS-007 and the owner's architecture decision.
 - Mac host setup: the project-state skill/backend and workflow contract have
   been restored from the owner's Linux user-level Codex directory. Supported
   inspection works. Xcode 27.1 is installed and selected. Use the normal pass
@@ -28,8 +27,8 @@ design belong in `docs/` or `agents/`; runtime transcripts do not belong here.
   build tools and fixture Python dependencies are installed. State coordination
   is restored: the backend detects native Windows versus POSIX Python, and
   `tools/patch_project_state_backend.py` reproduces the reviewed patch on each
-  host. Windows and isolated native Mac regression suites passed on 2026-10-25;
-  Linux rerun is outstanding. Use `--platform-info` to verify the selected path.
+  host. Windows, isolated native Mac, and native Linux regression suites passed
+  on 2026-10-25. Use `--platform-info` to verify the selected path.
 
 ## Implementation workflow decision (2026-10-25)
 
@@ -39,8 +38,8 @@ Post a separate `/grok review` comment when ready, resolve actual feedback and
 wait for owner merge approval. Scoped phase pushes/PR/review actions are already
 authorized. See `docs/Delivery-Workflow.md` and `docs/Implementation-Plan.md`.
 Materialize child tasks at prerequisite gates through the helper; early native
-foundation tasks belong in the portable-core bucket. Today's FEAS-006 state is
-unchanged; Linux integration remains the next execution work.
+foundation tasks belong in the portable-core bucket. FEAS-006 is evaluated;
+FEAS-007 capability reconciliation is the next execution work.
 
 ## Durable context
 
@@ -75,7 +74,7 @@ unchanged; Linux integration remains the next execution work.
   `runtime_path` generates Unicode/NFC/NFD names in separate ignored run
   directories; `tools/validate_fixtures.py` checks three generated paths.
   `.gitattributes` preserves exact corpus bytes across Windows checkouts.
-  Windows and macOS checks passed on 2026-10-25; Linux rerun remains outstanding.
+  Windows, macOS, and Linux checks passed on 2026-10-25.
 - FEAS-002 recommends Rust with pulldown-cmark as the lead core/parser spike:
   it had the lowest parse/walk time and RSS and exposes byte ranges for every
   event. Comrak remains the feature-rich fallback/conformance oracle, while
@@ -92,7 +91,7 @@ unchanged; Linux integration remains the next execution work.
   GFM oracle. C++ is not the lead shared-core choice, but C++/WinRT remains a
   valid Windows-host candidate. A narrow C ABI or generated bindings remain
   the likely interop boundary. None of these recommendations becomes an
-  accepted production baseline until FEAS-006 and GATE-001.
+  accepted production baseline until GATE-001.
 - Platform UI code is intentionally native rather than forced into one common
   language: GTK 4/gtk-rs is the Linux recommendation; Windows FEAS-003 supports
   WinUI with C# or C++/WinRT hosts, and macOS FEAS-004 favors AppKit/TextKit 2.
@@ -112,8 +111,8 @@ unchanged; Linux integration remains the next execution work.
   callbacks; Rust parse/model was about 9.5/42.6 ms. Continuous controls still
   stall. Handles return to zero through lifecycle/cancellation/panic tests;
   native Rust source/PDB debugging and a normal-DLL package passed. The model
-  has snapshot-local IDs and incomplete semantic coverage; native Linux host/package
-  evidence remains required. See the shared-core Windows report.
+  has snapshot-local IDs and incomplete semantic coverage. See the shared-core
+  Windows report.
 - FEAS-006 macOS imports the same C header into Swift, bulk-copies values and
   releases native snapshots/tokens before AppKit construction. All eight outline
   contracts pass. The final 54 GUI trials include 51 presentations, two intended
@@ -122,6 +121,15 @@ unchanged; Linux integration remains the next execution work.
   were about 14.6/5.5 ms in GUI runs. Main-actor/strict concurrency checks,
   live Swift-to-Rust source debugging and relocated normal-library bundles passed.
   This is not a cold-launch or equivalent-renderer language comparison.
+- FEAS-006 Linux runtime-loads the exported C ABI from a separate gtk-rs host,
+  negotiates 40/48/56-byte layouts, copies and releases values before GTK, and
+  passes the same lifecycle/error/panic/cancellation pattern. All eight outlines,
+  twelve GTK presentations and two intended cancellations passed. Warm console
+  1/5 MiB core/model medians were about 5.5/29.8 ms with 0.6/3.3 ms copy cost;
+  GTK first-useful ticks were about 277/498 ms. A 1 MiB logical line still took
+  about 11.4 seconds, reinforcing the virtualized-renderer requirement. GDB
+  source frames and a stripped/path-scanned adjacent-library package passed on
+  the named host. See the shared-core Linux report.
 - Repeated Mac native-only 5 MiB parses grew RSS to about 583 MiB after twenty
   loads despite zero native owners and about 5.1 MiB live malloc usage. A leaks
   scan found zero leaked bytes; vmmap classified most growth as empty large
@@ -142,7 +150,8 @@ unchanged; Linux integration remains the next execution work.
   and the stable Rust boundary using measurements from a real Windows host.
 - Confirm the AppKit/TextKit 2 lead renderer recommendation, selective SwiftUI
   shell responsibilities and the stable Rust/Swift boundary at the accepted
-  gates. macOS FEAS-004 measured native layout; FEAS-006 still owns core interop.
+  gates. macOS FEAS-004 measured native layout and FEAS-006 measured core
+  interop; GATE-001 still owns acceptance.
 - Confirm Linux virtualized-block selection and AT-SPI behavior during LNX-001;
   a monolithic `GtkTextView` is already rejected for unbounded documents.
 - Confirm whether “native” allows narrowly scoped non-UI engines for diagrams
@@ -158,10 +167,28 @@ unchanged; Linux integration remains the next execution work.
   model needs stable block identities and explicit source mapping.
 - iOS security-scoped bookmarks can become stale and require user recovery.
 - Raw HTML, remote resources, local links, and SVG each need separate policy.
-- FFI and packaging must be proven on Windows, macOS, and Linux before the
-  shared core expands; Apple XCFramework concerns are one part of that matrix.
+- Feasibility FFI and local package consumption pass on Windows, macOS, and
+  Linux, but production ABI stability, clean deployment, platform packages and
+  Apple XCFramework concerns remain open.
 
 ## Run log
+
+### 2026-10-25 — FEAS-006 Linux checkpoint
+
+Completed the all-desktop shared-core feasibility evidence with a separate
+gtk-rs host that runtime-loads the existing C facade rather than calling Rust
+internals. The final self-test passed 1,000 sequential and 400 concurrent loads,
+ten observed-entry cancellations, typed errors, conversion failure cleanup and
+panic recovery with zero owners. All eight outline contracts, twelve GTK
+presentations and two intended cancellations passed without timeout. GDB stopped
+in Rust with host/core frames and continued normally. A relocated normal package
+passed lifecycle, console and GTK smokes with loader overrides removed; packaged
+ELFs have no probe exports, debug sections or checkout-path bytes, while separate
+debug artifacts retain symbols. Review found and resolved path-privacy,
+cancellation-classification, worker-disconnect and loader-environment defects;
+fresh re-review found no remaining code issue. The monolithic long-line case
+still took about 11.4 seconds, and no production ABI/model/package is accepted.
+See `docs/Shared-Core-Linux-Evaluation.md`. Next: FEAS-007.
 
 ### 2026-10-25 — FEAS-006 macOS checkpoint
 

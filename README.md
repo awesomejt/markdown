@@ -35,7 +35,9 @@ Start with:
 - [Windows core integration](docs/Shared-Core-Windows-Evaluation.md) — Rust C
   ABI, ownership, cancellation and WinUI timing.
 - [macOS core integration](docs/Shared-Core-macOS-Evaluation.md) — Swift/AppKit
-  ownership, cancellation, packaging and memory findings; Linux still pending.
+  ownership, cancellation, packaging and memory findings.
+- [Linux core integration](docs/Shared-Core-Linux-Evaluation.md) — gtk-rs C-ABI
+  ownership, cancellation, debugging, GTK timing and relocatable packaging.
 - [macOS rendering evaluation](docs/macOS-Rendering-Evaluation.md) — AppKit
   TextKit comparisons, native interaction, memory, and development bundles.
 - [TODO](TODO.md) — human-readable roadmap; `project.yaml` is task-state truth.

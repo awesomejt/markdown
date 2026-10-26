@@ -1,11 +1,11 @@
 contract_version: project-state/v1
-revision: 98
+revision: 102
 project: &id002
   concurrency_limit: 1
   created_at: '2026-10-24T23:34:09.871478+00:00'
   project_ref: markdown-native
   status: active
-  updated_at: '2026-10-25T18:18:47.450780+00:00'
+  updated_at: '2026-10-25T23:39:39.930694+00:00'
   workflow_id: native-app-development
   workflow_version: '2'
 phases: &id004
@@ -166,7 +166,7 @@ tasks:
   - &id009
     active_pass_ref: null
     blockers: []
-    completed_at: null
+    completed_at: '2026-10-25T23:39:39.930694+00:00'
     created_at: '2026-10-24T23:34:33.146100+00:00'
     description: Package and consume a minimal candidate core on all desktop targets.
     id: 83e4817e-976a-47f4-8f42-47d1ae925aa1
@@ -174,10 +174,10 @@ tasks:
     phase: feasibility
     priority: 85
     role: implementer
-    status: working
+    status: completed
     task_key: FEAS-006
     title: Prove shared-core integration
-    updated_at: '2026-10-25T18:18:47.450780+00:00'
+    updated_at: '2026-10-25T23:39:39.930694+00:00'
     validation_expectations: Call/copy cost, lifecycle, error, cancellation, debugging, and release package
       evidence.
   - &id010
@@ -1137,6 +1137,88 @@ passes:
     completed_at: '2026-10-25T18:18:47.450780+00:00'
     lease_expires_at: null
     lease_version: 1
+  - &id027
+    id: 3bab958b-81cd-45d0-8775-6d3ba2c3c2f1
+    sequence: 11
+    task_ref: 83e4817e-976a-47f4-8f42-47d1ae925aa1
+    phase_ref: b19ec1c8-f0c0-4cee-b584-5c9247a96edd
+    actor: codex-linux
+    status: failed
+    outcome: failed
+    objective: 'Complete the native Linux checkpoint for FEAS-006: consume the existing Rust C facade
+      from a GTK host, verify negotiated layouts, ownership, typed errors, panic containment, observed
+      cooperative cancellation, repeated and concurrent sessions, copy/decode cost, native source debugging,
+      and a relocatable normal-library development package with locked dependency licenses; record durable
+      Linux evidence without accepting the production baseline.'
+    summary: Recovered an expired flat-file pass lease.
+    handoff: Inspect pass handoffs and retry the same working task.
+    validation_result: null
+    evidence: {}
+    participants: []
+    blocker: null
+    execution_record: {}
+    started_at: '2026-10-25T20:58:07.560552+00:00'
+    last_heartbeat_at: null
+    completed_at: '2026-10-25T23:22:03.141013+00:00'
+    lease_expires_at: null
+    lease_version: 1
+  - &id028
+    id: 63966b8f-b4ad-4d59-b032-a0685f7e7e92
+    sequence: 12
+    task_ref: 83e4817e-976a-47f4-8f42-47d1ae925aa1
+    phase_ref: b19ec1c8-f0c0-4cee-b584-5c9247a96edd
+    actor: codex-linux
+    status: completed
+    outcome: completed
+    objective: 'Resume the recovered Linux FEAS-006 checkpoint from validated implementation handoffs:
+      independently validate/test/review the GTK C-facade host and normal package, record durable Linux
+      results/report and repository memory, then close the all-desktop task only if every acceptance item
+      remains evidenced.'
+    summary: Completed FEAS-006 across Windows, macOS, and Linux. Linux gtk-rs consumed the experimental
+      C facade with negotiated layouts, copied ownership, lifecycle/error/panic/cancellation coverage,
+      GTK timing, Rust source debugging, and a stripped/path-scanned relocatable normal-library package.
+      Review findings were resolved; no production ABI/model or GATE-001 baseline was accepted.
+    handoff: null
+    validation_result:
+      scope: All-desktop FEAS-006 evidence completed; feasibility only
+      checks:
+        - 'Linux self-test: 1000 sequential, 400 concurrent, ten observed-entry cancellations, zero native
+          owners'
+        - all eight outline contracts; 12 GTK presentations and two intended cancellations without timeout
+        - GDB Rust source plus host/core frames and normal exit
+        - normal package lifecycle, external relocation, hostile-loader sanitization, no probes/debug/root
+          paths, 72 license records
+        - core tests six debug plus six release; host tests five; fmt and Clippy -D warnings
+        - project-state, fixtures, generated paths, Python, Markdown, links, durable-result, ignore and
+          whitespace checks
+        - fresh defect re-review with no blocking or nonblocking findings
+    evidence:
+      report: docs/Shared-Core-Linux-Evaluation.md
+      measurements: spikes/feas006/results-linux-2026-10-25.yaml
+      reproduction: spikes/feas006/README.md
+      windows_report: docs/Shared-Core-Windows-Evaluation.md
+      macos_report: docs/Shared-Core-macOS-Evaluation.md
+      handoff: HANDOFF.md
+    participants:
+      - role: implementer
+        result: implemented and corrected
+      - role: validator
+        result: passed
+      - role: tester
+        result: passed
+      - role: reviewer
+        result: no remaining findings
+      - role: writer
+        result: documented
+      - role: project-manager
+        result: completion audited
+    blocker: null
+    execution_record: {}
+    started_at: '2026-10-25T23:22:11.252088+00:00'
+    last_heartbeat_at: null
+    completed_at: '2026-10-25T23:39:39.930694+00:00'
+    lease_expires_at: null
+    lease_version: 1
 idempotency:
   accept-d004-create:
     fingerprint: 24cf06b66fd828b04e394367502bdc20f99fdf17303eec73bb77dba723bdaa1f
@@ -2049,3 +2131,151 @@ idempotency:
           blocked: 0
         warnings: []
         recommended_action: recover_stale_task
+  feas006-linux-start-20261025-01:
+    fingerprint: b0bbc91a7af1913d3a33046ee70c963100b8cf64e0e30e72634501914950f2a8
+    response:
+      contract_version: project-state/v1
+      operation: start_pass
+      revision: 99
+      data:
+        pass: *id027
+        task: *id009
+      snapshot:
+        contract_version: project-state/v1
+        snapshot_at: '2026-10-25T20:58:07.560589+00:00'
+        revision: 99
+        project: *id002
+        current_phase: *id003
+        phases: *id004
+        active_tasks:
+          - *id009
+        working_tasks_without_active_lease: []
+        active_passes:
+          - *id027
+        stale_passes: []
+        blocked_tasks: []
+        eligible_tasks:
+          - *id010
+        latest_pass: *id027
+        queue_counts:
+          by_status:
+            completed: 8
+            working: 1
+            pending: 23
+          total: 32
+          active_passes: 1
+          stale_passes: 0
+          eligible: 1
+          blocked: 0
+        warnings: []
+        recommended_action: resume_active
+  feas006-linux-recover-20261025-01:
+    fingerprint: 74d10ec9eabdb1cef521c50a07579360fb1bffd355ed65cb40d5ce114d9bba31
+    response:
+      contract_version: project-state/v1
+      operation: recover_project
+      revision: 100
+      data:
+        recovered_pass_refs:
+          - 3bab958b-81cd-45d0-8775-6d3ba2c3c2f1
+      snapshot:
+        contract_version: project-state/v1
+        snapshot_at: '2026-10-25T23:22:03.141023+00:00'
+        revision: 100
+        project: *id002
+        current_phase: *id003
+        phases: *id004
+        active_tasks: []
+        working_tasks_without_active_lease:
+          - *id009
+        active_passes: []
+        stale_passes: []
+        blocked_tasks: []
+        eligible_tasks:
+          - *id010
+        latest_pass: *id027
+        queue_counts:
+          by_status:
+            completed: 8
+            working: 1
+            pending: 23
+          total: 32
+          active_passes: 0
+          stale_passes: 0
+          eligible: 1
+          blocked: 0
+        warnings: []
+        recommended_action: recover_stale_task
+  feas006-linux-resume-20261025-02:
+    fingerprint: 0ea303c76e392cb20063fea442605f1b32d3536c04e49c417506c08f3062e333
+    response:
+      contract_version: project-state/v1
+      operation: start_pass
+      revision: 101
+      data:
+        pass: *id028
+        task: *id009
+      snapshot:
+        contract_version: project-state/v1
+        snapshot_at: '2026-10-25T23:22:11.252127+00:00'
+        revision: 101
+        project: *id002
+        current_phase: *id003
+        phases: *id004
+        active_tasks:
+          - *id009
+        working_tasks_without_active_lease: []
+        active_passes:
+          - *id028
+        stale_passes: []
+        blocked_tasks: []
+        eligible_tasks:
+          - *id010
+        latest_pass: *id028
+        queue_counts:
+          by_status:
+            completed: 8
+            working: 1
+            pending: 23
+          total: 32
+          active_passes: 1
+          stale_passes: 0
+          eligible: 1
+          blocked: 0
+        warnings: []
+        recommended_action: resume_active
+  feas006-linux-finish-20261025-01:
+    fingerprint: 8eac19253979492d88ab975bf3bc0e250695298268f805116198765d03cc5ef6
+    response:
+      contract_version: project-state/v1
+      operation: finish_pass
+      revision: 102
+      data:
+        pass: *id028
+        task: *id009
+      snapshot:
+        contract_version: project-state/v1
+        snapshot_at: '2026-10-25T23:39:39.930716+00:00'
+        revision: 102
+        project: *id002
+        current_phase: *id003
+        phases: *id004
+        active_tasks: []
+        working_tasks_without_active_lease: []
+        active_passes: []
+        stale_passes: []
+        blocked_tasks: []
+        eligible_tasks:
+          - *id010
+        latest_pass: *id028
+        queue_counts:
+          by_status:
+            completed: 9
+            pending: 23
+          total: 32
+          active_passes: 0
+          stale_passes: 0
+          eligible: 1
+          blocked: 0
+        warnings: []
+        recommended_action: select_new_task

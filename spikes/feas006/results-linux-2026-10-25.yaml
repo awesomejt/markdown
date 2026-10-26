@@ -1,0 +1,180 @@
+schema_version: 1
+task: FEAS-006 Linux checkpoint; all three desktop integration checkpoints evaluated
+date: '2026-10-25'
+source_baseline: 41ae095 plus this checkpoint
+environment:
+  os: CachyOS Linux; kernel 7.3.0-4-cachyos; glibc 2.44
+  architecture: x86_64
+  hardware: AMD Ryzen 9 5950X; 64 GiB RAM; NVIDIA GeForce RTX 4080
+  session: KDE Wayland with XWayland display available
+  rust: 1.99.1
+  cargo: 1.99.1
+  gcc: 16.2.1
+  gdb: 18.1
+  gtk: 4.24.1
+  pango: 1.58.2
+  core: pulldown-cmark 0.13.5; existing Cargo.lock
+fingerprints:
+  probe_core_sha256: df0254d8a8d5f037eab5217cc933346ed8a58ac28f536713f2e7843c53390bf2
+  probe_host_sha256: 0f0d26c74ff2dd3ffc80ea0cef31b6ccdd0f51b96691830ec8b34951ff4d8bf6
+  packaged_core_sha256: 412aa6b0cdbd928797ea60bc79ed808145590bbde94ddc604b9df04f36545a66
+  packaged_host_sha256: a06e2907d594f51004949298c959bf2cbdc989d5468b45d88106d745d824aebd
+abi:
+  version: 1
+  pointer_bytes: 8
+  options_bytes: 40
+  block_bytes: 48
+  snapshot_bytes: 56
+  normal_probe_hooks: 0
+method:
+  boundary: gtk-rs host runtime-loads exported C symbols; no Rust core crate dependency
+  console: five iterations per semantic/performance input; medians use iterations 2-5
+  gtk: one fresh process per eight semantic and four performance inputs plus two cancellation cases
+  gtk_timeout_seconds: 30
+  first_useful_tick: authored host entry through a GTK main-loop tick after buffer construction; not GPU presentation or cold launch
+  ownership_checkpoint: host-copy-released is written after copy/release and before synchronous GTK buffer construction
+  memory: Linux process VmHWM sampling; no production memory budget accepted
+self_test:
+  passed: true
+  sequential_loads: 1000
+  large_loads: 10
+  concurrent_loads: 400
+  observed_cancellations: 10
+  cancellation_after_entry_ms:
+  - 19.704541
+  - 17.702801
+  - 15.811350
+  - 15.418824
+  - 15.587292
+  - 15.580362
+  - 15.266805
+  - 15.666362
+  - 15.550303
+  - 15.227356
+  typed_errors: true
+  copied_values_survive_free: true
+  host_exception_cleanup: true
+  panic_contained_and_next_call_passed: true
+  live_snapshots: 0
+  live_cancellations: 0
+  resident_bytes_after_batches:
+  - 94855168
+  - 94855168
+  - 94855168
+  - 94855168
+  - 94855168
+  - 94855168
+  - 94855168
+  - 94855168
+  - 94855168
+  - 94855168
+console_performance:
+  prose-1mib:
+    core_parse_model_ms: 5.490555
+    native_call_ms: 5.530759
+    copy_decode_ms: 0.565160
+    end_to_end_ms: 6.112958
+    blocks: 24272
+    text_bytes: 936923
+    table_bytes: 1165056
+    median_resident_bytes: 38232064
+  prose-5mib:
+    core_parse_model_ms: 29.796769
+    native_call_ms: 30.110946
+    copy_decode_ms: 3.258447
+    end_to_end_ms: 33.428457
+    blocks: 121362
+    text_bytes: 4684613
+    table_bytes: 5825376
+    median_resident_bytes: 94957568
+  delimiter-storm-1mib:
+    core_parse_model_ms: 11.584998
+    native_call_ms: 11.637153
+    copy_decode_ms: 0.522010
+    end_to_end_ms: 12.185482
+    blocks: 24673
+    text_bytes: 974558
+    table_bytes: 1184304
+    median_resident_bytes: 43071488
+  long-lines-1mib:
+    core_parse_model_ms: 0.748033
+    native_call_ms: 0.777312
+    copy_decode_ms: 0.507465
+    end_to_end_ms: 1.303547
+    blocks: 2
+    text_bytes: 1048572
+    table_bytes: 96
+    median_resident_bytes: 29782016
+gtk_performance:
+  prose-1mib:
+    core_parse_model_ms: 10.061089
+    copy_decode_ms: 2.074988
+    entry_to_first_useful_tick_ms: 276.765271
+    peak_rss_bytes: 260911104
+  prose-5mib:
+    core_parse_model_ms: 37.036116
+    copy_decode_ms: 9.668212
+    entry_to_first_useful_tick_ms: 498.128313
+    peak_rss_bytes: 309026816
+  delimiter-storm-1mib:
+    core_parse_model_ms: 15.012609
+    copy_decode_ms: 1.092658
+    entry_to_first_useful_tick_ms: 270.568694
+    peak_rss_bytes: 262537216
+  long-lines-1mib:
+    core_parse_model_ms: 1.046269
+    copy_decode_ms: 0.928021
+    entry_to_first_useful_tick_ms: 11402.674321
+    peak_rss_bytes: 275644416
+gtk_matrix:
+  presentations: 12
+  intended_cancellations: 2
+  timeouts: 0
+  nonzero_exits: 0
+  pre_cancelled:
+    status: Cancelled
+    observed_native_entry: false
+    native_owners_zero_before_gtk: true
+    entry_to_worker_complete_ms: 226.194343
+  in_flight_cancelled:
+    status: Cancelled
+    observed_native_entry: true
+    native_owners_zero_before_gtk: true
+    entry_to_worker_complete_ms: 211.947467
+semantic_contracts:
+  cases: 8
+  matching_outlines: 8
+debugging:
+  passed: true
+  debugger: GDB 18.1
+  breakpoint: Rust md_parse_v1 source line
+  evidence: source and gtk-rs host/Rust core frames visible; continued to normal exit
+package:
+  normal_library_only: true
+  normal_check_loads: 100
+  normal_check_passed: true
+  probe_exports: false
+  core_dt_needed_by_host: false
+  packaged_debug_sections: false
+  packaged_checkout_path_bytes: false
+  separate_debug_artifacts_retain_debug_info: true
+  relocated_commands_remove_ld_library_path: true
+  relocated_console_smoke: passed
+  relocated_gtk_smoke: passed
+  locked_rust_dependency_license_records: 72
+  system_gtk_is_external: true
+  same_host_only: true
+  signed: false
+  installed: false
+warnings:
+- GTK emitted nonfatal theme GtkGizmo negative-slider-size warnings during automated presentation.
+- GDB reported a missing optional auto-load script and disabled interactive debuginfod; source and frames still resolved.
+limitations:
+- The flat spike model has snapshot-local IDs and incomplete inline/source/resource semantics.
+- Cooperative cancellation cannot interrupt parser-internal work before the next event.
+- GtkTextBuffer construction and layout remain synchronous and monolithic; the long-line case took about 11.4 seconds.
+- First-useful-tick is not GPU presentation, frame pacing, or cold launch.
+- No global selection, full AT-SPI reading-order, clean-machine, distro-floor, installer, sandbox, signing, or publication claim is established.
+- Unsafe calls rely on the documented C pointer/alignment/lifetime contract.
+- FEAS-006 evidence does not accept the production ABI/model or GATE-001 baseline.
+
