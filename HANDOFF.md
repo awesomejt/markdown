@@ -1,9 +1,10 @@
 # Agent Session and Platform Handoff
 
-Updated: 2026-10-25, FEAS-008 Linux part. Source baseline: `2203330`
-(`FEAS-010 on Linux`) plus the uncommitted `spikes/feas008`, its report and
-state/doc updates. Preserve the checked-in source, locks, measurements and
-reports; never transfer build products or environments between platforms.
+Updated: 2026-10-26, FEAS-008 Windows part. Source baseline: `5bc81c4`
+(`FEAS-080 - Linux part`) plus the uncommitted Windows half of
+`spikes/feas008`, its report and state/doc updates. Preserve the checked-in
+source, locks, measurements and reports; never transfer build products or
+environments between platforms.
 
 This file carries concise, commit-safe context between sessions. It does not
 replace [project.yaml](project.yaml) for operational state,
@@ -20,23 +21,25 @@ three owner-added spikes, which `project.yaml` makes block the gate:
 
 - **FEAS-010** — done: keep pulldown-cmark with shared extension passes; see
   [Core-Extension-Evaluation.md](docs/Core-Extension-Evaluation.md).
-- **FEAS-008** — Linux part done: see
-  [Virtualized-Renderer-Linux-Evaluation.md](docs/Virtualized-Renderer-Linux-Evaluation.md)
-  and `spikes/feas008/results-linux-2026-10-25.yaml`. Recommendation: native
-  `GtkListView` over bounded fragments; WebKitGTK was 3.3–9.6× slower warm.
-  The pass ended `partial`. **Windows part next, on the Windows machine:**
-  WinUI 3 virtualized view in C# JIT, Native AOT and C++/WinRT, a WebView2
-  baseline, Narrator and UIA reading order, and the same D-012 cold/warm
-  protocol. Reuse `spikes/feas008/docmodel` and its policy and fixture
-  generator; port the checks in `native/src/main.rs` `automated()`. Expect
-  the same traps: hosts that realize far more rows than are visible, label
-  measurement cost, and Wayland-style clipboard limits on synthetic copy.
-- **FEAS-009** — Mermaid, D2 and math: an offscreen web engine, existing
-  engines and custom Rust implementations.
+- **FEAS-008** — done on Linux and Windows.
+  - Linux: [Virtualized-Renderer-Linux-Evaluation.md](docs/Virtualized-Renderer-Linux-Evaluation.md)
+    recommends a native `GtkListView`.
+  - Windows: [Virtualized-Renderer-Windows-Evaluation.md](docs/Virtualized-Renderer-Windows-Evaluation.md)
+    and `spikes/feas008/results-windows-2026-10-26.yaml` recommend a native
+    WinUI `ListView` in C# Native AOT, with C++/WinRT as the fallback. AOT and
+    C++ were 240–283 ms warm and 309–356 ms cold; JIT missed the proposed
+    400 ms warm budget; WebView2 was 2.4–12.4× slower at up to 1.4 GiB.
+  - Open for WIN-001: Narrator reads each row twice, and whole-tree UIA
+    searches time out at 5 MiB.
+  - Recommendations only; GATE-001 decides.
+- **FEAS-009** — next, on any host. Mermaid, D2 and math: an offscreen web
+  engine, existing engines and custom Rust implementations.
 
 Their acceptance criteria are in `TODO.md`. Measure with the D-012 metric:
 launch to presented content, cold and warm, at least five runs with spread.
-The native-only document guardrail stays in force. GATE-001 is `blocked` in
+On Windows, cold runs purge the standby list and so need the owner to run the
+harness from an elevated terminal. The native-only document guardrail stays
+in force. GATE-001 is `blocked` in
 state with a dependency blocker. When all three spikes finish, clear it with
 `resolve_blocker` and their evidence, then resume GATE-001: record the open
 decisions, set budgets, then rehearse and materialize the delivery-task graph.

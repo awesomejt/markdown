@@ -1,0 +1,12 @@
+[package]
+name = "feas008-ffi"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[lib]
+name = "feas008_ffi"
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+feas008-docmodel = { path = "../docmodel", features = ["html"] }

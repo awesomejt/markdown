@@ -1,11 +1,17 @@
-# FEAS-008 Linux virtualized renderer spike
+# FEAS-008 virtualized renderer spike
 
-Disposable Linux half of FEAS-008. It tests whether a GTK 4 `GtkListView` can
+Disposable FEAS-008 spike. It tests whether a native virtualized list can
 serve as the production document surface when it presents a semantic block
-model, and compares it with a WebKitGTK document baseline. The Windows half
-(WinUI 3 in C# JIT, Native AOT and C++/WinRT) runs separately on Windows.
-Findings are in [the Linux evaluation](../../docs/Virtualized-Renderer-Linux-Evaluation.md)
-and [the result summary](results-linux-2026-10-25.yaml).
+model, and compares it with a WebView document baseline:
+
+- **Linux:** GTK 4 `GtkListView` and WebKitGTK. See
+  [the Linux evaluation](../../docs/Virtualized-Renderer-Linux-Evaluation.md)
+  and [its results](results-linux-2026-10-25.yaml).
+- **Windows:** WinUI 3 `ListView` in C# (JIT and Native AOT) and C++/WinRT,
+  and WebView2. See
+  [the Windows evaluation](../../docs/Virtualized-Renderer-Windows-Evaluation.md)
+  and [its results](results-windows-2026-10-26.yaml), and the
+  [Windows section](#windows) below.
 
 ## Layout
 
@@ -72,3 +78,45 @@ Pango cost measuring the label's minimum width. The spike therefore sets
 newline or space, and unbreakable runs are cut at 512 bytes and shown with
 character wrapping. Continuation rows drop their padding, but lines still
 break early at fragment edges.
+
+## Windows
+
+Use native Windows Python, Rust, the .NET 10 SDK, Visual Studio with the C++
+x64 tools, and the Windows App Runtime 2.5 and WebView2 runtime. Developer
+Mode lets `make_media_fixture.py` create its symlink.
+
+- `ffi/` — disposable C ABI over `docmodel` (`feas008.h`), shared by the
+  Windows hosts. The model stays in Rust memory; hosts decode only the
+  fragments of realized rows.
+- `windows/csharp/` — the C# WinUI host. `jit/` builds a default JIT app and
+  `aot/` publishes Native AOT from the same sources.
+- `windows/cpp/` — the same surface in C++/WinRT.
+- `windows/webview/` — the WebView2 baseline (Native AOT).
+- `windows/uia/` — a UIA3 client used by `uia_probe.py`.
+- `build_windows.py` — builds all of these into `build/feas008/windows/`.
+  It fetches the pinned C++/WinRT generator and checks its hash.
+- `measure_windows.py` — D-012 cold and warm launch to presented content.
+  Cold runs need an elevated process; `--warm-only` skips them.
+- `uia_probe.py` — UIA reading order, set size and heading levels at the top,
+  middle and end of a document.
+- `clipboard_check.py` — compares the clipboard, read from a separate
+  process, with the source and model text after a manual Ctrl+A, Ctrl+C.
+
+```sh
+python tools/generate_performance_fixtures.py        # if build/fixtures is absent
+python spikes/feas008/make_media_fixture.py
+python spikes/feas008/build_windows.py               # csharp-jit csharp-aot cpp webview, or name targets
+python spikes/feas008/build_windows.py uia
+build/feas008/windows/csharp-aot/Feas008WinUIAot.exe build/fixtures/performance/prose-5mib.md
+python spikes/feas008/measure_windows.py --runs 5 --out build/feas008/d012.json   # elevated
+python spikes/feas008/uia_probe.py csharp-aot
+python spikes/feas008/clipboard_check.py build/fixtures/performance/prose-5mib.md
+```
+
+On this checkout, `python` is `.build/feasibility-venv/Scripts/python.exe`.
+The hosts take the same `--automated`, `--report PATH` and `--control`
+arguments as the GTK host. Control mode also accepts `focus N`,
+`select B1 O1 B2 O2` and `geom`. Set `FEAS008_TRACE=path` to log the C++
+host's pointer and key handling. The WebView2 host uses
+`WEBVIEW2_USER_DATA_FOLDER`; the harness stops its engine processes after
+each run.

@@ -61,6 +61,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "feas008-ffi"
+version = "0.0.0"
+dependencies = [
+ "feas008-docmodel",
+]
+
+[[package]]
 name = "feas008-native"
 version = "0.0.0"
 dependencies = [

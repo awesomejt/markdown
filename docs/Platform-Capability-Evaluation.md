@@ -60,8 +60,8 @@ HTTPS references and next-check owners that exist in `project.yaml`.
 | CAP-08 | Continue bounded work when not frontmost | R2, R4 | Supported | Deferred | Supported | Alternative |
 | CAP-09 | Full-screen reading presentation | R2 | Supported | Supported | Supported | Alternative |
 | CAP-10 | Inhibit display sleep | R3 | Supported | Supported | Supported | Supported |
-| CAP-11 | Unbounded long-document presentation | R1.3, R4 | Alternative | Supported | Supported | Deferred |
-| CAP-12 | Document-wide selection and copy | R1.3 | Deferred | Supported | Supported | Deferred |
+| CAP-11 | Unbounded long-document presentation | R1.3, R4 | Supported | Supported | Supported | Deferred |
+| CAP-12 | Document-wide selection and copy | R1.3 | Supported | Supported | Supported | Deferred |
 | CAP-13 | Screen-reader document reading | R1.3 | Supported | Supported | Supported | Deferred |
 | CAP-14 | Mixed and fractional display scaling | R1.3 | Deferred | Deferred | Deferred | Deferred |
 | CAP-15 | KaTeX-compatible math presentation | R3 | Deferred | Deferred | Deferred | Deferred |
@@ -181,7 +181,7 @@ HTTPS references and next-check owners that exist in `project.yaml`.
 
 | Platform | Status | Evidence | Basis and user impact | Fallback | Next check | Sources |
 | --- | --- | --- | --- | --- | --- | --- |
-| Windows | Alternative | Measured | Continuous controls time out at 5 MiB. Virtualized rows rendered 1 and 5 MiB prose in about 381 and 459 ms over the Rust facade. | Bounded rich edit for small documents | WIN-001: virtualized semantic blocks within accepted budgets | M01, M04 |
+| Windows | Supported | Measured | A WinUI 3 `ListView` over the same bounded fragments presented 1 MiB, 5 MiB and long-line input in 240–283 ms warm and 309–356 ms cold (C# Native AOT and C++/WinRT), with off-screen jumps under 70 ms. It realizes about 15 rows. Continuous controls still time out at 5 MiB. | Bounded rich edit for small documents | WIN-001: fragment seams, tables and code within accepted budgets | M01, M04, M09 |
 | macOS | Supported | Measured | TextKit 2 reached the end of every input, including 5 MiB, with sub-millisecond end requests. Memory near 388 MiB and RSS retention across repeated parses remain open risks. | Bounded blocks for pathological lines | MAC-001: memory and repeated-session RSS budget | M02, M05 |
 | Linux | Supported | Measured | Virtualized `GtkListView` fragments presented 1 MiB, 5 MiB and long-line input in 289–373 ms warm and 528–623 ms cold, with off-screen jumps under 150 ms. This requires bounded fragments and a fixed label minimum width. Monolithic `GtkTextView` is rejected. | Small-document text view only | LNX-001: fragment seams, tables and code within accepted budgets | M03, M06, M08 |
 | iOS/iPadOS | Deferred | Unverified | No mobile rendering measurement exists, and mobile memory limits are tighter than desktop. | Bounded documents | IOS-001: UIKit text layout and memory on a named device | U02 |
@@ -190,7 +190,7 @@ HTTPS references and next-check owners that exist in `project.yaml`.
 
 | Platform | Status | Evidence | Basis and user impact | Fallback | Next check | Sources |
 | --- | --- | --- | --- | --- | --- | --- |
-| Windows | Deferred | Measured | Continuous controls copy correctly but stall on large documents. Virtualized rows have no cross-row selection. | Per-block copy, disclosed to the user | WIN-001: document-wide selection over virtualized blocks | M01 |
+| Windows | Supported | Measured | An app-owned model selection spans virtualized rows by pointer and keyboard, drawn with `TextHighlighter`. The owner's Ctrl+A copy of 5 MiB matched the source (registered `text/markdown`) and model text (`CF_UNICODETEXT`) byte for byte when read by a separate process. | Per-block copy, disclosed to the user | WIN-001: selection during incremental updates, IME and touch | M01, M09 |
 | macOS | Supported | Measured | All 60 continuous-text runs exported matching selections, including the lead TextKit 2 surface. | Not needed | MAC-001: selection during scrolling and incremental updates | M02 |
 | Linux | Supported | Measured | An app-owned model selection spans virtualized rows by pointer and keyboard. The owner's Ctrl+A copy of 5 MiB matched the source and model text byte for byte through `wl-paste`. | Per-block copy, disclosed to the user | LNX-001: selection during incremental updates and IME | M03, M08 |
 | iOS/iPadOS | Deferred | Unverified | No mobile selection measurement exists. | Per-block copy | IOS-001: touch selection across blocks | U02 |
@@ -199,7 +199,7 @@ HTTPS references and next-check owners that exist in `project.yaml`.
 
 | Platform | Status | Evidence | Basis and user impact | Fallback | Next check | Sources |
 | --- | --- | --- | --- | --- | --- | --- |
-| Windows | Supported | Measured | The owner confirmed audible Narrator reading of a small document. Large-document reading order and external UIA inspection are unverified. | Outline navigation | WIN-001: UIA reading order over virtualized blocks | M01 |
+| Windows | Supported | Measured | UIA3 inspection shows rows in model order at the top, middle and end of 5 MiB with the true set size. With the heading level on each row's text element, the owner confirmed Narrator reads rows in order, moves between headings with H, and keeps reading past the screen. Each row is read twice, and whole-tree UIA searches time out at 5 MiB. | Outline navigation | WIN-001: single exposure per row and whole-tree UIA queries at scale | M01, M09 |
 | macOS | Supported | Measured | The owner confirmed audible VoiceOver reading. Rotor heading navigation and table semantics are unverified. | Outline navigation | MAC-001: semantic roles and large-document speech | M02 |
 | Linux | Supported | Measured | AT-SPI exposes on-screen rows in model order with heading roles and levels, and the owner confirmed Orca reads rows in order. Orca heading navigation (H) doesn't work, and Say All past the screen is unconfirmed. | Outline navigation | LNX-001: Orca structural navigation and Say All on GNOME and KDE | M03, M08 |
 | iOS/iPadOS | Deferred | Unverified | No VoiceOver measurement exists on iOS/iPadOS. | Outline navigation | IOS-001: VoiceOver on a named device | U02 |
@@ -433,6 +433,7 @@ Sources were read on 2026-10-25. Measured paths are relative to this file.
 | M06 | Measured | [Linux core integration](Shared-Core-Linux-Evaluation.md) | FEAS-006 Linux facade, long line and relocated package |
 | M07 | Measured | [FEAS-004 results](../spikes/feas004/results-2026-10-24.yaml) | macOS Unicode and NFD corpus runs |
 | M08 | Measured | [Linux virtualized renderer evaluation](Virtualized-Renderer-Linux-Evaluation.md) | FEAS-008 GTK virtualized blocks, selection, Orca and WebKitGTK baseline |
+| M09 | Measured | [Windows virtualized renderer evaluation](Virtualized-Renderer-Windows-Evaluation.md) | FEAS-008 WinUI virtualized blocks in C# JIT, Native AOT and C++/WinRT, selection, Narrator, UIA and WebView2 baseline |
 | A01 | Authoritative | [FileOpenPicker](https://learn.microsoft.com/en-us/windows/windows-app-sdk/api/winrt/microsoft.windows.storage.pickers.fileopenpicker) | Windows App SDK file picker |
 | A02 | Authoritative | [FolderPicker](https://learn.microsoft.com/en-us/windows/windows-app-sdk/api/winrt/microsoft.windows.storage.pickers.folderpicker) | Windows App SDK folder picker |
 | A03 | Authoritative | [FileSavePicker](https://learn.microsoft.com/en-us/windows/windows-app-sdk/api/winrt/microsoft.windows.storage.pickers.filesavepicker) | Windows App SDK save picker |

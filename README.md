@@ -48,6 +48,10 @@ Start with:
 - [Linux virtualized renderer evaluation](docs/Virtualized-Renderer-Linux-Evaluation.md)
   — FEAS-008 Linux part: GTK `GtkListView` semantic blocks, selection, Orca
   and a WebKitGTK baseline.
+- [Windows virtualized renderer evaluation](docs/Virtualized-Renderer-Windows-Evaluation.md)
+  — FEAS-008 Windows part: WinUI `ListView` semantic blocks in C# JIT,
+  Native AOT and C++/WinRT, selection, Narrator and UIA, and a WebView2
+  baseline.
 - [Feasibility review](docs/Feasibility-Review.md) — REV-001 quality check
   of FEAS-001–007, reproduced evidence and recommendations for GATE-001.
 - [TODO](TODO.md) — human-readable roadmap; `project.yaml` is task-state truth.

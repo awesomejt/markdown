@@ -1,11 +1,11 @@
 contract_version: project-state/v1
-revision: 124
+revision: 130
 project: &id002
   concurrency_limit: 1
   created_at: '2026-10-24T23:34:09.871478+00:00'
   project_ref: markdown-native
   status: active
-  updated_at: '2026-10-26T05:23:27.625270+00:00'
+  updated_at: '2026-10-26T18:07:16.937773+00:00'
   workflow_id: native-app-development
   workflow_version: '2'
 phases: &id004
@@ -640,12 +640,12 @@ tasks:
       off-screen blocks; local images and links render under resource policy; launch-to-presented-content
       cold and warm, at least five runs with spread, for 1 MiB, 5 MiB and long-line inputs; C#/AOT/C++
       and native/WebView comparisons recorded with a recommendation.
-    status: working
+    status: completed
     active_pass_ref: null
     blockers: []
     created_at: '2026-10-26T01:53:52.542747+00:00'
-    updated_at: '2026-10-26T05:23:27.625270+00:00'
-    completed_at: null
+    updated_at: '2026-10-26T18:07:16.937773+00:00'
+    completed_at: '2026-10-26T18:07:16.937773+00:00'
   - &id040
     id: 6e4f4322-597f-4d97-8620-e445654f64fb
     task_key: FEAS-009
@@ -1651,6 +1651,101 @@ passes:
     started_at: '2026-10-26T02:35:09.956327+00:00'
     last_heartbeat_at: null
     completed_at: '2026-10-26T05:23:27.625270+00:00'
+    lease_expires_at: null
+    lease_version: 1
+  - &id045
+    id: 0aff27f8-f096-47e7-86be-df31bd7275db
+    sequence: 20
+    task_ref: 8668b19b-d726-421b-b86c-e5d1631339cb
+    phase_ref: b19ec1c8-f0c0-4cee-b584-5c9247a96edd
+    actor: claude-windows
+    status: failed
+    outcome: failed
+    objective: 'Windows part of FEAS-008: WinUI 3 virtualized semantic-block view over the FEAS-008 model
+      in C# (JIT and Native AOT) and C++/WinRT, a WebView2 document baseline, document-wide selection
+      and Ctrl+A copy of 5 MiB, Narrator and UIA reading order, find and heading jump to off-screen blocks,
+      local images and links under resource policy, D-012 launch-to-presented-content cold and warm (>=5
+      runs) for prose-1mib, prose-5mib and long-lines-1mib, and a native/WebView and host-language recommendation.'
+    summary: Recovered an expired flat-file pass lease.
+    handoff: Inspect pass handoffs and retry the same working task.
+    validation_result: null
+    evidence: {}
+    participants: []
+    blocker: null
+    execution_record: {}
+    started_at: '2026-10-26T05:48:51.815921+00:00'
+    last_heartbeat_at: '2026-10-26T06:45:13.361165+00:00'
+    completed_at: '2026-10-26T17:48:03.047632+00:00'
+    lease_expires_at: null
+    lease_version: 3
+  - &id046
+    id: b19ec19c-51d6-42ec-af82-98d734a8f5ca
+    sequence: 21
+    task_ref: 8668b19b-d726-421b-b86c-e5d1631339cb
+    phase_ref: b19ec1c8-f0c0-4cee-b584-5c9247a96edd
+    actor: claude-windows
+    status: completed
+    outcome: completed
+    objective: 'Resume the Windows part of FEAS-008 after the previous pass lease expired during owner
+      manual checks: record UIA evidence, the Windows evaluation report, durable results, capability-matrix
+      and memory updates, then finish with the native/WebView and host-language recommendation. Build,
+      automated checks, owner manual checks and the elevated D-012 sweep were completed under the recovered
+      pass.'
+    summary: 'Windows part of FEAS-008 done; FEAS-008 is complete on Linux and Windows. The same WinUI
+      3 virtualized ListView over the FEAS-008 model (through a disposable C ABI) was built in C# JIT,
+      C# Native AOT and C++/WinRT, plus a WebView2 baseline. In an elevated D-012 sweep (5 cold after
+      a standby purge, 5 warm per input; every run passed the automated checks), C# AOT and C++/WinRT
+      presented 1 MiB, 5 MiB and long-line input in 240-283 ms warm and 309-356 ms cold; C# JIT took 401-445
+      ms warm; WebView2 took 582-3381 ms warm at up to 1.4 GiB. The owner verified drag and keyboard selection,
+      a 5 MiB Ctrl+A copy (byte-exact from a separate process), find, outline, links and images. With
+      Narrator, the owner confirmed in-order reading, H heading navigation and continuous reading past
+      the screen. UIA3 inspection shows contiguous model order at the top, middle and end of 5 MiB. Four
+      owner-found defects were fixed. Recommendation (not accepted): native ListView in C# Native AOT
+      with C++/WinRT as the fallback; no WebView document surface. The first pass''s lease expired during
+      owner testing and was recovered.'
+    handoff: null
+    validation_result:
+      checks:
+        - 'cargo test --release --locked -p feas008-ffi -p feas008-docmodel: 12 passed; cargo clippy -D
+          warnings clean; cargo fmt applied'
+        - 'build_windows.py: C# JIT, C# Native AOT (no trim/AOT warnings), C++/WinRT (MSVC, no warnings),
+          WebView2 AOT and UIA probe built'
+        - 'automated checks per host x 4 inputs: copy/markdown readback, sampled rows, find, outline focus
+          and alignment, fragment link, image policy; 0 presented timeouts'
+        - 'measure_windows.py (elevated): 4 engines x 3 inputs x (5 cold + 5 warm), all checks_ok, presentation
+          time in every run'
+        - 'uia_probe.py csharp-aot/cpp on prose-5mib: contiguous model order at top/middle/end, size of
+          set 121362, heading level 2 on text children'
+        - 'clipboard_check.py after owner Ctrl+A/Ctrl+C: text/markdown == source (5242880 B), CF_UNICODETEXT
+          == model (5170055 B)'
+        - owner manual checks in C# AOT and C++/WinRT hosts, including Narrator Down, H/Shift+H and continuous
+          reading
+        - validate_capabilities.py valid; git diff --check clean; new files free of trailing whitespace;
+          markdownlint-cli2 not installed on this host
+      residual_risk: One host at 150% on three equal displays; framework-dependent unpackaged launch only
+        (no MSIX, self-contained or clean machine); Narrator reads each row twice; whole-tree UIA searches
+        exceed the 20 s provider timeout at 5 MiB; owner Narrator check only on the C# host; one unreproduced
+        owner Ctrl+A miss in the C++ host; WebView2 not checked with Narrator; mixed DPI, RTL, IME, high
+        contrast, touch and repeated-session memory untested.
+      scope: Disposable spike, report, results, capability matrix, README, TODO, memory and handoff updates
+    evidence:
+      report: docs/Virtualized-Renderer-Windows-Evaluation.md
+      results: spikes/feas008/results-windows-2026-10-26.yaml
+      linux_report: docs/Virtualized-Renderer-Linux-Evaluation.md
+      matrix: docs/Platform-Capability-Evaluation.md
+      spike: spikes/feas008/README.md
+      handoff: HANDOFF.md
+    participants:
+      - role: implementer
+        result: C ABI, C# JIT/AOT, C++/WinRT and WebView2 hosts, harness, UIA probe, report
+      - role: owner
+        result: manual selection, clipboard, find, outline, link, image and Narrator checks; elevated
+          cold sweep; four defects found
+    blocker: null
+    execution_record: {}
+    started_at: '2026-10-26T17:48:03.522668+00:00'
+    last_heartbeat_at: null
+    completed_at: '2026-10-26T18:07:16.937773+00:00'
     lease_expires_at: null
     lease_version: 1
 idempotency:
@@ -3540,3 +3635,237 @@ idempotency:
           blocked: 1
         warnings: []
         recommended_action: recover_stale_task
+  feas008-windows-start-5b1e2c7a-1d40-4c0e-9a51-2f6c1b8e7d03:
+    fingerprint: 50209af3f356e06b5fa73841ab38acab6cbbd31ebdb0b0cd991c1e7c9d8329b0
+    response:
+      contract_version: project-state/v1
+      operation: start_pass
+      revision: 125
+      data:
+        pass: *id045
+        task: *id038
+      snapshot:
+        contract_version: project-state/v1
+        snapshot_at: '2026-10-26T05:48:51.815965+00:00'
+        revision: 125
+        project: *id002
+        current_phase: *id003
+        phases: *id004
+        active_tasks:
+          - *id038
+        working_tasks_without_active_lease: []
+        active_passes:
+          - *id045
+        stale_passes: []
+        blocked_tasks:
+          - *id031
+        eligible_tasks:
+          - *id040
+        latest_pass: *id045
+        queue_counts:
+          by_status:
+            completed: 12
+            blocked: 1
+            pending: 22
+            working: 1
+          total: 36
+          active_passes: 1
+          stale_passes: 0
+          eligible: 1
+          blocked: 1
+        warnings: []
+        recommended_action: resume_active
+  feas008-windows-hb1-8c2d:
+    fingerprint: 953a4b1f82af900d71060a8edfa18cc90ee017941f8e9e5a2ab378f7f84c2f47
+    response:
+      contract_version: project-state/v1
+      operation: heartbeat_pass
+      revision: 126
+      data:
+        pass: *id045
+      snapshot:
+        contract_version: project-state/v1
+        snapshot_at: '2026-10-26T06:14:48.313174+00:00'
+        revision: 126
+        project: *id002
+        current_phase: *id003
+        phases: *id004
+        active_tasks:
+          - *id038
+        working_tasks_without_active_lease: []
+        active_passes:
+          - *id045
+        stale_passes: []
+        blocked_tasks:
+          - *id031
+        eligible_tasks:
+          - *id040
+        latest_pass: *id045
+        queue_counts:
+          by_status:
+            completed: 12
+            blocked: 1
+            pending: 22
+            working: 1
+          total: 36
+          active_passes: 1
+          stale_passes: 0
+          eligible: 1
+          blocked: 1
+        warnings: []
+        recommended_action: resume_active
+  feas008-windows-hb2-41aa:
+    fingerprint: 2d3a8f5761d2bd014a14300fb4585175443add8b8eb77125ed87deeae2f8913e
+    response:
+      contract_version: project-state/v1
+      operation: heartbeat_pass
+      revision: 127
+      data:
+        pass: *id045
+      snapshot:
+        contract_version: project-state/v1
+        snapshot_at: '2026-10-26T06:45:13.361184+00:00'
+        revision: 127
+        project: *id002
+        current_phase: *id003
+        phases: *id004
+        active_tasks:
+          - *id038
+        working_tasks_without_active_lease: []
+        active_passes:
+          - *id045
+        stale_passes: []
+        blocked_tasks:
+          - *id031
+        eligible_tasks:
+          - *id040
+        latest_pass: *id045
+        queue_counts:
+          by_status:
+            completed: 12
+            blocked: 1
+            pending: 22
+            working: 1
+          total: 36
+          active_passes: 1
+          stale_passes: 0
+          eligible: 1
+          blocked: 1
+        warnings: []
+        recommended_action: resume_active
+  feas008-windows-recover-2b9e:
+    fingerprint: b2662d72479836bc4004ec172d02be08814c3816dd926e4ceb4529fa7dd01d65
+    response:
+      contract_version: project-state/v1
+      operation: recover_project
+      revision: 128
+      data:
+        recovered_pass_refs:
+          - 0aff27f8-f096-47e7-86be-df31bd7275db
+      snapshot:
+        contract_version: project-state/v1
+        snapshot_at: '2026-10-26T17:48:03.047645+00:00'
+        revision: 128
+        project: *id002
+        current_phase: *id003
+        phases: *id004
+        active_tasks: []
+        working_tasks_without_active_lease:
+          - *id038
+        active_passes: []
+        stale_passes: []
+        blocked_tasks:
+          - *id031
+        eligible_tasks:
+          - *id040
+        latest_pass: *id045
+        queue_counts:
+          by_status:
+            completed: 12
+            blocked: 1
+            pending: 22
+            working: 1
+          total: 36
+          active_passes: 0
+          stale_passes: 0
+          eligible: 1
+          blocked: 1
+        warnings: []
+        recommended_action: recover_stale_task
+  feas008-windows-start2-c4d1:
+    fingerprint: d7f84303fb38573e9120ecdcadab7fc4a7ec243cb5148b908ec0528827cc912b
+    response:
+      contract_version: project-state/v1
+      operation: start_pass
+      revision: 129
+      data:
+        pass: *id046
+        task: *id038
+      snapshot:
+        contract_version: project-state/v1
+        snapshot_at: '2026-10-26T17:48:03.522762+00:00'
+        revision: 129
+        project: *id002
+        current_phase: *id003
+        phases: *id004
+        active_tasks:
+          - *id038
+        working_tasks_without_active_lease: []
+        active_passes:
+          - *id046
+        stale_passes: []
+        blocked_tasks:
+          - *id031
+        eligible_tasks:
+          - *id040
+        latest_pass: *id046
+        queue_counts:
+          by_status:
+            completed: 12
+            blocked: 1
+            pending: 22
+            working: 1
+          total: 36
+          active_passes: 1
+          stale_passes: 0
+          eligible: 1
+          blocked: 1
+        warnings: []
+        recommended_action: resume_active
+  feas008-windows-finish-9e3f:
+    fingerprint: 3abc8029d63812d37b115f3e4ad83a6c0dfb35ec2cc90e9680a534eb30b75079
+    response:
+      contract_version: project-state/v1
+      operation: finish_pass
+      revision: 130
+      data:
+        pass: *id046
+        task: *id038
+      snapshot:
+        contract_version: project-state/v1
+        snapshot_at: '2026-10-26T18:07:16.937796+00:00'
+        revision: 130
+        project: *id002
+        current_phase: *id003
+        phases: *id004
+        active_tasks: []
+        working_tasks_without_active_lease: []
+        active_passes: []
+        stale_passes: []
+        blocked_tasks:
+          - *id031
+        eligible_tasks:
+          - *id040
+        latest_pass: *id046
+        queue_counts:
+          by_status:
+            completed: 13
+            blocked: 1
+            pending: 22
+          total: 36
+          active_passes: 0
+          stale_passes: 0
+          eligible: 1
+          blocked: 1
+        warnings: []
+        recommended_action: select_new_task

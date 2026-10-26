@@ -1,0 +1,22 @@
+<Project>
+  <!-- Shared settings for the JIT and Native AOT builds of the same sources. -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType><RootNamespace>Feas008</RootNamespace>
+    <TargetFramework>net10.0-windows10.0.26100.0</TargetFramework>
+    <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier><Platforms>x64</Platforms>
+    <UseWinUI>true</UseWinUI><WinUISDKReferences>false</WinUISDKReferences>
+    <DefineConstants>$(DefineConstants);DISABLE_XAML_GENERATED_MAIN</DefineConstants>
+    <WindowsPackageType>None</WindowsPackageType><WindowsAppSDKSelfContained>false</WindowsAppSDKSelfContained>
+    <ApplicationManifest>../app.manifest</ApplicationManifest>
+    <ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable><AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+    <PublishReadyToRun>false</PublishReadyToRun>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../*.cs" />
+    <ApplicationDefinition Include="../App.xaml" Link="App.xaml" />
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.5.1" />
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.2705" />
+  </ItemGroup>
+</Project>

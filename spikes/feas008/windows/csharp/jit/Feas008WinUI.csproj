@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- C# JIT host: a default framework-dependent WinUI app. -->
+  <Import Project="../Feas008WinUI.props" />
+  <PropertyGroup>
+    <AssemblyName>Feas008WinUI</AssemblyName>
+    <BaseOutputPath>../../../../../build/feas008/csharp-jit/</BaseOutputPath>
+  </PropertyGroup>
+</Project>

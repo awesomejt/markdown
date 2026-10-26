@@ -1,0 +1,672 @@
+schema_version: 1
+task: FEAS-008
+platform_part: windows
+date: '2026-10-26'
+status: evaluated
+production_baseline_accepted: false
+environment:
+  os: Windows 11 Pro 10.0.26300 build 9711
+  architecture: x86_64
+  cpu: AMD Ryzen 9 5950X (16 cores, 32 threads)
+  ram_gib: 64
+  gpu: NVIDIA RTX 4080
+  displays: three 2560x1440 at 150 percent (144 DPI); windows on the primary
+  window: 1200x900 physical pixels (800x600 effective), 260 effective-pixel outline
+  windows_app_sdk: 2.5.1 (WinUI 2.3.9, framework-dependent, unpackaged)
+  windows_sdk_build_tools: 10.0.28000.2705
+  dotnet: 10.0.13 (SDK 10.0.402)
+  cppwinrt: 3.0.260818.1
+  msvc: 14.51.36231 (Visual Studio 18 Community)
+  webview2_runtime: 155.0.4283.62
+  webview2_sdk: 1.0.3719.77
+  rustc: 1.99.1
+  pulldown_cmark: 0.13.5
+metric:
+  definition: 'D-012 launch to presented content: QueryPerformanceCounter read by the launcher just before CreateProcess
+    (FEAS008_LAUNCH_QPC) to the return of DwmFlush on a worker started at low dispatcher priority after the first
+    CompositionTarget.Rendering tick in which a realized row''s text is laid out'
+  cold: 'elevated: SetSystemFileCacheSize(-1,-1), MemoryFlushModifiedList and MemoryPurgeStandbyList before each
+    run, then a 2 s pause'
+  warm: one discarded launch, then five, 1 s apart
+  runs_per_mode: 5
+  webview_presented: DwmFlush after the message from an injected double requestAnimationFrame; approximates the
+    engine's first content frame
+  memory: peak working set; WebView2 sums the host and every engine process it reports (browser, renderer, GPU,
+    utility)
+  checks: every timed run also ran the full automated checks after presentation
+csharp_jit:
+  prose-1mib:
+    cold_launch_to_presented_ms:
+      median: 509.4
+      min: 487.5
+      max: 640.3
+      stdev: 62.5
+      values:
+      - 640.3
+      - 487.5
+      - 509.4
+      - 511.6
+      - 500.7
+    warm_launch_to_presented_ms:
+      median: 429.3
+      min: 413.3
+      max: 435.2
+      stdev: 8.7
+      values:
+      - 435.2
+      - 429.3
+      - 427.4
+      - 433.7
+      - 413.3
+    warm_launch_to_paint_median_ms: 384.1
+    warm_launch_to_main_median_ms: 61.0
+    warm_launch_to_window_loaded_median_ms: 301.8
+    warm_parse_median_ms: 22.5
+    warm_peak_working_set_median_mib: 176.5
+    warm_jump_to_presented_ms:
+      median: 48.9
+      max: 65.6
+      runs: 45
+    realized_rows_at_launch:
+    - 15
+    presentation_time_runs: 10
+    runs: 10
+    automated_checks_ok: true
+  prose-5mib:
+    cold_launch_to_presented_ms:
+      median: 509.8
+      min: 500.4
+      max: 522.6
+      stdev: 8.0
+      values:
+      - 500.4
+      - 509.8
+      - 512.1
+      - 508.7
+      - 522.6
+    warm_launch_to_presented_ms:
+      median: 444.5
+      min: 441.4
+      max: 458.7
+      stdev: 8.6
+      values:
+      - 443.5
+      - 444.5
+      - 441.4
+      - 458.7
+      - 458.6
+    warm_launch_to_paint_median_ms: 405.6
+    warm_launch_to_main_median_ms: 60.8
+    warm_launch_to_window_loaded_median_ms: 311.8
+    warm_parse_median_ms: 110.9
+    warm_peak_working_set_median_mib: 280.8
+    warm_jump_to_presented_ms:
+      median: 52.9
+      max: 65.9
+      runs: 45
+    realized_rows_at_launch:
+    - 15
+    presentation_time_runs: 10
+    runs: 10
+    automated_checks_ok: true
+  long-lines-1mib:
+    cold_launch_to_presented_ms:
+      median: 469.1
+      min: 464.8
+      max: 476.5
+      stdev: 4.3
+      values:
+      - 469.1
+      - 464.8
+      - 469.5
+      - 467.8
+      - 476.5
+    warm_launch_to_presented_ms:
+      median: 401.1
+      min: 400.5
+      max: 418.4
+      stdev: 8.4
+      values:
+      - 418.4
+      - 413.0
+      - 400.6
+      - 401.1
+      - 400.5
+    warm_launch_to_paint_median_ms: 365.9
+    warm_launch_to_main_median_ms: 60.5
+    warm_launch_to_window_loaded_median_ms: 301.5
+    warm_parse_median_ms: 1.5
+    warm_peak_working_set_median_mib: 156.6
+    warm_jump_to_presented_ms:
+      median: 54.6
+      max: 67.9
+      runs: 45
+    realized_rows_at_launch:
+    - 5
+    presentation_time_runs: 10
+    runs: 10
+    automated_checks_ok: true
+csharp_native_aot:
+  prose-1mib:
+    cold_launch_to_presented_ms:
+      median: 347.4
+      min: 329.0
+      max: 393.1
+      stdev: 25.0
+      values:
+      - 393.1
+      - 339.0
+      - 362.2
+      - 347.4
+      - 329.0
+    warm_launch_to_presented_ms:
+      median: 273.1
+      min: 253.5
+      max: 277.2
+      stdev: 9.5
+      values:
+      - 275.4
+      - 277.2
+      - 273.1
+      - 253.5
+      - 270.6
+    warm_launch_to_paint_median_ms: 235.1
+    warm_launch_to_main_median_ms: 16.5
+    warm_launch_to_window_loaded_median_ms: 211.9
+    warm_parse_median_ms: 22.7
+    warm_peak_working_set_median_mib: 130.3
+    warm_jump_to_presented_ms:
+      median: 49.5
+      max: 66.1
+      runs: 45
+    realized_rows_at_launch:
+    - 15
+    presentation_time_runs: 10
+    runs: 10
+    automated_checks_ok: true
+  prose-5mib:
+    cold_launch_to_presented_ms:
+      median: 337.3
+      min: 325.6
+      max: 346.0
+      stdev: 9.5
+      values:
+      - 325.6
+      - 343.5
+      - 337.3
+      - 326.0
+      - 346.0
+    warm_launch_to_presented_ms:
+      median: 273.1
+      min: 270.3
+      max: 286.2
+      stdev: 6.4
+      values:
+      - 273.1
+      - 271.7
+      - 286.2
+      - 276.9
+      - 270.3
+    warm_launch_to_paint_median_ms: 240.8
+    warm_launch_to_main_median_ms: 16.6
+    warm_launch_to_window_loaded_median_ms: 212.6
+    warm_parse_median_ms: 106.6
+    warm_peak_working_set_median_mib: 237.5
+    warm_jump_to_presented_ms:
+      median: 50.2
+      max: 66.2
+      runs: 45
+    realized_rows_at_launch:
+    - 15
+    presentation_time_runs: 10
+    runs: 10
+    automated_checks_ok: true
+  long-lines-1mib:
+    cold_launch_to_presented_ms:
+      median: 309.0
+      min: 300.1
+      max: 315.1
+      stdev: 7.3
+      values:
+      - 309.0
+      - 300.1
+      - 300.8
+      - 315.1
+      - 314.8
+    warm_launch_to_presented_ms:
+      median: 240.2
+      min: 237.8
+      max: 254.1
+      stdev: 6.6
+      values:
+      - 237.8
+      - 254.1
+      - 240.2
+      - 238.6
+      - 243.0
+    warm_launch_to_paint_median_ms: 222.9
+    warm_launch_to_main_median_ms: 16.8
+    warm_launch_to_window_loaded_median_ms: 212.7
+    warm_parse_median_ms: 1.8
+    warm_peak_working_set_median_mib: 112.3
+    warm_jump_to_presented_ms:
+      median: 54.3
+      max: 67.3
+      runs: 45
+    realized_rows_at_launch:
+    - 5
+    presentation_time_runs: 10
+    runs: 10
+    automated_checks_ok: true
+cpp_winrt:
+  prose-1mib:
+    cold_launch_to_presented_ms:
+      median: 342.1
+      min: 327.3
+      max: 374.7
+      stdev: 17.6
+      values:
+      - 374.7
+      - 339.5
+      - 327.3
+      - 342.1
+      - 348.6
+    warm_launch_to_presented_ms:
+      median: 279.0
+      min: 263.6
+      max: 283.2
+      stdev: 9.3
+      values:
+      - 279.0
+      - 283.2
+      - 266.3
+      - 282.8
+      - 263.6
+    warm_launch_to_paint_median_ms: 241.8
+    warm_launch_to_main_median_ms: 10.7
+    warm_launch_to_window_loaded_median_ms: 206.4
+    warm_parse_median_ms: 20.4
+    warm_peak_working_set_median_mib: 128.7
+    warm_jump_to_presented_ms:
+      median: 49.5
+      max: 66.8
+      runs: 45
+    realized_rows_at_launch:
+    - 15
+    - 17
+    presentation_time_runs: 10
+    runs: 10
+    automated_checks_ok: true
+  prose-5mib:
+    cold_launch_to_presented_ms:
+      median: 355.7
+      min: 342.4
+      max: 358.4
+      stdev: 6.8
+      values:
+      - 342.4
+      - 355.7
+      - 358.4
+      - 348.5
+      - 356.9
+    warm_launch_to_presented_ms:
+      median: 282.9
+      min: 267.6
+      max: 290.1
+      stdev: 8.3
+      values:
+      - 290.1
+      - 282.9
+      - 282.7
+      - 267.6
+      - 283.5
+    warm_launch_to_paint_median_ms: 244.5
+    warm_launch_to_main_median_ms: 10.6
+    warm_launch_to_window_loaded_median_ms: 207.4
+    warm_parse_median_ms: 102.6
+    warm_peak_working_set_median_mib: 230.9
+    warm_jump_to_presented_ms:
+      median: 51.1
+      max: 66.5
+      runs: 45
+    realized_rows_at_launch:
+    - 15
+    presentation_time_runs: 10
+    runs: 10
+    automated_checks_ok: true
+  long-lines-1mib:
+    cold_launch_to_presented_ms:
+      median: 314.1
+      min: 309.7
+      max: 317.5
+      stdev: 2.8
+      values:
+      - 317.5
+      - 309.7
+      - 314.1
+      - 314.5
+      - 313.0
+    warm_launch_to_presented_ms:
+      median: 255.4
+      min: 238.1
+      max: 256.1
+      stdev: 7.7
+      values:
+      - 255.4
+      - 256.1
+      - 256.0
+      - 238.1
+      - 250.6
+    warm_launch_to_paint_median_ms: 224.8
+    warm_launch_to_main_median_ms: 10.6
+    warm_launch_to_window_loaded_median_ms: 207.1
+    warm_parse_median_ms: 1.5
+    warm_peak_working_set_median_mib: 112.3
+    warm_jump_to_presented_ms:
+      median: 54.1
+      max: 67.3
+      runs: 45
+    realized_rows_at_launch:
+    - 5
+    presentation_time_runs: 10
+    runs: 10
+    automated_checks_ok: true
+webview2_native_aot:
+  prose-1mib:
+    cold_launch_to_presented_ms:
+      median: 1109.9
+      min: 1098.1
+      max: 1232.5
+      stdev: 56.3
+      values:
+      - 1232.5
+      - 1098.1
+      - 1124.5
+      - 1109.9
+      - 1101.8
+    warm_launch_to_presented_ms:
+      median: 947.2
+      min: 940.2
+      max: 964.6
+      stdev: 10.1
+      values:
+      - 964.6
+      - 954.0
+      - 940.2
+      - 947.2
+      - 941.2
+    warm_launch_to_paint_median_ms: 933.9
+    warm_launch_to_main_median_ms: 16.6
+    warm_launch_to_window_loaded_median_ms: 200.7
+    warm_parse_median_ms: 37.9
+    warm_peak_working_set_median_mib: 573.7
+    warm_jump_to_presented_ms:
+      median: 64.7
+      max: 71.4
+      runs: 10
+    presentation_time_runs: 10
+    runs: 10
+    automated_checks_ok: true
+  prose-5mib:
+    cold_launch_to_presented_ms:
+      median: 3387.5
+      min: 3372.8
+      max: 3553.9
+      stdev: 77.0
+      values:
+      - 3372.8
+      - 3387.5
+      - 3393.2
+      - 3377.0
+      - 3553.9
+    warm_launch_to_presented_ms:
+      median: 3381.2
+      min: 3341.8
+      max: 3444.4
+      stdev: 37.8
+      values:
+      - 3381.2
+      - 3375.0
+      - 3341.8
+      - 3444.4
+      - 3402.4
+    warm_launch_to_paint_median_ms: 3377.6
+    warm_launch_to_main_median_ms: 16.7
+    warm_launch_to_window_loaded_median_ms: 209.8
+    warm_parse_median_ms: 200.8
+    warm_peak_working_set_median_mib: 1384.6
+    warm_jump_to_presented_ms:
+      median: 83.6
+      max: 115.4
+      runs: 10
+    presentation_time_runs: 10
+    runs: 10
+    automated_checks_ok: true
+  long-lines-1mib:
+    cold_launch_to_presented_ms:
+      median: 736.5
+      min: 734.6
+      max: 747.5
+      stdev: 5.3
+      values:
+      - 747.5
+      - 740.8
+      - 736.0
+      - 736.5
+      - 734.6
+    warm_launch_to_presented_ms:
+      median: 582.4
+      min: 576.0
+      max: 595.7
+      stdev: 7.9
+      values:
+      - 577.0
+      - 595.7
+      - 585.4
+      - 582.4
+      - 576.0
+    warm_launch_to_paint_median_ms: 577.6
+    warm_launch_to_main_median_ms: 16.2
+    warm_launch_to_window_loaded_median_ms: 205.1
+    warm_parse_median_ms: 4.4
+    warm_peak_working_set_median_mib: 463.4
+    warm_jump_to_presented_ms:
+      median: 66.1
+      max: 71.2
+      runs: 10
+    presentation_time_runs: 10
+    runs: 10
+    automated_checks_ok: true
+outliers:
+- First cold C# JIT prose-1mib run 640 ms against 488-512 ms for the other four (included above).
+- First cold WebView2 prose-1mib run 1233 ms (included above).
+- WebView2 prose-5mib cold and warm medians differ by 6 ms because engine layout dominates.
+design_constraint:
+  realized_rows: ListView (ItemsStackPanel, default cache) realizes about 15 rows at launch for prose and 5 for
+    512-byte character-wrapped long lines, against about 205 in GtkListView; about 32-48 after jumps
+  row_container: rows are ListViewItem containers whose visuals move into a one-Grid DataTemplate root on ContainerContentChanging;
+    marking containers prepared in ChoosingItemContainer, or replacing ListViewItem.Content, left some rows unmeasured
+    (19 px, zero-width text)
+  presented_guard: the presented condition requires laid-out text (RichTextBlock ActualWidth > 0); an early run
+    without it timed empty containers and was discarded
+  fragments: the same docmodel fragments as Linux (1024 bytes at a newline or space; 512-byte unbreakable cuts);
+    TextWrapping.Wrap breaks inside words with no extra setting
+functional_checks:
+  select_all_copy_5mib:
+    text_markdown_equals_source_bytes: 5242880
+    cf_unicodetext_equals_model_bytes: 5170055
+    verified_with: clipboard_check.py from a separate process after owner Ctrl+A, Ctrl+C in the C# AOT host; the
+      C++ host passed the same check on the media fixture after owner Ctrl+A, Ctrl+C and on 5 MiB under scripted
+      copy
+    clipboard: Win32 CF_UNICODETEXT plus a registered text/markdown format holding UTF-8 source bytes; a DataPackage
+      stream custom format failed with CLIPBRD_E_BAD_DATA after Clipboard.Flush
+    automated_copy_ms_5mib: 15-18
+  sampled_rows: 5 rows per run at 10-100 percent; displayed run text equals the model fragment and the copy at its
+    offset, every run, every native host
+  find: model search of 5 MiB in about 13-17 ms; off-screen match scrolled, selected and presented in about 30-35
+    ms
+  outline_and_fragment_jumps: off-screen headings presented with focus in about 48-52 ms, aligned to the viewport
+    top except at the document end
+  highlight: TextHighlighter ranges index plain characters across Run and Hyperlink boundaries; verified by screenshot
+    across bold, link, code and a two-byte character
+  images:
+    presented:
+    - img/gradient.png 240x120
+    blocked_by_model:
+    - remote https
+    - ../ escape
+    - absolute path
+    - svg
+    - data URI
+    refused_by_host_adapter:
+    - symlink resolving outside folder (GetFinalPathNameByHandle)
+    - text file named .png
+    - PNG header claiming 20000x20000
+    - missing file
+  links:
+    fragment: jump with focus
+    missing_fragment: ignored
+    https_mailto: Launcher.LaunchUriAsync
+    relative_md: local document intent, opening not implemented
+    blocked:
+    - 'javascript:'
+    - 'file:'
+    - 'data:'
+    - ../../ escape
+  uia_5mib:
+    csharp-aot:
+    - after: top
+      focused_item: 0
+      first_model_item: 0
+      exposed_list_items: 25
+      contiguous_model_order: true
+      size_of_set: 121362
+      heading_levels_on_text_child:
+      - 2
+      control_view_walk_ms: 53.3
+      item_container_sample:
+        items: 2000
+        virtualized: 2000
+        ms: 844
+    - after: middle
+      focused_item: 60681
+      first_model_item: 60564
+      exposed_list_items: 18
+      contiguous_model_order: true
+      size_of_set: 121362
+      heading_levels_on_text_child:
+      - 2
+      control_view_walk_ms: 23.4
+      item_container_sample:
+        items: 2000
+        virtualized: 2000
+        ms: 756
+    - after: end
+      focused_item: 121361
+      first_model_item: 121242
+      exposed_list_items: 15
+      contiguous_model_order: true
+      size_of_set: 121362
+      heading_levels_on_text_child:
+      - 2
+      control_view_walk_ms: 18.7
+      item_container_sample:
+        items: 2000
+        virtualized: 2000
+        ms: 736
+    cpp:
+    - after: top
+      focused_item: 0
+      first_model_item: 0
+      exposed_list_items: 25
+      contiguous_model_order: true
+      size_of_set: 121362
+      heading_levels_on_text_child:
+      - 2
+      control_view_walk_ms: 37.3
+      item_container_sample:
+        items: 2000
+        virtualized: 2000
+        ms: 731
+    - after: middle
+      focused_item: 60681
+      first_model_item: 60564
+      exposed_list_items: 18
+      contiguous_model_order: true
+      size_of_set: 121362
+      heading_levels_on_text_child:
+      - 2
+      control_view_walk_ms: 20.7
+      item_container_sample:
+        items: 2000
+        virtualized: 2000
+        ms: 632
+    - after: end
+      focused_item: 121361
+      first_model_item: 121242
+      exposed_list_items: 15
+      contiguous_model_order: true
+      size_of_set: 121362
+      heading_levels_on_text_child:
+      - 2
+      control_view_walk_ms: 18.6
+      item_container_sample:
+        items: 2000
+        virtualized: 2000
+        ms: 620
+  uia_findings:
+  - AutomationProperties.HeadingLevel on the ListViewItem container is not exposed (UIA reports none); the same
+    level on the row's RichTextBlock is, and Narrator heading navigation then works
+  - A whole-window TreeScope_Descendants search for the document list exceeds the 20 s UIA provider timeout on prose-5mib;
+    entering from the focused row takes about 10 ms
+  - ItemContainer FindItemByProperty reaches unrealized items as VirtualizedItem peers at about 0.3-0.4 ms per item
+    (2000 in 0.6-0.8 s)
+  - Windows PowerShell's managed UIA client cannot read HeadingLevel or PositionInSet; the probe uses the native
+    UIA3 COM client
+  owner_confirmed:
+  - 'C# AOT: mouse drag with auto-scroll, Shift+click extension, Esc clear (after fix)'
+  - 'C# AOT: keyboard row navigation and Shift+arrow/Shift+Ctrl+End selection (after fix)'
+  - 'C# AOT: Ctrl+A/Ctrl+C of 5 MiB, verified externally'
+  - 'C# AOT: find with Enter, F3 and Shift+F3'
+  - 'C# AOT: outline click jump and Enter moving focus into the document (after fix)'
+  - 'C# AOT: gradient image presented, refused images show reasons, fragment/https/blocked links'
+  - 'C# AOT: Narrator reads rows in order with Down, H/Shift+H move between headings, and continuous reading continues
+    past the visible rows until Ctrl'
+  - 'C++/WinRT: drag selection and Esc; Ctrl+A/Ctrl+C of the media fixture verified externally'
+  owner_found_and_fixed:
+  - Esc cleared only when keyboard focus was already in the document
+  - a row click did not move keyboard focus, so arrows and Ctrl+A/C did nothing after clicking
+  - Enter in the outline did not reach the handler (the list consumes it before KeyDown)
+  - Narrator heading navigation found no headings (heading level only on the container)
+  open:
+  - 'Narrator reads each row twice: the list item name and its text element carry the same content'
+  - one owner Ctrl+A in the C++ host produced no selection and was not reproduced, including with input tracing;
+    Narrator scan mode or an unfocused click are the likely causes
+  - the owner did not check the C++ host with Narrator; UIA inspection shows the same tree as C#
+  - WebView2 not checked with Narrator
+  - mixed DPI, RTL, IME, high contrast and touch not tested
+native_aot_findings:
+- VisualTreeHelper children may be projected as plain DependencyObject; `is ScrollViewer` failed and QueryInterface
+  (WinRT.CastExtensions.As) is required
+- PublishAot in a project also applies AOT feature switches (dynamic code off, EventSource off) to plain builds;
+  the JIT host is a separate project without it
+- WebView2 works under Native AOT; an earlier null CoreWebView2 came from orphaned msedgewebview2 processes holding
+  the user-data folder after a killed run
+webview_checks:
+  select_all_5mib_ms: 160
+  selected_chars_5mib: 4733157
+  policy: CSP default-src none; raw HTML already inert; document and images served through WebResourceRequested
+    from a virtual host with the same ImagePolicy; navigation outside the document cancelled; script execution stays
+    enabled because IsScriptEnabled=false also disables ExecuteScriptAsync, which the frame probe needs
+  images: gradient served; symlink, forged, oversize and missing refused by the host; blocked requests carry an
+    empty src
+implementation_size_lines:
+  counting: physical lines, comments included
+  shared_model: 955 (unchanged from Linux)
+  c_abi_crate: 548 plus a 77-line header; 80 test lines
+  csharp_host: 1132 (window 728, interop 147, platform adapters 182, entry 75) plus 323 lines of automation and
+    control commands; the JIT and AOT builds share every line
+  cpp_host: 1432 in one file, of which about 270 are automation and control commands
+  webview_host: 257, of which about 30 are checks
+  probes_and_harness: UIA probe 154 C++, uia_probe.py 72, measure_windows.py 233, clipboard_check.py 105, build_windows.py
+    151

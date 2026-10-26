@@ -3,8 +3,9 @@
 ## Status and recommendation
 
 This covers the Linux half of FEAS-008, completed on 2026-10-25. The Windows half
-(WinUI 3 in C# JIT, Native AOT and C++/WinRT, plus a WebView2 baseline) is
-still to run, so FEAS-008 is not complete.
+(WinUI 3 in C# JIT, Native AOT and C++/WinRT, plus a WebView2 baseline) was
+completed on 2026-10-26; see the
+[Windows evaluation](Virtualized-Renderer-Windows-Evaluation.md).
 
 **Recommendation for GATE-001 (not accepted):** use a native GTK 4
 `GtkListView` over semantic blocks as the Linux document surface, not a

@@ -11,8 +11,8 @@ batching ready work on the current OS. Each delivery phase uses one feature
 branch and PR. Once ready, post a separate PR comment exactly `/grok review`,
 address the feedback, and obtain owner merge approval. Follow
 [Delivery-Workflow.md](docs/Delivery-Workflow.md) for branch, review and handoff
-rules. GATE-001 is partially decided; FEAS-010 is done, the Linux part of
-FEAS-008 is done, and FEAS-008 on Windows and FEAS-009 come next.
+rules. GATE-001 is partially decided; FEAS-010 and FEAS-008 (Linux and
+Windows) are done, and FEAS-009 comes next.
 
 ## Current gate: requirements and feasibility
 
@@ -138,7 +138,10 @@ project concurrency limit is one.
   and Native AOT) and C++/WinRT; on both, a WebView document baseline comparing
   performance with implementation cost. Linux part evaluated 2026-10-25:
   recommend native `GtkListView`; see
-  `docs/Virtualized-Renderer-Linux-Evaluation.md`. Windows part remains.
+  `docs/Virtualized-Renderer-Linux-Evaluation.md`. Windows part evaluated
+  2026-10-26: recommend a native WinUI `ListView` in C# Native AOT, with
+  C++/WinRT as the fallback; see
+  `docs/Virtualized-Renderer-Windows-Evaluation.md`.
 - **FEAS-009 — Compare diagram and math engines.** Owner-added at GATE-001.
   For Mermaid, D2 and KaTeX-syntax math, compare an offscreen web engine,
   existing engines (D2 in Go) and custom Rust implementations or ports.

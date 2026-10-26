@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- C# Native AOT host from the same sources; measure the `dotnet publish` output. -->
+  <Import Project="../Feas008WinUI.props" />
+  <PropertyGroup>
+    <AssemblyName>Feas008WinUIAot</AssemblyName>
+    <DefineConstants>$(DefineConstants);FEAS008_AOT</DefineConstants>
+    <PublishAot>true</PublishAot><IsAotCompatible>true</IsAotCompatible>
+    <BaseOutputPath>../../../../../build/feas008/csharp-aot/</BaseOutputPath>
+  </PropertyGroup>
+</Project>

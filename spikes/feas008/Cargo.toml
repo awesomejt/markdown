@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["docmodel", "native", "webview"]
+members = ["docmodel", "ffi", "native", "webview"]
 default-members = ["docmodel", "native"]
 
 [workspace.dependencies]

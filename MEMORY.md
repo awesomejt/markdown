@@ -11,11 +11,11 @@ design belong in `docs/` or `agents/`; runtime transcripts do not belong here.
 - Later platforms: iOS and iPadOS after the desktop contracts are stable.
 - Organization: one native monorepo with independent native UIs,
   shared specifications/fixtures/benchmarks, and a candidate portable core.
-- Status: FEAS-001 through FEAS-007, FEAS-010 and REV-001 are complete. GATE-001 is
-  partially decided: D-008 to D-013 are accepted. Owner-added spikes FEAS-008
-  (renderer and Windows language; Linux part done, Windows part next) and
-  FEAS-009 (diagram and math engines) block its remaining items. No
-  production code before the gate closes. Inspect `project.yaml` for state.
+- Status: FEAS-001 through FEAS-008, FEAS-010 and REV-001 are complete.
+  GATE-001 is partially decided: D-008 to D-013 are accepted. Owner-added
+  spike FEAS-009 (diagram and math engines) still blocks its remaining items.
+  No production code before the gate closes. Inspect `project.yaml` for
+  state.
 - The required real Windows, macOS, and Linux renderer and shared-core
   integration evidence is recorded, and the capability matrix reconciles it.
 - Mac host setup: the project-state skill/backend and workflow contract have
@@ -137,6 +137,19 @@ FEAS-007 capability reconciliation is complete; GATE-001 is next.
   metadata option: it accepts `---` blocks mid-document and hides a setext
   heading. Detect front matter on line 1 in shared code. Unbalanced inline math
   stays text. Keep voice scans bounded; the first scanner was quadratic.
+- FEAS-008 Windows (2026-10-26) recommends a native WinUI `ListView` over
+  the same bounded fragments, hosted in C# Native AOT with C++/WinRT as the
+  fallback. Warm/cold medians on 1 MiB, 5 MiB and long lines were 240–283 ms
+  and 309–356 ms for AOT and C++. JIT was 401–445 ms warm, missing the
+  400 ms budget proposed on Linux. WebView2 was 582–3381 ms warm, using up to
+  1.4 GiB. `ListView` realizes about 15 rows; GTK realizes about 205.
+  Pitfalls found: the heading level must go on the row's text element, not
+  the `ListViewItem`, or Narrator H finds nothing; recycled containers must
+  keep template content; DataPackage stream formats fail after Flush, so use
+  Win32 clipboard formats; Native AOT needs QueryInterface casts for template
+  parts. Narrator reads each row twice, and whole-tree UIA searches time out
+  at 5 MiB. Both are WIN-001 defects. See
+  `docs/Virtualized-Renderer-Windows-Evaluation.md`.
 - REV-001 (2026-10-25) found the feasibility evidence sound: Linux reruns and
   raw-data recomputation matched every checked report value. On Linux/glibc,
   repeated parses keep RSS flat (pulldown-cmark 40 MiB from 1 to 20 parses), so
@@ -202,6 +215,28 @@ Items below that these supersede are kept for history.
   Apple XCFramework concerns remain open.
 
 ## Run log
+
+### 2026-10-26 — FEAS-008 Windows part
+
+Added a disposable C ABI over the FEAS-008 model. Built the same WinUI 3
+virtualized `ListView` surface in C# (one source, JIT and Native AOT builds)
+and C++/WinRT, plus a WebView2 baseline. All four hosts share the model and
+policy. In an elevated D-012 sweep (5 cold and 5 warm runs per input, cold
+after a standby purge), every run passed the automated checks.
+
+- C# AOT and C++/WinRT presented in 240–283 ms warm and 309–356 ms cold.
+- C# JIT took 401–445 ms warm and WebView2 582–3381 ms.
+- The owner verified drag and keyboard selection, a 5 MiB Ctrl+A copy
+  (byte-exact from a separate process), find, outline, links and images.
+- With Narrator, the owner confirmed in-order reading, H heading navigation
+  and continuous reading past the screen.
+- UIA3 inspection found contiguous model order at the top, middle and end.
+- Four owner-found defects were fixed. Duplicated Narrator reading and
+  whole-tree UIA timeouts at 5 MiB remain.
+- The first pass lease expired during manual testing. It was recovered and
+  the work finished in a new pass.
+
+Recommendation only. Next: FEAS-009.
 
 ### 2026-10-25 — FEAS-008 Linux part
 
