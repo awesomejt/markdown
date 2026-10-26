@@ -18,7 +18,9 @@ contract needed by parser, core, or native presentation feasibility work.
 The source snapshot is `markdown-viewer` commit
 `0ab59c0f7bf91730bf9683b47a5eb2658f331b00`, licensed Apache-2.0. Copied inputs
 are byte-identical to the paths in the manifest; their hashes are validated
-without reading the sibling repository.
+without reading the sibling repository. One case, `nfd-filename`, is not tracked
+upstream: its origin `generator` writes it as an ignored file, and the committed
+bytes equal that generator's fixed output at the pinned commit.
 
 All committed Markdown input filenames are ASCII. The Unicode cases retain
 their original content hashes and origin paths; `runtime_path` in the manifest

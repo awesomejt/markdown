@@ -48,6 +48,10 @@ IDE stepping, full semantic conformance or clean-machine deployment.
 
 ## Initial feasibility budgets
 
+D-012 fixes the metric for every platform budget: launch to presented content,
+cold and warm, at least five runs with spread, on named hardware. Budget numbers
+are set from FEAS-008 measurements.
+
 These are starting hypotheses to measure and revise at GATE-001, not release
 promises:
 

@@ -97,12 +97,13 @@ case; parity is not automatic.
 - **Recoverability:** stale permissions, moved files, parse errors, and external
   changes have user-visible recovery paths.
 
-## Questions requiring owner confirmation
+## Owner answers (GATE-001, 2026-10-25)
 
-1. After all three desktop walking skeletons exist, which desktop should be
-   deepened to MVP first?
-2. Does “native” permit a bundled non-UI engine only for diagram compilation?
-3. Which advanced features are personally essential for native v1: math,
-   Mermaid, D2, voice-over syntax, or teleprompter?
-4. Should the native app understand existing `*.mdv.yaml` projects in v1, or
-   begin with system file/folder selection only?
+1. MVPs are deepened in the order macOS, Linux, Windows (D-013).
+2. Whether a non-UI engine may compile diagrams or math is decided from the
+   FEAS-009 comparison; the owner wants the best-performing safe path, even a
+   custom implementation.
+3. v1 contains core Markdown only. After it: voice-over and expanded syntax,
+   teleprompter, Mermaid, math, then D2 (D-013).
+4. v1 opens files and folders through the system only; `*.mdv.yaml` projects
+   come later in ADV-003.

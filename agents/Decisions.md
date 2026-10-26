@@ -95,29 +95,96 @@ works with active-bucket selection. Preserve all-platform gates, native evidence
 and concurrency one. This decision changes future workflow, not today's partial
 FEAS-006 handoff or the unaccepted production baseline.
 
-## Proposed decisions for GATE-001
+## D-008 — Rust core with pulldown-cmark
 
-The following are not yet accepted:
+**Date:** 2026-10-25
 
-- Rust semantic core, initially spiked with pulldown-cmark and retaining
-  Comrak as the parser fallback/oracle, with platform-native presentation.
-- The experimental FEAS-006 bulk C ABI: Windows and macOS ownership/cancellation
-  and native UI evidence are positive, but the native Linux binding/package and the
-  production semantic model must be reconciled before accepting the interface.
-- No general-purpose WebView for the main document surface.
-- GTK 4/gtk-rs for the Linux shell, with a virtualized semantic-block document
-  renderer rather than one unbounded `GtkTextView`.
-- Windows and macOS framework/language choices after their measured spikes.
-- WinUI 3 shell with bounded read-only rich edit and a virtualized semantic
-  block strategy to be proven for Windows; FEAS-003 does not select between
-  C# and C++/WinRT or accept cross-row selection/accessibility limitations.
-- AppKit/TextKit 2 as the lead macOS document-surface candidate following
-  FEAS-004; selective SwiftUI hosting remains available, while synchronous
-  model construction, memory and pathological blocks need further work.
-- Tier 1 excludes Mermaid and D2. The FEAS-007
-  [capability matrix](../docs/Platform-Capability-Evaluation.md) found no safe
-  offline native path for Mermaid without a browser engine, and none for KaTeX
-  output without a presenter. D2 is feasible as a pure Go library.
-- Whether a bundled offscreen web engine may act as a non-UI diagram or math
-  compiler, and whether Go is accepted as a second implementation language for
-  D2. Both need owner decisions recorded here before ADV-002.
+**Status:** accepted by owner at GATE-001 (gate still open)
+
+The portable semantic core is Rust, using pulldown-cmark as the parser. Comrak
+remains the fallback and cross-check oracle; cmark-gfm remains the GitHub
+Flavored Markdown reference. The core must support front matter, math, GitHub
+alerts and the advanced and custom syntax from `markdown-viewer`. FEAS-010
+proves what that takes on pulldown-cmark; if it can't be done well, CORE-003 may
+switch to Comrak behind the same interface.
+
+## D-009 — Hand-written versioned C interface
+
+**Date:** 2026-10-25
+
+**Status:** accepted by owner at GATE-001 (gate still open)
+
+Apps call the core through a narrow, versioned, hand-written C ABI that hands
+over immutable values in bulk copies, as proven by FEAS-006 on all three
+desktops. Generated bindings such as UniFFI are not used. The FEAS-006 flat
+data model is not the production contract; CORE-002 and CORE-006 replace it.
+
+## D-010 — Native platform stacks
+
+**Date:** 2026-10-25
+
+**Status:** accepted by owner at GATE-001 (gate still open)
+
+- macOS: AppKit with TextKit 2 for the document; SwiftUI only for shell
+  surfaces such as settings.
+- Linux: GTK 4 with gtk-rs; libadwaita optional, not required.
+- Windows: WinUI 3. The host language (C# or C++/WinRT) is decided from the
+  FEAS-008 comparison.
+
+The document renderer on Windows and Linux depends on FEAS-008.
+
+## D-011 — MVP platform baselines and distribution
+
+**Date:** 2026-10-25
+
+**Status:** accepted by owner at GATE-001 (gate still open)
+
+| Platform | MVP target | Distribution | After the MVP |
+| --- | --- | --- | --- |
+| Windows | Windows 11, x64 | MSIX | ARM64 |
+| macOS | macOS 27, Apple Silicon | Developer ID, signed and notarized | Earlier macOS versions; Mac App Store optional |
+| Linux | x86-64, KDE Plasma Wayland | Flatpak plus an Arch package | Debian and RPM packages; other desktops; ARM64 |
+
+Windows 10 is not supported. Signing, notarization and publishing remain
+separate tasks that need owner authorization.
+
+## D-012 — Shared performance metric
+
+**Date:** 2026-10-25
+
+**Status:** accepted by owner at GATE-001 (gate still open)
+
+Every platform budget uses launch to presented content: from process launch
+to the first frame of document content on screen. Report cold and warm starts,
+at least five runs with spread, on named hardware. Budget numbers are set from
+FEAS-008 measurements, not from the earlier per-platform metrics.
+
+## D-013 — v1 scope and delivery order
+
+**Date:** 2026-10-25
+
+**Status:** accepted by owner at GATE-001 (gate still open)
+
+- v1 (the MVP) contains the core Markdown features only. It opens files and
+  folders through the system; it doesn't read `*.mdv.yaml` project files.
+- After the MVP, advanced features follow in this order: voice-over and
+  expanded syntax, teleprompter, Mermaid, math, then D2.
+- After all three walking skeletons exist, the MVPs are deepened in this order:
+  macOS, Linux, Windows.
+
+## Open at GATE-001
+
+GATE-001 stays open until these are decided from spike evidence:
+
+- **Main document surface.** The owner prefers native. FEAS-008 measures a
+  WebView document baseline against native virtualized blocks for performance
+  and implementation cost. The native-only guardrail in AGENTS.md stays in
+  force unless a later decision changes it.
+- **Windows host language,** from the FEAS-008 C#, Native AOT and C++/WinRT
+  comparison.
+- **Diagram and math engines.** FEAS-009 compares an offscreen web engine,
+  existing engines (D2 in Go) and custom Rust implementations, aiming for the
+  best-performing safe path. A D2 port must stay MPL-2.0 file by file; Mermaid
+  and KaTeX are MIT. Go and web-engine use are not accepted yet.
+- **Core extension approach,** from FEAS-010.
+- **Budget numbers,** from FEAS-008 using the D-012 metric.

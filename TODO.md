@@ -11,7 +11,7 @@ batching ready work on the current OS. Each delivery phase uses one feature
 branch and PR. Once ready, post a separate PR comment exactly `/grok review`,
 address the feedback, and obtain owner merge approval. Follow
 [Delivery-Workflow.md](docs/Delivery-Workflow.md) for branch, review and handoff
-rules. FEAS-007 capability reconciliation is recorded; GATE-001 is next.
+rules. GATE-001 is partially decided; FEAS-008, FEAS-009 and FEAS-010 come next.
 
 ## Current gate: requirements and feasibility
 
@@ -117,7 +117,32 @@ project concurrency limit is one.
   `docs/Platform-Capability-Evaluation.md`, each with evidence, fallback and a
   named next check, mechanically validated by `tools/validate_capabilities.py`.
   iOS/iPadOS cells remain authoritative or unverified until IOS-001.
-- **GATE-001 — Accept implementation baseline.** Record core/parser choice,
+- **REV-001 — Review feasibility studies.** Owner-requested quality review of
+  FEAS-001–007 before GATE-001. Acceptance: reports checked against raw data,
+  host-reproducible results rerun, factual errors corrected and findings in
+  `docs/Feasibility-Review.md`. Completed 2026-10-25; it blocks GATE-001 in state.
+- **FEAS-010 — Prove core syntax extensions on pulldown-cmark.** Owner-added at
+  GATE-001. Prove front matter, math, GitHub alerts, voice-over syntax, diagram
+  fences and other custom syntax with exact spans, and compare with Comrak.
+  Acceptance: each extension passes its semantic expectation with span checks,
+  costs are measured on the performance corpus, and a recommendation keeps or
+  replaces pulldown-cmark.
+- **FEAS-008 — Prove virtualized native renderer and Windows host language.**
+  Owner-added at GATE-001; runs on Linux and Windows. Acceptance: whole-document
+  selection and Ctrl+A copy of 5 MiB; Orca and Narrator reading order
+  (owner-confirmed plus AT-SPI/UIA inspection); find and heading jump to
+  off-screen blocks; local images and links under resource policy; D-012
+  launch-to-presented-content timings. On Windows, the same view in C# (JIT
+  and Native AOT) and C++/WinRT; on both, a WebView document baseline comparing
+  performance with implementation cost.
+- **FEAS-009 — Compare diagram and math engines.** Owner-added at GATE-001.
+  For Mermaid, D2 and KaTeX-syntax math, compare an offscreen web engine,
+  existing engines (D2 in Go) and custom Rust implementations or ports.
+  Acceptance: latency, memory, fidelity, sanitization, package size, iOS fit,
+  port effort and licensing per engine, with a recommendation.
+- **GATE-001 — Accept implementation baseline.** Partially decided 2026-10-25
+  (D-008 to D-013 in `agents/Decisions.md`); blocked by FEAS-008, FEAS-009 and
+  FEAS-010 for the remaining open items. Record core/parser choice,
   facade, desktop UI stacks, baseline OS/architectures, performance budgets,
   package formats, platform order, and advanced-feature scope. Before closeout,
   validate and materialize the initial acyclic delivery-task graph through the

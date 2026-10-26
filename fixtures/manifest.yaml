@@ -80,8 +80,11 @@ cases:
       normalizations: [NFC, NFD]
     expected: expected/nfd-filename.yaml
     requirements: [R1.1, R4]
+    # Not tracked upstream: the generator writes this ignored file. The bytes
+    # equal its fixed printf output (line 46 at the origin commit).
     origin:
       path: 'testdata/fixtures/generated/café.md'
       commit: 0ab59c0f7bf91730bf9683b47a5eb2658f331b00
+      generator: testdata/mkfixtures.sh
     sha256: 582ffa0bdf7af54427f8756180b4b7f3a0d98567ad1bbbff4d83344105ba5626
 performance_profiles: performance/profiles.yaml

@@ -13,28 +13,26 @@ context, or [agents/Decisions.md](agents/Decisions.md) for accepted decisions.
 Always inspect current state and Git status rather than relying on the revision
 observed while this handoff was written.
 
-## Resume here — GATE-001
+## Resume here — GATE-001 spikes
 
-FEAS-007 is complete. The matrix is
-[Platform-Capability-Evaluation.md](docs/Platform-Capability-Evaluation.md):
-30 atomic capabilities for Windows, macOS, Linux and iOS/iPadOS. Each cell has
-a status, evidence level, fallback and named next check, backed by a source
-catalog of measured reports, official HTTPS references and explicit gaps.
-“Supported” means a feasible platform mechanism, never implemented product
-support. Validate any edit with `python3 tools/validate_capabilities.py` and
-`python3 tools/test_validate_capabilities.py`.
+GATE-001 is partially decided: D-008 to D-013 in
+[Decisions.md](agents/Decisions.md) are accepted. Its remaining items wait on
+three owner-added spikes, which `project.yaml` makes block the gate:
 
-The next dependency-ready task is **GATE-001**. It is an owner decision, so
-don't accept it on the owner's behalf. Present the matrix's “Implications for
-GATE-001” section: permission for a non-UI web engine (Mermaid, KaTeX); Go as
-a second language for D2; the Windows baseline, since `PrintManager` is Windows
-11 only; Mac sandboxed versus Developer ID scope; and Linux package formats.
-Together with the open questions in `docs/Product.md`, these drive the baseline.
+- **FEAS-010** — core syntax extensions on pulldown-cmark. Runs on any host,
+  including this Linux machine.
+- **FEAS-008** — virtualized renderer on Linux and Windows, the Windows C#,
+  Native AOT and C++/WinRT comparison, and a WebView document baseline. Do the
+  Linux part here, then the Windows part on the Windows machine.
+- **FEAS-009** — Mermaid, D2 and math: an offscreen web engine, existing
+  engines and custom Rust implementations.
 
-Open evidence gaps that remain Deferred: macOS network-volume FSEvents, App Nap
-throttling, the iOS child-process limit, Apple native SVG decoding, Windows PDF
-export, Flatpak helper behavior, mixed/fractional scaling everywhere and every
-iOS/iPadOS measurement.
+Their acceptance criteria are in `TODO.md`. Measure with the D-012 metric:
+launch to presented content, cold and warm, at least five runs with spread.
+The native-only document guardrail stays in force. GATE-001 is `blocked` in
+state with a dependency blocker. When all three spikes finish, clear it with
+`resolve_blocker` and their evidence, then resume GATE-001: record the open
+decisions, set budgets, then rehearse and materialize the delivery-task graph.
 
 ## Completed foundation
 

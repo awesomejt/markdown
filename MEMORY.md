@@ -11,10 +11,11 @@ design belong in `docs/` or `agents/`; runtime transcripts do not belong here.
 - Later platforms: iOS and iPadOS after the desktop contracts are stable.
 - Organization: one native monorepo with independent native UIs,
   shared specifications/fixtures/benchmarks, and a candidate portable core.
-- Status: FEAS-001 through FEAS-007 are complete. The capability matrix is in
-  `docs/Platform-Capability-Evaluation.md`. GATE-001 is next and needs the
-  owner's architecture decision. Inspect `project.yaml` for live state. No
-  production baseline is accepted.
+- Status: FEAS-001 through FEAS-007 and REV-001 are complete. GATE-001 is
+  partially decided: D-008 to D-013 are accepted. Three owner-added spikes,
+  FEAS-008 (renderer and Windows language), FEAS-009 (diagram and math
+  engines) and FEAS-010 (core extensions), block its remaining items. No
+  production code before the gate closes. Inspect `project.yaml` for state.
 - The required real Windows, macOS, and Linux renderer and shared-core
   integration evidence is recorded, and the capability matrix reconciles it.
 - Mac host setup: the project-state skill/backend and workflow contract have
@@ -130,6 +131,13 @@ FEAS-007 capability reconciliation is complete; GATE-001 is next.
   about 11.4 seconds, reinforcing the virtualized-renderer requirement. GDB
   source frames and a stripped/path-scanned adjacent-library package passed on
   the named host. See the shared-core Linux report.
+- REV-001 (2026-10-25) found the feasibility evidence sound: Linux reruns and
+  raw-data recomputation matched every checked report value. On Linux/glibc,
+  repeated parses keep RSS flat (pulldown-cmark 40 MiB from 1 to 20 parses), so
+  the Mac growth is macOS-allocator-specific. It adds a constant ~27.8 MiB per
+  5 MiB load with no plateau observed. Key gap: Windows and Linux haven't proven
+  virtualized blocks with document-wide selection and reading order. Cross-
+  platform timing definitions differ. See `docs/Feasibility-Review.md`.
 - Repeated Mac native-only 5 MiB parses grew RSS to about 583 MiB after twenty
   loads despite zero native owners and about 5.1 MiB live malloc usage. A leaks
   scan found zero leaked bytes; vmmap classified most growth as empty large
@@ -150,6 +158,13 @@ FEAS-007 capability reconciliation is complete; GATE-001 is next.
   FEAS-004 prerequisites of FEAS-006 and FEAS-007 as well as GATE-001.
 
 ## Open decisions
+
+GATE-001 (2026-10-25) accepted D-008 to D-013: the Rust/pulldown-cmark core,
+the C ABI, the stacks, MVP baselines and packaging, the shared metric, v1 scope
+and MVP order. Still open, pending spikes: the main document surface (native
+preferred, WebView baseline measured in FEAS-008), the Windows host language,
+the diagram and math engines, the core extension approach and budget numbers.
+Items below that these supersede are kept for history.
 
 - Confirm the order in which the three desktop MVPs are deepened after their
   walking skeletons exist.
@@ -181,6 +196,26 @@ FEAS-007 capability reconciliation is complete; GATE-001 is next.
   Apple XCFramework concerns remain open.
 
 ## Run log
+
+### 2026-10-25 — GATE-001 decisions, part 1
+
+Collected the owner's answers through structured prompts. Accepted D-008 to
+D-013. The owner asked for spikes before deciding the remaining items, so
+FEAS-008, FEAS-009 and FEAS-010 were created through the state helper, each
+blocking GATE-001. The native-only document guardrail stays in force while
+FEAS-008 measures a WebView baseline. A D2 port would stay MPL-2.0 file by file.
+GATE-001 remains open; no task graph was materialized.
+
+### 2026-10-25 — REV-001 feasibility review
+
+At the owner's request, reviewed FEAS-001–007 through a new REV-001 task that
+blocks GATE-001. Recomputed FEAS-003 and FEAS-006 Windows tables exactly; reran
+the FEAS-002 benchmark (within about 12%), the FEAS-006 Rust tests and the Linux
+self-test. Found that `nfd-filename` is generated upstream by
+`testdata/mkfixtures.sh`, not tracked. Its hash equals the script's fixed
+output, so the manifest now records an optional `generator` that schema and
+validator accept. Recorded the gaps and four GATE-001 recommendations in
+`docs/Feasibility-Review.md`. Next: GATE-001 with the owner.
 
 ### 2026-10-25 — FEAS-007 capability matrix
 

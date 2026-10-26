@@ -77,9 +77,12 @@ def main() -> int:
             raise ValueError(f"{case_id}: unknown requirement reference")
         if case["origin"]["commit"] != source["commit"]:
             raise ValueError(f"{case_id}: origin commit differs from source snapshot")
-        origin = Path(case["origin"]["path"])
-        if origin.is_absolute() or ".." in origin.parts:
-            raise ValueError(f"{case_id}: origin path must be repository-relative")
+        for key in ("path", "generator"):
+            if key not in case["origin"]:
+                continue
+            origin = Path(case["origin"][key])
+            if origin.is_absolute() or ".." in origin.parts:
+                raise ValueError(f"{case_id}: origin {key} must be repository-relative")
 
         input_path = inside_fixture(case["input"])
         expected_path = inside_fixture(case["expected"])

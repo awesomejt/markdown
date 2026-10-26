@@ -1,11 +1,11 @@
 contract_version: project-state/v1
-revision: 106
+revision: 120
 project: &id002
   concurrency_limit: 1
   created_at: '2026-10-24T23:34:09.871478+00:00'
   project_ref: markdown-native
   status: active
-  updated_at: '2026-10-26T01:05:32.567477+00:00'
+  updated_at: '2026-10-26T01:55:19.854808+00:00'
   workflow_id: native-app-development
   workflow_version: '2'
 phases: &id004
@@ -199,7 +199,16 @@ tasks:
       with evidence.
   - &id031
     active_pass_ref: null
-    blockers: []
+    blockers:
+      - id: a777b900-6c8f-4777-9366-c26026d87014
+        reason: Remaining decisions (document surface, Windows host language, diagram/math engines, core
+          extension approach, budget numbers) need FEAS-008, FEAS-009 and FEAS-010 evidence.
+        blocker_type: dependency
+        reference: FEAS-008, FEAS-009, FEAS-010; agents/Decisions.md 'Open at GATE-001'
+        related_task_ref: null
+        created_at: '2026-10-26T01:55:19.854808+00:00'
+        resolved_at: null
+        resolution_evidence: null
     completed_at: null
     created_at: '2026-10-24T23:34:33.392833+00:00'
     description: Choose core, facade, native stacks, targets, budgets, packages, platform order, and advanced
@@ -209,10 +218,10 @@ tasks:
     phase: feasibility
     priority: 70
     role: designer
-    status: pending
+    status: blocked
     task_key: GATE-001
     title: Accept implementation baseline
-    updated_at: '2026-10-24T23:34:33.392833+00:00'
+    updated_at: '2026-10-26T01:55:19.854808+00:00'
     validation_expectations: Owner-accepted decision record backed by all feasibility evidence.
   - active_pass_ref: null
     blockers: []
@@ -577,6 +586,86 @@ tasks:
     created_at: '2026-10-25T06:10:53.704236+00:00'
     updated_at: '2026-10-25T06:14:15.252593+00:00'
     completed_at: '2026-10-25T06:14:15.252593+00:00'
+  - &id032
+    id: 548392d8-32b1-4ddc-99ca-4de362be9b09
+    task_key: REV-001
+    title: Review feasibility studies
+    description: 'Owner-requested review of FEAS-001 to FEAS-007 quality before GATE-001: verify reports
+      against raw data, reproduce what the current host allows, record findings and correct factual errors.'
+    phase: feasibility
+    role: reviewer
+    priority: 75
+    model_tier: null
+    validation_expectations: Durable review document with reproduced evidence; corrected corpus provenance
+      passes fixture validation; memory and handoff reflect the findings.
+    status: completed
+    active_pass_ref: null
+    blockers: []
+    created_at: '2026-10-26T01:19:10.624718+00:00'
+    updated_at: '2026-10-26T01:21:32.272699+00:00'
+    completed_at: '2026-10-26T01:21:32.272699+00:00'
+  - &id036
+    id: 2530ea13-5f77-41ca-9dc6-7da114287187
+    task_key: FEAS-010
+    title: Prove core syntax extensions on pulldown-cmark
+    description: On the accepted Rust/pulldown-cmark core, prove front matter, math, GitHub alerts, voice-over
+      script syntax, diagram fences and other markdown-viewer custom syntax with exact source spans; compare
+      effort, correctness and cost with Comrak.
+    phase: feasibility
+    role: designer
+    priority: 78
+    model_tier: null
+    validation_expectations: Each extension passes its frozen semantic expectation with span checks; parse-plus-extension
+      cost measured on the performance corpus; written recommendation keeps or replaces pulldown-cmark.
+    status: pending
+    active_pass_ref: null
+    blockers: []
+    created_at: '2026-10-26T01:53:51.720862+00:00'
+    updated_at: '2026-10-26T01:53:51.720862+00:00'
+    completed_at: null
+  - &id038
+    id: 8668b19b-d726-421b-b86c-e5d1631339cb
+    task_key: FEAS-008
+    title: Prove virtualized native renderer and Windows host language
+    description: 'On Linux (GTK 4) and Windows (WinUI 3), prove virtualized semantic blocks over the Rust
+      core: whole-document selection and copy, screen-reader reading order, find and outline jump to off-screen
+      blocks, images and links. On Windows, build the same view in C# (JIT and Native AOT) and C++/WinRT.
+      Measure a WebView document baseline on both for performance versus implementation cost.'
+    phase: feasibility
+    role: researcher
+    priority: 77
+    model_tier: null
+    validation_expectations: Mouse/keyboard selection and Ctrl+A copy of 5 MiB match source text; Orca
+      and Narrator reading order owner-confirmed plus AT-SPI/UIA inspection; find and heading jump reach
+      off-screen blocks; local images and links render under resource policy; launch-to-presented-content
+      cold and warm, at least five runs with spread, for 1 MiB, 5 MiB and long-line inputs; C#/AOT/C++
+      and native/WebView comparisons recorded with a recommendation.
+    status: pending
+    active_pass_ref: null
+    blockers: []
+    created_at: '2026-10-26T01:53:52.542747+00:00'
+    updated_at: '2026-10-26T01:53:52.542747+00:00'
+    completed_at: null
+  - &id040
+    id: 6e4f4322-597f-4d97-8620-e445654f64fb
+    task_key: FEAS-009
+    title: Compare diagram and math engines
+    description: For Mermaid, D2 and KaTeX-syntax math, compare an offscreen web engine compiler, existing
+      native engines (D2 Go in-process) and custom Rust implementations or ports, aiming for the best-performing
+      safe offline path on every target including iOS.
+    phase: feasibility
+    role: researcher
+    priority: 76
+    model_tier: null
+    validation_expectations: Compile latency, memory, output fidelity against reference renders, sanitization,
+      package size and iOS fit measured per engine and option; custom-port scope, effort and licensing
+      (D2 MPL-2.0, Mermaid and KaTeX MIT) assessed; recommendation per engine.
+    status: pending
+    active_pass_ref: null
+    blockers: []
+    created_at: '2026-10-26T01:53:53.369754+00:00'
+    updated_at: '2026-10-26T01:53:53.369754+00:00'
+    completed_at: null
 relationships:
   - predecessor_task_ref: 7fe339d7-90ce-4211-9a0a-91be7640aa42
     relationship: blocks
@@ -716,6 +805,22 @@ relationships:
   - &id020
     predecessor_task_ref: 7a7c0c14-b717-4400-9404-b946ee4053cd
     successor_task_ref: 9b64b970-9eeb-4301-a453-d3d39ae7ad04
+    relationship: blocks
+  - &id033
+    predecessor_task_ref: 548392d8-32b1-4ddc-99ca-4de362be9b09
+    successor_task_ref: b2418f32-3f60-4bbd-9a74-0cdf6b6aecc4
+    relationship: blocks
+  - &id037
+    predecessor_task_ref: 2530ea13-5f77-41ca-9dc6-7da114287187
+    successor_task_ref: b2418f32-3f60-4bbd-9a74-0cdf6b6aecc4
+    relationship: blocks
+  - &id039
+    predecessor_task_ref: 8668b19b-d726-421b-b86c-e5d1631339cb
+    successor_task_ref: b2418f32-3f60-4bbd-9a74-0cdf6b6aecc4
+    relationship: blocks
+  - &id041
+    predecessor_task_ref: 6e4f4322-597f-4d97-8620-e445654f64fb
+    successor_task_ref: b2418f32-3f60-4bbd-9a74-0cdf6b6aecc4
     relationship: blocks
 passes:
   - &id011
@@ -1322,6 +1427,126 @@ passes:
     started_at: '2026-10-26T00:48:40.092391+00:00'
     last_heartbeat_at: null
     completed_at: '2026-10-26T01:05:32.567477+00:00'
+    lease_expires_at: null
+    lease_version: 1
+  - &id034
+    id: c833baa9-76a6-4eec-be3e-cc94cbb8ad03
+    sequence: 15
+    task_ref: 548392d8-32b1-4ddc-99ca-4de362be9b09
+    phase_ref: b19ec1c8-f0c0-4cee-b584-5c9247a96edd
+    actor: claude-linux
+    status: completed
+    outcome: completed
+    objective: Record the owner-requested feasibility review in docs/Feasibility-Review.md, correct the
+      nfd-filename corpus provenance, and update memory, handoff and roadmap without accepting GATE-001.
+    summary: 'Reviewed FEAS-001 to FEAS-007 at the owner''s request. Evidence is sound: raw-data recomputation
+      and Linux reruns matched every checked value. Corrected nfd-filename provenance (generated upstream
+      by testdata/mkfixtures.sh, bytes verified) with an optional schema-validated generator field. Recorded
+      findings, new Linux RSS evidence and GATE-001 recommendations in docs/Feasibility-Review.md.'
+    handoff: null
+    validation_result:
+      scope: Review documentation plus corpus provenance correction
+      checks:
+        - 'python3 tools/validate_fixtures.py: 8 cases, 4 profiles, 3 generated paths valid'
+        - 'python3 tools/test_path_fixtures.py: OK'
+        - FEAS-002 Linux benchmark rerun within about 12% of recorded medians
+        - FEAS-006 Rust tests (6) and Clippy pass; Linux self-test passed with zero live owners
+        - FEAS-003 and FEAS-006 Windows medians recomputed exactly from raw trials
+        - markdownlint-cli2 clean on tracked Markdown; git diff --check clean; capability validator valid
+      residual_risk: Windows and macOS results checked against data, not rerun; FEAS-004 lacks durable
+        per-trial values.
+    evidence:
+      review: docs/Feasibility-Review.md
+      manifest: fixtures/manifest.yaml
+      memory: MEMORY.md
+      handoff: HANDOFF.md
+    participants:
+      - role: reviewer
+        result: reviewed and reproduced
+    blocker: null
+    execution_record: {}
+    started_at: '2026-10-26T01:19:18.191308+00:00'
+    last_heartbeat_at: null
+    completed_at: '2026-10-26T01:21:32.272699+00:00'
+    lease_expires_at: null
+    lease_version: 1
+  - &id035
+    id: 8390fa9b-6ac7-4058-9879-f3952cdbd2d5
+    sequence: 16
+    task_ref: b2418f32-3f60-4bbd-9a74-0cdf6b6aecc4
+    phase_ref: b19ec1c8-f0c0-4cee-b584-5c9247a96edd
+    actor: claude-linux
+    status: completed
+    outcome: partial
+    objective: Collect and record the owner's GATE-001 decisions (core/parser, facade, desktop UI stacks,
+      baseline OS/architectures, budgets policy, package/distribution formats, platform order, advanced-feature
+      scope) as accepted decision records, align documentation, then rehearse and materialize the initial
+      delivery-task graph only with owner approval.
+    summary: 'Collected owner decisions: accepted D-008 (Rust/pulldown-cmark core), D-009 (hand-written
+      C ABI), D-010 (AppKit/TextKit 2, GTK 4/gtk-rs, WinUI 3), D-011 (MVP baselines and packaging), D-012
+      (launch-to-presented-content metric) and D-013 (v1 core Markdown only, advanced order, MVP order
+      macOS/Linux/Windows). Owner requested spikes for the rest; created FEAS-008, FEAS-009 and FEAS-010
+      blocking GATE-001.'
+    handoff: 'Resume GATE-001 after FEAS-008, FEAS-009 and FEAS-010 complete: decide the main document
+      surface (native preferred; WebView baseline measured), the Windows host language, diagram/math engines
+      and the core extension approach; set budget numbers with the D-012 metric; then rehearse the delivery-task
+      graph on disposable state and materialize it with owner approval. See HANDOFF.md and agents/Decisions.md
+      ''Open at GATE-001''.'
+    validation_result:
+      scope: Decision recording and roadmap update
+      checks:
+        - markdownlint-cli2 clean on tracked Markdown
+        - git diff --check clean
+        - capability validator valid
+        - state inspected after each create_task/add_dependency
+    evidence:
+      decisions: agents/Decisions.md
+      roadmap: TODO.md
+      handoff: HANDOFF.md
+      memory: MEMORY.md
+    participants:
+      - role: owner
+        result: decisions provided
+      - role: project-manager
+        result: recorded and scoped spikes
+    blocker: null
+    execution_record: {}
+    started_at: '2026-10-26T01:30:09.600055+00:00'
+    last_heartbeat_at: null
+    completed_at: '2026-10-26T01:54:56.195083+00:00'
+    lease_expires_at: null
+    lease_version: 1
+  - &id042
+    id: bf5ffb9e-14af-4bd6-a168-b65ccf20c4ed
+    sequence: 17
+    task_ref: b2418f32-3f60-4bbd-9a74-0cdf6b6aecc4
+    phase_ref: b19ec1c8-f0c0-4cee-b584-5c9247a96edd
+    actor: claude-linux
+    status: completed
+    outcome: blocked
+    objective: Record that the remaining GATE-001 decisions wait on the owner-requested FEAS-008, FEAS-009
+      and FEAS-010 spikes, so the gate does not hold the queue.
+    summary: D-008 to D-013 accepted in the previous pass. Remaining GATE-001 decisions wait on owner-requested
+      spike evidence.
+    handoff: 'After FEAS-008, FEAS-009 and FEAS-010 complete, resolve this blocker with their evidence
+      and resume GATE-001: record the open decisions, set budgets with the D-012 metric, then rehearse
+      and materialize the delivery-task graph with owner approval.'
+    validation_result: null
+    evidence:
+      decisions: agents/Decisions.md
+      handoff: HANDOFF.md
+    participants:
+      - role: project-manager
+        result: blocked on owner-requested spikes
+    blocker:
+      reason: Remaining decisions (document surface, Windows host language, diagram/math engines, core
+        extension approach, budget numbers) need FEAS-008, FEAS-009 and FEAS-010 evidence.
+      blocker_type: dependency
+      reference: FEAS-008, FEAS-009, FEAS-010; agents/Decisions.md 'Open at GATE-001'
+    execution_record: {}
+    started_at: '2026-10-26T01:55:19.419119+00:00'
+    last_heartbeat_at: null
+    completed_at: '2026-10-26T01:55:19.854808+00:00'
     lease_expires_at: null
     lease_version: 1
 idempotency:
@@ -2527,5 +2752,529 @@ idempotency:
           stale_passes: 0
           eligible: 1
           blocked: 0
+        warnings: []
+        recommended_action: select_new_task
+  rev001-create-20261025-01:
+    fingerprint: 7c4e35e393e1ca38458505832ff08a47ab33624a76e6957acded8b39fda8e704
+    response:
+      contract_version: project-state/v1
+      operation: create_task
+      revision: 107
+      data:
+        task: *id032
+      snapshot:
+        contract_version: project-state/v1
+        snapshot_at: '2026-10-26T01:19:10.624758+00:00'
+        revision: 107
+        project: *id002
+        current_phase: *id003
+        phases: *id004
+        active_tasks: []
+        working_tasks_without_active_lease: []
+        active_passes: []
+        stale_passes: []
+        blocked_tasks: []
+        eligible_tasks:
+          - *id032
+          - *id031
+        latest_pass: *id030
+        queue_counts:
+          by_status:
+            completed: 10
+            pending: 23
+          total: 33
+          active_passes: 0
+          stale_passes: 0
+          eligible: 2
+          blocked: 0
+        warnings: []
+        recommended_action: select_new_task
+  rev001-dep-20261025-01:
+    fingerprint: 8ad665339d784b60139eccd0b86cfe4fe64bd2c15343ff853f4512578c6aa127
+    response:
+      contract_version: project-state/v1
+      operation: add_dependency
+      revision: 108
+      data:
+        relationship: *id033
+      snapshot:
+        contract_version: project-state/v1
+        snapshot_at: '2026-10-26T01:19:17.967700+00:00'
+        revision: 108
+        project: *id002
+        current_phase: *id003
+        phases: *id004
+        active_tasks: []
+        working_tasks_without_active_lease: []
+        active_passes: []
+        stale_passes: []
+        blocked_tasks: []
+        eligible_tasks:
+          - *id032
+        latest_pass: *id030
+        queue_counts:
+          by_status:
+            completed: 10
+            pending: 23
+          total: 33
+          active_passes: 0
+          stale_passes: 0
+          eligible: 1
+          blocked: 0
+        warnings: []
+        recommended_action: select_new_task
+  rev001-start-20261025-01:
+    fingerprint: aba3b4323e84ff6ec01b6195fb2da8ddb7bb2a04fd997a17db9cfab87b4d04c0
+    response:
+      contract_version: project-state/v1
+      operation: start_pass
+      revision: 109
+      data:
+        pass: *id034
+        task: *id032
+      snapshot:
+        contract_version: project-state/v1
+        snapshot_at: '2026-10-26T01:19:18.191340+00:00'
+        revision: 109
+        project: *id002
+        current_phase: *id003
+        phases: *id004
+        active_tasks:
+          - *id032
+        working_tasks_without_active_lease: []
+        active_passes:
+          - *id034
+        stale_passes: []
+        blocked_tasks: []
+        eligible_tasks: []
+        latest_pass: *id034
+        queue_counts:
+          by_status:
+            completed: 10
+            pending: 22
+            working: 1
+          total: 33
+          active_passes: 1
+          stale_passes: 0
+          eligible: 0
+          blocked: 0
+        warnings: []
+        recommended_action: resume_active
+  rev001-finish-20261025-01:
+    fingerprint: 19c386cb68b53259986643740cd21ba144751c9ed6a4b0d6a4531ebb5ec00589
+    response:
+      contract_version: project-state/v1
+      operation: finish_pass
+      revision: 110
+      data:
+        pass: *id034
+        task: *id032
+      snapshot:
+        contract_version: project-state/v1
+        snapshot_at: '2026-10-26T01:21:32.272718+00:00'
+        revision: 110
+        project: *id002
+        current_phase: *id003
+        phases: *id004
+        active_tasks: []
+        working_tasks_without_active_lease: []
+        active_passes: []
+        stale_passes: []
+        blocked_tasks: []
+        eligible_tasks:
+          - *id031
+        latest_pass: *id034
+        queue_counts:
+          by_status:
+            completed: 11
+            pending: 22
+          total: 33
+          active_passes: 0
+          stale_passes: 0
+          eligible: 1
+          blocked: 0
+        warnings: []
+        recommended_action: select_new_task
+  gate001-start-20261025-01:
+    fingerprint: 772c19523a2336772d2c5c36a6ad82506bc08903528cf8d642dfc0d0c4131b46
+    response:
+      contract_version: project-state/v1
+      operation: start_pass
+      revision: 111
+      data:
+        pass: *id035
+        task: *id031
+      snapshot:
+        contract_version: project-state/v1
+        snapshot_at: '2026-10-26T01:30:09.600089+00:00'
+        revision: 111
+        project: *id002
+        current_phase: *id003
+        phases: *id004
+        active_tasks:
+          - *id031
+        working_tasks_without_active_lease: []
+        active_passes:
+          - *id035
+        stale_passes: []
+        blocked_tasks: []
+        eligible_tasks: []
+        latest_pass: *id035
+        queue_counts:
+          by_status:
+            completed: 11
+            working: 1
+            pending: 21
+          total: 33
+          active_passes: 1
+          stale_passes: 0
+          eligible: 0
+          blocked: 0
+        warnings: []
+        recommended_action: resume_active
+  feas-010-create-20261025-01:
+    fingerprint: 8714f41cee691e6b6763f75fdc13fd0ed1d436bdeaccb5878e13932220d94851
+    response:
+      contract_version: project-state/v1
+      operation: create_task
+      revision: 112
+      data:
+        task: *id036
+      snapshot:
+        contract_version: project-state/v1
+        snapshot_at: '2026-10-26T01:53:51.720896+00:00'
+        revision: 112
+        project: *id002
+        current_phase: *id003
+        phases: *id004
+        active_tasks:
+          - *id031
+        working_tasks_without_active_lease: []
+        active_passes:
+          - *id035
+        stale_passes: []
+        blocked_tasks: []
+        eligible_tasks:
+          - *id036
+        latest_pass: *id035
+        queue_counts:
+          by_status:
+            completed: 11
+            working: 1
+            pending: 22
+          total: 34
+          active_passes: 1
+          stale_passes: 0
+          eligible: 1
+          blocked: 0
+        warnings: []
+        recommended_action: resume_active
+  feas-010-blocks-gate-20261025-01:
+    fingerprint: 61774bbff0ac3496291dc696777adbecfb13a452f32c97419ee483f140dee17a
+    response:
+      contract_version: project-state/v1
+      operation: add_dependency
+      revision: 113
+      data:
+        relationship: *id037
+      snapshot:
+        contract_version: project-state/v1
+        snapshot_at: '2026-10-26T01:53:52.125015+00:00'
+        revision: 113
+        project: *id002
+        current_phase: *id003
+        phases: *id004
+        active_tasks:
+          - *id031
+        working_tasks_without_active_lease: []
+        active_passes:
+          - *id035
+        stale_passes: []
+        blocked_tasks: []
+        eligible_tasks:
+          - *id036
+        latest_pass: *id035
+        queue_counts:
+          by_status:
+            completed: 11
+            working: 1
+            pending: 22
+          total: 34
+          active_passes: 1
+          stale_passes: 0
+          eligible: 1
+          blocked: 0
+        warnings: []
+        recommended_action: resume_active
+  feas-008-create-20261025-01:
+    fingerprint: 9bac8a280c8d502816e14a2e846346cb948a8cb74129d7918b1e593599d79ea9
+    response:
+      contract_version: project-state/v1
+      operation: create_task
+      revision: 114
+      data:
+        task: *id038
+      snapshot:
+        contract_version: project-state/v1
+        snapshot_at: '2026-10-26T01:53:52.542779+00:00'
+        revision: 114
+        project: *id002
+        current_phase: *id003
+        phases: *id004
+        active_tasks:
+          - *id031
+        working_tasks_without_active_lease: []
+        active_passes:
+          - *id035
+        stale_passes: []
+        blocked_tasks: []
+        eligible_tasks:
+          - *id036
+          - *id038
+        latest_pass: *id035
+        queue_counts:
+          by_status:
+            completed: 11
+            working: 1
+            pending: 23
+          total: 35
+          active_passes: 1
+          stale_passes: 0
+          eligible: 2
+          blocked: 0
+        warnings: []
+        recommended_action: resume_active
+  feas-008-blocks-gate-20261025-01:
+    fingerprint: 8be944aad9a14566a2c46033e0215022ab9b012feb79c7ff86d05fe3517953e1
+    response:
+      contract_version: project-state/v1
+      operation: add_dependency
+      revision: 115
+      data:
+        relationship: *id039
+      snapshot:
+        contract_version: project-state/v1
+        snapshot_at: '2026-10-26T01:53:52.957628+00:00'
+        revision: 115
+        project: *id002
+        current_phase: *id003
+        phases: *id004
+        active_tasks:
+          - *id031
+        working_tasks_without_active_lease: []
+        active_passes:
+          - *id035
+        stale_passes: []
+        blocked_tasks: []
+        eligible_tasks:
+          - *id036
+          - *id038
+        latest_pass: *id035
+        queue_counts:
+          by_status:
+            completed: 11
+            working: 1
+            pending: 23
+          total: 35
+          active_passes: 1
+          stale_passes: 0
+          eligible: 2
+          blocked: 0
+        warnings: []
+        recommended_action: resume_active
+  feas-009-create-20261025-01:
+    fingerprint: 03a5cca70c0017c6e963cce55a76ca78da68f78276af23be50d598bd8c970446
+    response:
+      contract_version: project-state/v1
+      operation: create_task
+      revision: 116
+      data:
+        task: *id040
+      snapshot:
+        contract_version: project-state/v1
+        snapshot_at: '2026-10-26T01:53:53.369796+00:00'
+        revision: 116
+        project: *id002
+        current_phase: *id003
+        phases: *id004
+        active_tasks:
+          - *id031
+        working_tasks_without_active_lease: []
+        active_passes:
+          - *id035
+        stale_passes: []
+        blocked_tasks: []
+        eligible_tasks:
+          - *id036
+          - *id038
+          - *id040
+        latest_pass: *id035
+        queue_counts:
+          by_status:
+            completed: 11
+            working: 1
+            pending: 24
+          total: 36
+          active_passes: 1
+          stale_passes: 0
+          eligible: 3
+          blocked: 0
+        warnings: []
+        recommended_action: resume_active
+  feas-009-blocks-gate-20261025-01:
+    fingerprint: 748377a20febcfa065d432e6d1742f325cb19fdb5bd02f39d6c72ff4f4708966
+    response:
+      contract_version: project-state/v1
+      operation: add_dependency
+      revision: 117
+      data:
+        relationship: *id041
+      snapshot:
+        contract_version: project-state/v1
+        snapshot_at: '2026-10-26T01:53:53.797441+00:00'
+        revision: 117
+        project: *id002
+        current_phase: *id003
+        phases: *id004
+        active_tasks:
+          - *id031
+        working_tasks_without_active_lease: []
+        active_passes:
+          - *id035
+        stale_passes: []
+        blocked_tasks: []
+        eligible_tasks:
+          - *id036
+          - *id038
+          - *id040
+        latest_pass: *id035
+        queue_counts:
+          by_status:
+            completed: 11
+            working: 1
+            pending: 24
+          total: 36
+          active_passes: 1
+          stale_passes: 0
+          eligible: 3
+          blocked: 0
+        warnings: []
+        recommended_action: resume_active
+  gate001-partial-20261025-01:
+    fingerprint: 3e82bfe8e1267402329e87eed30ccbfd206e487df83e860e80c5ec8a1ecb39ef
+    response:
+      contract_version: project-state/v1
+      operation: finish_pass
+      revision: 118
+      data:
+        pass: *id035
+        task: *id031
+      snapshot:
+        contract_version: project-state/v1
+        snapshot_at: '2026-10-26T01:54:56.195103+00:00'
+        revision: 118
+        project: *id002
+        current_phase: *id003
+        phases: *id004
+        active_tasks: []
+        working_tasks_without_active_lease:
+          - *id031
+        active_passes: []
+        stale_passes: []
+        blocked_tasks: []
+        eligible_tasks:
+          - *id036
+          - *id038
+          - *id040
+        latest_pass: *id035
+        queue_counts:
+          by_status:
+            completed: 11
+            working: 1
+            pending: 24
+          total: 36
+          active_passes: 0
+          stale_passes: 0
+          eligible: 3
+          blocked: 0
+        warnings: []
+        recommended_action: recover_stale_task
+  gate001-block-start-20261025-01:
+    fingerprint: 78d1d717f4675179b7c6bce0821bb77adfde1ffbf75489c0e55cdb578cfb596d
+    response:
+      contract_version: project-state/v1
+      operation: start_pass
+      revision: 119
+      data:
+        pass: *id042
+        task: *id031
+      snapshot:
+        contract_version: project-state/v1
+        snapshot_at: '2026-10-26T01:55:19.419149+00:00'
+        revision: 119
+        project: *id002
+        current_phase: *id003
+        phases: *id004
+        active_tasks:
+          - *id031
+        working_tasks_without_active_lease: []
+        active_passes:
+          - *id042
+        stale_passes: []
+        blocked_tasks: []
+        eligible_tasks:
+          - *id036
+          - *id038
+          - *id040
+        latest_pass: *id042
+        queue_counts:
+          by_status:
+            completed: 11
+            working: 1
+            pending: 24
+          total: 36
+          active_passes: 1
+          stale_passes: 0
+          eligible: 3
+          blocked: 0
+        warnings: []
+        recommended_action: resume_active
+  gate001-block-finish-20261025-01:
+    fingerprint: 8936f191909e10ec46fe3e95a0b174a1f7884ad5fd7cdabe3812f267c297e4f4
+    response:
+      contract_version: project-state/v1
+      operation: finish_pass
+      revision: 120
+      data:
+        pass: *id042
+        task: *id031
+      snapshot:
+        contract_version: project-state/v1
+        snapshot_at: '2026-10-26T01:55:19.854847+00:00'
+        revision: 120
+        project: *id002
+        current_phase: *id003
+        phases: *id004
+        active_tasks: []
+        working_tasks_without_active_lease: []
+        active_passes: []
+        stale_passes: []
+        blocked_tasks:
+          - *id031
+        eligible_tasks:
+          - *id036
+          - *id038
+          - *id040
+        latest_pass: *id042
+        queue_counts:
+          by_status:
+            completed: 11
+            blocked: 1
+            pending: 24
+          total: 36
+          active_passes: 0
+          stale_passes: 0
+          eligible: 3
+          blocked: 1
         warnings: []
         recommended_action: select_new_task
