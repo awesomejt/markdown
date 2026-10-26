@@ -1,0 +1,1901 @@
+{
+  "schema_version": 1,
+  "task": "FEAS-009",
+  "platform_part": "macos",
+  "method": "Five fresh processes with unpurged caches; six operations per case, first discarded. Compile only, no presented-content or visual-fidelity claim.",
+  "environment": {
+    "platform": "macOS-27.0.1-arm64-arm-64bit-Mach-O",
+    "machine": "arm64",
+    "os": "ProductName:\t\tmacOS\nProductVersion:\t\t27.0.1\nBuildVersion:\t\t26A434",
+    "cpu": "Apple M5 Max",
+    "ram_bytes": 51539607552,
+    "xcode": "Xcode 27.1\nBuild version 27A9275",
+    "node": "v24.14.0",
+    "go": "go version go1.27.1 darwin/arm64"
+  },
+  "engines": {
+    "katex": {
+      "runs": [
+        {
+          "process_to_result_ms": 23.120249854400754,
+          "host_peak_rss_bytes": 24887296,
+          "output": {
+            "clock": "native monotonic clock",
+            "engine": "katex-javascriptcore",
+            "host_elapsed_ms": 13.994458364322782,
+            "results": [
+              {
+                "error": null,
+                "has_html": true,
+                "has_javascript_href": false,
+                "has_mathml": true,
+                "has_remote_image": false,
+                "name": "inline",
+                "output_bytes": 2176,
+                "samples_ms": [
+                  0.14333319664001465,
+                  0.1375417709350586,
+                  0.11187481880187988,
+                  0.1109166145324707,
+                  0.12900018692016602
+                ]
+              },
+              {
+                "error": null,
+                "has_html": true,
+                "has_javascript_href": false,
+                "has_mathml": true,
+                "has_remote_image": false,
+                "name": "display",
+                "output_bytes": 3099,
+                "samples_ms": [
+                  0.2104167938232422,
+                  0.1947917938232422,
+                  0.19779181480407715,
+                  0.19929170608520508,
+                  0.2107083797454834
+                ]
+              },
+              {
+                "error": null,
+                "has_html": true,
+                "has_javascript_href": false,
+                "has_mathml": true,
+                "has_remote_image": false,
+                "name": "integral",
+                "output_bytes": 1546,
+                "samples_ms": [
+                  0.12908339500427246,
+                  0.12054157257080078,
+                  0.1189582347869873,
+                  0.11450004577636719,
+                  0.11449980735778809
+                ]
+              },
+              {
+                "error": "ParseError: KaTeX parse error: Unexpected end of input in a macro argument, expected '}' at end of input: \\frac{1}{",
+                "has_html": false,
+                "has_javascript_href": false,
+                "has_mathml": false,
+                "has_remote_image": false,
+                "name": "invalid",
+                "output_bytes": 0,
+                "samples_ms": [
+                  0.018374919891357422,
+                  0.013041496276855469,
+                  0.012833118438720703,
+                  0.012875080108642578,
+                  0.01125025749206543
+                ]
+              },
+              {
+                "error": null,
+                "has_html": true,
+                "has_javascript_href": false,
+                "has_mathml": true,
+                "has_remote_image": false,
+                "name": "unsafe-link",
+                "output_bytes": 565,
+                "samples_ms": [
+                  0.08766674995422363,
+                  0.07774996757507324,
+                  0.07312488555908203,
+                  0.07366681098937988,
+                  0.07229161262512207
+                ]
+              },
+              {
+                "error": null,
+                "has_html": true,
+                "has_javascript_href": false,
+                "has_mathml": true,
+                "has_remote_image": false,
+                "name": "remote-image",
+                "output_bytes": 604,
+                "samples_ms": [
+                  0.10175013542175293,
+                  0.10337495803833008,
+                  0.0965416431427002,
+                  0.0987083911895752,
+                  0.09770822525024414
+                ]
+              },
+              {
+                "error": "ParseError: KaTeX parse error: Too many expansions: infinite loop or need to increase maxExpand setting",
+                "has_html": false,
+                "has_javascript_href": false,
+                "has_mathml": false,
+                "has_remote_image": false,
+                "name": "macro-loop",
+                "output_bytes": 0,
+                "samples_ms": [
+                  0.04241657257080078,
+                  0.036499738693237305,
+                  0.03325009346008301,
+                  0.03383326530456543,
+                  0.03325009346008301
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "process_to_result_ms": 21.222625160589814,
+          "host_peak_rss_bytes": 24707072,
+          "output": {
+            "clock": "native monotonic clock",
+            "engine": "katex-javascriptcore",
+            "host_elapsed_ms": 12.941583525389433,
+            "results": [
+              {
+                "error": null,
+                "has_html": true,
+                "has_javascript_href": false,
+                "has_mathml": true,
+                "has_remote_image": false,
+                "name": "inline",
+                "output_bytes": 2176,
+                "samples_ms": [
+                  0.13579177856445312,
+                  0.13824987411499023,
+                  0.10970830917358398,
+                  0.10587501525878906,
+                  0.10966682434082031
+                ]
+              },
+              {
+                "error": null,
+                "has_html": true,
+                "has_javascript_href": false,
+                "has_mathml": true,
+                "has_remote_image": false,
+                "name": "display",
+                "output_bytes": 3099,
+                "samples_ms": [
+                  0.2091667652130127,
+                  0.18820834159851074,
+                  0.18933343887329102,
+                  0.19225025177001953,
+                  0.18970823287963867
+                ]
+              },
+              {
+                "error": null,
+                "has_html": true,
+                "has_javascript_href": false,
+                "has_mathml": true,
+                "has_remote_image": false,
+                "name": "integral",
+                "output_bytes": 1546,
+                "samples_ms": [
+                  0.12470841407775879,
+                  0.11620831489562988,
+                  0.11204171180725098,
+                  0.11379146575927734,
+                  0.11150002479553223
+                ]
+              },
+              {
+                "error": "ParseError: KaTeX parse error: Unexpected end of input in a macro argument, expected '}' at end of input: \\frac{1}{",
+                "has_html": false,
+                "has_javascript_href": false,
+                "has_mathml": false,
+                "has_remote_image": false,
+                "name": "invalid",
+                "output_bytes": 0,
+                "samples_ms": [
+                  0.0177915096282959,
+                  0.012541532516479492,
+                  0.012916326522827148,
+                  0.012416601181030273,
+                  0.010791540145874023
+                ]
+              },
+              {
+                "error": null,
+                "has_html": true,
+                "has_javascript_href": false,
+                "has_mathml": true,
+                "has_remote_image": false,
+                "name": "unsafe-link",
+                "output_bytes": 565,
+                "samples_ms": [
+                  0.08729147911071777,
+                  0.07762503623962402,
+                  0.0739583969116211,
+                  0.08937478065490723,
+                  0.07158327102661133
+                ]
+              },
+              {
+                "error": null,
+                "has_html": true,
+                "has_javascript_href": false,
+                "has_mathml": true,
+                "has_remote_image": false,
+                "name": "remote-image",
+                "output_bytes": 604,
+                "samples_ms": [
+                  0.11024999618530273,
+                  0.09833335876464844,
+                  0.09895801544189453,
+                  0.09845829010009766,
+                  0.10233330726623535
+                ]
+              },
+              {
+                "error": "ParseError: KaTeX parse error: Too many expansions: infinite loop or need to increase maxExpand setting",
+                "has_html": false,
+                "has_javascript_href": false,
+                "has_mathml": false,
+                "has_remote_image": false,
+                "name": "macro-loop",
+                "output_bytes": 0,
+                "samples_ms": [
+                  0.043666839599609375,
+                  0.03920865058898926,
+                  0.034166574478149414,
+                  0.03249979019165039,
+                  0.03237485885620117
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "process_to_result_ms": 20.91304212808609,
+          "host_peak_rss_bytes": 24772608,
+          "output": {
+            "clock": "native monotonic clock",
+            "engine": "katex-javascriptcore",
+            "host_elapsed_ms": 13.170958263799548,
+            "results": [
+              {
+                "error": null,
+                "has_html": true,
+                "has_javascript_href": false,
+                "has_mathml": true,
+                "has_remote_image": false,
+                "name": "inline",
+                "output_bytes": 2176,
+                "samples_ms": [
+                  0.14204168319702148,
+                  0.12583327293395996,
+                  0.11533355712890625,
+                  0.10933327674865723,
+                  0.11350011825561523
+                ]
+              },
+              {
+                "error": null,
+                "has_html": true,
+                "has_javascript_href": false,
+                "has_mathml": true,
+                "has_remote_image": false,
+                "name": "display",
+                "output_bytes": 3099,
+                "samples_ms": [
+                  0.20783329010009766,
+                  0.1836249828338623,
+                  0.19191670417785645,
+                  0.18683338165283203,
+                  0.21045827865600586
+                ]
+              },
+              {
+                "error": null,
+                "has_html": true,
+                "has_javascript_href": false,
+                "has_mathml": true,
+                "has_remote_image": false,
+                "name": "integral",
+                "output_bytes": 1546,
+                "samples_ms": [
+                  0.1234583854675293,
+                  0.11816668510437012,
+                  0.11295843124389648,
+                  0.11354184150695801,
+                  0.1104583740234375
+                ]
+              },
+              {
+                "error": "ParseError: KaTeX parse error: Unexpected end of input in a macro argument, expected '}' at end of input: \\frac{1}{",
+                "has_html": false,
+                "has_javascript_href": false,
+                "has_mathml": false,
+                "has_remote_image": false,
+                "name": "invalid",
+                "output_bytes": 0,
+                "samples_ms": [
+                  0.017208337783813477,
+                  0.012291908264160156,
+                  0.011499881744384766,
+                  0.01629161834716797,
+                  0.010916709899902344
+                ]
+              },
+              {
+                "error": null,
+                "has_html": true,
+                "has_javascript_href": false,
+                "has_mathml": true,
+                "has_remote_image": false,
+                "name": "unsafe-link",
+                "output_bytes": 565,
+                "samples_ms": [
+                  0.08991670608520508,
+                  0.07562494277954102,
+                  0.0717916488647461,
+                  0.07150006294250488,
+                  0.06912493705749512
+                ]
+              },
+              {
+                "error": null,
+                "has_html": true,
+                "has_javascript_href": false,
+                "has_mathml": true,
+                "has_remote_image": false,
+                "name": "remote-image",
+                "output_bytes": 604,
+                "samples_ms": [
+                  0.10058355331420898,
+                  0.09691667556762695,
+                  0.09224987030029297,
+                  0.09516668319702148,
+                  0.09554171562194824
+                ]
+              },
+              {
+                "error": "ParseError: KaTeX parse error: Too many expansions: infinite loop or need to increase maxExpand setting",
+                "has_html": false,
+                "has_javascript_href": false,
+                "has_mathml": false,
+                "has_remote_image": false,
+                "name": "macro-loop",
+                "output_bytes": 0,
+                "samples_ms": [
+                  0.04170846939086914,
+                  0.03504157066345215,
+                  0.032166481018066406,
+                  0.032666683197021484,
+                  0.031458377838134766
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "process_to_result_ms": 21.93141682073474,
+          "host_peak_rss_bytes": 24641536,
+          "output": {
+            "clock": "native monotonic clock",
+            "engine": "katex-javascriptcore",
+            "host_elapsed_ms": 13.5129583068192,
+            "results": [
+              {
+                "error": null,
+                "has_html": true,
+                "has_javascript_href": false,
+                "has_mathml": true,
+                "has_remote_image": false,
+                "name": "inline",
+                "output_bytes": 2176,
+                "samples_ms": [
+                  0.13424968719482422,
+                  0.13866686820983887,
+                  0.10916662216186523,
+                  0.1050419807434082,
+                  0.11008358001708984
+                ]
+              },
+              {
+                "error": null,
+                "has_html": true,
+                "has_javascript_href": false,
+                "has_mathml": true,
+                "has_remote_image": false,
+                "name": "display",
+                "output_bytes": 3099,
+                "samples_ms": [
+                  0.20245838165283203,
+                  0.18724966049194336,
+                  0.18758320808410645,
+                  0.18954157829284668,
+                  0.18770813941955566
+                ]
+              },
+              {
+                "error": null,
+                "has_html": true,
+                "has_javascript_href": false,
+                "has_mathml": true,
+                "has_remote_image": false,
+                "name": "integral",
+                "output_bytes": 1546,
+                "samples_ms": [
+                  0.12291669845581055,
+                  0.11504173278808594,
+                  0.11558341979980469,
+                  0.1132500171661377,
+                  0.11104178428649902
+                ]
+              },
+              {
+                "error": "ParseError: KaTeX parse error: Unexpected end of input in a macro argument, expected '}' at end of input: \\frac{1}{",
+                "has_html": false,
+                "has_javascript_href": false,
+                "has_mathml": false,
+                "has_remote_image": false,
+                "name": "invalid",
+                "output_bytes": 0,
+                "samples_ms": [
+                  0.018124818801879883,
+                  0.012333154678344727,
+                  0.01058340072631836,
+                  0.013083457946777344,
+                  0.011458396911621094
+                ]
+              },
+              {
+                "error": null,
+                "has_html": true,
+                "has_javascript_href": false,
+                "has_mathml": true,
+                "has_remote_image": false,
+                "name": "unsafe-link",
+                "output_bytes": 565,
+                "samples_ms": [
+                  0.0852501392364502,
+                  0.07408332824707031,
+                  0.0710000991821289,
+                  0.07133340835571289,
+                  0.07083320617675781
+                ]
+              },
+              {
+                "error": null,
+                "has_html": true,
+                "has_javascript_href": false,
+                "has_mathml": true,
+                "has_remote_image": false,
+                "name": "remote-image",
+                "output_bytes": 604,
+                "samples_ms": [
+                  0.10033345222473145,
+                  0.09975004196166992,
+                  0.09366679191589355,
+                  0.0965416431427002,
+                  0.09525012969970703
+                ]
+              },
+              {
+                "error": "ParseError: KaTeX parse error: Too many expansions: infinite loop or need to increase maxExpand setting",
+                "has_html": false,
+                "has_javascript_href": false,
+                "has_mathml": false,
+                "has_remote_image": false,
+                "name": "macro-loop",
+                "output_bytes": 0,
+                "samples_ms": [
+                  0.03916645050048828,
+                  0.03383350372314453,
+                  0.03245830535888672,
+                  0.033625125885009766,
+                  0.03287506103515625
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "process_to_result_ms": 21.291457815095782,
+          "host_peak_rss_bytes": 24707072,
+          "output": {
+            "clock": "native monotonic clock",
+            "engine": "katex-javascriptcore",
+            "host_elapsed_ms": 12.816708302125335,
+            "results": [
+              {
+                "error": null,
+                "has_html": true,
+                "has_javascript_href": false,
+                "has_mathml": true,
+                "has_remote_image": false,
+                "name": "inline",
+                "output_bytes": 2176,
+                "samples_ms": [
+                  0.13283324241638184,
+                  0.13820815086364746,
+                  0.10791659355163574,
+                  0.10662508010864258,
+                  0.10979175567626953
+                ]
+              },
+              {
+                "error": null,
+                "has_html": true,
+                "has_javascript_href": false,
+                "has_mathml": true,
+                "has_remote_image": false,
+                "name": "display",
+                "output_bytes": 3099,
+                "samples_ms": [
+                  0.21745824813842773,
+                  0.1884164810180664,
+                  0.189666748046875,
+                  0.1905832290649414,
+                  0.19095849990844727
+                ]
+              },
+              {
+                "error": null,
+                "has_html": true,
+                "has_javascript_href": false,
+                "has_mathml": true,
+                "has_remote_image": false,
+                "name": "integral",
+                "output_bytes": 1546,
+                "samples_ms": [
+                  0.1243748664855957,
+                  0.11545825004577637,
+                  0.1169581413269043,
+                  0.11158347129821777,
+                  0.11162495613098145
+                ]
+              },
+              {
+                "error": "ParseError: KaTeX parse error: Unexpected end of input in a macro argument, expected '}' at end of input: \\frac{1}{",
+                "has_html": false,
+                "has_javascript_href": false,
+                "has_mathml": false,
+                "has_remote_image": false,
+                "name": "invalid",
+                "output_bytes": 0,
+                "samples_ms": [
+                  0.017750024795532227,
+                  0.01183319091796875,
+                  0.01166677474975586,
+                  0.012208223342895508,
+                  0.010833501815795898
+                ]
+              },
+              {
+                "error": null,
+                "has_html": true,
+                "has_javascript_href": false,
+                "has_mathml": true,
+                "has_remote_image": false,
+                "name": "unsafe-link",
+                "output_bytes": 565,
+                "samples_ms": [
+                  0.08625006675720215,
+                  0.07466673851013184,
+                  0.0722498893737793,
+                  0.07112479209899902,
+                  0.0694582462310791
+                ]
+              },
+              {
+                "error": null,
+                "has_html": true,
+                "has_javascript_href": false,
+                "has_mathml": true,
+                "has_remote_image": false,
+                "name": "remote-image",
+                "output_bytes": 604,
+                "samples_ms": [
+                  0.10104155540466309,
+                  0.09795832633972168,
+                  0.09358334541320801,
+                  0.09579157829284668,
+                  0.0974583625793457
+                ]
+              },
+              {
+                "error": "ParseError: KaTeX parse error: Too many expansions: infinite loop or need to increase maxExpand setting",
+                "has_html": false,
+                "has_javascript_href": false,
+                "has_mathml": false,
+                "has_remote_image": false,
+                "name": "macro-loop",
+                "output_bytes": 0,
+                "samples_ms": [
+                  0.03791666030883789,
+                  0.03329133987426758,
+                  0.03208327293395996,
+                  0.032708168029785156,
+                  0.034458160400390625
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "cases": {
+        "inline": {
+          "median_ms": 0.11350011825561523,
+          "min_ms": 0.1050419807434082,
+          "max_ms": 0.14333319664001465,
+          "sample_count": 25,
+          "outcome": {
+            "error": null,
+            "has_html": true,
+            "has_javascript_href": false,
+            "has_mathml": true,
+            "has_remote_image": false,
+            "output_bytes": 2176
+          }
+        },
+        "display": {
+          "median_ms": 0.19095849990844727,
+          "min_ms": 0.1836249828338623,
+          "max_ms": 0.21745824813842773,
+          "sample_count": 25,
+          "outcome": {
+            "error": null,
+            "has_html": true,
+            "has_javascript_href": false,
+            "has_mathml": true,
+            "has_remote_image": false,
+            "output_bytes": 3099
+          }
+        },
+        "integral": {
+          "median_ms": 0.11504173278808594,
+          "min_ms": 0.1104583740234375,
+          "max_ms": 0.12908339500427246,
+          "sample_count": 25,
+          "outcome": {
+            "error": null,
+            "has_html": true,
+            "has_javascript_href": false,
+            "has_mathml": true,
+            "has_remote_image": false,
+            "output_bytes": 1546
+          }
+        },
+        "invalid": {
+          "median_ms": 0.012416601181030273,
+          "min_ms": 0.01058340072631836,
+          "max_ms": 0.018374919891357422,
+          "sample_count": 25,
+          "outcome": {
+            "error": "ParseError: KaTeX parse error: Unexpected end of input in a macro argument, expected '}' at end of input: \\frac{1}{",
+            "has_html": false,
+            "has_javascript_href": false,
+            "has_mathml": false,
+            "has_remote_image": false,
+            "output_bytes": 0
+          }
+        },
+        "unsafe-link": {
+          "median_ms": 0.07366681098937988,
+          "min_ms": 0.06912493705749512,
+          "max_ms": 0.08991670608520508,
+          "sample_count": 25,
+          "outcome": {
+            "error": null,
+            "has_html": true,
+            "has_javascript_href": false,
+            "has_mathml": true,
+            "has_remote_image": false,
+            "output_bytes": 565
+          }
+        },
+        "remote-image": {
+          "median_ms": 0.09795832633972168,
+          "min_ms": 0.09224987030029297,
+          "max_ms": 0.11024999618530273,
+          "sample_count": 25,
+          "outcome": {
+            "error": null,
+            "has_html": true,
+            "has_javascript_href": false,
+            "has_mathml": true,
+            "has_remote_image": false,
+            "output_bytes": 604
+          }
+        },
+        "macro-loop": {
+          "median_ms": 0.033625125885009766,
+          "min_ms": 0.031458377838134766,
+          "max_ms": 0.043666839599609375,
+          "sample_count": 25,
+          "outcome": {
+            "error": "ParseError: KaTeX parse error: Too many expansions: infinite loop or need to increase maxExpand setting",
+            "has_html": false,
+            "has_javascript_href": false,
+            "has_mathml": false,
+            "has_remote_image": false,
+            "output_bytes": 0
+          }
+        }
+      },
+      "process_to_result_median_ms": 21.291457815095782,
+      "host_peak_rss_median_bytes": 24707072
+    },
+    "mermaid": {
+      "runs": [
+        {
+          "process_to_result_ms": 25688.570957863703,
+          "host_peak_rss_bytes": 104202240,
+          "output": {
+            "clock": "performance.now",
+            "engine": "mermaid-wkwebview",
+            "host_elapsed_ms": 25673.35083335638,
+            "results": [
+              {
+                "error": null,
+                "foreign_objects": 0,
+                "name": "flowchart",
+                "output_bytes": 29174,
+                "samples_ms": [
+                  11,
+                  9,
+                  9,
+                  8,
+                  1302
+                ],
+                "scripts": 0,
+                "svg_valid": true,
+                "unsafe_attributes": []
+              },
+              {
+                "error": null,
+                "foreign_objects": 0,
+                "name": "sequence",
+                "output_bytes": 23083,
+                "samples_ms": [
+                  5,
+                  4,
+                  4,
+                  5,
+                  3
+                ],
+                "scripts": 0,
+                "svg_valid": true,
+                "unsafe_attributes": []
+              },
+              {
+                "error": "Error: Parse error on line 2:\ngraph TD A --> --> ((\n---------------^\nExpecting 'AMP', 'COLON', 'PIPE', 'TESTSTR', 'DOWN', 'DEFAULT', 'NUM', 'COMMA', 'NODE_STRING', 'BRKT', 'MINUS', 'MULT', 'UNICODE_TEXT', got 'LINK'",
+                "foreign_objects": 0,
+                "name": "invalid",
+                "output_bytes": 0,
+                "samples_ms": [
+                  1,
+                  2,
+                  1,
+                  1,
+                  2
+                ],
+                "scripts": 0,
+                "svg_valid": false,
+                "unsafe_attributes": []
+              },
+              {
+                "error": null,
+                "foreign_objects": 0,
+                "name": "unsafe-link",
+                "output_bytes": 28515,
+                "samples_ms": [
+                  1998,
+                  2002,
+                  1999,
+                  1997,
+                  2004
+                ],
+                "scripts": 0,
+                "svg_valid": true,
+                "unsafe_attributes": []
+              },
+              {
+                "error": null,
+                "foreign_objects": 0,
+                "name": "html-label",
+                "output_bytes": 29813,
+                "samples_ms": [
+                  1997,
+                  2000,
+                  2001,
+                  2001,
+                  2000
+                ],
+                "scripts": 0,
+                "svg_valid": true,
+                "unsafe_attributes": []
+              }
+            ]
+          }
+        },
+        {
+          "process_to_result_ms": 25888.692083070055,
+          "host_peak_rss_bytes": 104382464,
+          "output": {
+            "clock": "performance.now",
+            "engine": "mermaid-wkwebview",
+            "host_elapsed_ms": 25868.86112508364,
+            "results": [
+              {
+                "error": null,
+                "foreign_objects": 0,
+                "name": "flowchart",
+                "output_bytes": 29174,
+                "samples_ms": [
+                  11,
+                  9,
+                  9,
+                  8,
+                  1476
+                ],
+                "scripts": 0,
+                "svg_valid": true,
+                "unsafe_attributes": []
+              },
+              {
+                "error": null,
+                "foreign_objects": 0,
+                "name": "sequence",
+                "output_bytes": 23083,
+                "samples_ms": [
+                  6,
+                  4,
+                  5,
+                  4,
+                  4
+                ],
+                "scripts": 0,
+                "svg_valid": true,
+                "unsafe_attributes": []
+              },
+              {
+                "error": "Error: Parse error on line 2:\ngraph TD A --> --> ((\n---------------^\nExpecting 'AMP', 'COLON', 'PIPE', 'TESTSTR', 'DOWN', 'DEFAULT', 'NUM', 'COMMA', 'NODE_STRING', 'BRKT', 'MINUS', 'MULT', 'UNICODE_TEXT', got 'LINK'",
+                "foreign_objects": 0,
+                "name": "invalid",
+                "output_bytes": 0,
+                "samples_ms": [
+                  1,
+                  2,
+                  1,
+                  2,
+                  1
+                ],
+                "scripts": 0,
+                "svg_valid": false,
+                "unsafe_attributes": []
+              },
+              {
+                "error": null,
+                "foreign_objects": 0,
+                "name": "unsafe-link",
+                "output_bytes": 28515,
+                "samples_ms": [
+                  2002,
+                  2002,
+                  1998,
+                  1997,
+                  2000
+                ],
+                "scripts": 0,
+                "svg_valid": true,
+                "unsafe_attributes": []
+              },
+              {
+                "error": null,
+                "foreign_objects": 0,
+                "name": "html-label",
+                "output_bytes": 29813,
+                "samples_ms": [
+                  1995,
+                  2005,
+                  1999,
+                  2001,
+                  2000
+                ],
+                "scripts": 0,
+                "svg_valid": true,
+                "unsafe_attributes": []
+              }
+            ]
+          }
+        },
+        {
+          "process_to_result_ms": 25726.677500177175,
+          "host_peak_rss_bytes": 104054784,
+          "output": {
+            "clock": "performance.now",
+            "engine": "mermaid-wkwebview",
+            "host_elapsed_ms": 25705.329208401963,
+            "results": [
+              {
+                "error": null,
+                "foreign_objects": 0,
+                "name": "flowchart",
+                "output_bytes": 29174,
+                "samples_ms": [
+                  12,
+                  13,
+                  9,
+                  7,
+                  1325
+                ],
+                "scripts": 0,
+                "svg_valid": true,
+                "unsafe_attributes": []
+              },
+              {
+                "error": null,
+                "foreign_objects": 0,
+                "name": "sequence",
+                "output_bytes": 23083,
+                "samples_ms": [
+                  5,
+                  5,
+                  4,
+                  5,
+                  3
+                ],
+                "scripts": 0,
+                "svg_valid": true,
+                "unsafe_attributes": []
+              },
+              {
+                "error": "Error: Parse error on line 2:\ngraph TD A --> --> ((\n---------------^\nExpecting 'AMP', 'COLON', 'PIPE', 'TESTSTR', 'DOWN', 'DEFAULT', 'NUM', 'COMMA', 'NODE_STRING', 'BRKT', 'MINUS', 'MULT', 'UNICODE_TEXT', got 'LINK'",
+                "foreign_objects": 0,
+                "name": "invalid",
+                "output_bytes": 0,
+                "samples_ms": [
+                  1,
+                  2,
+                  1,
+                  1,
+                  2
+                ],
+                "scripts": 0,
+                "svg_valid": false,
+                "unsafe_attributes": []
+              },
+              {
+                "error": null,
+                "foreign_objects": 0,
+                "name": "unsafe-link",
+                "output_bytes": 28515,
+                "samples_ms": [
+                  2000,
+                  2000,
+                  1999,
+                  2000,
+                  2001
+                ],
+                "scripts": 0,
+                "svg_valid": true,
+                "unsafe_attributes": []
+              },
+              {
+                "error": null,
+                "foreign_objects": 0,
+                "name": "html-label",
+                "output_bytes": 29813,
+                "samples_ms": [
+                  1999,
+                  2000,
+                  2001,
+                  1995,
+                  2005
+                ],
+                "scripts": 0,
+                "svg_valid": true,
+                "unsafe_attributes": []
+              }
+            ]
+          }
+        },
+        {
+          "process_to_result_ms": 26002.652457915246,
+          "host_peak_rss_bytes": 103956480,
+          "output": {
+            "clock": "performance.now",
+            "engine": "mermaid-wkwebview",
+            "host_elapsed_ms": 25978.561999974772,
+            "results": [
+              {
+                "error": null,
+                "foreign_objects": 0,
+                "name": "flowchart",
+                "output_bytes": 29174,
+                "samples_ms": [
+                  11,
+                  12,
+                  9,
+                  8,
+                  1585
+                ],
+                "scripts": 0,
+                "svg_valid": true,
+                "unsafe_attributes": []
+              },
+              {
+                "error": null,
+                "foreign_objects": 0,
+                "name": "sequence",
+                "output_bytes": 23083,
+                "samples_ms": [
+                  6,
+                  5,
+                  4,
+                  5,
+                  3
+                ],
+                "scripts": 0,
+                "svg_valid": true,
+                "unsafe_attributes": []
+              },
+              {
+                "error": "Error: Parse error on line 2:\ngraph TD A --> --> ((\n---------------^\nExpecting 'AMP', 'COLON', 'PIPE', 'TESTSTR', 'DOWN', 'DEFAULT', 'NUM', 'COMMA', 'NODE_STRING', 'BRKT', 'MINUS', 'MULT', 'UNICODE_TEXT', got 'LINK'",
+                "foreign_objects": 0,
+                "name": "invalid",
+                "output_bytes": 0,
+                "samples_ms": [
+                  1,
+                  2,
+                  1,
+                  2,
+                  1
+                ],
+                "scripts": 0,
+                "svg_valid": false,
+                "unsafe_attributes": []
+              },
+              {
+                "error": null,
+                "foreign_objects": 0,
+                "name": "unsafe-link",
+                "output_bytes": 28515,
+                "samples_ms": [
+                  2000,
+                  1999,
+                  2001,
+                  2000,
+                  2000
+                ],
+                "scripts": 0,
+                "svg_valid": true,
+                "unsafe_attributes": []
+              },
+              {
+                "error": null,
+                "foreign_objects": 0,
+                "name": "html-label",
+                "output_bytes": 29813,
+                "samples_ms": [
+                  2000,
+                  1999,
+                  2001,
+                  1999,
+                  2001
+                ],
+                "scripts": 0,
+                "svg_valid": true,
+                "unsafe_attributes": []
+              }
+            ]
+          }
+        },
+        {
+          "process_to_result_ms": 26178.20195807144,
+          "host_peak_rss_bytes": 104005632,
+          "output": {
+            "clock": "performance.now",
+            "engine": "mermaid-wkwebview",
+            "host_elapsed_ms": 26157.51316654496,
+            "results": [
+              {
+                "error": null,
+                "foreign_objects": 0,
+                "name": "flowchart",
+                "output_bytes": 29174,
+                "samples_ms": [
+                  10,
+                  12,
+                  9,
+                  7,
+                  1771
+                ],
+                "scripts": 0,
+                "svg_valid": true,
+                "unsafe_attributes": []
+              },
+              {
+                "error": null,
+                "foreign_objects": 0,
+                "name": "sequence",
+                "output_bytes": 23083,
+                "samples_ms": [
+                  5,
+                  4,
+                  4,
+                  4,
+                  3
+                ],
+                "scripts": 0,
+                "svg_valid": true,
+                "unsafe_attributes": []
+              },
+              {
+                "error": "Error: Parse error on line 2:\ngraph TD A --> --> ((\n---------------^\nExpecting 'AMP', 'COLON', 'PIPE', 'TESTSTR', 'DOWN', 'DEFAULT', 'NUM', 'COMMA', 'NODE_STRING', 'BRKT', 'MINUS', 'MULT', 'UNICODE_TEXT', got 'LINK'",
+                "foreign_objects": 0,
+                "name": "invalid",
+                "output_bytes": 0,
+                "samples_ms": [
+                  2,
+                  1,
+                  2,
+                  1,
+                  1
+                ],
+                "scripts": 0,
+                "svg_valid": false,
+                "unsafe_attributes": []
+              },
+              {
+                "error": null,
+                "foreign_objects": 0,
+                "name": "unsafe-link",
+                "output_bytes": 28515,
+                "samples_ms": [
+                  2004,
+                  1999,
+                  2000,
+                  2000,
+                  2000
+                ],
+                "scripts": 0,
+                "svg_valid": true,
+                "unsafe_attributes": []
+              },
+              {
+                "error": null,
+                "foreign_objects": 0,
+                "name": "html-label",
+                "output_bytes": 29813,
+                "samples_ms": [
+                  1997,
+                  2000,
+                  2002,
+                  1999,
+                  2001
+                ],
+                "scripts": 0,
+                "svg_valid": true,
+                "unsafe_attributes": []
+              }
+            ]
+          }
+        }
+      ],
+      "cases": {
+        "flowchart": {
+          "median_ms": 10,
+          "min_ms": 7,
+          "max_ms": 1771,
+          "sample_count": 25,
+          "outcome": {
+            "error": null,
+            "foreign_objects": 0,
+            "output_bytes": 29174,
+            "scripts": 0,
+            "svg_valid": true,
+            "unsafe_attributes": []
+          }
+        },
+        "sequence": {
+          "median_ms": 4,
+          "min_ms": 3,
+          "max_ms": 6,
+          "sample_count": 25,
+          "outcome": {
+            "error": null,
+            "foreign_objects": 0,
+            "output_bytes": 23083,
+            "scripts": 0,
+            "svg_valid": true,
+            "unsafe_attributes": []
+          }
+        },
+        "invalid": {
+          "median_ms": 1,
+          "min_ms": 1,
+          "max_ms": 2,
+          "sample_count": 25,
+          "outcome": {
+            "error": "Error: Parse error on line 2:\ngraph TD A --> --> ((\n---------------^\nExpecting 'AMP', 'COLON', 'PIPE', 'TESTSTR', 'DOWN', 'DEFAULT', 'NUM', 'COMMA', 'NODE_STRING', 'BRKT', 'MINUS', 'MULT', 'UNICODE_TEXT', got 'LINK'",
+            "foreign_objects": 0,
+            "output_bytes": 0,
+            "scripts": 0,
+            "svg_valid": false,
+            "unsafe_attributes": []
+          }
+        },
+        "unsafe-link": {
+          "median_ms": 2000,
+          "min_ms": 1997,
+          "max_ms": 2004,
+          "sample_count": 25,
+          "outcome": {
+            "error": null,
+            "foreign_objects": 0,
+            "output_bytes": 28515,
+            "scripts": 0,
+            "svg_valid": true,
+            "unsafe_attributes": []
+          }
+        },
+        "html-label": {
+          "median_ms": 2000,
+          "min_ms": 1995,
+          "max_ms": 2005,
+          "sample_count": 25,
+          "outcome": {
+            "error": null,
+            "foreign_objects": 0,
+            "output_bytes": 29813,
+            "scripts": 0,
+            "svg_valid": true,
+            "unsafe_attributes": []
+          }
+        }
+      },
+      "process_to_result_median_ms": 25888.692083070055,
+      "host_peak_rss_median_bytes": 104054784
+    },
+    "d2": {
+      "runs": [
+        {
+          "process_to_result_ms": 313.7930000666529,
+          "host_peak_rss_bytes": 38060032,
+          "output": {
+            "engine": "d2-go-dagre",
+            "results": [
+              {
+                "error": "",
+                "has_javascript_reference": false,
+                "has_remote_reference": false,
+                "name": "flowchart",
+                "output_bytes": 5689,
+                "samples_ms": [
+                  0.918416,
+                  0.849708,
+                  0.803125,
+                  1.266042,
+                  0.788625
+                ],
+                "svg_present": true
+              },
+              {
+                "error": "",
+                "has_javascript_reference": false,
+                "has_remote_reference": false,
+                "name": "sequence",
+                "output_bytes": 9713,
+                "samples_ms": [
+                  1.636833,
+                  1.046916,
+                  1.370792,
+                  1.047667,
+                  0.968583
+                ],
+                "svg_present": true
+              },
+              {
+                "error": "1:1: connection missing destination\n1:6: maps must be terminated with }",
+                "has_javascript_reference": false,
+                "has_remote_reference": false,
+                "name": "invalid",
+                "output_bytes": 0,
+                "samples_ms": [
+                  0.187542,
+                  0.078875,
+                  0.06975,
+                  0.052875,
+                  0.054959
+                ],
+                "svg_present": false
+              },
+              {
+                "error": "1:1: failed to import \"go.d2\": open go.d2: file does not exist",
+                "has_javascript_reference": false,
+                "has_remote_reference": false,
+                "name": "import-denied",
+                "output_bytes": 0,
+                "samples_ms": [
+                  0.055625,
+                  0.056625,
+                  0.051084,
+                  0.055,
+                  0.052625
+                ],
+                "svg_present": false
+              },
+              {
+                "error": "",
+                "has_javascript_reference": false,
+                "has_remote_reference": true,
+                "name": "remote-icon",
+                "output_bytes": 4156,
+                "samples_ms": [
+                  0.603459,
+                  0.859291,
+                  0.494583,
+                  0.451208,
+                  0.695875
+                ],
+                "svg_present": true
+              },
+              {
+                "error": "",
+                "has_javascript_reference": true,
+                "has_remote_reference": false,
+                "name": "unsafe-link",
+                "output_bytes": 11977,
+                "samples_ms": [
+                  0.551,
+                  0.832375,
+                  0.57425,
+                  0.526583,
+                  0.819667
+                ],
+                "svg_present": true
+              }
+            ]
+          }
+        },
+        {
+          "process_to_result_ms": 33.585499972105026,
+          "host_peak_rss_bytes": 37863424,
+          "output": {
+            "engine": "d2-go-dagre",
+            "results": [
+              {
+                "error": "",
+                "has_javascript_reference": false,
+                "has_remote_reference": false,
+                "name": "flowchart",
+                "output_bytes": 5689,
+                "samples_ms": [
+                  0.693166,
+                  0.651166,
+                  0.635041,
+                  0.984334,
+                  0.638167
+                ],
+                "svg_present": true
+              },
+              {
+                "error": "",
+                "has_javascript_reference": false,
+                "has_remote_reference": false,
+                "name": "sequence",
+                "output_bytes": 9713,
+                "samples_ms": [
+                  1.325875,
+                  0.850667,
+                  1.00325,
+                  0.778916,
+                  1.092542
+                ],
+                "svg_present": true
+              },
+              {
+                "error": "1:1: connection missing destination\n1:6: maps must be terminated with }",
+                "has_javascript_reference": false,
+                "has_remote_reference": false,
+                "name": "invalid",
+                "output_bytes": 0,
+                "samples_ms": [
+                  0.0495,
+                  0.042208,
+                  0.042291,
+                  0.039875,
+                  0.041125
+                ],
+                "svg_present": false
+              },
+              {
+                "error": "1:1: failed to import \"go.d2\": open go.d2: file does not exist",
+                "has_javascript_reference": false,
+                "has_remote_reference": false,
+                "name": "import-denied",
+                "output_bytes": 0,
+                "samples_ms": [
+                  0.101292,
+                  0.162,
+                  0.057334,
+                  0.049542,
+                  0.047458
+                ],
+                "svg_present": false
+              },
+              {
+                "error": "",
+                "has_javascript_reference": false,
+                "has_remote_reference": true,
+                "name": "remote-icon",
+                "output_bytes": 4156,
+                "samples_ms": [
+                  0.589667,
+                  0.522084,
+                  0.422334,
+                  0.404959,
+                  0.767083
+                ],
+                "svg_present": true
+              },
+              {
+                "error": "",
+                "has_javascript_reference": true,
+                "has_remote_reference": false,
+                "name": "unsafe-link",
+                "output_bytes": 11977,
+                "samples_ms": [
+                  0.714792,
+                  0.549167,
+                  0.510834,
+                  0.450292,
+                  0.727833
+                ],
+                "svg_present": true
+              }
+            ]
+          }
+        },
+        {
+          "process_to_result_ms": 29.68358318321407,
+          "host_peak_rss_bytes": 38174720,
+          "output": {
+            "engine": "d2-go-dagre",
+            "results": [
+              {
+                "error": "",
+                "has_javascript_reference": false,
+                "has_remote_reference": false,
+                "name": "flowchart",
+                "output_bytes": 5689,
+                "samples_ms": [
+                  0.616708,
+                  0.541375,
+                  0.533125,
+                  1.010333,
+                  0.58475
+                ],
+                "svg_present": true
+              },
+              {
+                "error": "",
+                "has_javascript_reference": false,
+                "has_remote_reference": false,
+                "name": "sequence",
+                "output_bytes": 9713,
+                "samples_ms": [
+                  1.108166,
+                  0.798708,
+                  1.0515,
+                  0.802375,
+                  0.736
+                ],
+                "svg_present": true
+              },
+              {
+                "error": "1:1: connection missing destination\n1:6: maps must be terminated with }",
+                "has_javascript_reference": false,
+                "has_remote_reference": false,
+                "name": "invalid",
+                "output_bytes": 0,
+                "samples_ms": [
+                  0.114792,
+                  0.069667,
+                  0.136792,
+                  0.059417,
+                  0.0495
+                ],
+                "svg_present": false
+              },
+              {
+                "error": "1:1: failed to import \"go.d2\": open go.d2: file does not exist",
+                "has_javascript_reference": false,
+                "has_remote_reference": false,
+                "name": "import-denied",
+                "output_bytes": 0,
+                "samples_ms": [
+                  0.039416,
+                  0.038125,
+                  0.037833,
+                  0.042292,
+                  0.037875
+                ],
+                "svg_present": false
+              },
+              {
+                "error": "",
+                "has_javascript_reference": false,
+                "has_remote_reference": true,
+                "name": "remote-icon",
+                "output_bytes": 4156,
+                "samples_ms": [
+                  0.437041,
+                  0.385833,
+                  0.365583,
+                  0.612208,
+                  0.388791
+                ],
+                "svg_present": true
+              },
+              {
+                "error": "",
+                "has_javascript_reference": true,
+                "has_remote_reference": false,
+                "name": "unsafe-link",
+                "output_bytes": 11977,
+                "samples_ms": [
+                  0.429333,
+                  0.387375,
+                  0.432791,
+                  0.611625,
+                  0.433375
+                ],
+                "svg_present": true
+              }
+            ]
+          }
+        },
+        {
+          "process_to_result_ms": 29.730250127613544,
+          "host_peak_rss_bytes": 39223296,
+          "output": {
+            "engine": "d2-go-dagre",
+            "results": [
+              {
+                "error": "",
+                "has_javascript_reference": false,
+                "has_remote_reference": false,
+                "name": "flowchart",
+                "output_bytes": 5689,
+                "samples_ms": [
+                  0.561625,
+                  0.530042,
+                  0.683,
+                  0.656917,
+                  0.487208
+                ],
+                "svg_present": true
+              },
+              {
+                "error": "",
+                "has_javascript_reference": false,
+                "has_remote_reference": false,
+                "name": "sequence",
+                "output_bytes": 9713,
+                "samples_ms": [
+                  0.90825,
+                  0.760083,
+                  0.710958,
+                  1.504917,
+                  0.776916
+                ],
+                "svg_present": true
+              },
+              {
+                "error": "1:1: connection missing destination\n1:6: maps must be terminated with }",
+                "has_javascript_reference": false,
+                "has_remote_reference": false,
+                "name": "invalid",
+                "output_bytes": 0,
+                "samples_ms": [
+                  0.116375,
+                  0.077,
+                  0.131,
+                  0.062125,
+                  0.044625
+                ],
+                "svg_present": false
+              },
+              {
+                "error": "1:1: failed to import \"go.d2\": open go.d2: file does not exist",
+                "has_javascript_reference": false,
+                "has_remote_reference": false,
+                "name": "import-denied",
+                "output_bytes": 0,
+                "samples_ms": [
+                  0.038875,
+                  0.04075,
+                  0.036625,
+                  0.03725,
+                  0.052084
+                ],
+                "svg_present": false
+              },
+              {
+                "error": "",
+                "has_javascript_reference": false,
+                "has_remote_reference": true,
+                "name": "remote-icon",
+                "output_bytes": 4156,
+                "samples_ms": [
+                  0.723792,
+                  0.4045,
+                  0.378833,
+                  0.668958,
+                  0.35125
+                ],
+                "svg_present": true
+              },
+              {
+                "error": "",
+                "has_javascript_reference": true,
+                "has_remote_reference": false,
+                "name": "unsafe-link",
+                "output_bytes": 11977,
+                "samples_ms": [
+                  0.615708,
+                  0.379,
+                  0.44425,
+                  0.67725,
+                  0.420083
+                ],
+                "svg_present": true
+              }
+            ]
+          }
+        },
+        {
+          "process_to_result_ms": 29.215249931439757,
+          "host_peak_rss_bytes": 37961728,
+          "output": {
+            "engine": "d2-go-dagre",
+            "results": [
+              {
+                "error": "",
+                "has_javascript_reference": false,
+                "has_remote_reference": false,
+                "name": "flowchart",
+                "output_bytes": 5689,
+                "samples_ms": [
+                  0.585167,
+                  0.536208,
+                  0.512583,
+                  0.826208,
+                  0.474458
+                ],
+                "svg_present": true
+              },
+              {
+                "error": "",
+                "has_javascript_reference": false,
+                "has_remote_reference": false,
+                "name": "sequence",
+                "output_bytes": 9713,
+                "samples_ms": [
+                  1.045041,
+                  0.747,
+                  1.109667,
+                  0.744625,
+                  0.963375
+                ],
+                "svg_present": true
+              },
+              {
+                "error": "1:1: connection missing destination\n1:6: maps must be terminated with }",
+                "has_javascript_reference": false,
+                "has_remote_reference": false,
+                "name": "invalid",
+                "output_bytes": 0,
+                "samples_ms": [
+                  0.040959,
+                  0.038125,
+                  0.043,
+                  0.039625,
+                  0.198917
+                ],
+                "svg_present": false
+              },
+              {
+                "error": "1:1: failed to import \"go.d2\": open go.d2: file does not exist",
+                "has_javascript_reference": false,
+                "has_remote_reference": false,
+                "name": "import-denied",
+                "output_bytes": 0,
+                "samples_ms": [
+                  0.061125,
+                  0.046,
+                  0.0395,
+                  0.040083,
+                  0.040333
+                ],
+                "svg_present": false
+              },
+              {
+                "error": "",
+                "has_javascript_reference": false,
+                "has_remote_reference": true,
+                "name": "remote-icon",
+                "output_bytes": 4156,
+                "samples_ms": [
+                  0.439958,
+                  0.371208,
+                  0.3595,
+                  0.582625,
+                  0.368291
+                ],
+                "svg_present": true
+              },
+              {
+                "error": "",
+                "has_javascript_reference": true,
+                "has_remote_reference": false,
+                "name": "unsafe-link",
+                "output_bytes": 11977,
+                "samples_ms": [
+                  0.652791,
+                  0.385166,
+                  0.633542,
+                  0.383333,
+                  0.3765
+                ],
+                "svg_present": true
+              }
+            ]
+          }
+        }
+      ],
+      "cases": {
+        "flowchart": {
+          "median_ms": 0.638167,
+          "min_ms": 0.474458,
+          "max_ms": 1.266042,
+          "sample_count": 25,
+          "outcome": {
+            "error": "",
+            "has_javascript_reference": false,
+            "has_remote_reference": false,
+            "output_bytes": 5689,
+            "svg_present": true
+          }
+        },
+        "sequence": {
+          "median_ms": 0.968583,
+          "min_ms": 0.710958,
+          "max_ms": 1.636833,
+          "sample_count": 25,
+          "outcome": {
+            "error": "",
+            "has_javascript_reference": false,
+            "has_remote_reference": false,
+            "output_bytes": 9713,
+            "svg_present": true
+          }
+        },
+        "invalid": {
+          "median_ms": 0.054959,
+          "min_ms": 0.038125,
+          "max_ms": 0.198917,
+          "sample_count": 25,
+          "outcome": {
+            "error": "1:1: connection missing destination\n1:6: maps must be terminated with }",
+            "has_javascript_reference": false,
+            "has_remote_reference": false,
+            "output_bytes": 0,
+            "svg_present": false
+          }
+        },
+        "import-denied": {
+          "median_ms": 0.046,
+          "min_ms": 0.036625,
+          "max_ms": 0.162,
+          "sample_count": 25,
+          "outcome": {
+            "error": "1:1: failed to import \"go.d2\": open go.d2: file does not exist",
+            "has_javascript_reference": false,
+            "has_remote_reference": false,
+            "output_bytes": 0,
+            "svg_present": false
+          }
+        },
+        "remote-icon": {
+          "median_ms": 0.439958,
+          "min_ms": 0.35125,
+          "max_ms": 0.859291,
+          "sample_count": 25,
+          "outcome": {
+            "error": "",
+            "has_javascript_reference": false,
+            "has_remote_reference": true,
+            "output_bytes": 4156,
+            "svg_present": true
+          }
+        },
+        "unsafe-link": {
+          "median_ms": 0.526583,
+          "min_ms": 0.3765,
+          "max_ms": 0.832375,
+          "sample_count": 25,
+          "outcome": {
+            "error": "",
+            "has_javascript_reference": true,
+            "has_remote_reference": false,
+            "output_bytes": 11977,
+            "svg_present": true
+          }
+        }
+      },
+      "process_to_result_median_ms": 29.730250127613544,
+      "host_peak_rss_median_bytes": 38060032
+    }
+  },
+  "artifact_bytes": {
+    "mermaid.min.js": 5494801,
+    "katex.min.js": 273081,
+    "EngineProbe": 85256,
+    "D2Probe": 20220290
+  },
+  "memory_limit": "time -l peak RSS is host-only. WKWebView child processes are excluded; never compare it as total WebKit memory.",
+  "date": "2026-10-26",
+  "status": "partial best-effort Mac screen; not a production engine selection",
+  "scope_authorization": "Owner requested timeboxed best-effort feasibility and deferral of deeper post-MVP work.",
+  "versions": {
+    "mermaid": "12.2.0",
+    "katex": "0.19.1",
+    "d2": "0.9.0"
+  },
+  "source_sha256": {
+    "EngineProbe.swift": "4ed21ba64bf2fa8f1dce9ea30e2327c78c7db256092b8a8e9f02273f5270a4b6",
+    "IOSFrameworkCheck.swift": "7407bf4e463ed6c716365af62fd82cf4f616db1793b08b6ace57634abc7093d6",
+    "check.py": "701d27b015eb055734dcb8baf7db3d7a8aefa02457d8adbdcb003ad9d7812579",
+    "go.mod": "77bce1bfb54b6efe85d8eb420c8bdb4496db58ba7c043b3ba2877e2ce2f3b800",
+    "go.sum": "f962a87fefba051a5d5ba2b889bf977ffcd6a1b1e43e088c59fce311098853ef",
+    "katex-probe.js": "dac5882ca9b982c78fef3d21dd00c9ac45f19a8ba1e01b25ea9573973f40f97c",
+    "measure_macos.py": "ee8b11c64ee7c081b2abd1892b48d6abf9fc3ba1769f3570cb8ded3ecbf7387a",
+    "mermaid-probe.js": "7a4d0de99352f1af0a8aa86d530e1a91fa67612f5c6f1cfa5864e635fb2ecdd9",
+    "package-lock.json": "3137fcbab551f966a882606af4261b0421cc7973b33dde2c8760ecabfbe798b1",
+    "package.json": "5a52d92df3dc4660235a43bad4b1d16a58401c243a8f775a72870fd184e41639"
+  },
+  "ios_smoke": {
+    "target": "arm64-apple-ios27.0-simulator",
+    "result": "compile/link passed for JavaScriptCore and WKWebViewConfiguration",
+    "not_proven": [
+      "simulator runtime launch",
+      "D2 Go archive",
+      "real-device behavior",
+      "memory/fidelity/presentation",
+      "App Store eligibility"
+    ]
+  },
+  "deferred": [
+    "native SVG/image presenter and inline math typography",
+    "visual fidelity/diff against reference renders",
+    "full hostile corpus and output sanitizer",
+    "total WebKit process-tree memory",
+    "D-012 cold/warm launch-to-presented content",
+    "all Rust candidate builds/benchmarks and any custom port",
+    "iOS engine archive/runtime/device evidence",
+    "Windows and Linux native engine smoke checks"
+  ]
+}

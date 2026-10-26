@@ -52,6 +52,8 @@ Start with:
   — FEAS-008 Windows part: WinUI `ListView` semantic blocks in C# JIT,
   Native AOT and C++/WinRT, selection, Narrator and UIA, and a WebView2
   baseline.
+- [Diagram and math engine screen](docs/Diagram-Math-Engine-Evaluation.md) —
+  FEAS-009 bounded Mac compiler evidence and proposed post-MVP deferrals.
 - [Feasibility review](docs/Feasibility-Review.md) — REV-001 quality check
   of FEAS-001–007, reproduced evidence and recommendations for GATE-001.
 - [TODO](TODO.md) — human-readable roadmap; `project.yaml` is task-state truth.

@@ -13,7 +13,9 @@ design belong in `docs/` or `agents/`; runtime transcripts do not belong here.
   shared specifications/fixtures/benchmarks, and a candidate portable core.
 - Status: FEAS-001 through FEAS-008, FEAS-010 and REV-001 are complete.
   GATE-001 is partially decided: D-008 to D-013 are accepted. Owner-added
-  spike FEAS-009 (diagram and math engines) still blocks its remaining items.
+  FEAS-009 closes by owner-approved deferral D-014; ADV-005 owns unrun
+  diagram/math checks after DESK-002 and before ADV-002. GATE-001 is next for
+  its remaining baseline decisions.
   No production code before the gate closes. Inspect `project.yaml` for
   state.
 - The required real Windows, macOS, and Linux renderer and shared-core
@@ -51,7 +53,8 @@ wait for owner merge approval. Scoped phase pushes/PR/review actions are already
 authorized. See `docs/Delivery-Workflow.md` and `docs/Implementation-Plan.md`.
 Materialize child tasks at prerequisite gates through the helper; early native
 foundation tasks belong in the portable-core bucket. FEAS-006 is evaluated;
-FEAS-007 capability reconciliation is complete; GATE-001 is next.
+FEAS-007 capability reconciliation is complete; resume GATE-001's remaining decisions. D-014 moves FEAS-009's unrun work to
+ADV-005 after the desktop MVP.
 
 ## Durable context
 
@@ -187,14 +190,33 @@ FEAS-007 capability reconciliation is complete; GATE-001 is next.
   further architecture decisions. `project.yaml` therefore makes FEAS-003 and
   FEAS-004 prerequisites of FEAS-006 and FEAS-007 as well as GATE-001.
 
+## FEAS-009 best-effort checkpoint (2026-10-26)
+
+Owner requested bounded feasibility and deferral of deeper post-MVP work.
+Mac compiler screen: KaTeX/JavaScriptCore, Mermaid/WKWebView and direct D2 Go;
+15 fresh processes, 90 case outcomes, 25 timed samples per case. Basic valid
+compiles work; D2 raw SVG retains remote-icon/JavaScript-link references, so
+resource/output policy is still required. This is not visual fidelity, native
+presentation, full sanitizer or D-012 evidence. iOS frameworks compile/link;
+engine/device runtime and Rust alternatives remain untested. No extra Homebrew
+install needed. Report: `docs/Diagram-Math-Engine-Evaluation.md`.
+
+Owner subsequently accepted D-014: close FEAS-009 by explicit deferral and
+track the unrun work in ADV-005 after DESK-002, blocking ADV-002. Its desktop-apps
+bucket avoids waiting for the whole mobile phase. GATE-001's spike blocker can
+be resolved; remaining baseline choices and gate closure still need the owner.
+No engine is accepted and no deferred check is marked passed.
+
 ## Open decisions
 
 GATE-001 (2026-10-25) accepted D-008 to D-013: the Rust/pulldown-cmark core,
 the C ABI, the stacks, MVP baselines and packaging, the shared metric, v1 scope
 and MVP order. Still open: the main document surface, the Windows host
 language, the diagram and math engines, the core extension approach and the
-budget numbers. Each now has a spike recommendation except diagrams and math,
-which wait for FEAS-009; none is accepted:
+budget numbers. Each remaining baseline choice has a spike recommendation. Diagram/math
+selection is explicitly deferred to post-MVP ADV-005 by D-014 and no longer
+blocks the core baseline; no engine is accepted. The following recommendations
+still need owner acceptance:
 
 - Document surface: a native virtualized list on Linux and Windows
   (FEAS-008), not a WebView.

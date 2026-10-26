@@ -1,10 +1,9 @@
 # Agent Session and Platform Handoff
 
-Updated: 2026-10-26, FEAS-008 Windows part. Source baseline: `5bc81c4`
-(`FEAS-080 - Linux part`) plus the uncommitted Windows half of
-`spikes/feas008`, its report and state/doc updates. Preserve the checked-in
-source, locks, measurements and reports; never transfer build products or
-environments between platforms.
+Updated: 2026-10-26, FEAS-009 owner-approved deferral and ADV-005 follow-up. Source baseline:
+`137942c` plus the uncommitted engine probes, evidence and state/doc handoff.
+Preserve source, locks, measurements and reports together; do not transfer
+build products or environments between platforms.
 
 This file carries concise, commit-safe context between sessions. It does not
 replace [project.yaml](project.yaml) for operational state,
@@ -16,8 +15,8 @@ observed while this handoff was written.
 ## Resume here — GATE-001 spikes
 
 GATE-001 is partially decided: D-008 to D-013 in
-[Decisions.md](agents/Decisions.md) are accepted. Its remaining items wait on
-three owner-added spikes, which `project.yaml` makes block the gate:
+[Decisions.md](agents/Decisions.md) are accepted. The three owner-added spike
+prerequisites are now satisfied by evidence or the explicit D-014 deferral:
 
 - **FEAS-010** — done: keep pulldown-cmark with shared extension passes; see
   [Core-Extension-Evaluation.md](docs/Core-Extension-Evaluation.md).
@@ -32,30 +31,43 @@ three owner-added spikes, which `project.yaml` makes block the gate:
   - Open for WIN-001: Narrator reads each row twice, and whole-tree UIA
     searches time out at 5 MiB.
   - Recommendations only; GATE-001 decides.
-- **FEAS-009** — next. Mermaid, D2 and math: an offscreen web engine,
-  existing engines and custom Rust implementations. Proposed host plan (not
-  yet confirmed by the owner):
-  1. **macOS first, as the main pass.** The iOS-fit criterion can only be
-     measured there: Xcode, the iOS simulator or a device, JavaScriptCore
-     without a view, `WKWebView`, and building D2's Go for iOS. The
-     platform-neutral comparisons also belong in this pass: fidelity against
-     reference renders, sanitization, licensing, port effort and Rust/Go
-     latency.
-  2. **Short Windows and Linux passes after it.** The "offscreen web engine"
-     option is a different engine on each OS (WebView2, WebKitGTK and
-     WebKit/JavaScriptCore), as in FEAS-008. Measure compile latency, memory
-     and package cost of each OS's engine and the in-process D2 Go library
-     there; don't infer them from the Mac.
-  Close the Mac pass as `partial` with that handoff, as FEAS-008 did.
+- **FEAS-009** — closed by owner-approved deferral D-014 after the Mac screen.
+  See [Diagram-Math-Engine-Evaluation.md](docs/Diagram-Math-Engine-Evaluation.md)
+  and [reproduction](spikes/feas009/README.md). Owner requested timeboxed,
+  best-effort work; no custom port or full advanced-feature integration now.
+  - 15 fresh processes / 90 case outcomes passed the expected compiler checks.
+    KaTeX ran without a view in JavaScriptCore; Mermaid compiled in offscreen
+    WKWebView; D2 used its Go library with an empty import filesystem.
+  - Raw D2 SVG retains remote-icon/JavaScript-link references. Mermaid needed
+    global `htmlLabels: false` as well as strict security to remove tested
+    foreignObject markup. These are compiler diagnostics, not sanitizer proof.
+  - No visual fidelity, native presenter, D-012 presentation, full WebKit memory
+    or iOS engine runtime pass is claimed. iOS frameworks compile/link only.
+    Rust alternatives were researched, not built. No extra Homebrew install
+    was needed; npm dependencies are local and Go uses its normal cache.
+  - Owner deferred the Windows/Linux checks and deeper validation to
+    **ADV-005**, after DESK-002 and before ADV-002. This task lives in the
+    desktop-apps bucket to avoid waiting for the whole mobile phase. Reuse
+    real MVP documents; split future work by platform/engine. No deferred
+    check is passed and no engine adopted.
+  - Do not rerun the full Mac sweep merely on a host switch. Use the pinned
+    versions and synthetic sources in `spikes/feas009`; validate on the named
+    host and record unavailable checks instead of expanding setup indefinitely.
 
-Their acceptance criteria are in `TODO.md`. Measure with the D-012 metric:
-launch to presented content, cold and warm, at least five runs with spread.
+Deferral closeout: revision **138**, no active/stale passes, unleased working
+tasks or warnings. GATE-001 is the next eligible task; re-inspect live state.
+No FEAS-009 resume or cross-platform check is needed before the core gate.
+Next: GATE-001 with the owner for the remaining native-surface, Windows-host,
+extension and budget decisions, then rehearse/materialize the delivery graph.
+Do not start production scaffolding or close the gate on the owner's behalf.
+
+Their acceptance criteria are in `TODO.md`. Presentation measurements use the
+D-012 metric: launch to presented content, cold and warm, at least five runs
+with spread. FEAS-009 compiler-only timings must remain labeled separately.
 On Windows, cold runs purge the standby list and so need the owner to run the
 harness from an elevated terminal. The native-only document guardrail stays
-in force. GATE-001 is `blocked` in
-state with a dependency blocker. When all three spikes finish, clear it with
-`resolve_blocker` and their evidence, then resume GATE-001: record the open
-decisions, set budgets, then rehearse and materialize the delivery-task graph.
+in force. The spike dependency blocker is resolved using FEAS-008/010 evidence
+and the owner-approved D-014 disposition. GATE-001 remains open, not accepted.
 
 ## Completed foundation
 
@@ -63,12 +75,15 @@ FEAS-001 through FEAS-006 have native evidence. FEAS-006 now covers the same
 experimental Rust C facade on Windows/C#/C++, macOS/Swift and Linux/gtk-rs,
 including ownership, typed errors, cooperative cancellation, source debugging,
 native UI consumption and local normal-library packages. The evidence task is
-complete once the primary finishes its active closeout pass in `project.yaml`.
+complete in `project.yaml`; no FEAS-006 closeout remains.
 
 FEAS-007 has since reconciled these results into the capability matrix. Do not
-begin production scaffolding or accept the spike ABI/model: GATE-001 still owns
-the core language/parser, semantic contract, interop, native stacks, budgets and
-platform-scope decision, with explicit owner acceptance required.
+begin production scaffolding or accept the spike data model. D-008–D-013
+already accept the core/parser, C ABI approach, stacks and baseline scope; the
+remaining gate decisions and production semantic contract are still open.
+
+The following foundation steps are historical; the current GATE-001 handoff
+above takes precedence.
 
 1. Read the repository-required documents and inspect Git status.
 2. Inspect `project.yaml` through `python3 tools/project_state.py`; recover only

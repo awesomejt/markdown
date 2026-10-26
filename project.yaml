@@ -1,11 +1,11 @@
 contract_version: project-state/v1
-revision: 130
+revision: 138
 project: &id002
   concurrency_limit: 1
   created_at: '2026-10-24T23:34:09.871478+00:00'
   project_ref: markdown-native
   status: active
-  updated_at: '2026-10-26T18:07:16.937773+00:00'
+  updated_at: '2026-10-26T20:10:25.215546+00:00'
   workflow_id: native-app-development
   workflow_version: '2'
 phases: &id004
@@ -200,15 +200,18 @@ tasks:
   - &id031
     active_pass_ref: null
     blockers:
-      - id: a777b900-6c8f-4777-9366-c26026d87014
+      - &id052
+        id: a777b900-6c8f-4777-9366-c26026d87014
         reason: Remaining decisions (document surface, Windows host language, diagram/math engines, core
           extension approach, budget numbers) need FEAS-008, FEAS-009 and FEAS-010 evidence.
         blocker_type: dependency
         reference: FEAS-008, FEAS-009, FEAS-010; agents/Decisions.md 'Open at GATE-001'
         related_task_ref: null
         created_at: '2026-10-26T01:55:19.854808+00:00'
-        resolved_at: null
-        resolution_evidence: null
+        resolved_at: '2026-10-26T20:10:25.215546+00:00'
+        resolution_evidence: FEAS-008 and FEAS-010 completed with evidence. Owner deferred FEAS-009 remainder
+          in D-014 on 2026-10-26 and approved ADV-005 after DESK-002, blocking ADV-002. Resolves spike
+          dependency only; GATE-001 still needs owner baseline decisions, budgets and delivery-graph rehearsal/materialization.
     completed_at: null
     created_at: '2026-10-24T23:34:33.392833+00:00'
     description: Choose core, facade, native stacks, targets, budgets, packages, platform order, and advanced
@@ -218,10 +221,10 @@ tasks:
     phase: feasibility
     priority: 70
     role: designer
-    status: blocked
+    status: pending
     task_key: GATE-001
     title: Accept implementation baseline
-    updated_at: '2026-10-26T01:55:19.854808+00:00'
+    updated_at: '2026-10-26T20:10:25.215546+00:00'
     validation_expectations: Owner-accepted decision record backed by all feasibility evidence.
   - active_pass_ref: null
     blockers: []
@@ -660,11 +663,37 @@ tasks:
     validation_expectations: Compile latency, memory, output fidelity against reference renders, sanitization,
       package size and iOS fit measured per engine and option; custom-port scope, effort and licensing
       (D2 MPL-2.0, Mermaid and KaTeX MIT) assessed; recommendation per engine.
-    status: pending
+    status: completed
     active_pass_ref: null
     blockers: []
     created_at: '2026-10-26T01:53:53.369754+00:00'
-    updated_at: '2026-10-26T01:53:53.369754+00:00'
+    updated_at: '2026-10-26T20:10:24.818511+00:00'
+    completed_at: '2026-10-26T20:10:24.818511+00:00'
+  - &id049
+    id: e1fd74e4-e50f-40a2-b3ef-6c5c9e473636
+    task_key: ADV-005
+    title: Validate post-MVP diagram and math engines
+    description: Owner-deferred remainder of FEAS-009, 2026-10-26. Start after DESK-002 desktop MVP conformance,
+      before ADV-002 engine adoption. Reuse the bounded Mac evidence; run short Windows/WebView2 and Linux/WebKitGTK
+      plus D2 Go checks, then evaluate shortlisted native/Rust candidates against real MVP documents.
+      Split by engine/platform into reviewable delivery tasks before implementation. Lives in desktop-apps
+      so active-bucket scheduling does not force waiting for the later mobile phase.
+    phase: desktop-apps
+    role: researcher
+    priority: 55
+    model_tier: null
+    validation_expectations: 'After DESK-002: named-host Windows/Linux compiler/resource-denial/error
+      checks; five-run latency distributions, total process-tree memory and package dependencies; real-document/reference
+      fidelity, native presentation and accessibility, SVG/resource safety, licensing/provenance and justified
+      port effort for shortlisted Mermaid/math/D2 candidates. D-012 presentation timings only with a native
+      consumer. Assess iOS engine/archive/runtime fit when relevant or explicitly defer it with owner-approved
+      scope. Recommend per-engine adoption or further deferral; do not treat unsupported or unrun checks
+      as passes. Preserve FEAS-009 evidence and avoid unnecessary custom ports.'
+    status: pending
+    active_pass_ref: null
+    blockers: []
+    created_at: '2026-10-26T20:08:49.680653+00:00'
+    updated_at: '2026-10-26T20:08:49.680653+00:00'
     completed_at: null
 relationships:
   - predecessor_task_ref: 7fe339d7-90ce-4211-9a0a-91be7640aa42
@@ -821,6 +850,14 @@ relationships:
   - &id041
     predecessor_task_ref: 6e4f4322-597f-4d97-8620-e445654f64fb
     successor_task_ref: b2418f32-3f60-4bbd-9a74-0cdf6b6aecc4
+    relationship: blocks
+  - &id050
+    predecessor_task_ref: 825de535-1b7f-447d-94e5-0cc4b1924410
+    successor_task_ref: e1fd74e4-e50f-40a2-b3ef-6c5c9e473636
+    relationship: blocks
+  - &id051
+    predecessor_task_ref: e1fd74e4-e50f-40a2-b3ef-6c5c9e473636
+    successor_task_ref: a367af92-b334-4cd8-b26b-1ea9c5e1b33e
     relationship: blocks
 passes:
   - &id011
@@ -1746,6 +1783,87 @@ passes:
     started_at: '2026-10-26T17:48:03.522668+00:00'
     last_heartbeat_at: null
     completed_at: '2026-10-26T18:07:16.937773+00:00'
+    lease_expires_at: null
+    lease_version: 1
+  - &id047
+    id: 48d675f4-c01c-4be5-9285-c46454801683
+    sequence: 22
+    task_ref: 6e4f4322-597f-4d97-8620-e445654f64fb
+    phase_ref: b19ec1c8-f0c0-4cee-b584-5c9247a96edd
+    actor: codex-macos
+    status: completed
+    outcome: partial
+    objective: 'Owner-authorized best-effort Mac engine screen: bounded Mermaid/D2/math compile and safety
+      probes; assess iOS/package/port risks; explicitly defer post-MVP depth and hand off native Windows/Linux
+      checks. No custom engine port or production adoption.'
+    summary: 'Owner-requested best-effort Mac checkpoint: pinned KaTeX/JavaScriptCore, Mermaid/offscreen
+      WKWebView and direct D2 Go probes; 15 processes and 90 case outcomes checked. Raw SVG hazards and
+      iOS compile-only limits retained. Recommend deeper post-MVP validation rather than custom ports
+      now.'
+    handoff: Resume FEAS-009 for bounded native Windows/Linux compiler/resource/memory/package checks
+      using spikes/feas009 sources and pinned versions, or reconcile explicit owner gate deferral. Do
+      not repeat full Mac measurements or attempt custom ports. Full fidelity, native presenter/sanitizer,
+      D-012 timings, Rust benchmarks and iOS engine/device evidence are deferred recommendations, not
+      passes. GATE-001 remains blocked pending owner disposition; see HANDOFF.md and docs/Diagram-Math-Engine-Evaluation.md.
+    validation_result:
+      checks:
+        - Swift optimized Mac probe compiles with warnings-as-errors
+        - Go library probe builds and go test compiles package (no Go unit tests)
+        - five fresh processes per engine; 90 checked case outcomes, 25 timed operation samples per case
+        - iOS arm64 simulator framework compile/link with warnings-as-errors; no runtime claim
+        - fixture and capability validators pass
+        - 54 local documentation links and all recorded source hashes match
+        - Markdown lint 43 files zero errors; whitespace and Python compilation checks pass
+      limits:
+        - No visual-reference fidelity, native presenter, production sanitizer, full WebKit memory, cold/presented
+          D-012 metrics, Rust comparison builds or iOS engine/device runtime.
+        - Windows/Linux checkpoints or explicit owner deferral remain.
+    evidence:
+      report: docs/Diagram-Math-Engine-Evaluation.md
+      measurements: spikes/feas009/results-macos-2026-10-26.json
+      reproduction: spikes/feas009/README.md
+      handoff: HANDOFF.md
+      scope: Best-effort/timeboxed at owner request, 2026-10-26; no production engine selected.
+    participants: []
+    blocker: null
+    execution_record: {}
+    started_at: '2026-10-26T19:27:41.541363+00:00'
+    last_heartbeat_at: null
+    completed_at: '2026-10-26T19:38:12.658669+00:00'
+    lease_expires_at: null
+    lease_version: 1
+  - &id048
+    id: 3dde9d8d-17e2-4e46-a983-e60de3438f29
+    sequence: 23
+    task_ref: 6e4f4322-597f-4d97-8620-e445654f64fb
+    phase_ref: b19ec1c8-f0c0-4cee-b584-5c9247a96edd
+    actor: codex-macos
+    status: completed
+    outcome: completed
+    objective: Record owner-approved post-MVP deferral, create tracked follow-up and dependencies, close
+      FEAS-009 by explicit scope disposition, and release only the satisfied GATE-001 spike blocker.
+    summary: Owner-approved scope disposition D-014 closes FEAS-009 on bounded Mac evidence; unrun Windows/Linux
+      and deeper validation moved to ADV-005 after DESK-002 and before ADV-002. Closure is a deferral,
+      not full technical acceptance or engine adoption.
+    handoff: null
+    validation_result:
+      checks:
+        - Acyclic graph and DESK-002 -> ADV-005 -> ADV-002 edges verified
+        - 27 local links checked; capability validator passed
+        - Markdown lint 43 files zero errors; git diff --check passed
+      disposition: Owner explicitly deferred remaining checks; original unmet technical criteria tracked
+        in ADV-005.
+    evidence:
+      decision: agents/Decisions.md#d-014--defer-advanced-engine-validation-until-after-the-mvp
+      follow_up_task: ADV-005
+      report: docs/Diagram-Math-Engine-Evaluation.md
+      handoff: HANDOFF.md
+    participants: []
+    blocker: null
+    execution_record: {}
+    started_at: '2026-10-26T20:08:38.018026+00:00'
+    last_heartbeat_at: null
+    completed_at: '2026-10-26T20:10:24.818511+00:00'
     lease_expires_at: null
     lease_version: 1
 idempotency:
@@ -3867,5 +3985,306 @@ idempotency:
           stale_passes: 0
           eligible: 1
           blocked: 1
+        warnings: []
+        recommended_action: select_new_task
+  2b99c582-1ffd-423e-a772-1f6f401c2da5:
+    fingerprint: 5332edf8efca0faaf9be0902f7dfbcbc4c1e7fc7da59a99c46aa5704a25fc591
+    response:
+      contract_version: project-state/v1
+      operation: start_pass
+      revision: 131
+      data:
+        pass: *id047
+        task: *id040
+      snapshot:
+        contract_version: project-state/v1
+        snapshot_at: '2026-10-26T19:27:41.541391+00:00'
+        revision: 131
+        project: *id002
+        current_phase: *id003
+        phases: *id004
+        active_tasks:
+          - *id040
+        working_tasks_without_active_lease: []
+        active_passes:
+          - *id047
+        stale_passes: []
+        blocked_tasks:
+          - *id031
+        eligible_tasks: []
+        latest_pass: *id047
+        queue_counts:
+          by_status:
+            completed: 13
+            blocked: 1
+            pending: 21
+            working: 1
+          total: 36
+          active_passes: 1
+          stale_passes: 0
+          eligible: 0
+          blocked: 1
+        warnings: []
+        recommended_action: resume_active
+  17407b40-1b44-45c1-ac03-b43f1e21adaa:
+    fingerprint: c7db82d42da69306e92fba7c087f705a8dcf7efa4fbed34a2ad59350fad551e8
+    response:
+      contract_version: project-state/v1
+      operation: finish_pass
+      revision: 132
+      data:
+        pass: *id047
+        task: *id040
+      snapshot:
+        contract_version: project-state/v1
+        snapshot_at: '2026-10-26T19:38:12.658682+00:00'
+        revision: 132
+        project: *id002
+        current_phase: *id003
+        phases: *id004
+        active_tasks: []
+        working_tasks_without_active_lease:
+          - *id040
+        active_passes: []
+        stale_passes: []
+        blocked_tasks:
+          - *id031
+        eligible_tasks: []
+        latest_pass: *id047
+        queue_counts:
+          by_status:
+            completed: 13
+            blocked: 1
+            pending: 21
+            working: 1
+          total: 36
+          active_passes: 0
+          stale_passes: 0
+          eligible: 0
+          blocked: 1
+        warnings: []
+        recommended_action: recover_stale_task
+  76b7b46a-a4a1-4a31-9af6-9de7a467b7db:
+    fingerprint: ae48d72fa6bc71b8bbe62a47ed05e57bdb70329798f58b883e95ca4147348cc3
+    response:
+      contract_version: project-state/v1
+      operation: start_pass
+      revision: 133
+      data:
+        pass: *id048
+        task: *id040
+      snapshot:
+        contract_version: project-state/v1
+        snapshot_at: '2026-10-26T20:08:38.018059+00:00'
+        revision: 133
+        project: *id002
+        current_phase: *id003
+        phases: *id004
+        active_tasks:
+          - *id040
+        working_tasks_without_active_lease: []
+        active_passes:
+          - *id048
+        stale_passes: []
+        blocked_tasks:
+          - *id031
+        eligible_tasks: []
+        latest_pass: *id048
+        queue_counts:
+          by_status:
+            completed: 13
+            blocked: 1
+            pending: 21
+            working: 1
+          total: 36
+          active_passes: 1
+          stale_passes: 0
+          eligible: 0
+          blocked: 1
+        warnings: []
+        recommended_action: resume_active
+  39293199-86db-4c07-bead-a66a1247b186:
+    fingerprint: f7c5e5e6e711225762c49bbcef4e34b65531408d4526b1031a30dc4d6b805a0b
+    response:
+      contract_version: project-state/v1
+      operation: create_task
+      revision: 134
+      data:
+        task: *id049
+      snapshot:
+        contract_version: project-state/v1
+        snapshot_at: '2026-10-26T20:08:49.680829+00:00'
+        revision: 134
+        project: *id002
+        current_phase: *id003
+        phases: *id004
+        active_tasks:
+          - *id040
+        working_tasks_without_active_lease: []
+        active_passes:
+          - *id048
+        stale_passes: []
+        blocked_tasks:
+          - *id031
+        eligible_tasks: []
+        latest_pass: *id048
+        queue_counts:
+          by_status:
+            completed: 13
+            blocked: 1
+            pending: 22
+            working: 1
+          total: 37
+          active_passes: 1
+          stale_passes: 0
+          eligible: 0
+          blocked: 1
+        warnings: []
+        recommended_action: resume_active
+  4097dbe8-0bb3-4cb1-b108-bf8ff1b1fde8:
+    fingerprint: 28b2bed95f7a021984958b0cb8c801d3489c4574bbf3b7a12dcb18a0d39a99fa
+    response:
+      contract_version: project-state/v1
+      operation: add_dependency
+      revision: 135
+      data:
+        relationship: *id050
+      snapshot:
+        contract_version: project-state/v1
+        snapshot_at: '2026-10-26T20:08:50.063384+00:00'
+        revision: 135
+        project: *id002
+        current_phase: *id003
+        phases: *id004
+        active_tasks:
+          - *id040
+        working_tasks_without_active_lease: []
+        active_passes:
+          - *id048
+        stale_passes: []
+        blocked_tasks:
+          - *id031
+        eligible_tasks: []
+        latest_pass: *id048
+        queue_counts:
+          by_status:
+            completed: 13
+            blocked: 1
+            pending: 22
+            working: 1
+          total: 37
+          active_passes: 1
+          stale_passes: 0
+          eligible: 0
+          blocked: 1
+        warnings: []
+        recommended_action: resume_active
+  28150c3f-9dbf-4f46-8386-5c4ae9fa5af7:
+    fingerprint: 9e49abb4d2862aca69fd23c19252a319f5c739cad855e75221dd7b2dcd8fb326
+    response:
+      contract_version: project-state/v1
+      operation: add_dependency
+      revision: 136
+      data:
+        relationship: *id051
+      snapshot:
+        contract_version: project-state/v1
+        snapshot_at: '2026-10-26T20:08:50.446705+00:00'
+        revision: 136
+        project: *id002
+        current_phase: *id003
+        phases: *id004
+        active_tasks:
+          - *id040
+        working_tasks_without_active_lease: []
+        active_passes:
+          - *id048
+        stale_passes: []
+        blocked_tasks:
+          - *id031
+        eligible_tasks: []
+        latest_pass: *id048
+        queue_counts:
+          by_status:
+            completed: 13
+            blocked: 1
+            pending: 22
+            working: 1
+          total: 37
+          active_passes: 1
+          stale_passes: 0
+          eligible: 0
+          blocked: 1
+        warnings: []
+        recommended_action: resume_active
+  0223369b-2311-42be-b32e-a7e11939dee7:
+    fingerprint: 592315fd75bac16461ce6e19b3e2b6bd75f08d764b87cf55231e751112fbb69a
+    response:
+      contract_version: project-state/v1
+      operation: finish_pass
+      revision: 137
+      data:
+        pass: *id048
+        task: *id040
+      snapshot:
+        contract_version: project-state/v1
+        snapshot_at: '2026-10-26T20:10:24.818523+00:00'
+        revision: 137
+        project: *id002
+        current_phase: *id003
+        phases: *id004
+        active_tasks: []
+        working_tasks_without_active_lease: []
+        active_passes: []
+        stale_passes: []
+        blocked_tasks:
+          - *id031
+        eligible_tasks: []
+        latest_pass: *id048
+        queue_counts:
+          by_status:
+            completed: 14
+            blocked: 1
+            pending: 22
+          total: 37
+          active_passes: 0
+          stale_passes: 0
+          eligible: 0
+          blocked: 1
+        warnings: []
+        recommended_action: resolve_blocker
+  80286e18-c673-4e47-9caa-47c4af4371fe:
+    fingerprint: 04be4c11d1a26c26480f2301220ae212339e15c63613adc2d13dd555f0612af9
+    response:
+      contract_version: project-state/v1
+      operation: resolve_blocker
+      revision: 138
+      data:
+        task: *id031
+        blocker: *id052
+      snapshot:
+        contract_version: project-state/v1
+        snapshot_at: '2026-10-26T20:10:25.215705+00:00'
+        revision: 138
+        project: *id002
+        current_phase: *id003
+        phases: *id004
+        active_tasks: []
+        working_tasks_without_active_lease: []
+        active_passes: []
+        stale_passes: []
+        blocked_tasks: []
+        eligible_tasks:
+          - *id031
+        latest_pass: *id048
+        queue_counts:
+          by_status:
+            completed: 14
+            pending: 23
+          total: 37
+          active_passes: 0
+          stale_passes: 0
+          eligible: 1
+          blocked: 0
         warnings: []
         recommended_action: select_new_task

@@ -6,6 +6,7 @@ config:
 globs:
   - "**/*.md"
 ignores:
+  - "**/node_modules/**"
   - "target/**"
   - "build/**"
   - "**/.build/**"

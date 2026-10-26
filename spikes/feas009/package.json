@@ -1,0 +1,10 @@
+{
+  "name": "feas009-engine-screen",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Disposable FEAS-009 compiler screen; no production engine selection",
+  "dependencies": {
+    "katex": "0.19.1",
+    "mermaid": "12.2.0"
+  }
+}

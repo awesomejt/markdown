@@ -12,7 +12,8 @@ branch and PR. Once ready, post a separate PR comment exactly `/grok review`,
 address the feedback, and obtain owner merge approval. Follow
 [Delivery-Workflow.md](docs/Delivery-Workflow.md) for branch, review and handoff
 rules. GATE-001 is partially decided; FEAS-010 and FEAS-008 (Linux and
-Windows) are done, and FEAS-009 comes next.
+Windows) are done. FEAS-009 closes by owner-approved deferral (D-014);
+ADV-005 carries its remaining work after DESK-002.
 
 ## Current gate: requirements and feasibility
 
@@ -23,9 +24,10 @@ throwaway prototypes under `spikes/` are expected.
 
 Linux, macOS and Windows native rendering, shared-core integration and
 virtualized-renderer (FEAS-008) evaluations are complete, as are FEAS-007,
-FEAS-010 and REV-001. GATE-001 is partially decided and blocked only by
-FEAS-009, which is next. Its proposed host plan is in `HANDOFF.md`: macOS
-first, then short Windows and Linux passes. Preserve and sync the worktree
+FEAS-010 and REV-001. FEAS-009 is closed by the owner's D-014 deferral;
+ADV-005 carries its unrun checks after DESK-002. GATE-001 is next for its
+remaining baseline decisions, not yet accepted. See `HANDOFF.md` and preserve
+and sync the worktree
 before changing machines; the agent does not commit unless asked. Inspect
 `project.yaml` for pass and lease state. Run one active pass at a time,
 because the project concurrency limit is one.
@@ -152,10 +154,17 @@ kept as a record; steps 1–3 are done.
   For Mermaid, D2 and KaTeX-syntax math, compare an offscreen web engine,
   existing engines (D2 in Go) and custom Rust implementations or ports.
   Acceptance: latency, memory, fidelity, sanitization, package size, iOS fit,
-  port effort and licensing per engine, with a recommendation.
+  port effort and licensing per engine, with a recommendation. Mac checkpoint
+  2026-10-26: compiler-only KaTeX/JSC, Mermaid/WKWebView and D2/Go screen;
+  see `docs/Diagram-Math-Engine-Evaluation.md`. Owner requests best-effort,
+  timeboxed work. Closed by owner-approved scope disposition D-014: Windows/
+  Linux checks and deeper fidelity, native presenter/sanitizer, Rust-candidate
+  and iOS engine/runtime work move to ADV-005 after DESK-002. These original
+  criteria remain unrun; closure is a deferral, not a full technical pass.
 - **GATE-001 — Accept implementation baseline.** Partially decided 2026-10-25
-  (D-008 to D-013 in `agents/Decisions.md`); blocked by FEAS-008, FEAS-009 and
-  FEAS-010 for the remaining open items. Record core/parser choice,
+  (D-008 to D-013 in `agents/Decisions.md`). Spike prerequisites are satisfied
+  by FEAS-008/010 evidence and the D-014 FEAS-009 deferral; remaining baseline
+  choices still require the owner. Record core/parser choice,
   facade, desktop UI stacks, baseline OS/architectures, performance budgets,
   package formats, platform order, and advanced-feature scope. Before closeout,
   validate and materialize the initial acyclic delivery-task graph through the
@@ -223,12 +232,23 @@ kept as a record; steps 1–3 are done.
 
 - **ADV-001 — Reading refinement parity.** Selected styles, properties, timing,
   focus, print/share/export, and project settings by platform.
-- **ADV-002 — Math and diagrams.** Implement only platform/engine combinations
-  accepted by FEAS-007 and GATE-001, with safe offline fallbacks.
+- **ADV-002 — Math and diagrams.** After ADV-005, implement only explicitly
+  accepted platform/engine combinations, with safe offline fallbacks.
 - **ADV-003 — Projects.** Add compatible or migrated project files and
   cross-root behavior where permission models allow it.
 - **ADV-004 — Voice-over and teleprompter.** Add selected script semantics,
   timing, presentation, wake behavior, and documented platform deviations.
+
+- **ADV-005 — Validate post-MVP diagram and math engines.** Owner-deferred
+  FEAS-009 remainder (D-014). Depends on DESK-002 and blocks ADV-002. Reuse the
+  bounded Mac evidence, run short Windows/Linux compiler/resource checks, then
+  compare shortlisted engines with real MVP documents. Acceptance: named-host
+  latency distributions, total process memory/package costs, reference fidelity,
+  native presentation/accessibility, SVG/resource safety, licensing/provenance,
+  Rust alternatives/port effort and relevant iOS fit or explicit scoped deferral;
+  recommend adoption or further deferral per engine. Split into bounded
+  platform/engine delivery tasks before implementation. It lives in the
+  desktop-apps state bucket so it need not wait for the entire mobile phase.
 
 ## Dependency summary
 
@@ -247,7 +267,8 @@ all CORE + WIN/MAC/LNX-001 aggregate acceptance -> DESK-001
 DESK-001 -> each host 002A -> ... -> 002F -> platform 002 aggregate
 CORE-005B -> own 002C; all platform 002 aggregates -> DESK-002 -> DESK-003
 DESK-002 -> IOS-001 -> IOS-002
-DESK-002 -> ADV-001/ADV-002/ADV-003/ADV-004
+DESK-002 -> ADV-001/ADV-003/ADV-004
+DESK-002 -> ADV-005 -> ADV-002
 ```
 
 The abbreviated chains above are orientation only; the catalog defines precise

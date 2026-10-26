@@ -116,6 +116,11 @@ separate owner authorization.
 
 ### Later delivery phases
 
+After DESK-002, ADV-005 resumes deferred FEAS-009 engine validation using real
+MVP documents and bounded platform/engine phases. It blocks ADV-002, not the
+core MVP or GATE-001. Its desktop-apps state bucket allows execution before
+the later mobile phase. Final engine adoption remains open under D-014.
+
 At DESK-002, split refinements by platform and individual behavior: for example,
 macOS print/export and Linux large-folder navigation are separate PRs. Do not
 combine all R2 work into DESK-003's branch.

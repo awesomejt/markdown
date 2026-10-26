@@ -172,6 +172,25 @@ FEAS-008 measurements, not from the earlier per-platform metrics.
 - After all three walking skeletons exist, the MVPs are deepened in this order:
   macOS, Linux, Windows.
 
+## D-014 — Defer advanced engine validation until after the MVP
+
+**Date:** 2026-10-26
+
+**Status:** accepted by owner
+
+Close FEAS-009 on its bounded Mac evidence and explicit deferral of the unrun
+Windows/Linux checks and deeper engine comparisons. Preserve those checks as
+unrun, not passed. Final Mermaid/math/D2 adoption, native presentation, fidelity,
+resource/output safety, memory/package costs, Rust alternatives and iOS engine
+fit move to ADV-005 after DESK-002. ADV-005 blocks ADV-002 engine adoption and
+will be split into bounded platform/engine delivery tasks as needed.
+
+ADV-005 uses the desktop-apps operational bucket so active-bucket selection
+permits it after the desktop MVP without waiting for the whole mobile phase.
+This closes the FEAS-009 prerequisite by owner-approved scope disposition;
+it does not accept Go, a WebView document surface, any diagram/math engine or
+the remainder of GATE-001. The core MVP continues to exclude these features.
+
 ## Open at GATE-001
 
 GATE-001 stays open until these are decided from spike evidence:
@@ -182,10 +201,10 @@ GATE-001 stays open until these are decided from spike evidence:
   force unless a later decision changes it.
 - **Windows host language,** from the FEAS-008 C#, Native AOT and C++/WinRT
   comparison.
-- **Diagram and math engines.** FEAS-009 compares an offscreen web engine,
-  existing engines (D2 in Go) and custom Rust implementations, aiming for the
-  best-performing safe path. A D2 port must stay MPL-2.0 file by file; Mermaid
-  and KaTeX are MIT. Go and web-engine use are not accepted yet.
+- **Diagram and math engines are deferred by D-014.** This is no longer an
+  unresolved prerequisite for the core MVP baseline. ADV-005 owns post-MVP
+  evidence and selection before ADV-002; no engine is accepted. Preserve
+  D2's MPL-2.0 provenance and Mermaid/KaTeX MIT notices when evaluating ports.
 - **Core extension approach,** from FEAS-010. Its evaluation recommends keeping
   pulldown-cmark with shared extension passes and its YAML metadata option
   disabled; see `docs/Core-Extension-Evaluation.md`. Not yet accepted.
