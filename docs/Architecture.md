@@ -141,8 +141,10 @@ OS capabilities. Unsupported features remain explicit semantic nodes so the UI
 can explain the limitation, show source, or offer an alternative. They must not
 silently disappear or trigger a network fallback.
 
-Capability entries live in `docs/Requirements.md` initially and move to
-versioned specs once implementation begins.
+Feasibility capability entries live in
+[Platform-Capability-Evaluation.md](Platform-Capability-Evaluation.md), with a
+compact summary in `docs/Requirements.md`. They move to versioned specs once
+implementation begins.
 
 ## Security
 

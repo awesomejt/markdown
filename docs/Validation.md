@@ -8,6 +8,9 @@
 - Link/path existence checks for local references.
 - `project.yaml` inspection and dependency consistency.
 - Review against `README.md`, `AGENTS.md`, and accepted decisions.
+- For the capability matrix, `python3 tools/validate_capabilities.py` and
+  `python3 tools/test_validate_capabilities.py`. They check structure and
+  evidence rules, not technical truth.
 
 ### Core changes
 

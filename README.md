@@ -40,6 +40,9 @@ Start with:
   ownership, cancellation, debugging, GTK timing and relocatable packaging.
 - [macOS rendering evaluation](docs/macOS-Rendering-Evaluation.md) — AppKit
   TextKit comparisons, native interaction, memory, and development bundles.
+- [Platform capability evaluation](docs/Platform-Capability-Evaluation.md) —
+  FEAS-007 per-platform matrix for files, lifecycle, diagrams, output and
+  packaging, with sources and next checks.
 - [TODO](TODO.md) — human-readable roadmap; `project.yaml` is task-state truth.
 
 ## Proposed direction

@@ -1,11 +1,11 @@
 contract_version: project-state/v1
-revision: 102
+revision: 106
 project: &id002
   concurrency_limit: 1
   created_at: '2026-10-24T23:34:09.871478+00:00'
   project_ref: markdown-native
   status: active
-  updated_at: '2026-10-25T23:39:39.930694+00:00'
+  updated_at: '2026-10-26T01:05:32.567477+00:00'
   workflow_id: native-app-development
   workflow_version: '2'
 phases: &id004
@@ -183,7 +183,7 @@ tasks:
   - &id010
     active_pass_ref: null
     blockers: []
-    completed_at: null
+    completed_at: '2026-10-26T01:05:32.567477+00:00'
     created_at: '2026-10-24T23:34:33.268931+00:00'
     description: Test advanced rendering, filesystem, background, export, and mobile constraints.
     id: 9b64b970-9eeb-4301-a453-d3d39ae7ad04
@@ -191,13 +191,14 @@ tasks:
     phase: feasibility
     priority: 80
     role: researcher
-    status: pending
+    status: completed
     task_key: FEAS-007
     title: Complete platform capability matrix
-    updated_at: '2026-10-24T23:34:33.268931+00:00'
+    updated_at: '2026-10-26T01:05:32.567477+00:00'
     validation_expectations: Each capability is supported, deferred, alternative, or unavailable per platform
       with evidence.
-  - active_pass_ref: null
+  - &id031
+    active_pass_ref: null
     blockers: []
     completed_at: null
     created_at: '2026-10-24T23:34:33.392833+00:00'
@@ -1217,6 +1218,110 @@ passes:
     started_at: '2026-10-25T23:22:11.252088+00:00'
     last_heartbeat_at: null
     completed_at: '2026-10-25T23:39:39.930694+00:00'
+    lease_expires_at: null
+    lease_version: 1
+  - &id029
+    id: cb52aaeb-e6c0-4da0-a75c-db8bc00c52a3
+    sequence: 13
+    task_ref: 9b64b970-9eeb-4301-a453-d3d39ae7ad04
+    phase_ref: b19ec1c8-f0c0-4cee-b584-5c9247a96edd
+    actor: codex-linux
+    status: completed
+    outcome: partial
+    objective: 'Complete the evidence-backed platform capability matrix for Windows, macOS, Linux, and
+      later iOS/iPadOS: classify advanced rendering, filesystem/watch and network-folder behavior, background
+      work, print/share/export, diagrams/math, packaging and lifecycle constraints as supported, deferred,
+      alternative, or unavailable; reconcile measured feasibility results and authoritative platform documentation
+      without accepting the GATE-001 production baseline.'
+    summary: Scoped, planned, designed and challenged FEAS-007, then paused before external research or
+      durable matrix authoring at the owner's request. The strict Markdown/source-catalog/validator approach
+      is viable, but compound capability rows must be split before research.
+    handoff: 'Resume FEAS-007 by revising the proposed 23-row schema into atomic capabilities: split SVG
+      sanitization/pan-zoom/export; voice-over/teleprompter/display inhibition; share/export; and development
+      versus signed/store/sandbox packaging. Move the duplicative iOS constraint row into a synthesis
+      section. Preserve the strict Markdown/source catalog and validator design; add measured-primary
+      plus authoritative-supplement semantics, DESK owner tokens and checked-in-document mutation tests.
+      Then run official desktop, iOS/iPadOS and engine/security research partitions before authoring.
+      See HANDOFF.md and .agents/loop/cb52aaeb-e6c0-4da0-a75c-db8bc00c52a3/.'
+    validation_result:
+      scope: Planning checkpoint only; no external research or matrix implementation
+      checks:
+        - revision-102 state and completed native evidence inspected
+        - scope, 23-row initial plan, strict Markdown/catalog grammar and validator contract recorded
+        - challenge identified compound-row blockers and exact schema revisions
+        - HANDOFF.md and MEMORY.md updated; Markdown lint and git diff check passed
+    evidence:
+      handoff: HANDOFF.md
+      memory: MEMORY.md
+      loop: .agents/loop/cb52aaeb-e6c0-4da0-a75c-db8bc00c52a3/
+    participants:
+      - role: project-manager
+        result: scoped
+      - role: planner
+        result: planned
+      - role: designer
+        result: designed
+      - role: debater
+        result: schema revision required
+    blocker: null
+    execution_record: {}
+    started_at: '2026-10-26T00:29:05.046853+00:00'
+    last_heartbeat_at: null
+    completed_at: '2026-10-26T00:33:52.644127+00:00'
+    lease_expires_at: null
+    lease_version: 1
+  - &id030
+    id: b9382630-4176-4e15-a402-9a002268497b
+    sequence: 14
+    task_ref: 9b64b970-9eeb-4301-a453-d3d39ae7ad04
+    phase_ref: b19ec1c8-f0c0-4cee-b584-5c9247a96edd
+    actor: claude-linux
+    status: completed
+    outcome: completed
+    objective: 'Resume FEAS-007 from the paused planning handoff: revise the capability schema into atomic
+      rows, research official primary sources for desktop filesystem/lifecycle/packaging, iOS/iPadOS constraints
+      and KaTeX/Mermaid/D2/generated-output security, then author and mechanically validate docs/Platform-Capability-Evaluation.md
+      and reconcile Requirements, memory, handoff and task state without accepting GATE-001.'
+    summary: 'Completed the FEAS-007 platform capability matrix: 30 atomic capabilities classified per
+      platform (Windows, macOS, Linux, iOS/iPadOS) as Supported, Alternative, Deferred or Unavailable
+      with Measured, Authoritative or Unverified evidence, fallback and a named next check, backed by
+      a source catalog of the FEAS-003 to FEAS-006 reports, official HTTPS references and explicit gaps.
+      Added a standard-library validator with mutation tests and reconciled Requirements, Architecture,
+      README, Validation, TODO, proposed decisions, memory and handoff. GATE-001 is not accepted.'
+    handoff: null
+    validation_result:
+      scope: Documentation/research task plus scoped validation tooling
+      checks:
+        - 'python3 tools/validate_capabilities.py: valid'
+        - 'python3 tools/test_validate_capabilities.py: 19 tests OK, including mutations of the checked-in
+          document and CLI exit codes'
+        - all 82 external catalog URLs returned HTTP 200 on 2026-10-25
+        - 'markdownlint-cli2 on tracked Markdown: no findings (remaining findings only in ignored .agents
+          notes)'
+        - git diff --check clean; private-path scan clean
+        - 'python3 tools/test_project_state.py: OK (1 opposite-platform skip)'
+      residual_risk: Self-reviewed only; iOS/iPadOS cells are authoritative or unverified until IOS-001;
+        authoritative cells establish feasibility, not measured product behavior.
+    evidence:
+      matrix: docs/Platform-Capability-Evaluation.md
+      validator: tools/validate_capabilities.py
+      tests: tools/test_validate_capabilities.py
+      handoff: HANDOFF.md
+      memory: MEMORY.md
+    participants:
+      - role: researcher
+        result: desktop, iOS/iPadOS and engine primary sources read
+      - role: designer
+        result: 30-row atomic schema
+      - role: implementer
+        result: matrix, validator and tests
+      - role: reviewer
+        result: self-review fixed five overclaims
+    blocker: null
+    execution_record: {}
+    started_at: '2026-10-26T00:48:40.092391+00:00'
+    last_heartbeat_at: null
+    completed_at: '2026-10-26T01:05:32.567477+00:00'
     lease_expires_at: null
     lease_version: 1
 idempotency:
@@ -2272,6 +2377,151 @@ idempotency:
           by_status:
             completed: 9
             pending: 23
+          total: 32
+          active_passes: 0
+          stale_passes: 0
+          eligible: 1
+          blocked: 0
+        warnings: []
+        recommended_action: select_new_task
+  feas007-start-20261025-01:
+    fingerprint: 216fd1391e16977f0e0aceca5c00890a7e9b50bf8baae97284f1324a65403609
+    response:
+      contract_version: project-state/v1
+      operation: start_pass
+      revision: 103
+      data:
+        pass: *id029
+        task: *id010
+      snapshot:
+        contract_version: project-state/v1
+        snapshot_at: '2026-10-26T00:29:05.046890+00:00'
+        revision: 103
+        project: *id002
+        current_phase: *id003
+        phases: *id004
+        active_tasks:
+          - *id010
+        working_tasks_without_active_lease: []
+        active_passes:
+          - *id029
+        stale_passes: []
+        blocked_tasks: []
+        eligible_tasks: []
+        latest_pass: *id029
+        queue_counts:
+          by_status:
+            completed: 9
+            working: 1
+            pending: 22
+          total: 32
+          active_passes: 1
+          stale_passes: 0
+          eligible: 0
+          blocked: 0
+        warnings: []
+        recommended_action: resume_active
+  feas007-pause-20261025-01:
+    fingerprint: c2ecbdcd07d5077219e7a24a031ffd72719e48e8d13678c9c589e6393c75f206
+    response:
+      contract_version: project-state/v1
+      operation: finish_pass
+      revision: 104
+      data:
+        pass: *id029
+        task: *id010
+      snapshot:
+        contract_version: project-state/v1
+        snapshot_at: '2026-10-26T00:33:52.644147+00:00'
+        revision: 104
+        project: *id002
+        current_phase: *id003
+        phases: *id004
+        active_tasks: []
+        working_tasks_without_active_lease:
+          - *id010
+        active_passes: []
+        stale_passes: []
+        blocked_tasks: []
+        eligible_tasks: []
+        latest_pass: *id029
+        queue_counts:
+          by_status:
+            completed: 9
+            working: 1
+            pending: 22
+          total: 32
+          active_passes: 0
+          stale_passes: 0
+          eligible: 0
+          blocked: 0
+        warnings: []
+        recommended_action: recover_stale_task
+  feas007-resume-20261025-01:
+    fingerprint: ad0dcbae70490e55970d39af23e852851ea7e74392108b97752f824ac51e44dc
+    response:
+      contract_version: project-state/v1
+      operation: start_pass
+      revision: 105
+      data:
+        pass: *id030
+        task: *id010
+      snapshot:
+        contract_version: project-state/v1
+        snapshot_at: '2026-10-26T00:48:40.092421+00:00'
+        revision: 105
+        project: *id002
+        current_phase: *id003
+        phases: *id004
+        active_tasks:
+          - *id010
+        working_tasks_without_active_lease: []
+        active_passes:
+          - *id030
+        stale_passes: []
+        blocked_tasks: []
+        eligible_tasks: []
+        latest_pass: *id030
+        queue_counts:
+          by_status:
+            completed: 9
+            working: 1
+            pending: 22
+          total: 32
+          active_passes: 1
+          stale_passes: 0
+          eligible: 0
+          blocked: 0
+        warnings: []
+        recommended_action: resume_active
+  feas007-finish-20261025-01:
+    fingerprint: 8cb250c3ae36668d03a6fa51a0bbc6dcd78328131c1190100ae9b3da3c522ae1
+    response:
+      contract_version: project-state/v1
+      operation: finish_pass
+      revision: 106
+      data:
+        pass: *id030
+        task: *id010
+      snapshot:
+        contract_version: project-state/v1
+        snapshot_at: '2026-10-26T01:05:32.567494+00:00'
+        revision: 106
+        project: *id002
+        current_phase: *id003
+        phases: *id004
+        active_tasks: []
+        working_tasks_without_active_lease: []
+        active_passes: []
+        stale_passes: []
+        blocked_tasks: []
+        eligible_tasks:
+          - *id031
+        latest_pass: *id030
+        queue_counts:
+          by_status:
+            completed: 10
+            pending: 22
           total: 32
           active_passes: 0
           stale_passes: 0

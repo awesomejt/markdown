@@ -11,12 +11,12 @@ design belong in `docs/` or `agents/`; runtime transcripts do not belong here.
 - Later platforms: iOS and iPadOS after the desktop contracts are stable.
 - Organization: one native monorepo with independent native UIs,
   shared specifications/fixtures/benchmarks, and a candidate portable core.
-- Status: FEAS-001 through FEAS-006 are evaluated on their required native
-  hosts. FEAS-007 is the next dependency-ready task. Inspect `project.yaml` for
-  the live pass/handoff state. No production baseline or ABI is accepted.
+- Status: FEAS-001 through FEAS-007 are complete. The capability matrix is in
+  `docs/Platform-Capability-Evaluation.md`. GATE-001 is next and needs the
+  owner's architecture decision. Inspect `project.yaml` for live state. No
+  production baseline is accepted.
 - The required real Windows, macOS, and Linux renderer and shared-core
-  integration evidence is recorded. The capability matrix can proceed;
-  GATE-001 still waits for FEAS-007 and the owner's architecture decision.
+  integration evidence is recorded, and the capability matrix reconciles it.
 - Mac host setup: the project-state skill/backend and workflow contract have
   been restored from the owner's Linux user-level Codex directory. Supported
   inspection works. Xcode 27.1 is installed and selected. Use the normal pass
@@ -39,7 +39,7 @@ wait for owner merge approval. Scoped phase pushes/PR/review actions are already
 authorized. See `docs/Delivery-Workflow.md` and `docs/Implementation-Plan.md`.
 Materialize child tasks at prerequisite gates through the helper; early native
 foundation tasks belong in the portable-core bucket. FEAS-006 is evaluated;
-FEAS-007 capability reconciliation is the next execution work.
+FEAS-007 capability reconciliation is complete; GATE-001 is next.
 
 ## Durable context
 
@@ -136,6 +136,15 @@ FEAS-007 capability reconciliation is the next execution work.
   malloc regions. Swift copying shows similar retention. Allocator pressure
   relief released zero bytes. Keep this production memory risk open; no fix or
   acceptable repeated-session budget is established by those bounded diagnostics.
+- FEAS-007 classifies 30 atomic capabilities per platform with a fallback,
+  named next check and source catalog. `tools/validate_capabilities.py` enforces
+  the evidence rules. Key deviations: sandboxed macOS, Flatpak and iOS can't read
+  images beside a lone file; Linux has no share portal; Linux network watching
+  needs polling; iOS suspends background work; `PrintManager` is Windows 11 only.
+  Mermaid needs a browser engine, and KaTeX output has no native presenter, so
+  both are deferred. D2 v0.9.0 is pure Go, so it is feasible in-process,
+  including on iOS, but Go would be a second language. Every iOS cell is
+  authoritative or unverified until IOS-001.
 - The owner requires real target-host evidence from Windows and macOS before
   further architecture decisions. `project.yaml` therefore makes FEAS-003 and
   FEAS-004 prerequisites of FEAS-006 and FEAS-007 as well as GATE-001.
@@ -172,6 +181,20 @@ FEAS-007 capability reconciliation is the next execution work.
   Apple XCFramework concerns remain open.
 
 ## Run log
+
+### 2026-10-25 — FEAS-007 capability matrix
+
+Resumed the paused planning pass. Revised the schema into 30 atomic rows: split
+SVG/pan-zoom/export, voice-over/teleprompter/display sleep, share/export and the
+three packaging tiers, moved iOS constraints into a synthesis section and
+dropped state restoration as out of scope. Read official desktop, iOS/iPadOS and
+engine sources; all 82 external links returned HTTP 200. Measured cells cite the
+FEAS-003–006 reports. Cells without an official statement are Deferred and
+Unverified, never inferred: macOS network FSEvents, App Nap, the iOS
+child-process limit, Apple native SVG, Windows PDF and Flatpak helpers. Added a
+standard-library validator and 19 mutation tests over the checked-in document.
+Requirements, Architecture, README, Validation, TODO and the proposed decisions
+now point to the matrix. GATE-001 is not accepted. Next: GATE-001 with the owner.
 
 ### 2026-10-25 — FEAS-006 Linux checkpoint
 

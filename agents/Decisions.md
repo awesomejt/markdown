@@ -114,4 +114,10 @@ The following are not yet accepted:
 - AppKit/TextKit 2 as the lead macOS document-surface candidate following
   FEAS-004; selective SwiftUI hosting remains available, while synchronous
   model construction, memory and pathological blocks need further work.
-- Tier 1 excludes Mermaid and D2 unless FEAS-005 proves a safe offline path.
+- Tier 1 excludes Mermaid and D2. The FEAS-007
+  [capability matrix](../docs/Platform-Capability-Evaluation.md) found no safe
+  offline native path for Mermaid without a browser engine, and none for KaTeX
+  output without a presenter. D2 is feasible as a pure Go library.
+- Whether a bundled offscreen web engine may act as a non-UI diagram or math
+  compiler, and whether Go is accepted as a second implementation language for
+  D2. Both need owner decisions recorded here before ADV-002.

@@ -139,20 +139,28 @@ product support. See [the evaluation](Windows-Rendering-Evaluation.md).
 | Selection across virtualized blocks | Cannot select/copy the whole document in block mode | Independent native text rows have no shared selection model | Implement document-wide selection and UIA reading order; do not silently ship the spike behavior |
 | Mixed DPI and large-document accessibility | Behavior outside the sampled configuration is unverified | Three displays tested at 150%; basic Narrator reading confirmed, full external UIA inspection unavailable | Require mixed-scale, font-size and large-document screen-reader tests before release acceptance |
 
-| Capability | Windows | macOS | Linux | iOS/iPadOS |
-| --- | --- | --- | --- | --- |
-| Open arbitrary local folder | Native picker/shell; normal desktop access | Native picker; sandbox rules depend on distribution | Native chooser/portal; sandbox rules depend on packaging | Files/document picker only; security-scoped/provider access |
-| Persistent workspace access | Path plus platform identity/permissions | Security-scoped bookmark when sandboxed | Path/portal grant varies by package | Security-scoped bookmark/provider; may become stale |
-| Continuous file watching | Supported; watcher must handle replace/rename | Supported; coordinate sandboxed files | Supported; backend varies by filesystem | Foreground/best effort; background execution is limited |
-| Network-mounted folders | OS-mounted shares | OS-mounted shares | OS-mounted shares | Files providers; not equivalent to mounted desktop filesystems |
-| Child-process diagram tool | Possible with packaging/security review | Possible outside restrictive sandbox; review required | Possible with packaging/security review | Not a general solution; arbitrary subprocess unavailable |
-| Background indexing | Normal desktop service/task options | Constrained by sandbox/energy policy | Desktop/service options vary | Strong lifecycle/background limits |
-| Full screen/focus | Native desktop behavior | Native desktop behavior | Desktop-environment dependent | Scene/device-specific; no promise of desktop equivalence |
-| Prevent display sleep | OS API/power policy | OS API/power assertion | Desktop-environment/API dependent | Platform APIs and user policy; behavior may be restricted |
-| Print/export/share | Windows print/share/file dialogs | AppKit print/share/file export | Print stack and desktop portals vary | System share/print/document export |
+The full FEAS-007 matrix is in
+[Platform-Capability-Evaluation.md](Platform-Capability-Evaluation.md). It
+classifies 30 atomic capabilities per platform as Supported, Alternative,
+Deferred or Unavailable, with Measured, Authoritative or Unverified evidence, a
+fallback and a named next check. “Supported” means a feasible platform
+mechanism exists, not implemented product support. The deviations with the
+largest product impact are:
 
-The matrix records expected constraints, not completed support. Feasibility and
-platform tasks must replace assumptions with tested behavior and versions.
+| Capability | Deviation | Fallback |
+| --- | --- | --- |
+| Images beside a single opened file | Alternative on sandboxed macOS, Flatpak and iOS/iPadOS: a file grant doesn't cover siblings | Ask for the containing folder |
+| Network or provider change detection | Linux needs polling; macOS is unverified; iOS/iPadOS refreshes in the foreground | Bounded polling and reload on focus |
+| Work when not frontmost | iOS/iPadOS suspends after about five seconds; macOS throttling is unverified | Foreground-only, resumable indexing |
+| Math, Mermaid and D2 | Math and Mermaid are deferred: no native presenter for KaTeX output, and Mermaid needs a browser engine. D2 is feasible as pure Go, pending a second-language decision | Show source with an unsupported notice |
+| Bundled helper process | Expected unavailable on iOS/iPadOS; sandboxed macOS needs inherit entitlements | In-process engine |
+| System share | Unavailable on Linux: no share portal exists | Save a copy, clipboard and open-with |
+| Windows printing and PDF | `PrintManager` is Windows 11 only in the Windows App SDK; no native PDF writer was identified | Print or export through another path |
+| Mixed or fractional scaling | Deferred on every platform; only uniform scales were measured | Single-scale support statement |
+
+The matrix supersedes the earlier assumption table. GATE-001 still owns the
+decisions it lists; platform tasks must replace authoritative and unverified
+cells with tested behavior and versions.
 
 ## Conformance policy
 

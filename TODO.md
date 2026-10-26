@@ -11,7 +11,7 @@ batching ready work on the current OS. Each delivery phase uses one feature
 branch and PR. Once ready, post a separate PR comment exactly `/grok review`,
 address the feedback, and obtain owner merge approval. Follow
 [Delivery-Workflow.md](docs/Delivery-Workflow.md) for branch, review and handoff
-rules. FEAS-007 capability reconciliation is the next feasibility task.
+rules. FEAS-007 capability reconciliation is recorded; GATE-001 is next.
 
 ## Current gate: requirements and feasibility
 
@@ -23,7 +23,7 @@ throwaway prototypes under `spikes/` are expected.
 Linux, macOS and Windows native rendering and shared-core integration evaluations
 are complete. Preserve and sync the present worktree before changing machines;
 changes have not been committed by the agent. Inspect `project.yaml` for current
-pass/lease state. FEAS-007 is next. Run one active pass at a time because the
+pass/lease state. FEAS-007 is recorded; GATE-001 is next. Run one active pass at a time because the
 project concurrency limit is one.
 
 1. **Carry forward Windows FEAS-003.** The report in
@@ -42,10 +42,10 @@ project concurrency limit is one.
 3. **Reconcile the platform reports in the monorepo.** Preserve deviations;
    do not force identical UI implementations. Confirm each pass is complete
    and `project.yaml` has no stale lease before selecting more work.
-4. **Continue with FEAS-007.** The Windows, macOS and Linux Rust/C ABI
-   checkpoints are in the three `docs/Shared-Core-*-Evaluation.md` reports.
-   Reconcile the capability matrix, then ask the owner to accept or revise
-   GATE-001.
+4. **Prepare GATE-001.** The capability matrix is in
+   `docs/Platform-Capability-Evaluation.md`; its “Implications for GATE-001”
+   section lists the decisions the owner must make or defer. Ask the owner to
+   accept or revise GATE-001; do not accept it on the owner's behalf.
 
 ### Requirements and feasibility
 
@@ -113,7 +113,10 @@ project concurrency limit is one.
   FEAS-003 and FEAS-004. Test advanced
   rendering, file watching, network folders, background work, print/export,
   and later iOS/iPadOS constraints. Mark supported, deferred, alternative, or
-  unavailable per platform.
+  unavailable per platform. Evaluated 2026-10-25: 30 atomic capabilities in
+  `docs/Platform-Capability-Evaluation.md`, each with evidence, fallback and a
+  named next check, mechanically validated by `tools/validate_capabilities.py`.
+  iOS/iPadOS cells remain authoritative or unverified until IOS-001.
 - **GATE-001 — Accept implementation baseline.** Record core/parser choice,
   facade, desktop UI stacks, baseline OS/architectures, performance budgets,
   package formats, platform order, and advanced-feature scope. Before closeout,

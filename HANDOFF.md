@@ -1,10 +1,10 @@
 # Agent Session and Platform Handoff
 
-Updated: 2026-10-25, FEAS-006 Linux checkpoint and all-desktop integration
-closeout. Source baseline: `41ae095` plus the uncommitted Linux host/tooling,
-corrected evidence, documentation and task-state closeout. Preserve source,
-locks, header, checked-in measurements and reports together; never transfer
-build products or environments between platforms.
+Updated: 2026-10-25, FEAS-007 completion. Source baseline: `6847fb4`
+(`FEAS-006 - Linux feasibility done`) plus the uncommitted FEAS-007 matrix,
+validator, documentation and project-state closeout. Preserve the checked-in
+FEAS-006 source, locks, measurements and reports; never transfer build products
+or environments between platforms.
 
 This file carries concise, commit-safe context between sessions. It does not
 replace [project.yaml](project.yaml) for operational state,
@@ -13,7 +13,30 @@ context, or [agents/Decisions.md](agents/Decisions.md) for accepted decisions.
 Always inspect current state and Git status rather than relying on the revision
 observed while this handoff was written.
 
-## Resume here
+## Resume here — GATE-001
+
+FEAS-007 is complete. The matrix is
+[Platform-Capability-Evaluation.md](docs/Platform-Capability-Evaluation.md):
+30 atomic capabilities for Windows, macOS, Linux and iOS/iPadOS. Each cell has
+a status, evidence level, fallback and named next check, backed by a source
+catalog of measured reports, official HTTPS references and explicit gaps.
+“Supported” means a feasible platform mechanism, never implemented product
+support. Validate any edit with `python3 tools/validate_capabilities.py` and
+`python3 tools/test_validate_capabilities.py`.
+
+The next dependency-ready task is **GATE-001**. It is an owner decision, so
+don't accept it on the owner's behalf. Present the matrix's “Implications for
+GATE-001” section: permission for a non-UI web engine (Mermaid, KaTeX); Go as
+a second language for D2; the Windows baseline, since `PrintManager` is Windows
+11 only; Mac sandboxed versus Developer ID scope; and Linux package formats.
+Together with the open questions in `docs/Product.md`, these drive the baseline.
+
+Open evidence gaps that remain Deferred: macOS network-volume FSEvents, App Nap
+throttling, the iOS child-process limit, Apple native SVG decoding, Windows PDF
+export, Flatpak helper behavior, mixed/fractional scaling everywhere and every
+iOS/iPadOS measurement.
+
+## Completed foundation
 
 FEAS-001 through FEAS-006 have native evidence. FEAS-006 now covers the same
 experimental Rust C facade on Windows/C#/C++, macOS/Swift and Linux/gtk-rs,
@@ -21,9 +44,7 @@ including ownership, typed errors, cooperative cancellation, source debugging,
 native UI consumption and local normal-library packages. The evidence task is
 complete once the primary finishes its active closeout pass in `project.yaml`.
 
-The next dependency-ready task is **FEAS-007 — Complete platform capability
-matrix**. Reconcile advanced rendering, filesystem, background, export, diagram
-and later mobile constraints using the completed native evaluations. Do not
+FEAS-007 has since reconciled these results into the capability matrix. Do not
 begin production scaffolding or accept the spike ABI/model: GATE-001 still owns
 the core language/parser, semantic contract, interop, native stacks, budgets and
 platform-scope decision, with explicit owner acceptance required.
@@ -31,9 +52,10 @@ platform-scope decision, with explicit owner acceptance required.
 1. Read the repository-required documents and inspect Git status.
 2. Inspect `project.yaml` through `python3 tools/project_state.py`; recover only
    genuinely stale work before starting one pass.
-3. Confirm FEAS-006 is completed and no active/stale pass remains. If the
-   documentation closeout was interrupted, resume that same task before FEAS-007.
-4. Select FEAS-007 and retain all measured platform deviations and failures.
+3. Confirm FEAS-007 is completed and no active/stale pass remains. If its
+   closeout was interrupted, resume that same task before GATE-001.
+4. Select GATE-001 only with the owner present to decide, and retain every
+   measured platform deviation and failure.
 
 ## FEAS-006 Linux checkpoint
 
@@ -113,7 +135,7 @@ Across all hosts, the flat spike model still has snapshot-local IDs and lacks
 complete inline/source mappings, typed links/images, metadata, diagnostics,
 search, incremental updates and production resource policy. Cancellation polls
 at event boundaries. Unsafe FFI calls rely on the documented pointer, alignment
-and lifetime contract. Preserve these limits for FEAS-007 and GATE-001.
+and lifetime contract. Preserve these limits for GATE-001.
 
 ## Workflow and authorization boundaries
 
