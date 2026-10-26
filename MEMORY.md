@@ -5,19 +5,17 @@ design belong in `docs/` or `agents/`; runtime transcripts do not belong here.
 
 ## Current posture
 
-- Phase: feasibility.
+- Phase: portable-core (GATE-001 approved by owner, D-018).
 - Product: local-first, read-only native Markdown reader.
 - First platforms: Windows, macOS, and Linux desktop applications.
 - Later platforms: iOS and iPadOS after the desktop contracts are stable.
 - Organization: one native monorepo with independent native UIs,
   shared specifications/fixtures/benchmarks, and a candidate portable core.
-- Status: FEAS-001 through FEAS-008, FEAS-010 and REV-001 are complete.
-  GATE-001 is partially decided: D-008 to D-013 are accepted. Owner-added
-  FEAS-009 closes by owner-approved deferral D-014; ADV-005 owns unrun
-  diagram/math checks after DESK-002 and before ADV-002. GATE-001 is next for
-  its remaining baseline decisions.
-  No production code before the gate closes. Inspect `project.yaml` for
-  state.
+- Status: GATE-001 is completed; CORE-001A is the selected delivery task on
+  `feat/core-001a-workspace-ci`. Workspace/common checks/CI definitions are the
+  scope, with no parser/model implementation or native app shell yet. Follow
+  `docs/Development.md`; task remains partial until owner-authorized PR merge.
+- License: owner selected Apache-2.0 for implementation source (D-019).
 - The required real Windows, macOS, and Linux renderer and shared-core
   integration evidence is recorded, and the capability matrix reconciles it.
 - Mac host setup: the project-state skill/backend and workflow contract have
@@ -93,8 +91,8 @@ ADV-005 after the desktop MVP.
 - FEAS-002 recommends Rust with pulldown-cmark as the lead core/parser spike:
   it had the lowest parse/walk time and RSS and exposes byte ranges for every
   event. Comrak remains the feature-rich fallback/conformance oracle, while
-  cmark-gfm remains the reference GFM oracle. GATE-001 has not yet accepted a
-  production parser or FFI mechanism.
+  cmark-gfm remains the reference GFM oracle. D-008/D-009 later accepted the
+  Rust/pulldown-cmark core and hand-written C ABI; the spike model stays disposable.
 - FEAS-005 validates GTK 4/gtk-rs for the Linux native shell and small-document
   text surface on KDE Wayland/XWayland. One monolithic `GtkTextView` is rejected
   for unbounded production documents: far-scroll did not converge for the
@@ -106,7 +104,7 @@ ADV-005 after the desktop MVP.
   GFM oracle. C++ is not the lead shared-core choice, but C++/WinRT remains a
   valid Windows-host candidate. A narrow C ABI or generated bindings remain
   the likely interop boundary. None of these recommendations becomes an
-  accepted production baseline until GATE-001.
+  accepted production baseline until GATE-001, now approved by D-018.
 - Platform UI code is intentionally native rather than forced into one common
   language: GTK 4/gtk-rs is the Linux recommendation; Windows FEAS-003 supports
   WinUI with C# or C++/WinRT hosts, and macOS FEAS-004 favors AppKit/TextKit 2.
@@ -207,24 +205,22 @@ bucket avoids waiting for the whole mobile phase. GATE-001's spike blocker can
 be resolved; remaining baseline choices and gate closure still need the owner.
 No engine is accepted and no deferred check is marked passed.
 
-## Open decisions
+## Accepted baseline and implementation start
 
-GATE-001 (2026-10-25) accepted D-008 to D-013: the Rust/pulldown-cmark core,
-the C ABI, the stacks, MVP baselines and packaging, the shared metric, v1 scope
-and MVP order. Still open: the main document surface, the Windows host
-language, the diagram and math engines, the core extension approach and the
-budget numbers. Each remaining baseline choice has a spike recommendation. Diagram/math
-selection is explicitly deferred to post-MVP ADV-005 by D-014 and no longer
-blocks the core baseline; no engine is accepted. The following recommendations
-still need owner acceptance:
+Owner accepted all component choices D-008–D-017 and final gate closeout D-018.
+GATE-001 is complete. Portable-core is active with 36 materialized child tasks
+and 92 edges, including the early LNX-001D1 accessibility proof. Windows uses
+C# Native AOT; C++/WinRT is only a fallback. macOS uses AppKit/TextKit 2. Shared
+Rust passes and initial 400/700/150 ms targets remain subject to real native
+MVP evidence, including the unresolved Mac memory risk. ADV-005 retains
+post-MVP engine validation. See `docs/Implementation-Baseline.md`.
 
-- Document surface: a native virtualized list on Linux and Windows
-  (FEAS-008), not a WebView.
-- Windows host language: C# Native AOT, with C++/WinRT as the fallback
-  (FEAS-008).
-- Core extension approach: pulldown-cmark with shared passes (FEAS-010).
-- Budgets proposed by FEAS-008: warm at most 400 ms, cold at most 700 ms,
-  off-screen jumps at most 150 ms.
+CORE-001A: the root Rust workspace is independent from all feasibility crates;
+production third-party dependency count is zero. Common/core checks and host
+selection are in `tools/check.py` and `.github/workflows/ci.yml`. See
+`docs/Development.md` and `docs/Dependencies.md`. Review/merge workflow is in
+`docs/Delivery-Workflow.md`. Do not start CORE-002A until CORE-001A is reviewed
+and owner-authorized merged; do not complete the aggregate CORE-001 prematurely.
 
 Items below that these supersede are kept for history.
 

@@ -11,26 +11,23 @@ batching ready work on the current OS. Each delivery phase uses one feature
 branch and PR. Once ready, post a separate PR comment exactly `/grok review`,
 address the feedback, and obtain owner merge approval. Follow
 [Delivery-Workflow.md](docs/Delivery-Workflow.md) for branch, review and handoff
-rules. GATE-001 is partially decided; FEAS-010 and FEAS-008 (Linux and
-Windows) are done. FEAS-009 closes by owner-approved deferral (D-014);
-ADV-005 carries its remaining work after DESK-002.
+rules. GATE-001 is approved (D-018). CORE-001A is the selected task;
+ADV-005 carries deferred engine work after DESK-002.
 
-## Current gate: requirements and feasibility
+## Current phase: portable core and early native foundations
 
-No production application or shared core is scaffolded before GATE-001. Small
-throwaway prototypes under `spikes/` are expected.
+The gate is complete; the small child tasks are materialized in project state.
+CORE-001A creates workspace/check/CI infrastructure only. Each host's app shell
+and the semantic model have separate tasks. Production reader behavior is not
+delivered by this scaffold.
 
-## Immediate cross-machine handoff
+## Immediate session handoff
 
-Linux, macOS and Windows native rendering, shared-core integration and
-virtualized-renderer (FEAS-008) evaluations are complete, as are FEAS-007,
-FEAS-010 and REV-001. FEAS-009 is closed by the owner's D-014 deferral;
-ADV-005 carries its unrun checks after DESK-002. GATE-001 is next for its
-remaining baseline decisions, not yet accepted. See `HANDOFF.md` and preserve
-and sync the worktree
-before changing machines; the agent does not commit unless asked. Inspect
-`project.yaml` for pass and lease state. Run one active pass at a time,
-because the project concurrency limit is one.
+Work on `feat/core-001a-workspace-ci` through its PR/check/Grok lifecycle.
+Resume CORE-001A while it is partial; dependent tasks wait for its reviewed,
+owner-authorized merge. The owner approved phase commits, pushes, PR updates
+and `/grok review`; merge still requires explicit authorization. Inspect
+`project.yaml` and `HANDOFF.md` before any pass; concurrency remains one.
 
 The numbered steps below are the earlier handoff for GATE-001 preparation,
 kept as a record; steps 1–3 are done.
@@ -161,15 +158,12 @@ kept as a record; steps 1–3 are done.
   Linux checks and deeper fidelity, native presenter/sanitizer, Rust-candidate
   and iOS engine/runtime work move to ADV-005 after DESK-002. These original
   criteria remain unrun; closure is a deferral, not a full technical pass.
-- **GATE-001 — Accept implementation baseline.** Partially decided 2026-10-25
-  (D-008 to D-013 in `agents/Decisions.md`). Spike prerequisites are satisfied
-  by FEAS-008/010 evidence and the D-014 FEAS-009 deferral; remaining baseline
-  choices still require the owner. Record core/parser choice,
-  facade, desktop UI stacks, baseline OS/architectures, performance budgets,
-  package formats, platform order, and advanced-feature scope. Before closeout,
-  validate and materialize the initial acyclic delivery-task graph through the
-  state helper (including early native tasks in the portable-core bucket);
-  preserve aggregate acceptance and test expansion on disposable state first.
+- **GATE-001 — Accept implementation baseline.** Completed by owner approval
+  D-018 on 2026-10-26. Choices/conditions D-008–D-017 and the 36-task/92-edge
+  initial graph are recorded in `docs/Implementation-Baseline.md` and live state.
+  The rehearsal, native evidence, approved deferral and phase transition are
+  recorded. CORE-001A starts implementation; no spike model becomes production
+  merely through gate acceptance.
 
 ### Portable contract and core
 
@@ -192,7 +186,8 @@ kept as a record; steps 1–3 are done.
 
 ### Desktop walking skeletons
 
-- **WIN-001 — Windows single-document skeleton.** Native file open, core call,
+- **WIN-001 — Windows single-document skeleton.** WinUI 3/C# Native AOT
+  (C++/WinRT fallback only for a concrete blocker). Native file open, core call,
   basic GFM blocks, outline, theme/text controls, selection, accessibility,
   external refresh, and a development package. Following FEAS-003, prove
   off-thread bounded parsing/cancellation and virtualized blocks with global
@@ -200,8 +195,11 @@ kept as a record; steps 1–3 are done.
   input frame pacing before accepting a large-document strategy.
 - **MAC-001 — macOS single-document skeleton.** Equivalent native macOS slice
   with AppKit/SwiftUI responsibilities decided from measurements.
-- **LNX-001 — Linux single-document skeleton.** Equivalent native Linux slice
-  with GTK/desktop integration and supported environment assumptions recorded.
+- **LNX-001 — Linux single-document skeleton.** GTK/gtk-rs native virtualized
+  blocks, conditional on LNX-001D1 after basic text/navigation: prove AT-SPI
+  heading semantics, off-screen heading navigation and owner-confirmed Orca
+  continuous reading on KDE Wayland. LNX-001E/001F depend on this early proof;
+  failure returns to the owner before deeper renderer work.
 - **DESK-001 — Cross-desktop skeleton gate.** Compare semantics and performance,
   fix contract bias, document deviations, and choose the MVP deepening order.
   Before closeout, materialize the platform MVP delivery tasks and dependencies.
@@ -263,6 +261,7 @@ GATE-001 -> CORE-001A -> CORE-002A -> CORE-003A -> CORE-004A -> CORE-006A
 CORE-003A -> CORE-003B; CORE-004A -> CORE-005A -> CORE-005B
 CORE-001A -> each host 001A; CORE-006A + own 001A -> own 001B -> ... -> 001I
 CORE-005A -> own 001F; CORE-003B -> own 001I
+LNX-001D -> LNX-001D1 (early accessibility proof) -> LNX-001E + LNX-001F
 all CORE + WIN/MAC/LNX-001 aggregate acceptance -> DESK-001
 DESK-001 -> each host 002A -> ... -> 002F -> platform 002 aggregate
 CORE-005B -> own 002C; all platform 002 aggregates -> DESK-002 -> DESK-003

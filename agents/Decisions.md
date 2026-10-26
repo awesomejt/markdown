@@ -99,7 +99,7 @@ FEAS-006 handoff or the unaccepted production baseline.
 
 **Date:** 2026-10-25
 
-**Status:** accepted by owner at GATE-001 (gate still open)
+**Status:** accepted by owner at GATE-001
 
 The portable semantic core is Rust, using pulldown-cmark as the parser. Comrak
 remains the fallback and cross-check oracle; cmark-gfm remains the GitHub
@@ -112,7 +112,7 @@ switch to Comrak behind the same interface.
 
 **Date:** 2026-10-25
 
-**Status:** accepted by owner at GATE-001 (gate still open)
+**Status:** accepted by owner at GATE-001
 
 Apps call the core through a narrow, versioned, hand-written C ABI that hands
 over immutable values in bulk copies, as proven by FEAS-006 on all three
@@ -123,7 +123,7 @@ data model is not the production contract; CORE-002 and CORE-006 replace it.
 
 **Date:** 2026-10-25
 
-**Status:** accepted by owner at GATE-001 (gate still open)
+**Status:** accepted by owner at GATE-001
 
 - macOS: AppKit with TextKit 2 for the document; SwiftUI only for shell
   surfaces such as settings.
@@ -137,7 +137,7 @@ The document renderer on Windows and Linux depends on FEAS-008.
 
 **Date:** 2026-10-25
 
-**Status:** accepted by owner at GATE-001 (gate still open)
+**Status:** accepted by owner at GATE-001
 
 | Platform | MVP target | Distribution | After the MVP |
 | --- | --- | --- | --- |
@@ -152,7 +152,7 @@ separate tasks that need owner authorization.
 
 **Date:** 2026-10-25
 
-**Status:** accepted by owner at GATE-001 (gate still open)
+**Status:** accepted by owner at GATE-001
 
 Every platform budget uses launch to presented content: from process launch
 to the first frame of document content on screen. Report cold and warm starts,
@@ -163,7 +163,7 @@ FEAS-008 measurements, not from the earlier per-platform metrics.
 
 **Date:** 2026-10-25
 
-**Status:** accepted by owner at GATE-001 (gate still open)
+**Status:** accepted by owner at GATE-001
 
 - v1 (the MVP) contains the core Markdown features only. It opens files and
   folders through the system; it doesn't read `*.mdv.yaml` project files.
@@ -191,21 +191,91 @@ This closes the FEAS-009 prerequisite by owner-approved scope disposition;
 it does not accept Go, a WebView document surface, any diagram/math engine or
 the remainder of GATE-001. The core MVP continues to exclude these features.
 
-## Open at GATE-001
+## D-015 — Shared Rust extension passes
 
-GATE-001 stays open until these are decided from spike evidence:
+**Date:** 2026-10-26
 
-- **Main document surface.** The owner prefers native. FEAS-008 measures a
-  WebView document baseline against native virtualized blocks for performance
-  and implementation cost. The native-only guardrail in AGENTS.md stays in
-  force unless a later decision changes it.
-- **Windows host language,** from the FEAS-008 C#, Native AOT and C++/WinRT
-  comparison.
-- **Diagram and math engines are deferred by D-014.** This is no longer an
-  unresolved prerequisite for the core MVP baseline. ADV-005 owns post-MVP
-  evidence and selection before ADV-002; no engine is accepted. Preserve
-  D2's MPL-2.0 provenance and Mermaid/KaTeX MIT notices when evaluating ports.
-- **Core extension approach,** from FEAS-010. Its evaluation recommends keeping
-  pulldown-cmark with shared extension passes and its YAML metadata option
-  disabled; see `docs/Core-Extension-Evaluation.md`. Not yet accepted.
-- **Budget numbers,** from FEAS-008 using the D-012 metric.
+**Status:** accepted by owner at GATE-001
+
+Keep pulldown-cmark and implement product syntax through bounded shared Rust
+passes as evaluated in FEAS-010. Disable the parser's YAML metadata option;
+recognize front matter only at the beginning of the document. Preserve exact
+source spans, malformed-input fallback and bounded scans. This accepts the
+semantic approach, not post-MVP diagram/math presenters or a production model.
+See `docs/Core-Extension-Evaluation.md`.
+
+## D-016 — Initial desktop performance targets
+
+**Date:** 2026-10-26
+
+**Status:** accepted by owner at GATE-001
+
+Use initial targets of at most 400 ms warm launch to presented content,
+700 ms cold launch to presented content, and 150 ms off-screen jumps for the
+1 MiB/5 MiB prose and 1 MiB long-line profiles on named baseline hosts. Use
+D-012: at least five runs with spread, explicit cache treatment and metric
+boundaries. These are implementation targets to validate with the MVP, not
+claims that all products already pass or universal hardware guarantees.
+
+FEAS-008 supports them on the tested Windows/Linux workstation. macOS still
+requires equivalent D-012 evidence; earlier first-draw/core-entry results do
+not establish a pass. Record package/runtime conditions and retained outliers.
+Repeated-session memory, accessibility and responsiveness remain acceptance
+work; no numeric RSS budget or waiver of the open Mac memory risk is implied.
+Revisit targets explicitly using real MVP measurements, not by silently
+changing the metric or excluding failures.
+
+## D-017 — Windows Native AOT and conditional Linux native rendering
+
+**Date:** 2026-10-26
+
+**Status:** accepted by owner at GATE-001
+
+Use native virtualized semantic blocks on Windows and Linux. Windows uses
+WinUI 3 hosted in C# Native AOT. C++/WinRT remains a fallback for a concrete
+blocker, not a second production host to maintain by default. FEAS-008 found
+similar AOT/C++ startup and memory, so C++ has no demonstrated performance
+advantage that warrants switching from the existing C# work. No C# JIT shipping
+baseline is selected. Fix duplicate Narrator announcements and whole-tree UIA
+timeouts before accepting the Windows renderer; packaged MSIX and mixed-DPI
+behavior still require native implementation evidence.
+
+Linux provisionally uses GTK 4/gtk-rs with a native virtualized list. Add
+LNX-001D1 immediately after basic text/navigation and before LNX-001E/001F.
+It must prove AT-SPI document/heading structure, off-screen heading navigation
+and continuous reading beyond visible rows with owner-confirmed Orca behavior
+on the accepted KDE Wayland baseline, while preserving focus, reading order and
+basic selection. App shortcuts alone are not a screen-reader proof. A failure
+stops deeper renderer work and returns to the owner for a revised native
+accessibility design or explicit renderer decision. Do not silently accept
+inaccessible output or substitute a WebView.
+
+macOS keeps the accepted AppKit/TextKit 2 direction. Native resource policy,
+large-document behavior, accessibility and memory risks still require their
+platform acceptance checks. This selects implementation directions, not
+production readiness. Evidence: the Windows/Linux FEAS-008 reports.
+
+## D-018 — Accept implementation baseline and advance to core
+
+**Date:** 2026-10-26
+
+**Status:** accepted by owner
+
+The owner approved `docs/Implementation-Baseline.md` and explicitly authorized
+closing GATE-001 and advancing to CORE-001A. D-008–D-017, the 36 delivery tasks
+and 92 dependency edges are the accepted starting baseline. Preserve the early
+Linux accessibility condition, all recorded native risks, post-MVP engine
+deferral, initial targets and branch/PR/Grok workflow. This approval permits
+implementation; it does not approve a merge, signing, publishing a release or
+production deployment.
+
+## D-019 — Apache-2.0 for implementation source
+
+**Date:** 2026-10-26
+
+**Status:** accepted by owner
+
+License the new implementation source under Apache-2.0 using the root LICENSE.
+Imported fixtures retain their existing notices, license and pinned provenance.
+Third-party dependency/font licenses remain independent. Publishing releases,
+signing and deployment still require separate authorization.
