@@ -15,7 +15,7 @@ license/provenance. The early LNX-001D1 proof remains required before
 LNX-001E/001F. Advanced engine work stays in ADV-005 after DESK-002.
 
 Selected task: **CORE-001A**, branch `feat/core-001a-workspace-ci`.
-PR: https://github.com/awesomejt/markdown/pull/1 (created draft; inspect live status).
+PR: [PR #1](https://github.com/awesomejt/markdown/pull/1) (created draft; inspect live status).
 Scope: Rust workspace/common checks/dependency-license policy and host-isolated
 CI definitions. No product parser/model, native shell, signing or publishing.
 Gate documentation/state closeout travels in this feature PR per workflow.
@@ -35,7 +35,7 @@ then post `/grok review` once for that head. Review receipts live in PR discussi
 The connected GitHub integration could not create a PR (403); authenticated
 `gh` created PR #1 successfully. Use that authorized fallback for write actions.
 
-Closeout snapshot: revision **275**, partial with no active/stale passes
+Closeout snapshot: revision **277**, partial with no active/stale passes
 or warnings. CORE-001A intentionally remains working without a lease.
 Inspect live state, Git and the PR before resuming. Use
 `gh pr view feat/core-001a-workspace-ci --json url,state,headRefOid`.
