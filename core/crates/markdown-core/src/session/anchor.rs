@@ -313,8 +313,30 @@ impl Snapshot {
             let (neighbour, score) = context(i);
             neighbour.then_some((i, score))
         }));
+        // 3. Nearest survivor: after the old predecessor, the old successor,
+        // the enclosing heading, then the proportional source position.
+        let find = |fingerprint: Option<u64>| {
+            let fingerprint = fingerprint?;
+            best(
+                &mut index
+                    .blocks
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, b)| b.fingerprint == fingerprint)
+                    .map(|(i, _)| (i, 0)),
+            )
+            .map(|(i, _)| i)
+        };
+        // A surviving old neighbour pins the position (step 3 below).
+        let anchored = find(anchor.previous)
+            .map(|i| (i + 1).min(index.blocks.len() - 1))
+            .or_else(|| find(anchor.next));
         // Identical content wins unless an edited block sits in a strictly
-        // better-matching context (for example a duplicate elsewhere).
+        // better-matching context (for example a duplicate elsewhere). An
+        // identical block without a shared neighbour is only trusted when no
+        // surviving neighbour pins a position: otherwise it is likely an
+        // unrelated duplicate of a deleted block.
+        let exact = exact.filter(|&(i, _)| context(i).0 || anchored.is_none());
         match (exact, relocated) {
             (Some((i, e)), Some((_, r))) if e >= r => {
                 return Ok(Some(self.resolved(i, anchor.offset, AnchorMatch::Exact)));
@@ -331,29 +353,11 @@ impl Snapshot {
             }
             (None, None) => {}
         }
-        // 3. Nearest survivor: after the old predecessor, the old successor,
-        // the enclosing heading, then the proportional source position.
-        let find = |fingerprint: Option<u64>| {
-            let fingerprint = fingerprint?;
-            best(
-                &mut index
-                    .blocks
-                    .iter()
-                    .enumerate()
-                    .filter(|(_, b)| b.fingerprint == fingerprint)
-                    .map(|(i, _)| (i, 0)),
-            )
-            .map(|(i, _)| i)
-        };
-        let nearest = find(anchor.previous)
-            .map(|i| (i + 1).min(index.blocks.len() - 1))
-            .or_else(|| find(anchor.next))
-            .or_else(|| find(anchor.section))
-            .or_else(|| {
-                let target = u128::from(anchor.source_offset) * u128::from(new_len)
-                    / u128::from(anchor.source_len.max(1));
-                index.locate(u64::try_from(target).unwrap_or(u64::MAX))
-            });
+        let nearest = anchored.or_else(|| find(anchor.section)).or_else(|| {
+            let target = u128::from(anchor.source_offset) * u128::from(new_len)
+                / u128::from(anchor.source_len.max(1));
+            index.locate(u64::try_from(target).unwrap_or(u64::MAX))
+        });
         Ok(nearest.map(|i| self.resolved(i, 0, AnchorMatch::Nearest)))
     }
     fn resolved(&self, i: usize, offset: u64, quality: AnchorMatch) -> ResolvedAnchor {

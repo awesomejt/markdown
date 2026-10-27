@@ -396,12 +396,15 @@ impl DocumentSession {
                 if token.is_none() {
                     return Ok(ChangeDisposition::ReadRequired);
                 }
-                if let Some(inflight) = state
-                    .inflight
-                    .as_ref()
-                    .filter(|i| !i.cancel.is_cancelled() && i.token == token)
+                // A live submission is the newest known content: compare only
+                // with it, never with older accepted content (A -> B -> A revert).
+                if let Some(inflight) = state.inflight.as_ref().filter(|i| !i.cancel.is_cancelled())
                 {
-                    return Ok(ChangeDisposition::Pending(Generation(inflight.generation)));
+                    return Ok(if inflight.token == token {
+                        ChangeDisposition::Pending(Generation(inflight.generation))
+                    } else {
+                        ChangeDisposition::ReadRequired
+                    });
                 }
                 let known =
                     state.availability == Availability::Available && token == state.accepted;
