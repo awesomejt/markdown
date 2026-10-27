@@ -1,7 +1,7 @@
 """Regression checks for dependency-policy failures that must block CI."""
 import unittest
 
-from check_dependencies import CRATES_IO, ROOT, violations
+from check_dependencies import CRATES_IO, REVIEWED, ROOT, violations
 
 
 class DependencyPolicyTests(unittest.TestCase):
@@ -43,12 +43,21 @@ class DependencyPolicyTests(unittest.TestCase):
         return graph
 
     def test_reviewed_model_dependency_license_alternatives_are_allowed(self):
-        for expression in ("Unlicense OR MIT", "Apache-2.0 OR BSL-1.0", "MIT/Apache-2.0",
-                           "(MIT OR Apache-2.0) AND Unicode-3.0"):
+        for (name, version), expression in REVIEWED.items():
             graph = self.external(CRATES_IO)
-            graph["packages"][-1]["license"] = expression
-            with self.subTest(expression=expression):
+            graph["packages"][-1].update(name=name, version=version, license=expression)
+            with self.subTest(name=name, version=version):
                 self.assertEqual(violations(graph), [])
+
+    def test_reviewed_licenses_do_not_approve_other_packages_versions_or_expressions(self):
+        for (name, version), expression in REVIEWED.items():
+            for changes in ({"name": "unreviewed"}, {"version": "99.0.0"},
+                            {"license": "Unicode-3.0"}):
+                graph = self.external(CRATES_IO)
+                graph["packages"][-1].update(name=name, version=version, license=expression)
+                graph["packages"][-1].update(changes)
+                with self.subTest(name=name, changes=changes):
+                    self.assertTrue(any("SPDX license" in e for e in violations(graph)))
 
     def test_crates_io_dependency_is_allowed(self):
         self.assertEqual(violations(self.external(CRATES_IO)), [])

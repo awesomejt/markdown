@@ -15,7 +15,11 @@ design belong in `docs/` or `agents/`; runtime transcripts do not belong here.
   head `24994fc`). Known Grok findings were fixed and checks passed; no fresh
   bot approval is inferred. CORE-002A is active on
   `feat/core-002a-semantic-model`, defining owned model v1, strict validation,
-  schema and goldens. Parsing/FFI/native UI are later phases. Inspect live
+  schema and goldens. PR #2 review fixes address strict link/resource decoding,
+  UTF-8 tool reads, lazy validation error paths and package/version-scoped
+  license exceptions. Owner authorized its merge and branch cleanup on
+  2026-10-27; verify final CI/review/head and actual merge before closeout.
+  Parsing/FFI/native UI are later phases. Inspect live
   state and PR before continuing; no dependent implementation before merge.
 - License: owner selected Apache-2.0 for implementation source (D-019).
 - The required real Windows, macOS, and Linux renderer and shared-core

@@ -1,6 +1,6 @@
 # Agent Session and Platform Handoff
 
-Updated: 2026-10-26, CORE-001A merged closeout and CORE-002A model v1.
+Updated: 2026-10-27, CORE-002A PR #2 review fixes and authorized merge preparation.
 Source baseline: `8a164ad` on main plus CORE-002A changes.
 Preserve intended source, locks, specs/goldens, docs and state together. Do not
 copy environments, build products, private runtime state or user documents.
@@ -33,20 +33,28 @@ added to the policy, including unicode-ident's additional Unicode notice.
 All resolved packages and pins are in Cargo.lock and the inventory; no new
 implementation language or parser dependency is introduced.
 
-Mac full checks pass with the documented isolated Rust 1.99.1 setup. Test the
-actual PR head on hosted Linux/macOS/Windows before marking ready. Then post
-one exact `/grok review` comment for that ready head and inspect actual findings.
-The GitHub connector lacks write permission; authenticated `gh` is the authorized
-fallback. Record review receipts/disposition in PR discussion rather than another
-source commit solely for receipts. Use `gh pr view feat/core-002a-semantic-model`
-to locate the PR once created. Task stays partial while CI/review/merge is pending;
-only an owner-authorized merge releases CORE-003A and dependent phases.
+[PR #2](https://github.com/awesomejt/markdown/pull/2) carries the model.
+Grok's first review found one concern and three nits; all four are addressed:
+strict empty-struct link/resource variants reject extra fields without changing
+wire shape/schema; model JSON reads explicitly use UTF-8; validation error
+paths are built lazily; additional license declarations are scoped to reviewed
+package versions. Regressions cover strict `invalid_json` failures, lazy paths
+and rejection of unreviewed packages/versions/expressions. The owner authorized
+pushing fixes, merging PR #2, syncing main and deleting the feature branch.
 
-Closeout snapshot: revision **285**, CORE-002A partial; no active/stale
-passes or warnings. Its working status without a lease is intentional.
-Inspect live state and Git before resuming the same task. No runtime/private
-artifacts, user source, transcripts or credentials belong in commits. The early
-Linux LNX-001D1 condition and post-MVP ADV-005 deferral remain intact.
+Mac full checks and an EncodingWarning-as-error model validation pass. Required
+hosted checks and a fresh `/grok review` still must be inspected for the final
+fix head. Review request receipts and disposition belong in PR discussion.
+The GitHub connector lacks write permission; authenticated `gh` is the fallback.
+After the authorized merge, reconcile live state through the helper and carry
+post-merge state/documentation closeout in the next feature PR or housekeeping
+PR, never a direct main push. CORE-003A is the next shared parser phase only
+after verified merge. Native foundation phases are also independently ready.
+
+The review-fix pass finishes partial before push/review; inspect live state and
+Git before resuming. No runtime/private artifacts, user source, transcripts or
+credentials belong in commits. Preserve early Linux LNX-001D1 and post-MVP
+ADV-005 conditions.
 
 ## Feasibility evidence retained for implementation
 

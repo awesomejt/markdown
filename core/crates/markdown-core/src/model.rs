@@ -305,8 +305,8 @@ pub struct LinkIntent {
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub enum LinkDisposition {
     Fragment { anchor: String },
-    RequiresCapability,
-    External,
+    RequiresCapability {},
+    External {},
     Denied { reason: String },
 }
 
@@ -324,7 +324,7 @@ pub struct ResourceIntent {
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub enum ResourceAccess {
-    RequiresCapability,
+    RequiresCapability {},
     Denied { reason: String },
 }
 

@@ -187,7 +187,7 @@ fn typed_intents_do_not_grant_filesystem_or_remote_image_access() {
     let (d, s) = input("resources");
     assert_eq!(d.links[0].destination, "../café.md#part"); // Adapter must enforce containment/capabilities.
     let mut bad = d.clone();
-    bad.links[2].disposition = LinkDisposition::External;
+    bad.links[2].disposition = LinkDisposition::External {};
     rejected(bad, &s, "link_policy");
     let mut bad = d.clone();
     bad.resources[0].destination = "https://example.invalid/a.png".into();
@@ -243,13 +243,13 @@ fn untrusted_wire_rejects_unknown_fields_kinds_and_duplicate_capabilities() {
         .code,
         "invalid_json"
     );
-    for mutate in [0, 1, 2, 3] {
+    for mutate in 0..7 {
         let mut value = original.clone();
         match mutate {
             0 => value["nodes"][0]["content"]["kind"] = json!("future_kind"),
             1 => value["nodes"][0]["content"]["unknown"] = json!(true),
             2 => value["capabilities"] = json!(["alerts", "alerts", "strikethrough"]),
-            _ => {
+            3 => {
                 let node = value["nodes"]
                     .as_array_mut()
                     .unwrap()
@@ -258,14 +258,27 @@ fn untrusted_wire_rejects_unknown_fields_kinds_and_duplicate_capabilities() {
                     .unwrap();
                 node["content"]["unknown"] = json!(true);
             }
+            4 => value["links"][0]["disposition"] = json!({"kind": "external", "junk": 1}),
+            5 => {
+                value["links"][0]["disposition"] = json!({"kind": "requires_capability", "junk": 1})
+            }
+            _ => {
+                value["resources"] = json!([{
+                    "id": "extra", "span": {"start": 0, "end": 0},
+                    "destination": "image.png",
+                    "access": {"kind": "requires_capability", "junk": 1}
+                }]);
+            }
         }
-        assert!(
+        assert_eq!(
             Document::from_json(
                 &serde_json::to_vec(&value).unwrap(),
                 &s,
                 ModelLimits::default()
             )
-            .is_err(),
+            .unwrap_err()
+            .code,
+            "invalid_json",
             "case {mutate}"
         );
     }

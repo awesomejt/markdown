@@ -10,13 +10,13 @@ SPEC = ROOT / "specs/semantic-model/v1"
 
 
 def main() -> None:
-    schema = json.loads((SPEC / "document.schema.json").read_text())
+    schema = json.loads((SPEC / "document.schema.json").read_text(encoding="utf-8"))
     Draft202012Validator.check_schema(schema)
     validator = Draft202012Validator(schema)
     count = 0
     kinds = set()
     for path in sorted((SPEC / "fixtures").glob("*.json")):
-        data = json.loads(path.read_text())
+        data = json.loads(path.read_text(encoding="utf-8"))
         source = path.with_suffix(".source.txt").read_bytes()
         source.decode("utf-8")
         validator.validate(data)

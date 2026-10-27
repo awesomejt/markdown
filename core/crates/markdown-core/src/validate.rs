@@ -41,7 +41,14 @@ fn err(code: &'static str, path: impl Into<String>) -> ModelError {
     }
 }
 fn require(ok: bool, code: &'static str, path: impl Into<String>) -> Result<(), ModelError> {
-    if ok { Ok(()) } else { Err(err(code, path)) }
+    require_lazy(ok, code, || path)
+}
+fn require_lazy<P: Into<String>>(
+    ok: bool,
+    code: &'static str,
+    path: impl FnOnce() -> P,
+) -> Result<(), ModelError> {
+    if ok { Ok(()) } else { Err(err(code, path())) }
 }
 fn id_valid(id: &str) -> bool {
     !id.is_empty()
@@ -142,27 +149,25 @@ fn validate(d: &DocumentInput, source: &str, limits: ModelLimits) -> Result<(), 
     let mut anchors = BTreeSet::new();
     let mut footnotes = BTreeSet::new();
     for (i, node) in d.nodes.iter().enumerate() {
-        let path = format!("nodes[{i}]");
-        require(id_valid(&node.id.0), "invalid_id", format!("{path}.id"))?;
-        require(
-            index.insert(&node.id, i).is_none(),
-            "duplicate_id",
-            format!("{path}.id"),
-        )?;
-        require(
-            span_valid(node.span, source),
-            "invalid_span",
-            format!("{path}.span"),
-        )?;
+        let path = || format!("nodes[{i}]");
+        require_lazy(id_valid(&node.id.0), "invalid_id", || {
+            format!("nodes[{i}].id")
+        })?;
+        require_lazy(index.insert(&node.id, i).is_none(), "duplicate_id", || {
+            format!("nodes[{i}].id")
+        })?;
+        require_lazy(span_valid(node.span, source), "invalid_span", || {
+            format!("nodes[{i}].span")
+        })?;
         match &node.content {
             NodeKind::Heading { level, anchor, .. } => {
-                require((1..=6).contains(level), "heading_level", &path)?;
-                require(
+                require_lazy((1..=6).contains(level), "heading_level", path)?;
+                require_lazy(
                     !anchor.is_empty() && !anchor.chars().any(char::is_whitespace),
                     "heading_anchor",
-                    &path,
+                    path,
                 )?;
-                require(anchors.insert(anchor), "duplicate_anchor", &path)?;
+                require_lazy(anchors.insert(anchor), "duplicate_anchor", path)?;
             }
             NodeKind::List {
                 ordered,
@@ -170,10 +175,10 @@ fn validate(d: &DocumentInput, source: &str, limits: ModelLimits) -> Result<(), 
                 items,
                 ..
             } => {
-                require(
+                require_lazy(
                     *ordered == start.is_some() && !items.is_empty(),
                     "list_shape",
-                    &path,
+                    path,
                 )?;
             }
             NodeKind::ListItem {
@@ -182,18 +187,18 @@ fn validate(d: &DocumentInput, source: &str, limits: ModelLimits) -> Result<(), 
                 caps.insert(Capability::TaskLists);
             }
             NodeKind::Table { alignments, rows } => {
-                require(
+                require_lazy(
                     !alignments.is_empty() && !rows.is_empty(),
                     "table_shape",
-                    &path,
+                    path,
                 )?;
                 caps.insert(Capability::Tables);
             }
             NodeKind::FootnoteDefinition { label, .. } => {
-                require(
+                require_lazy(
                     text_present(label) && footnotes.insert(label),
                     "footnote_label",
-                    &path,
+                    path,
                 )?;
                 caps.insert(Capability::Footnotes);
             }
@@ -208,7 +213,7 @@ fn validate(d: &DocumentInput, source: &str, limits: ModelLimits) -> Result<(), 
             }
             NodeKind::UnsupportedBlock { feature, .. }
             | NodeKind::UnsupportedInline { feature, .. } => {
-                require(text_present(feature), "unsupported_feature", &path)?;
+                require_lazy(text_present(feature), "unsupported_feature", path)?;
             }
             _ => {}
         }
@@ -242,11 +247,9 @@ fn validate(d: &DocumentInput, source: &str, limits: ModelLimits) -> Result<(), 
             let child_index = resolve(id)?;
             parents[child_index] += 1;
             let child = &d.nodes[child_index];
-            require(
-                contains(node.span, child.span),
-                "child_span",
-                format!("nodes[{i}]"),
-            )?;
+            require_lazy(contains(node.span, child.span), "child_span", || {
+                format!("nodes[{i}]")
+            })?;
             let category = match &node.content {
                 NodeKind::List { .. } => matches!(child.content, NodeKind::ListItem { .. }),
                 NodeKind::Table { alignments, .. } => {
@@ -260,14 +263,12 @@ fn validate(d: &DocumentInput, source: &str, limits: ModelLimits) -> Result<(), 
                 | NodeKind::Alert { .. } => child.content.is_block(),
                 _ => child.content.is_inline(),
             };
-            require(category, "child_kind", format!("nodes[{i}]"))?;
+            require_lazy(category, "child_kind", || format!("nodes[{i}]"))?;
         }
         if let NodeKind::FootnoteReference { label } = &node.content {
-            require(
-                footnotes.contains(label),
-                "unknown_footnote",
-                format!("nodes[{i}]"),
-            )?;
+            require_lazy(footnotes.contains(label), "unknown_footnote", || {
+                format!("nodes[{i}]")
+            })?;
         }
     }
     require(parents.iter().all(|n| *n == 1), "parent_count", "tree")?;
@@ -280,7 +281,9 @@ fn validate(d: &DocumentInput, source: &str, limits: ModelLimits) -> Result<(), 
         require(visited.insert(i), "cycle", "tree")?;
         let node = &d.nodes[i];
         let link = matches!(node.content, NodeKind::Link { .. });
-        require(!(inside_link && link), "nested_link", format!("nodes[{i}]"))?;
+        require_lazy(!(inside_link && link), "nested_link", || {
+            format!("nodes[{i}]")
+        })?;
         if matches!(node.content, NodeKind::Heading { .. }) {
             headings.push(i);
         }
@@ -337,23 +340,23 @@ fn validate(d: &DocumentInput, source: &str, limits: ModelLimits) -> Result<(), 
     require(d.capabilities == caps, "capabilities", "capabilities")?;
     validate_intents(d, source)?;
     for (i, diagnostic) in d.diagnostics.iter().enumerate() {
-        require(
+        require_lazy(
             text_present(&diagnostic.code) && text_present(&diagnostic.message),
             "diagnostic_text",
-            format!("diagnostics[{i}]"),
+            || format!("diagnostics[{i}]"),
         )?;
-        require(
+        require_lazy(
             diagnostic.span.is_none_or(|s| span_valid(s, source)),
             "invalid_span",
-            format!("diagnostics[{i}].span"),
+            || format!("diagnostics[{i}].span"),
         )?;
-        require(
+        require_lazy(
             diagnostic
                 .node
                 .as_ref()
                 .is_none_or(|id| index.contains_key(id)),
             "unknown_node",
-            format!("diagnostics[{i}].node"),
+            || format!("diagnostics[{i}].node"),
         )?;
     }
     Ok(())
@@ -362,37 +365,37 @@ fn validate(d: &DocumentInput, source: &str, limits: ModelLimits) -> Result<(), 
 fn validate_intents(d: &DocumentInput, source: &str) -> Result<(), ModelError> {
     let mut links = BTreeMap::new();
     for (i, link) in d.links.iter().enumerate() {
-        let path = format!("links[{i}]");
-        require(
+        let path = || format!("links[{i}]");
+        require_lazy(
             id_valid(&link.id.0) && links.insert(&link.id, i).is_none(),
             "intent_id",
-            &path,
+            path,
         )?;
-        require(span_valid(link.span, source), "invalid_span", &path)?;
+        require_lazy(span_valid(link.span, source), "invalid_span", path)?;
         let allowed = match &link.disposition {
             LinkDisposition::Fragment { anchor } => {
                 !anchor.is_empty() && link.destination == format!("#{anchor}")
             }
-            LinkDisposition::RequiresCapability => relative(&link.destination),
-            LinkDisposition::External => external(&link.destination),
+            LinkDisposition::RequiresCapability {} => relative(&link.destination),
+            LinkDisposition::External {} => external(&link.destination),
             LinkDisposition::Denied { reason } => text_present(reason),
         };
-        require(allowed, "link_policy", &path)?;
+        require_lazy(allowed, "link_policy", path)?;
     }
     let mut resources = BTreeMap::new();
     for (i, resource) in d.resources.iter().enumerate() {
-        let path = format!("resources[{i}]");
-        require(
+        let path = || format!("resources[{i}]");
+        require_lazy(
             id_valid(&resource.id.0) && resources.insert(&resource.id, i).is_none(),
             "intent_id",
-            &path,
+            path,
         )?;
-        require(span_valid(resource.span, source), "invalid_span", &path)?;
+        require_lazy(span_valid(resource.span, source), "invalid_span", path)?;
         let allowed = match &resource.access {
-            ResourceAccess::RequiresCapability => relative(&resource.destination),
+            ResourceAccess::RequiresCapability {} => relative(&resource.destination),
             ResourceAccess::Denied { reason } => text_present(reason),
         };
-        require(allowed, "resource_policy", &path)?;
+        require_lazy(allowed, "resource_policy", path)?;
     }
     let mut link_uses = vec![0; d.links.len()];
     let mut resource_uses = vec![0; d.resources.len()];
@@ -403,10 +406,10 @@ fn validate_intents(d: &DocumentInput, source: &str) -> Result<(), ModelError> {
                     .get(target)
                     .ok_or_else(|| err("unknown_link", format!("nodes[{i}]")))?;
                 link_uses[pos] += 1;
-                require(
+                require_lazy(
                     contains(node.span, d.links[pos].span),
                     "intent_span",
-                    format!("nodes[{i}]"),
+                    || format!("nodes[{i}]"),
                 )?;
             }
             NodeKind::Image { resource, .. } => {
@@ -414,10 +417,10 @@ fn validate_intents(d: &DocumentInput, source: &str) -> Result<(), ModelError> {
                     .get(resource)
                     .ok_or_else(|| err("unknown_resource", format!("nodes[{i}]")))?;
                 resource_uses[pos] += 1;
-                require(
+                require_lazy(
                     contains(node.span, d.resources[pos].span),
                     "intent_span",
-                    format!("nodes[{i}]"),
+                    || format!("nodes[{i}]"),
                 )?;
             }
             _ => {}
@@ -428,4 +431,27 @@ fn validate_intents(d: &DocumentInput, source: &str) -> Result<(), ModelError> {
         "intent_uses",
         "intents",
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn validation_paths_are_only_built_for_errors() {
+        let mut calls = 0;
+        require_lazy(true, "example", || {
+            calls += 1;
+            "unused"
+        })
+        .unwrap();
+        assert_eq!(calls, 0);
+        let error = require_lazy(false, "example", || {
+            calls += 1;
+            "nodes[7]"
+        })
+        .unwrap_err();
+        assert_eq!(calls, 1);
+        assert_eq!(error, err("example", "nodes[7]"));
+    }
 }

@@ -57,8 +57,9 @@ graph; origin approval is a separate constraint.
 CORE-002A reviewed these exact additional declarations: `Unlicense OR MIT`
 (memchr), `Apache-2.0 OR BSL-1.0` (ryu), `MIT/Apache-2.0` (version_check,
 which supplies both license texts), and `(MIT OR Apache-2.0) AND Unicode-3.0`
-(unicode-ident). They are explicitly listed and regression-tested, not a general
-SPDX-expression evaluator. The OR alternatives provide an already permitted
+(unicode-ident). Exceptions are scoped to each reviewed package and version in the
+inventory above, and regression tests reject other packages, versions and
+expressions. This is not a general SPDX-expression evaluator. The OR alternatives provide an already permitted
 MIT/Apache option; unicode-ident additionally carries Unicode notices. Preserve
 its included LICENSE-UNICODE in eventual distribution inventories. See
 [Cargo license declarations](https://doc.rust-lang.org/cargo/reference/manifest.html#the-license-and-license-file-fields)
