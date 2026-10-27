@@ -1,6 +1,6 @@
 # Agent Session and Platform Handoff
 
-Updated: 2026-10-27, CORE-002A merged closeout and CORE-003A basic parser.
+Updated: 2026-10-27, CORE-003A PR #3 review fixes and merge preparation.
 Source baseline: `e5f1a17` on main plus this phase's changes. Preserve intended
 source, locks, authored specs/goldens, docs and state together. Do not copy
 environments, build products, private runtime state or user documents.
@@ -30,7 +30,7 @@ but has no typed properties yet. Presenters must keep that source readable.
 
 CORE-003B owns reference representation/activation, typed metadata, other
 extensions, URI refinement, full conformance/fuzz/property and measured budgets.
-The current conservative URI subset denies percent encoding, whitespace,
+The current conservative URI subset denies non-ASCII destinations, percent encoding, whitespace,
 backslashes, absolute paths and dot segments; native adapters must still enforce
 capability containment and safe URI activation. Resource intents grant no I/O.
 Parser construction can scan/allocate for bounded source before event limits
@@ -43,20 +43,35 @@ An original parser source/JSON golden is in `specs/parsing/basic/`; its exact
 source bytes are preserved by `.gitattributes`. An example regenerates output
 from deliberately supplied bounded stdin; never commit user snapshots.
 
-Mac full common/core checks pass, including parser/model debug/release/default/
-schema builds, Python regressions, Markdown/links and dependency/source policy.
-Inspect actual PR head and hosted Linux/macOS/Windows/common checks before
-marking ready; then post one exact `/grok review` comment for that ready head.
-Assess feedback and request owner authorization before merging. The previous
-merge/review exception applied only to PR #2. The connector lacks write access;
-authenticated `gh` is the authorized fallback. Keep review receipts in PR notes.
+[PR #3](https://github.com/awesomejt/markdown/pull/3) review identified three
+legitimate concerns. Fixed email autolinks now carry `mailto:` and an external
+intent with the exact address source span. Nested autolinks are inert source
+fallbacks, with no inner intent. Upstream tab-expanded offsets violating child
+containment/sibling ordering return the whole exact body as an inert source
+fallback, discarding the invalid graph/intents/outline while preserving source,
+IDs and first-position metadata. Other model/mapping errors still surface.
+Unicode format/bidi destinations are denied through a temporary ASCII-only
+activation policy; legitimate Unicode names/IDNs/fragments also remain visible
+but denied pending CORE-003B. No dependency/schema/golden change is required.
 
-Finish CORE-003A partial with no active lease while waiting for CI/review/merge.
-Inspect live state before resuming; partial working status without a lease is
-intentional. After verified owner-authorized merge, carry supported state
-closeout in the next feature PR; do not push closeout directly to main.
-Next shared phases: CORE-003B or CORE-004A after this merge; native foundation
-A phases remain independently ready. Preserve Linux LNX-001D1 and ADV-005 gates.
+Regressions reproduce the original failures, verify exact fallback bytes and
+metadata, preserve ASCII/email activation and denied Unicode values, and check
+20,000 deterministic generated-markup inputs for validated output or limit
+errors. This bounded invariant check does not replace CORE-003B fuzz/performance.
+
+The owner requested fixing legitimate concerns, committing/pushing, waiting for
+automatic checks, merging PR #3 and cleaning up, as with PR #2. Post the required
+fresh review trigger after current-head checks, but do not infer bot approval
+or wait for another review contrary to that requested sequence. Inspect actual
+comments before merging and address concrete new findings if present. The
+GitHub connector lacks write access; authenticated `gh` is the fallback.
+
+Finish the review-fix pass partial before CI/merge, with no active lease.
+After verified owner-authorized merge, sync main and delete the phase branch.
+Carry supported state closeout in the next feature PR; never push closeout
+directly to main. Inspect actual PR/live state before the next task. CORE-003B
+or CORE-004A follows this merge; platform A phases are independently ready.
+Preserve Linux LNX-001D1 and ADV-005 gates.
 
 ## Feasibility evidence retained for implementation
 

@@ -137,7 +137,63 @@ pub fn parse_markdown(
     if !b.stack.is_empty() || b.capture.is_some() {
         return Err(ParseError::SourceMapping);
     }
-    Document::new(b.doc, source, limits.model).map_err(ParseError::Model)
+    // Some upstream tab-expanded container offsets cannot satisfy the frozen
+    // containment/order contract. Keep the original body readable without
+    // inventing offsets or publishing any of the invalid graph's intents.
+    let identity = (b.doc.document_id.clone(), b.doc.revision_id.clone());
+    let source_info = b.doc.source.clone();
+    let metadata = b.doc.metadata.clone();
+    match Document::new(b.doc, source, limits.model) {
+        Err(error) if matches!(error.code, "child_span" | "sibling_order") => {
+            let body_span = span(offset..source.len());
+            let id = NodeId("n0".into());
+            let mut capabilities = BTreeSet::new();
+            let mut diagnostics = Vec::new();
+            if let Some(front_matter) = metadata.front_matter_span {
+                capabilities.insert(Capability::FrontMatter);
+                diagnostics.push(Diagnostic {
+                    code: "front_matter_deferred".into(),
+                    severity: Severity::Info,
+                    message: "Front matter is preserved as source; property parsing is deferred."
+                        .into(),
+                    span: Some(front_matter),
+                    node: None,
+                });
+            }
+            diagnostics.push(Diagnostic {
+                code: "source_mapping_fallback".into(), severity: Severity::Warning,
+                message: "Container source offsets cannot be represented; the body is preserved as inert source.".into(),
+                span: Some(body_span), node: Some(id.clone()),
+            });
+            Document::new(
+                DocumentInput {
+                    model_version: MODEL_VERSION,
+                    document_id: identity.0,
+                    revision_id: identity.1,
+                    source: source_info,
+                    metadata,
+                    capabilities,
+                    roots: vec![id.clone()],
+                    nodes: vec![Node {
+                        id,
+                        span: body_span,
+                        content: NodeKind::UnsupportedBlock {
+                            feature: "unrepresentable_source_mapping".into(),
+                            reason: UnsupportedReason::InvalidInput,
+                        },
+                    }],
+                    outline: Vec::new(),
+                    links: Vec::new(),
+                    resources: Vec::new(),
+                    diagnostics,
+                },
+                source,
+                limits.model,
+            )
+            .map_err(ParseError::Model)
+        }
+        result => result.map_err(ParseError::Model),
+    }
 }
 
 fn span(range: Range<usize>) -> SourceSpan {
@@ -480,7 +536,18 @@ impl Builder<'_> {
                 title,
                 ..
             } => {
-                if !matches!(
+                if self
+                    .stack
+                    .iter()
+                    .any(|f| matches!(self.doc.nodes[f.node].content, NodeKind::Link { .. }))
+                {
+                    capture = Some(Capture::Fallback);
+                    diagnostic = Some("nested_link_disabled");
+                    NodeKind::UnsupportedInline {
+                        feature: "nested_link".into(),
+                        reason: UnsupportedReason::InvalidInput,
+                    }
+                } else if !matches!(
                     link_type,
                     LinkType::Inline | LinkType::Autolink | LinkType::Email
                 ) {
@@ -491,7 +558,11 @@ impl Builder<'_> {
                         reason: UnsupportedReason::Unavailable,
                     }
                 } else {
-                    let destination = self.text(&dest_url)?;
+                    let destination = if link_type == LinkType::Email {
+                        self.text(&format!("mailto:{dest_url}"))?
+                    } else {
+                        self.text(&dest_url)?
+                    };
                     let target = LinkId(format!("l{}", self.doc.links.len()));
                     let disposition = classify_link(&destination);
                     self.doc.links.push(LinkIntent {
@@ -741,6 +812,7 @@ fn destination_span(
 // local paths against an actual permission capability; model values grant no I/O.
 fn safe_uri(value: &str) -> bool {
     !value.is_empty()
+        && value.is_ascii()
         && !value.chars().any(|c| c.is_control() || c.is_whitespace())
         && !value.contains(['\\', '%'])
 }

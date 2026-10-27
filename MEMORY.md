@@ -23,9 +23,12 @@ design belong in `docs/` or `agents/`; runtime transcripts do not belong here.
   span without typed properties. Full extension/conformance, URI refinement,
   fuzz/property and time/memory budgets remain CORE-003B. IDs are snapshot-local;
   sessions/cancellation/identity remain CORE-004A. Native UI/FFI are later phases.
-  Inspect actual phase PR/checks/review before continuing; no dependent work
-  before owner-authorized merge. Previous PR #2 merge authorization and review
-  waiver do not authorize this phase's merge or waive its review.
+  PR #3 review fixes address email routing, Unicode/bidi URI obfuscation and
+  nested-link/tab-container validation failures; see Parsing.md for inert body
+  fallback and temporary ASCII-only activation restrictions. The owner authorized
+  fixing, pushing, waiting for checks, merging and branch cleanup on 2026-10-27,
+  as with PR #2. Verify final head/checks/merge; never infer bot approval.
+  No dependent work before verified merge; carry state closeout in next PR.
 - License: owner selected Apache-2.0 for implementation source (D-019).
 - The required real Windows, macOS, and Linux renderer and shared-core
   integration evidence is recorded, and the capability matrix reconciles it.

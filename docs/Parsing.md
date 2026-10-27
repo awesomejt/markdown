@@ -26,8 +26,18 @@ Entities and Markdown escapes become semantic text, while spans slice original
 lexemes, including CRLF/NFC/NFD. There is no per-character display/source map
 or syntax highlighting yet. Destination spans exclude optional angle brackets;
 email autolinks retain their source address span while their semantic destination
-includes `mailto:`. An unrepresentable source mapping fails the whole parse
-rather than publishing an unchecked model.
+includes `mailto:`. Autolinks nested in another link become inert inline source
+fallbacks, with no inner activation intent. The outer link retains its destination.
+
+Upstream tab-expanded container offsets can violate v1 child containment or
+sibling ordering. For those two validation errors only, the parser discards the
+partial graph and all its intents/outline and returns a fresh validated inert
+source block covering the exact body, with `source_mapping_fallback` diagnostic.
+Document/revision IDs, source fingerprint and first-position front matter are
+preserved. This deliberately sacrifices rich semantics for the entire body while
+keeping the file readable; it never widens, clips or invents source offsets.
+Other source-mapping/model errors remain errors rather than publishing an
+unchecked model.
 
 Heading titles flatten plain text, code, image alt and source fallbacks, omitting
 raw HTML tag fallbacks from outline labels while preserving those source nodes.
@@ -47,14 +57,15 @@ Advanced `mermaid`, `d2`, `math` and `latex` fences are source fallbacks. Other
 code fences are always literal code; language info is untrusted text.
 
 Link classification uses the parser's entity/escape-decoded destination.
-Controls, whitespace, backslashes and percent encoding are denied. Links permit
+Non-ASCII destinations (including Unicode format/bidi characters), controls,
+whitespace, backslashes and percent encoding are denied. Links permit
 nonempty `#fragment`, http/https/mailto prefixes with nonempty remainder, or a
 relative destination with no colon, absolute prefix or dot/dot-dot segment.
 Every other link is a denied intent. Images permit only that relative subset;
 remote/absolute/unsafe images remain denied intents with readable alt text.
 
-This deliberately blocks some legitimate names/URLs (spaces, percent encoding
-and parent-relative navigation) until CORE-003B's URI/conformance work. It does
+This deliberately blocks some legitimate names/URLs (Unicode names/IDNs and
+Unicode fragments, spaces, percent encoding and parent-relative navigation) until CORE-003B's URI/conformance work. It does
 not validate full URL syntax, normalize paths, grant permissions or prove the
 safety of a platform URL launcher. Native adapters must revalidate external
 activation and decode/resolve local resources under actual OS capabilities,
@@ -120,12 +131,17 @@ Run `python tools/check.py all` with the toolchain in
 [Development.md](Development.md). Parser regressions run in default and schema
 builds, debug and release, through the existing three-host CI matrix. They cover
 basic and malformed syntax, exact spans, unsafe/obfuscated destinations, HTML,
-limits, duplicates, all eight frozen corpus inputs and an original serialized
+limits, duplicates, Grok's email/nested-link/tab/Unicode reproductions, a bounded
+20,000-case deterministic generated-markup parse/revalidation check, all eight
+frozen corpus inputs and an original serialized
 [golden](../specs/parsing/basic/expected.json) from
 [its source](../specs/parsing/basic/input.source.txt), authored here under Apache-2.0.
 The frozen model goldens/schema must remain unchanged. An independent read-only
 safety/source-mapping review found and verified the heading HTML-label fix;
-its final pass found no remaining actionable issue. This does not replace
+its initial final pass found no remaining actionable issue. Grok's subsequent
+review identified email classification, Unicode URI obfuscation and nested-link/
+tab-container robustness gaps, now fixed with the regressions above. The bounded
+generated test does not establish exhaustive fuzz coverage. This does not replace
 hosted checks, phase review or CORE-003B fuzz/performance acceptance.
 
 The bounded stdin example can reproduce the new golden:
