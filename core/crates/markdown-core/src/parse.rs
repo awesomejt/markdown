@@ -170,11 +170,26 @@ fn build<'a>(
     // heading attributes, math, footnotes, alerts or broken-link callback.
     let mut events = Parser::new_ext(&source[offset..], options).into_offset_iter();
     let mut count = 0usize;
+    // V2 only: source ranges that produced events, for shadowed-definition notes.
+    let mut covered: Vec<Range<usize>> = Vec::new();
     while let Some((event, range)) = events.next() {
         if count >= limits.max_events {
             return Err(ParseError::EventLimit);
         }
         count += 1;
+        if references
+            && !matches!(
+                event,
+                Event::End(_) | Event::Start(Tag::BlockQuote(_) | Tag::List(_) | Tag::Item)
+            )
+        {
+            match covered.last_mut() {
+                Some(last) if (last.start..=last.end).contains(&range.start) => {
+                    last.end = last.end.max(range.end);
+                }
+                _ => covered.push(range.clone()),
+            }
+        }
         let definition = if references {
             match &event {
                 Event::Start(
@@ -199,7 +214,178 @@ fn build<'a>(
     if !b.stack.is_empty() || b.capture.is_some() {
         return Err(ParseError::SourceMapping);
     }
+    if references {
+        let body = &source[offset..];
+        for r in shadowed_definitions(body, events.reference_definitions(), covered, options) {
+            b.diagnostic(
+                "reference_definition_shadowed",
+                span(r.start + offset..r.end + offset),
+                None,
+            );
+        }
+    }
     Ok(b)
+}
+
+/// Bounded upper limit on shadowed-definition notes for one document.
+const MAX_SHADOWED_DEFINITIONS: usize = 1024;
+
+/// Find later duplicate reference definitions that CommonMark ignores. The
+/// pinned parser emits no event for any definition and only reports the kept
+/// first one, so ignored definitions are exactly the body source that neither
+/// produced an event nor is a kept definition (beyond whitespace and container
+/// markers). Each such gap is flattened (container prefixes removed) and
+/// reparsed standalone; it is reported only if it yields no events at all
+/// (purely definitions) and each found label is already kept at another span.
+/// Anything else is a silent false negative. Reparsing is capped at twice the
+/// body length and the result at `MAX_SHADOWED_DEFINITIONS`.
+fn shadowed_definitions(
+    body: &str,
+    kept: &pulldown_cmark::RefDefs<'_>,
+    mut covered: Vec<Range<usize>>,
+    options: Options,
+) -> Vec<Range<usize>> {
+    let mut found = Vec::new();
+    let mut kept_spans: Vec<Range<usize>> = kept.iter().map(|(_, d)| d.span.clone()).collect();
+    if kept_spans.is_empty() {
+        return found;
+    }
+    covered.append(&mut kept_spans);
+    covered.sort_unstable_by_key(|r| r.start);
+    let mut budget = body.len().saturating_mul(2);
+    let mut at = 0usize;
+    let mut gaps = Vec::new();
+    for r in covered
+        .iter()
+        .chain(std::iter::once(&(body.len()..body.len())))
+    {
+        if r.start > at {
+            gaps.push(at..r.start);
+        }
+        at = at.max(r.end);
+    }
+    for gap in gaps {
+        let text = &body[gap.clone()];
+        if !text.contains('[') {
+            continue;
+        }
+        // Flatten: fragment bytes plus (fragment offset, body offset) per line.
+        // Definitions cannot span a blank line, so each blank line splits.
+        let mut fragment = String::new();
+        let mut map: Vec<(usize, usize)> = Vec::new();
+        let mut line_start = gap.start;
+        for line in text.split_inclusive('\n') {
+            let content = line_start + container_prefix(line);
+            let rest = &body[content..line_start + line.len()];
+            line_start += line.len();
+            if rest.trim().is_empty() {
+                if !scan_fragment(&fragment, &map, kept, options, &mut budget, &mut found) {
+                    return finish_shadowed(found);
+                }
+                fragment.clear();
+                map.clear();
+            } else {
+                map.push((fragment.len(), content));
+                fragment.push_str(rest);
+            }
+        }
+        if !scan_fragment(&fragment, &map, kept, options, &mut budget, &mut found) {
+            break;
+        }
+    }
+    finish_shadowed(found)
+}
+/// Returns false once the reparse budget or result cap is exhausted.
+fn scan_fragment(
+    fragment: &str,
+    map: &[(usize, usize)],
+    kept: &pulldown_cmark::RefDefs<'_>,
+    options: Options,
+    budget: &mut usize,
+    found: &mut Vec<Range<usize>>,
+) -> bool {
+    let to_body = |p: usize, end: bool| {
+        let i = map.partition_point(|&(f, _)| if end { f < p } else { f <= p });
+        let (f, s) = map[i.saturating_sub(1)];
+        s + (p - f)
+    };
+    let mut work = Vec::new();
+    if fragment.contains('[') {
+        work.push(0..fragment.len());
+    }
+    while let Some(r) = work.pop() {
+        let part = &fragment[r.clone()];
+        let Some(left) = budget.checked_sub(part.len()) else {
+            return false;
+        };
+        *budget = left;
+        let mut parser = Parser::new_ext(part, options);
+        if parser.next().is_some() {
+            continue; // Not purely definitions: fail closed for this region.
+        }
+        let mut local: Vec<Range<usize>> = Vec::new();
+        for (label, def) in parser.reference_definitions().iter() {
+            let source =
+                to_body(r.start + def.span.start, false)..to_body(r.start + def.span.end, true);
+            if kept.get(label).is_some_and(|k| k.span != source) {
+                found.push(source);
+                if found.len() >= MAX_SHADOWED_DEFINITIONS {
+                    return false;
+                }
+            }
+            local.push(def.span.clone());
+        }
+        // Same-label duplicates inside this fragment were dropped again.
+        local.sort_unstable_by_key(|s| s.start);
+        let mut at = 0usize;
+        for s in local
+            .iter()
+            .chain(std::iter::once(&(part.len()..part.len())))
+        {
+            if s.start > at && part[at..s.start].contains('[') {
+                work.push(r.start + at..r.start + s.start);
+            }
+            at = at.max(s.end);
+        }
+    }
+    true
+}
+fn finish_shadowed(mut found: Vec<Range<usize>>) -> Vec<Range<usize>> {
+    found.sort_unstable_by_key(|r| (r.start, r.end));
+    found.dedup();
+    found
+}
+/// Length of leading whitespace, block-quote and list-item markers on a line.
+fn container_prefix(line: &str) -> usize {
+    let bytes = line.as_bytes();
+    let mut i = 0;
+    loop {
+        while matches!(bytes.get(i), Some(b' ' | b'\t')) {
+            i += 1;
+        }
+        let marker_end = match bytes.get(i) {
+            Some(b'>') => i + 1,
+            Some(b'-' | b'+' | b'*') => i + 1,
+            Some(b'0'..=b'9') => {
+                let digits = bytes[i..].iter().take_while(|b| b.is_ascii_digit()).count();
+                match bytes.get(i + digits) {
+                    Some(b'.' | b')') if digits <= 9 => i + digits + 1,
+                    _ => return i,
+                }
+            }
+            _ => return i,
+        };
+        // List markers need following whitespace or line end; quotes do not.
+        if bytes[i] != b'>'
+            && !matches!(
+                bytes.get(marker_end),
+                None | Some(b' ' | b'\t' | b'\r' | b'\n')
+            )
+        {
+            return i;
+        }
+        i = marker_end;
+    }
 }
 fn finish_v1(
     doc: DocumentInput,
@@ -318,6 +504,9 @@ impl Builder<'_> {
                 "front_matter_unsupported" => "Unsupported front matter; properties are omitted and source is retained.",
                 "reference_link_deferred" => {
                     "Reference link is preserved as source; resolution is deferred."
+                }
+                "reference_definition_shadowed" => {
+                    "Duplicate reference definition is ignored; the first definition is used."
                 }
                 _ => "Unsupported content is preserved as source and cannot execute.",
             }
@@ -1099,7 +1288,11 @@ fn finish_v2(
         .doc
         .diagnostics
         .iter()
-        .filter(|d| d.node.is_none() && d.span == metadata.front_matter_span)
+        .filter(|d| {
+            d.node.is_none()
+                && (d.span == metadata.front_matter_span
+                    || d.code == "reference_definition_shadowed")
+        })
         .cloned()
         .collect();
     match v2::Document::new(

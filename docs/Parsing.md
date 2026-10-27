@@ -105,6 +105,11 @@ occurrence, while reference destinations live in a separate definition; this
 phase does not invent a destination span or change the frozen model. CORE-003B2 implements these under opt-in v2 rather than changing v1.
 Unresolved references remain ordinary CommonMark text. Reference definitions
 are parser syntax and need not appear as body nodes, as with other delimiters.
+V2 adds an info `reference_definition_shadowed` diagnostic (no node) on each
+ignored later duplicate definition's exact span; the first still wins and v1 is
+unchanged. Detection reparses only event-free body gaps, flattened, capped at
+twice the body and 1,024 notes; it fails closed, so exotic layouts and long
+same-label runs without blank lines can be under-reported, never misreported.
 
 Bare GFM URL autolinks, math, alerts, footnotes, voice syntax and other extensions do not have their
 options enabled; they retain basic Markdown/source behavior until CORE-003B.

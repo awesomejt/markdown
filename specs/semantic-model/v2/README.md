@@ -4,7 +4,10 @@ Status: opt-in CORE-003B2 contract under phase-PR review; freeze at owner-author
 merge. The owner selected additive v2 with explicit reference provenance while
 retaining v1. Enable Rust feature `model-v2`; use `parse_markdown_v2` and
 `markdown_core::v2::{Document, DocumentInput}`. Default `parse_markdown`, root v1
-APIs, v1 schema and v1 goldens remain intact. No default-format switch is made.
+APIs, v1 schema and v1 goldens remain intact. The shared parser does correct v1
+link/resource spans for destinations on blockquote continuation lines, which
+previously covered the `>` marker; wire shape and destinations are unchanged.
+No default-format switch is made.
 
 The [schema](document.schema.json) has ID `urn:markdown:semantic-document:2`.
 Shared IDs, nodes, metadata, outline, diagnostics, capabilities, UTF-8 spans,
@@ -27,6 +30,9 @@ Definitions may precede/follow occurrences and be reused. Each occurrence has a
 distinct intent ID; shared source spans do not imply shared ownership/activation.
 Full, collapsed and shortcut reference matching, Unicode case folding, escapes,
 multiline definitions and first-duplicate precedence use pinned pulldown-cmark.
+Each ignored later duplicate gets an info `reference_definition_shadowed`
+diagnostic with its exact definition span and no node, kept by the inert fallback;
+bounded detection may under-report exotic layouts but never flags kept definitions.
 Unresolved labels stay ordinary source text. Nested links remain inert inline
 fallbacks; linked images retain their own resource intent. Raw HTML and advanced
 engine fences keep their inert source fallback policy.

@@ -26,11 +26,18 @@ not the original source lexeme and must not be presented as such.
 
 A raw destination is at most 8,192 UTF-8 bytes. Larger requests remain denied;
 they do not invoke URL normalization. Reject raw leading/trailing whitespace,
-controls, Unicode 16.0 Cf formats, non-space whitespace, backslashes, malformed
+controls, Unicode 16.0 Cf formats, Default_Ignorable_Code_Point values (Hangul
+fillers, CGJ, variation selectors, Mongolian FVS, tags), U+2800 braille blank,
+non-space whitespace, backslashes, malformed
 percent triplets and invalid percent-decoded UTF-8. Apply control/format checks
 after one strict percent decode as well, before IDNA/URL normalization could
 remove or reinterpret them. Ordinary Unicode/NFD file names and internal spaces
 are supported. This is not a full Unicode confusable/grapheme validator.
+Rejecting default-ignorable values denies rare legitimate targets such as emoji
+with U+FE0F; display text keeps them. The pinned set comes from
+[Unicode 16.0 DerivedCoreProperties](https://www.unicode.org/Public/16.0.0/ucd/DerivedCoreProperties.txt),
+cross-checked against the locked icu_properties_data 2.4.0 (Unicode 18.0, same
+set), under the [Unicode License V3](../licenses/Unicode-3.0.txt).
 
 Scheme recognition only considers a colon before slash/query/fragment boundaries;
 a colon within a fragment is not a scheme. Unknown schemes, file/drive/ADS forms,
@@ -95,9 +102,9 @@ implementation evidence.
 ## Dependencies and checks
 
 Only feature `model-v2` enables url/IDNA/ICU; v1 remains the default. The shared
-parser corrects v1 destination spans on blockquote continuation lines; a
-dedicated v1 regression and compatibility documentation are tracked in
-CORE-003B2F. The
+parser corrects v1 destination spans on blockquote continuation lines
+(`> [a](\n> b)` now spans `b`, not `>`); `tests/parser.rs` pins this v1 change.
+The
 [full dependency inventory](Dependencies.md) records 60 all-feature packages,
 reviewed Unicode notices and the footprint tradeoff. Parser/URL/provenance proof
 work has no hard deadline/cancellation guarantee; CORE-004A and B4 retain those

@@ -93,7 +93,10 @@ checked against Python's Unicode 16.0 category data. The small static predicate
 requires no runtime download or new dependency. The data notice is retained in
 source and [Unicode License V3](../licenses/Unicode-3.0.txt); updating Unicode
 categories requires deliberate review. This is a Cf/control guard, not a full
-Unicode confusable or grapheme validator. URI policy is unchanged.
+Unicode confusable or grapheme validator. Metadata deliberately keeps other
+default-ignorable values: variation selectors, Mongolian FVS and CGJ are needed
+for emoji, Mongolian and Hebrew display text. [URI targets](URI-Policy.md) are
+stricter because they are actionable.
 
 ## Atomic failure and diagnostics
 

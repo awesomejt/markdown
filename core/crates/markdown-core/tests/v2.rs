@@ -120,6 +120,18 @@ fn unsafe_and_obfuscated_uris_never_get_actionable_targets() {
         "a/NUL.txt",
         "a/COM1",
         "a/file. ",
+        "https://a.com/x\u{115F}y",
+        "report\u{3164}.pdf",
+        "report%E3%85%A4.pdf",
+        "https://a.com/x\u{FE0F}",
+        "docs/a\u{E0100}.md",
+        "a\u{034F}b.md",
+        "a\u{180B}b.md",
+        "a\u{2800}.md",
+        "https://a.com/%E2%A0%80",
+        "a\u{FFA0}.md",
+        "a\u{17B4}.md",
+        "a%EF%BF%B0.md",
     ] {
         assert!(
             matches!(v2::classify(s, false), Target::Denied { .. }),
@@ -483,4 +495,119 @@ fn captured_event_budget_is_independent_of_published_node_count() {
         .unwrap_err(),
         ParseError::EventLimit
     );
+}
+
+// Shadowed (ignored later duplicate) reference definitions.
+fn shadowed(s: &str) -> Vec<&str> {
+    parse(s)
+        .input()
+        .diagnostics
+        .iter()
+        .filter(|d| d.code == "reference_definition_shadowed")
+        .map(|d| {
+            assert_eq!(d.severity, Severity::Info);
+            assert!(d.node.is_none());
+            d.span.and_then(|span| span.slice(s)).expect("span")
+        })
+        .collect()
+}
+#[test]
+fn shadowed_reference_definition_is_reported_and_first_definition_wins() {
+    let s = "[x][foo]\n\n[foo]: https://good.example\n[FOO]: https://evil.example\n";
+    let d = parse(s);
+    let diagnostics: Vec<_> = d
+        .input()
+        .diagnostics
+        .iter()
+        .filter(|d| d.code == "reference_definition_shadowed")
+        .collect();
+    assert_eq!(diagnostics.len(), 1);
+    let span = diagnostics[0].span.unwrap();
+    assert_eq!(span.start as usize, s.find("[FOO]").unwrap());
+    assert_eq!(span.slice(s), Some("[FOO]: https://evil.example"));
+    assert_eq!(diagnostics[0].severity, Severity::Info);
+    assert_eq!(
+        d.input().links[0].target,
+        Target::External {
+            uri: "https://good.example/".into()
+        }
+    );
+    // Front matter shifts the body without changing the reported source span.
+    let s = "---\ntitle: T\n---\n[a]: /1\n[A]: /2\n";
+    assert_eq!(shadowed(s), ["[A]: /2"]);
+}
+#[test]
+fn every_ignored_duplicate_definition_is_reported() {
+    assert_eq!(
+        shadowed("[a]: /1\n[A]: /2\n[a]: /3\n"),
+        ["[A]: /2", "[a]: /3"]
+    );
+    assert_eq!(
+        shadowed("[a]: /1\n\n[a b]: /x\n\n[A]: /2\n\n[A  B]: /y\n"),
+        ["[A]: /2", "[A  B]: /y"]
+    );
+}
+#[test]
+fn shadowed_definitions_inside_quotes_and_list_items_keep_exact_spans() {
+    assert_eq!(shadowed("> [a]: /1\n> [A]: /2\n"), ["[A]: /2"]);
+    assert_eq!(shadowed("> > [a]: /1\n> > [A]: /2\n"), ["[A]: /2"]);
+    // Multiline definition: quote markers stay inside the original span and a
+    // definition-looking title line is not a separate definition.
+    assert_eq!(
+        shadowed("[a]: /1\n[b]: /y\n\n> [A]:\n> /2\n> \"t\n> [b]: /x\"\n"),
+        ["[A]:\n> /2\n> \"t\n> [b]: /x\""]
+    );
+    assert_eq!(
+        shadowed("- [a]: /1\n- [A]: /2\n  [A]: /3\n"),
+        ["[A]: /2", "[A]: /3"]
+    );
+    assert_eq!(shadowed("[a]: /1\n\n1. x\n\n   [A]: /2\n"), ["[A]: /2"]);
+    // Document order decides which definition is kept.
+    assert_eq!(shadowed("- y\n\n  [A]: /2\n\n[a]: /1\n"), ["[a]: /1"]);
+}
+#[test]
+fn definition_text_in_code_html_paragraphs_and_titles_is_not_reported() {
+    for s in [
+        "[a]: /1\n\n```\n[a]: /2\n```\n",
+        "[a]: /1\n\n    [a]: /2\n",
+        "[a]: /1\n\n<div>\n[a]: /2\n</div>\n",
+        "[a]: /1\nparagraph\n[A]: /2\n",
+        "[a]: /1 \"multi\n[b]: /2\"\n[b]: /3\n",
+        "[a]: /1\n[b]: /2\n",
+        "[a]: <\n[A]: /2\n",
+        "| x |\n|---|\n| [a]: /1 |\n\n[a]: /2\n",
+    ] {
+        assert!(shadowed(s).is_empty(), "{s:?}");
+    }
+}
+#[test]
+fn shadowed_definition_diagnostic_is_v2_only_and_survives_fallback() {
+    let s = "[foo]: https://good.example\n[FOO]: https://evil.example\n";
+    let v1 = parse_markdown(
+        s,
+        DocumentId("d".into()),
+        RevisionId("r".into()),
+        ParseLimits::default(),
+    )
+    .unwrap();
+    assert!(v1.input().diagnostics.is_empty());
+    assert_eq!(shadowed(s), ["[FOO]: https://evil.example"]);
+    let s = "[ref][id]\n\n1. >\t- a\n\n[id]: a.md\n[ID]: b.md\n";
+    let d = parse(s);
+    assert!(
+        d.input()
+            .diagnostics
+            .iter()
+            .any(|d| d.code == "source_mapping_fallback")
+    );
+    assert_eq!(shadowed(s), ["[ID]: b.md"]);
+}
+#[test]
+fn shadowed_definition_scan_is_bounded() {
+    let s = "[a]: /1\n\n".repeat(5000);
+    assert_eq!(shadowed(&s).len(), 1024);
+    // A long same-label run without blank lines is under-reported, not slow.
+    let s = "[a]: /1\n".repeat(5000);
+    let n = shadowed(&s).len();
+    assert!((1..5000).contains(&n), "{n}");
 }

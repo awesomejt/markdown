@@ -7,21 +7,24 @@ environments, build products, private runtime state or user documents.
 
 ## PR #5 review and next pass
 
-The owner authorized merging [PR #5](https://github.com/awesomejt/markdown/pull/5)
-with legitimate findings deferred. The [Grok review](https://github.com/awesomejt/markdown/pull/5#pullrequestreview-5671367164)
-identified non-Cf invisible Unicode passing URI and shared metadata guards, and
-an undocumented v1 source-span correction without a dedicated v1 regression.
-These remain in the merged implementation until **CORE-003B2F**. The task also
-assesses a duplicate-reference warning: first-definition-wins is correct
-CommonMark behavior, and detection must be bounded and avoid false positives.
-The suggested Unicode property expansion needs compatibility analysis rather
-than automatic rejection of all characters used in legitimate scripts.
+The owner asked for the [Grok review](https://github.com/awesomejt/markdown/pull/5#pullrequestreview-5671367164)
+findings to be fixed on the PR #5 branch before the authorized merge, so the
+**CORE-003B2F** scope landed in PR #5:
 
-Verify PR #5 merged and local main is current; then carry CORE-003B2 state
-closeout in the next feature branch/PR and start CORE-003B2F. It gates B4 and
-the B aggregate, while independent native foundations and CORE-004A retain their
-existing dependencies. No product-level invisible-character protection beyond
-the documented controls and Cf guard is claimed in the meantime.
+- V2 URI targets also deny Unicode 16.0 Default_Ignorable_Code_Point values and
+  U+2800, literal or percent-encoded. Metadata text keeps its Cf/control guard,
+  so that emoji variation selectors, Mongolian FVS and CGJ remain usable
+  ([Front-Matter.md](docs/Front-Matter.md), [URI-Policy.md](docs/URI-Policy.md)).
+- The v1 span correction for blockquote-continuation destinations is now
+  documented, and `tests/parser.rs` has a regression for it.
+- V2 emits an info `reference_definition_shadowed` diagnostic for each ignored
+  duplicate definition. It is bounded and fails closed, and first-definition
+  precedence is unchanged ([Parsing.md](docs/Parsing.md)).
+
+After the merge is verified, carry the CORE-003B2 and CORE-003B2F state
+closeout in the next feature PR. Both are satisfied by the PR #5 merge, and
+closing them unblocks the B4 and B aggregate gates. Then select the next
+eligible task.
 
 ## Resume here — CORE-003B2 references and URI targets
 
@@ -83,7 +86,7 @@ read-only review found source-proof, quote mapping, linked-image, colon/authorit
 device and budget issues; fixes/regressions passed its isolated re-review with
 no remaining blocking correctness/security finding. Full conformance/fuzz/perf
 remains B4; required current-head hosted common/Linux/macOS/Windows checks and
-the owner authorized merge with the PR #5 findings deferred to CORE-003B2F.
+the owner authorized merge after the PR #5 findings were fixed on-branch (B2F scope).
 
 Finish this phase partial without an active lease while awaiting verified merge.
 The exact `/grok review` request and actual review are on PR #5; authenticated

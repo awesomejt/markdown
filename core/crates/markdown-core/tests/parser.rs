@@ -645,3 +645,19 @@ fn bounded_generated_markup_never_publishes_an_invalid_model() {
         }
     }
 }
+#[test]
+fn v1_quote_continuation_destination_spans_point_at_the_lexeme() {
+    // Corrected in CORE-003B2: these spans previously covered the `>` marker.
+    let source = "> [a](\n> b)\n\n> ![i](\n> c.png)\n\n> [t](\n> d.md \"x\")\n";
+    let d = parse(source);
+    let links: Vec<_> = d
+        .input()
+        .links
+        .iter()
+        .map(|l| (l.span.start, l.span.end, l.span.slice(source).unwrap()))
+        .collect();
+    assert_eq!(links, vec![(9, 10, "b"), (40, 44, "d.md")]);
+    assert_eq!(d.input().links[0].destination, "b");
+    assert_eq!(d.input().resources[0].span.slice(source), Some("c.png"));
+    assert_eq!(d.input().resources[0].destination, "c.png");
+}

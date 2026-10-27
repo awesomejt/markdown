@@ -26,10 +26,9 @@ core alone.
 
 ## Immediate session handoff
 
-PR #5 is owner-authorized for merge after its review findings are recorded.
-After verifying the merge, carry CORE-003B2 state closeout in the next feature
-PR and start highest-priority **CORE-003B2F**: address the PR #5 Unicode and
-v1 span follow-up below.
+PR #5 is owner-authorized for merge, and its Grok findings were fixed on that
+branch. After verifying the merge, carry the CORE-003B2 and **CORE-003B2F**
+state closeout, both delivered by PR #5, in the next feature PR.
 CORE-003B1 merged state closeout travels here. CORE-003B was refined into four
 tracked children: B1 metadata; B2 reference representation/URI compatibility;
 B3 remaining extension semantics; B4 conformance/fuzz/property and parser
@@ -39,7 +38,7 @@ CORE-004A remains independently ready. Inspect state and `HANDOFF.md` before
 any pass. Scoped commits/pushes/PR/review are authorized; merge requires
 owner authorization; concurrency remains one.
 
-- **CORE-003B2F — PR 5 URI and source-span follow-up.** Harden the Unicode
+- **CORE-003B2F — PR 5 URI and source-span follow-up (delivered in PR #5).** Harden the Unicode
   visibility policy for URI targets and shared front-matter text, considering
   compatibility with legitimate text and pinned Unicode provenance. Test
   literal and percent-encoded invisible characters in paths and external URIs.
