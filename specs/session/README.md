@@ -55,8 +55,9 @@ Jobs run wherever the adapter schedules them. A session holds only a weak
 reference from each job, the published snapshot and the newest job's token, so
 retained memory is bounded by the published snapshot plus caller-held values.
 Dropping the session cancels the in-flight token; its job returns `Closed`.
-Dropping an unrun job clears its pending state. Lock poisoning is recovered,
-never propagated as a panic.
+Dropping an unrun job clears its pending state. `status().pending` reports
+only the newest submission whose token is not cancelled. Lock poisoning is
+recovered, never propagated as a panic.
 
 ## Cancellation
 
@@ -78,12 +79,14 @@ here and belongs to the CORE-003B4 performance and native A-phase timing work.
 
 | Change | Effect |
 | --- | --- |
-| `Modified { token }` | `Unchanged` when available and `token` equals the newest accepted submission's token; otherwise `ReadRequired`. No generation is consumed |
-| `Deleted` / `Unreadable(reason)` | New generation, in-flight job superseded, availability recorded, token forgotten; returns `Recorded(generation)` |
+| `Modified { token }` | `Pending(generation)` when `token` equals the newest uncancelled in-flight submission's token (that job is not superseded); else `Unchanged` when available and `token` equals the newest accepted submission's token; otherwise `ReadRequired`. No generation is consumed |
+| `Deleted` / `Unreadable(reason)` | New generation, in-flight job superseded, availability recorded, token forgotten; returns `Recorded(generation)`. Repeating the already-recorded state with nothing in flight returns the existing generation and consumes none |
 
 `RevisionToken` is 1–256 opaque adapter bytes (for example size/mtime/file ID
 or provider version). The core compares equality only; tokens must not hold
-paths or contents, and `Debug` prints only their length. A token is accepted
+paths or contents, and `Debug` prints only their length. `Pending` keeps a
+chatty watcher from re-reading and superseding the very submission it caused.
+Ordering notices relative to reads remains the adapter's responsibility. A token is accepted
 when its submission resolves as published, unchanged or failed, so a failing
 file is not retried for an identical notice. `UnreadableReason` is
 `PermissionDenied`, `AccessRevoked`, `Busy` or `Io`. The last snapshot remains
@@ -107,11 +110,17 @@ block, intra-block byte offset, absolute offset/source length and that context.
 Offsets between blocks snap forward; past the end they snap to the last block.
 `resolve(anchor)` against any snapshot returns:
 
-1. `Exact`: same kind and fingerprint, ties broken by neighbours, occurrence
-   and proportional position. The intra-block offset is preserved.
-2. `Relocated`: same kind with a matching previous or next neighbour that is
-   not itself a former neighbour (for example a renamed heading or edited
-   paragraph). The offset is clamped to the new block.
+Context score: a shared previous and next neighbour count 2 each and the same
+preceding heading counts 1. Only real matches count; an absent neighbour on
+both sides (first/last block) earns nothing.
+
+1. `Exact`: same kind and fingerprint, ranked by context score, then
+   occurrence, then proportional position. The intra-block offset is preserved.
+2. `Relocated`: same kind with at least one shared real neighbour that is not
+   itself a former neighbour (for example a renamed heading or edited
+   paragraph). The offset is clamped to the new block. A relocated candidate
+   wins over the best exact one only with a strictly higher context score, so
+   an edited block in its original place beats an identical duplicate elsewhere.
 3. `Nearest`: block after the old predecessor, else the old successor, else
    the preceding heading, else the proportional source position; offset zero.
 4. `Ok(None)` (lost): no anchorable block, such as an empty document.
@@ -123,6 +132,21 @@ cryptographic and can collide; short blocks are guessable. Treat stored
 anchors as private document-derived state: never log or upload them.
 Resolution is linear in block count and the per-snapshot index is built lazily
 once. This is a heuristic, not a diff or minimal edit script.
+
+## Node identity discrepancy — owner confirmation pending
+
+Earlier text expected CORE-004A to reconcile node IDs: the
+[v1 contract](../semantic-model/v1/README.md) says surviving identities should
+keep IDs across revisions, and `docs/Parsing.md` said adapters need reconciled
+IDs before relying on persistent node IDs. This phase instead keeps wire IDs
+snapshot-local and provides block-level anchors for scroll/reading restoration.
+The frozen v1/v2 contracts are not edited. The owner must confirm this or
+request persistent IDs. Persistent IDs would need a follow-up task to define:
+a whole-tree matching algorithm (including inline nodes and moved subtrees),
+lineage-scoped ID allocation that never reuses deleted IDs, consistent rewriting
+of roots/children/outline/diagnostic/link/resource references with
+revalidation, cost bounds on large documents, golden/compatibility impact for
+session output versus `parse_markdown`, and probably a decision record.
 
 ## CORE-006A facade expectations
 
@@ -142,6 +166,9 @@ latest-wins races with a concurrent monotonic observer over 40 iterations,
 explicit cancel, drop of the session or an unrun job, snapshot liveness,
 deduplication, deletion/unreadable/reappearance, typed failures and anchors
 across insertion, deletion, heading rename, edit, duplicates, containers,
-empty documents, persistence and forged values. Run the
+empty documents, persistence and forged values, an edited block beating a
+duplicate elsewhere, pending-token notices, deterministic `Closed`, repeated
+availability notices and (crate unit test) `GenerationExhausted` leaving state
+unchanged. Run the
 [development checks](../../docs/Development.md). Loom/model checking is not
 used; races are exercised with repeated `std::thread` iterations only.

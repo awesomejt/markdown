@@ -99,7 +99,9 @@ budgets into the semantic layer; they receive values and diagnostics back.
 5. The session drops obsolete generations and publishes the newest snapshot.
 6. The native renderer presents semantic blocks lazily/incrementally.
 7. External changes trigger a coordinated reread and restore position using a
-   stable block ID plus intra-block offset.
+   block anchor (content fingerprint, neighbour context and intra-block offset)
+   resolved against the new snapshot; node IDs are snapshot-local
+   ([session contract](../specs/session/README.md)).
 
 ## Native rendering
 
