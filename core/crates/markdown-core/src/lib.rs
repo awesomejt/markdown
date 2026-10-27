@@ -3,12 +3,14 @@
 //! Basic Markdown parsing and validation perform no file access, UI or FFI calls.
 //! Use [`Document::new`] or [`Document::from_json`] to obtain validated snapshots.
 //! [`session`] adds generations, cancellation, external-change state and anchors.
+//! [`search`] adds source-mapped find, word count and section reading time.
 #![forbid(unsafe_code)]
 
 mod cancel;
 mod metadata;
 mod model;
 mod parse;
+pub mod search;
 pub mod session;
 #[cfg(feature = "model-v2")]
 pub mod v2;
