@@ -50,7 +50,7 @@ fn require_lazy<P: Into<String>>(
 ) -> Result<(), ModelError> {
     if ok { Ok(()) } else { Err(err(code, path())) }
 }
-fn id_valid(id: &str) -> bool {
+pub(crate) fn id_valid(id: &str) -> bool {
     !id.is_empty()
         && id.len() <= 128
         && id
