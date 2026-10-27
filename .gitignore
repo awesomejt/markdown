@@ -25,3 +25,7 @@ xcuserdata/
 local.yaml
 
 !.agents/chats/.gitkeep
+
+# Repository development tools
+node_modules/
+.venv/

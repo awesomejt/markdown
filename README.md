@@ -1,20 +1,27 @@
 # Markdown
 
-`markdown` is the planning and future implementation repository for
+`markdown` is the implementation repository for
 performance-oriented native Markdown applications. Desktop applications for
 Windows, macOS, and Linux come first; iOS and iPadOS follow after the desktop
 core and contracts are proven.
 
 This project is related to, but independent from, the existing
-[`markdown-viewer`](../markdown-viewer/README.md) LAN web application. The web
+`markdown-viewer` LAN web application (see the [source review](docs/Source-Review.md)). The web
 application remains the reference for behavior and fixtures; it is not being
 replaced or moved into this repository.
 
 ## Current state
 
-The repository is in **feasibility**. No production stack has been scaffolded.
-The architecture in [docs/Architecture.md](docs/Architecture.md) is a proposed
-baseline with explicit decision gates, not an irreversible choice.
+GATE-001 is approved (D-018); **portable-core implementation** has begun.
+CORE-001A establishes the Rust workspace, common checks and platform-isolated
+CI definitions. Native application shells remain separate phases; no working
+reader is delivered by this scaffold. The accepted
+[implementation baseline](docs/Implementation-Baseline.md) and
+[architecture](docs/Architecture.md) preserve the required native evidence.
+
+Run [development checks](docs/Development.md); see
+[dependency/license policy](docs/Dependencies.md). New implementation source
+uses Apache-2.0; imported fixture provenance and notices remain intact.
 
 Start with:
 

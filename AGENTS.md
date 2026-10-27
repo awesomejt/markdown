@@ -65,11 +65,15 @@ resolve it before changing implementation.
 - Native means platform-owned windows, navigation, commands, accessibility,
   settings, file access, and document presentation. A general-purpose WebView
   is not the default document renderer.
-- Rust is the leading candidate for portable semantic work, but the feasibility
-  gate may select Rust, C++, or intentionally platform-specific components.
+- Rust/pulldown-cmark and shared Rust extension passes are accepted for portable
+  semantics (D-008, D-015), behind the hand-written C ABI (D-009). GATE-001
+  was explicitly approved in D-018; follow its implementation conditions.
 - Each target OS owns its lifecycle, presentation, file access, accessibility,
   packaging, and performance tuning. Do not introduce a shared UI toolkit.
-- C++ is a documented fallback, not an additional default layer.
+- C++/WinRT is a Windows-host fallback for a concrete blocker; C# Native AOT
+  is the accepted default (D-017). Do not maintain two production hosts by default.
+- Linux native rendering is conditional on LNX-001D1 accessibility proof before
+  deeper renderer work. If it fails, stop dependents and return to the owner.
 - Parser output is a versioned semantic document model. Platform UI must not
   depend on parser-internal pointers, arenas, or lifetimes.
 - Filesystem permissions and security-scoped access stay in platform adapters;

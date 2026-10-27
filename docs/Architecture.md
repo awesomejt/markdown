@@ -1,17 +1,19 @@
-# Proposed Architecture
+# Architecture Baseline
 
 ## Status
 
-Proposed desktop-first baseline. GATE-001 must confirm the core language,
-native UI stacks, interop, performance budgets, and platform scope before
-production scaffolding.
+The owner accepted the component directions in D-008–D-017 and approved final
+GATE-001 closeout in D-018. Implementation begins at CORE-001A.
+[Implementation-Baseline.md](Implementation-Baseline.md) consolidates the
+choices, conditions and unresolved implementation risks. Feasibility models
+and ABIs remain disposable; they do not define the production semantic model.
 
 ## System shape
 
 ```text
             shared requirements, semantic specs, fixtures, benchmarks
                                   |
-                    candidate portable semantic core
+                    Rust semantic core
              parse / model / search / settings / diagnostics
                     /              |              \
           stable facade      stable facade      stable facade
@@ -24,8 +26,8 @@ production scaffolding.
 
 The applications share no UI framework and do not use a localhost HTTP API.
 Each target owns its native rendering, filesystem, lifecycle, accessibility,
-commands, persistence, packaging, and profiling. The shared core is optional
-until feasibility evidence shows that it improves the product.
+commands, persistence, packaging, and profiling. The accepted Rust core owns
+portable semantic work behind the versioned C ABI.
 
 ## Portable contract
 
@@ -96,22 +98,22 @@ Specialized native block presenters handle tables, code, images, math, and
 future diagrams. Platforms may implement them differently while semantic
 fixtures remain consistent.
 
-Likely platform surfaces:
+Accepted platform directions (D-010, D-017):
 
-- Windows: WinUI controls plus lower-level Windows text/rendering APIs where
-  profiling requires them. FEAS-003 supports a WinUI shell, bounded read-only
-  rich edit and virtualized-block investigation; a monolithic RichTextBlock is
-  not the universal large-document strategy. See the
-  [Windows evaluation](Windows-Rendering-Evaluation.md) for measured limits.
-- macOS: AppKit document/text/list primitives, with SwiftUI for suitable shell
-  and settings surfaces.
-- Linux: GTK 4/libadwaita widgets and native text/layout facilities.
+- Windows: WinUI 3 in C# Native AOT, virtualized semantic blocks; C++/WinRT
+  only as a fallback for a concrete blocker. Resolve the FEAS-008 Narrator/UIA
+  defects and validate mixed DPI and packaged performance in the Windows tasks.
+- macOS: AppKit/TextKit 2 for documents; SwiftUI for suitable shell/settings
+  surfaces. Bound pathological layout and address repeated-session memory.
+- Linux: GTK 4/gtk-rs, optional libadwaita, conditional native virtualized list.
+  LNX-001D1 must prove Orca/AT-SPI heading navigation and continuous reading
+  before LNX-001E/001F; failed proof returns to the owner before deepening.
 - iOS/iPadOS: UIKit document/text primitives, with SwiftUI where suitable.
 
 ## Interop
 
-If a shared core is selected, prefer a narrow stable C ABI or generated
-language binding over exposing C++ or Rust implementation types. Operations
+Use the accepted hand-written, versioned C ABI (D-009), rather than generated
+bindings or exposed C++/Rust implementation types. Operations
 should be coarse enough to avoid per-node FFI chatter and unnecessary copies.
 
 - Immutable snapshots or chunked result handles.
@@ -121,8 +123,8 @@ should be coarse enough to avoid per-node FFI chatter and unnecessary copies.
 - Panic/exception containment at the boundary.
 - Benchmarks that isolate conversion and copy cost.
 
-The Linux app may call a Rust core directly, but it must still respect the same
-public facade used to test the other hosts.
+The Linux Rust host consumes the same public C facade as the other apps;
+it does not depend on the core's internal Rust models or lifetimes.
 
 The FEAS-006 checkpoints exercise one experimental C ABI on
 [Windows](Shared-Core-Windows-Evaluation.md),

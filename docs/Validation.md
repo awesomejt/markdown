@@ -1,5 +1,9 @@
 # Validation Strategy
 
+Common and core entry points are documented in [Development.md](Development.md).
+CORE-001A adds portable CI and policy checks; native app acceptance remains
+separate and is not established by the empty core crate's test harness.
+
 ## Evidence levels
 
 ### Documentation changes
@@ -46,30 +50,35 @@ IDE stepping, full semantic conformance or clean-machine deployment.
 - Snapshot tests may support review but cannot replace semantic/accessibility
   assertions.
 
-## Initial feasibility budgets
+## Initial desktop implementation targets
 
-D-012 fixes the metric for every platform budget: launch to presented content,
-cold and warm, at least five runs with spread, on named hardware. Budget numbers
-are set from FEAS-008 measurements.
+D-016 accepts these initial targets for the 1 MiB/5 MiB prose and 1 MiB
+long-line profiles on named baseline hardware:
 
-These are starting hypotheses to measure and revise at GATE-001, not release
-promises:
+- Warm launch to presented content: at most 400 ms.
+- Cold launch to presented content: at most 700 ms.
+- Off-screen document jumps: at most 150 ms.
 
-- A 1 MiB ordinary Markdown file begins showing useful content within 500 ms on
-  each selected baseline desktop and 1 s on the selected baseline iPad.
-- Scrolling a fully presented representative document should sustain the
-  platform's normal refresh rate without repeated long main-thread stalls.
-- Opening a 5 MiB file must remain cancellable and must not require an
-  unbounded number of platform views at once.
-- Search and parse results from an obsolete document generation are never
-  presented.
-- Offline tests fail on unexpected network access.
+Apply D-012: process launch to the first presented frame of document content,
+at least five cold and five warm runs with spread, named hardware/toolchains,
+cache treatment and package/runtime conditions. Keep outliers and describe
+presentation proxies. FEAS-008 supports these targets on its Windows/Linux
+workstation; macOS still needs equivalent measurements. Earlier Mac first-draw
+and core-entry metrics do not prove compliance.
 
-FEAS-003 records named Windows measurements in
-[the Windows evaluation](Windows-Rendering-Evaluation.md). The spike does not
-meet the 1 MiB/500 ms hypothesis: synchronous adapter parsing and layout remain
-too expensive. These observations do not approve slower release budgets;
-GATE-001 must set credible budgets after the core/incremental rendering work.
+Validate and explicitly revisit these targets using the real MVP. No current
+product, universal hardware guarantee or final release readiness is implied.
+Scrolling should sustain the display's normal refresh rate without repeated
+main-thread stalls; 5 MiB loads must remain cancellable and view counts bounded.
+Obsolete-generation results must never be presented, and offline checks fail
+on unexpected network access. Numeric memory/search budgets still need task-
+appropriate measurements; Mac repeated-session RSS growth is an open risk.
+
+Historical initial feasibility hypotheses were 500 ms useful content on a
+baseline desktop and 1 s on a baseline iPad. D-016 supersedes the desktop
+startup hypothesis. No iPad launch target was accepted here. FEAS-003 failures
+remain recorded in [the Windows evaluation](Windows-Rendering-Evaluation.md);
+do not reinterpret them as passes under a changed metric.
 
 ## Required evidence format
 

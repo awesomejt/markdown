@@ -1,97 +1,65 @@
 # Agent Session and Platform Handoff
 
-Updated: 2026-10-26, FEAS-009 owner-approved deferral and ADV-005 follow-up. Source baseline:
-`137942c` plus the uncommitted engine probes, evidence and state/doc handoff.
-Preserve source, locks, measurements and reports together; do not transfer
-build products or environments between platforms.
+Updated: 2026-10-26, GATE-001 approved and CORE-001A started.
+Source baseline: `b95351f` plus approved gate closeout and CORE-001A changes.
+Preserve intended source, locks, docs and project state together. Do not copy
+environments, caches, binaries, signing identities or private runtime state.
 
-This file carries concise, commit-safe context between sessions. It does not
-replace [project.yaml](project.yaml) for operational state,
-[TODO.md](TODO.md) for acceptance criteria, [MEMORY.md](MEMORY.md) for durable
-context, or [agents/Decisions.md](agents/Decisions.md) for accepted decisions.
-Always inspect current state and Git status rather than relying on the revision
-observed while this handoff was written.
+## Resume here — CORE-001A branch and PR
 
-## Resume here — GATE-001 spikes
+The owner explicitly approved the assembled baseline and advancement in D-018.
+GATE-001 is complete and portable-core active. All 36 initial child tasks and
+92 edges are materialized. Do not rerun graph expansion or reopen gate choices.
+D-019 selects Apache-2.0 for implementation; fixtures keep their original
+license/provenance. The early LNX-001D1 proof remains required before
+LNX-001E/001F. Advanced engine work stays in ADV-005 after DESK-002.
 
-GATE-001 is partially decided: D-008 to D-013 in
-[Decisions.md](agents/Decisions.md) are accepted. The three owner-added spike
-prerequisites are now satisfied by evidence or the explicit D-014 deferral:
+Selected task: **CORE-001A**, branch `feat/core-001a-workspace-ci`.
+PR: [PR #1](https://github.com/awesomejt/markdown/pull/1) (created draft; inspect live status).
+Scope: Rust workspace/common checks/dependency-license policy and host-isolated
+CI definitions. No product parser/model, native shell, signing or publishing.
+Gate documentation/state closeout travels in this feature PR per workflow.
 
-- **FEAS-010** — done: keep pulldown-cmark with shared extension passes; see
-  [Core-Extension-Evaluation.md](docs/Core-Extension-Evaluation.md).
-- **FEAS-008** — done on Linux and Windows.
-  - Linux: [Virtualized-Renderer-Linux-Evaluation.md](docs/Virtualized-Renderer-Linux-Evaluation.md)
-    recommends a native `GtkListView`.
-  - Windows: [Virtualized-Renderer-Windows-Evaluation.md](docs/Virtualized-Renderer-Windows-Evaluation.md)
-    and `spikes/feas008/results-windows-2026-10-26.yaml` recommend a native
-    WinUI `ListView` in C# Native AOT, with C++/WinRT as the fallback. AOT and
-    C++ were 240–283 ms warm and 309–356 ms cold; JIT missed the proposed
-    400 ms warm budget; WebView2 was 2.4–12.4× slower at up to 1.4 GiB.
-  - Open for WIN-001: Narrator reads each row twice, and whole-tree UIA
-    searches time out at 5 MiB.
-  - Recommendations only; GATE-001 decides.
-- **FEAS-009** — closed by owner-approved deferral D-014 after the Mac screen.
-  See [Diagram-Math-Engine-Evaluation.md](docs/Diagram-Math-Engine-Evaluation.md)
-  and [reproduction](spikes/feas009/README.md). Owner requested timeboxed,
-  best-effort work; no custom port or full advanced-feature integration now.
-  - 15 fresh processes / 90 case outcomes passed the expected compiler checks.
-    KaTeX ran without a view in JavaScriptCore; Mermaid compiled in offscreen
-    WKWebView; D2 used its Go library with an empty import filesystem.
-  - Raw D2 SVG retains remote-icon/JavaScript-link references. Mermaid needed
-    global `htmlLabels: false` as well as strict security to remove tested
-    foreignObject markup. These are compiler diagnostics, not sanitizer proof.
-  - No visual fidelity, native presenter, D-012 presentation, full WebKit memory
-    or iOS engine runtime pass is claimed. iOS frameworks compile/link only.
-    Rust alternatives were researched, not built. No extra Homebrew install
-    was needed; npm dependencies are local and Go uses its normal cache.
-  - Owner deferred the Windows/Linux checks and deeper validation to
-    **ADV-005**, after DESK-002 and before ADV-002. This task lives in the
-    desktop-apps bucket to avoid waiting for the whole mobile phase. Reuse
-    real MVP documents; split future work by platform/engine. No deferred
-    check is passed and no engine adopted.
-  - Do not rerun the full Mac sweep merely on a host switch. Use the pinned
-    versions and synthetic sources in `spikes/feas009`; validate on the named
-    host and record unavailable checks instead of expanding setup indefinitely.
+See [development checks](docs/Development.md),
+[dependency policy](docs/Dependencies.md),
+[accepted baseline](docs/Implementation-Baseline.md) and
+[delivery workflow](docs/Delivery-Workflow.md).
 
-Deferral closeout: revision **138**, no active/stale passes, unleased working
-tasks or warnings. GATE-001 is the next eligible task; re-inspect live state.
-No FEAS-009 resume or cross-platform check is needed before the core gate.
-Next: GATE-001 with the owner for the remaining native-surface, Windows-host,
-extension and budget decisions, then rehearse/materialize the delivery graph.
-Do not start production scaffolding or close the gate on the owner's behalf.
+Mac local common/core checks pass with the verified isolated Rust 1.99.1 toolchain;
+see the documented environment override. The crate has no behavior tests yet;
+empty Cargo harnesses are not product validation. Fixture/capability/path checks,
+host-selection regressions, license-policy regressions and workflow lint passed.
+The first Grok review reported three concerns and three smaller issues. All
+six have verified fixes: conservative host selection/event tests, both sides
+of renames, committed/staged whitespace checks, inline-link handling, dependency
+source approval and non-cancelling main/manual CI. Tests include real temporary
+Git repositories. The optional cargo-deny suggestion is deferred until needed;
+Git pinning by Cargo.lock is distinct from source approval. See PR discussion
+for disposition and actual latest-head CI/review receipts. A new source head
+requires a fresh `/grok review` after its checks pass.
 
-Their acceptance criteria are in `TODO.md`. Presentation measurements use the
-D-012 metric: launch to presented content, cold and warm, at least five runs
-with spread. FEAS-009 compiler-only timings must remain labeled separately.
-On Windows, cold runs purge the standby list and so need the owner to run the
-harness from an elevated terminal. The native-only document guardrail stays
-in force. The spike dependency blocker is resolved using FEAS-008/010 evidence
-and the owner-approved D-014 disposition. GATE-001 remains open, not accepted.
+The connected GitHub integration could not create a PR (403); authenticated
+`gh` created PR #1 successfully. Use that authorized fallback for write actions.
 
-## Completed foundation
+Closeout snapshot: revision **279**, partial with no active/stale passes
+or warnings. CORE-001A intentionally remains working without a lease.
+Inspect live state, Git and the PR before resuming. Use
+`gh pr view feat/core-001a-workspace-ci --json url,state,headRefOid`.
+Before review, keep the PR draft until required checks pass, then post a new
+conversation comment exactly `/grok review`. Record receipts/review discussion
+in the PR to avoid changing the source head solely to log a review. Leave a
+partial pass without a live lease during long waits; task completion requires
+an owner-authorized merge. No dependent work starts merely because code is ready.
 
-FEAS-001 through FEAS-006 have native evidence. FEAS-006 now covers the same
-experimental Rust C facade on Windows/C#/C++, macOS/Swift and Linux/gtk-rs,
-including ownership, typed errors, cooperative cancellation, source debugging,
-native UI consumption and local normal-library packages. The evidence task is
-complete in `project.yaml`; no FEAS-006 closeout remains.
+## Feasibility evidence retained for implementation
 
-FEAS-007 has since reconciled these results into the capability matrix. Do not
-begin production scaffolding or accept the spike data model. D-008–D-013
-already accept the core/parser, C ABI approach, stacks and baseline scope; the
-remaining gate decisions and production semantic contract are still open.
-
-The following foundation steps are historical; the current GATE-001 handoff
-above takes precedence.
-
-1. Read the repository-required documents and inspect Git status.
-2. Inspect `project.yaml` through `python3 tools/project_state.py`; recover only
-   genuinely stale work before starting one pass.
-3. Confirm FEAS-007 is completed and no active/stale pass remains. If its
-   closeout was interrupted, resume that same task before GATE-001.
-4. Select GATE-001 only with the owner present to decide, and retain every
-   measured platform deviation and failure.
+[Decisions](agents/Decisions.md) and [the baseline](docs/Implementation-Baseline.md)
+carry the accepted stack and conditions. All prototype reports remain dated
+evidence, not production contracts. Preserve Mac repeated-session RSS retention,
+Windows Narrator/UIA defects, Linux screen-reader proof and the unrun native
+packaging/accessibility/performance cases. FEAS-009 closed by owner-approved
+deferral, not by passing its unrun checks. The engine report and ADV-005 retain
+them. The remaining historical host notes below are reference only.
 
 ## FEAS-006 Linux checkpoint
 

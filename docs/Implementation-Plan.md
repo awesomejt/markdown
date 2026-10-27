@@ -15,7 +15,8 @@
 
 ## Phase 1 — requirements and feasibility
 
-Tasks: REQ-001, FEAS-001 through FEAS-007, and GATE-001.
+Tasks: REQ-001, FEAS-001 through FEAS-010, REV-001, and GATE-001. FEAS-009
+closes by the owner's D-014 deferral; ADV-005 carries its unrun post-MVP work.
 
 Outputs:
 
@@ -42,7 +43,7 @@ Exit criteria:
 
 The numbered sections below are roadmap milestones. The execution units in this
 catalog are smaller delivery phases, each with its own feature branch and PR.
-IDs with suffixes are planned child tasks; they are not yet in live state.
+IDs with suffixes are child delivery tasks, materialized during GATE-001 closeout.
 GATE-001 must reconcile this catalog with the accepted stack and materialize the
 initial dependency graph as described in [Delivery-Workflow.md](Delivery-Workflow.md).
 Refine an oversized row before coding, preserving its parent acceptance criteria.
@@ -84,6 +85,19 @@ live alongside shared foundation work in the `portable-core` state bucket.
 | 001G | Large-document layout, global selection and accessibility; native reader/copy, scaling and performance budgets | own 001E, own 001F |
 | 001H | External refresh, anchors and reading restoration; replacement/deletion/race and relaunch checks | own 001G |
 | 001I | Local development artifact, license inventory and relocated launch; full skeleton acceptance on this host | own 001H, CORE-003B |
+
+Platform-specific early gate under D-017:
+
+| Delivery phase | Scope and acceptance evidence | Merged prerequisites |
+| --- | --- | --- |
+| LNX-001D1 | Prove native document/heading semantics, off-screen heading navigation and continuous reading beyond visible rows with AT-SPI inspection and owner-confirmed Orca behavior on the KDE Wayland baseline; retain correct focus, reading order and basic selection | LNX-001D |
+
+LNX-001E and LNX-001F additionally depend on LNX-001D1. Do not deepen the
+Linux renderer before that proof. If it fails, stop those dependent phases,
+record the failing behavior and return to the owner for a native accessibility
+design revision or explicit renderer decision. App-level shortcuts alone do
+not establish screen-reader heading navigation or continuous reading. Other
+desktop environments remain later coverage under the accepted MVP baseline.
 
 Use measured platform strategies: Windows must prove global selection/UIA and
 mixed-DPI behavior; Linux must prove cross-block selection/AT-SPI on supported

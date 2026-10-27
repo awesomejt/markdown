@@ -73,7 +73,9 @@ native rerun; do not infer a Linux pass from macOS results.
 2. Inspect `project.yaml`.
 3. If the snapshot reports stale passes or working tasks without leases,
    recover or resume them before selecting new work.
-4. Select the highest-priority eligible task in the active phase.
+4. Select the highest-priority eligible task in the active phase that can be
+   executed and validated on the current host. Record a host limitation rather
+   than claiming native evidence from another OS.
 5. Create a unique request envelope under `.agents/requests/` and invoke
    `start_pass` with the snapshot revision, selected task, concrete objective,
    and a bounded lease.
