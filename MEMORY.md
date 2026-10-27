@@ -26,8 +26,12 @@ design belong in `docs/` or `agents/`; runtime transcripts do not belong here.
   docs/URI-Policy.md for decode-once/capability rules and residual limits.
   URL/IDNA is optional; 60 all-feature packages with reviewed scoped Unicode
   exceptions. Metadata/engines/FFI/UI/session ownership are not expanded here.
-  Inspect actual phase checks/review before continuing; previous PR #2–#4
-  review/merge exceptions do not authorize this phase's merge. Node identity/
+  PR #5 Grok review found invisible non-Cf Unicode can pass URI and shared
+  metadata guards; v1 blockquote-continuation destination spans also changed
+  as a correction without a dedicated v1 regression. Owner authorized merge
+  with these deferred to high-priority CORE-003B2F, which also evaluates a
+  bounded duplicate-reference diagnostic. After verifying merge, carry B2
+  state closeout in the next feature PR, then start B2F. Node identity/
   cancellation remains CORE-004A; preserve Linux LNX-001D1 and ADV-005 conditions.
 - License: owner selected Apache-2.0 for implementation source (D-019).
 - The required real Windows, macOS, and Linux renderer and shared-core

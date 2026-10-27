@@ -5,6 +5,24 @@ Source baseline: `0ce353f` on main plus this phase's changes. Preserve intended
 source, lock/spec/golden files, docs and state together. Never transfer caches,
 environments, build products, private runtime state or user documents.
 
+## PR #5 review and next pass
+
+The owner authorized merging [PR #5](https://github.com/awesomejt/markdown/pull/5)
+with legitimate findings deferred. The [Grok review](https://github.com/awesomejt/markdown/pull/5#pullrequestreview-5671367164)
+identified non-Cf invisible Unicode passing URI and shared metadata guards, and
+an undocumented v1 source-span correction without a dedicated v1 regression.
+These remain in the merged implementation until **CORE-003B2F**. The task also
+assesses a duplicate-reference warning: first-definition-wins is correct
+CommonMark behavior, and detection must be bounded and avoid false positives.
+The suggested Unicode property expansion needs compatibility analysis rather
+than automatic rejection of all characters used in legitimate scripts.
+
+Verify PR #5 merged and local main is current; then carry CORE-003B2 state
+closeout in the next feature branch/PR and start CORE-003B2F. It gates B4 and
+the B aggregate, while independent native foundations and CORE-004A retain their
+existing dependencies. No product-level invisible-character protection beyond
+the documented controls and Cf guard is claimed in the meantime.
+
 ## Resume here — CORE-003B2 references and URI targets
 
 CORE-003B1 completed via owner-authorized [PR #4](https://github.com/awesomejt/markdown/pull/4)
@@ -19,8 +37,8 @@ The owner chose additive opt-in model v2 with explicit reference provenance,
 preserving v1 API/decoder/schema/goldens (D-020). Read
 [the v2 contract](specs/semantic-model/v2/README.md), [URI policy](docs/URI-Policy.md),
 [Parsing.md](docs/Parsing.md), [development checks](docs/Development.md) and
-[dependency inventory](docs/Dependencies.md). V2 is still under phase-PR review;
-freeze at owner-authorized merge. No default model/facade/native format switch.
+[dependency inventory](docs/Dependencies.md). V2 is under phase-PR review and the owner authorized merge with the
+review follow-up above. No default model/facade/native format switch.
 
 Enable feature `model-v2` for `parse_markdown_v2`/`v2::Document`. The v1 parser
 remains default with reference fallbacks/conservative URI subset. V2 separates
@@ -65,13 +83,12 @@ read-only review found source-proof, quote mapping, linked-image, colon/authorit
 device and budget issues; fixes/regressions passed its isolated re-review with
 no remaining blocking correctness/security finding. Full conformance/fuzz/perf
 remains B4; required current-head hosted common/Linux/macOS/Windows checks and
-actual phase review/owner merge still must be inspected before completion.
+the owner authorized merge with the PR #5 findings deferred to CORE-003B2F.
 
-Finish this phase partial without an active lease while awaiting CI/review/merge.
-Once ready, post exact `/grok review` separately; receipts/disposition belong in
-PR discussion, not another source-only receipt commit. Connector writes are
-unavailable; authenticated `gh` is the fallback. Earlier merge/review exceptions
-applied only to PR #2–#4. Do not merge this phase without owner authorization.
+Finish this phase partial without an active lease while awaiting verified merge.
+The exact `/grok review` request and actual review are on PR #5; authenticated
+`gh` is the fallback for connector write limitations. The owner explicitly
+authorized PR #5 merge after recording its review findings.
 After verified merge, carry state closeout in the next feature PR, not directly
 to main. B3/B4 and CORE-004A/native A phases keep their dependencies. Preserve
 Linux LNX-001D1 and ADV-005 gates.

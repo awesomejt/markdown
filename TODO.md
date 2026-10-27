@@ -26,16 +26,27 @@ core alone.
 
 ## Immediate session handoff
 
-Work on `feat/core-003b2-references-uri` through its PR/check/Grok lifecycle.
+PR #5 is owner-authorized for merge after its review findings are recorded.
+After verifying the merge, carry CORE-003B2 state closeout in the next feature
+PR and start highest-priority **CORE-003B2F**: address the PR #5 Unicode and
+v1 span follow-up below.
 CORE-003B1 merged state closeout travels here. CORE-003B was refined into four
 tracked children: B1 metadata; B2 reference representation/URI compatibility;
 B3 remaining extension semantics; B4 conformance/fuzz/property and parser
 budgets. See [the catalog](docs/Implementation-Plan.md) for scope/dependencies.
 The parent retains all original acceptance and native packaging gates.
 CORE-004A remains independently ready. Inspect state and `HANDOFF.md` before
-any pass. Scoped commits/pushes/PR/review are authorized; earlier review/merge
-exceptions do not apply to this phase. Merge requires owner authorization;
-concurrency remains one.
+any pass. Scoped commits/pushes/PR/review are authorized; merge requires
+owner authorization; concurrency remains one.
+
+- **CORE-003B2F — PR 5 URI and source-span follow-up.** Harden the Unicode
+  visibility policy for URI targets and shared front-matter text, considering
+  compatibility with legitimate text and pinned Unicode provenance. Test
+  literal and percent-encoded invisible characters in paths and external URIs.
+  Document and regression-test the v1 correction for blockquote continuation
+  destination spans. Evaluate a bounded diagnostic for shadowed duplicate
+  reference definitions; retain CommonMark first-definition precedence and
+  document the decision. This follows B2 and gates B4 and the B aggregate.
 
 The numbered steps below are the earlier handoff for GATE-001 preparation,
 kept as a record; steps 1–3 are done.
@@ -267,7 +278,8 @@ REQ-001 -> FEAS-001 -> FEAS-002 ---------------------------+
 
 GATE-001 -> CORE-001A -> CORE-002A -> CORE-003A -> CORE-004A -> CORE-006A
 CORE-003A -> CORE-003B1, CORE-003B2
-CORE-003B1 -> CORE-003B3; CORE-003B2 + CORE-003B3 -> CORE-003B4
+CORE-003B1 -> CORE-003B3; CORE-003B2 -> CORE-003B2F
+CORE-003B2F + CORE-003B3 -> CORE-003B4
 CORE-003B1–B4 -> CORE-003B; CORE-004A -> CORE-005A -> CORE-005B
 CORE-001A -> each host 001A; CORE-006A + own 001A -> own 001B -> ... -> 001I
 CORE-005A -> own 001F; CORE-003B -> own 001I

@@ -94,7 +94,10 @@ implementation evidence.
 
 ## Dependencies and checks
 
-Only feature `model-v2` enables url/IDNA/ICU; default v1 stays unchanged. The
+Only feature `model-v2` enables url/IDNA/ICU; v1 remains the default. The shared
+parser corrects v1 destination spans on blockquote continuation lines; a
+dedicated v1 regression and compatibility documentation are tracked in
+CORE-003B2F. The
 [full dependency inventory](Dependencies.md) records 60 all-feature packages,
 reviewed Unicode notices and the footprint tradeoff. Parser/URL/provenance proof
 work has no hard deadline/cancellation guarantee; CORE-004A and B4 retain those
