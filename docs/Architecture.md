@@ -51,6 +51,11 @@ merge. [Basic parsing](Parsing.md) and [typed front matter](Front-Matter.md)
 consume this contract without altering it. The model is separate from parsing, ID reconciliation, C ABI functions
 and native presentation; selecting its types does not prove those behaviors.
 
+The owner selected opt-in [semantic model v2](../specs/semantic-model/v2/README.md)
+for reference provenance and typed URI targets. Root/default v1 APIs and its
+frozen schema stay supported; new adapters explicitly opt into v2 and future
+facade negotiation. This is additive, not an implicit model-version migration.
+
 ## Core responsibilities
 
 - Validate bounded UTF-8 input and parse the accepted Markdown dialect.

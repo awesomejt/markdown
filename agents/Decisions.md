@@ -293,3 +293,18 @@ required beyond schema. Stable ID reconciliation remains CORE-004A, not a new
 algorithm chosen here. Default safety ceilings are caller-adjustable and are
 not accepted performance budgets. This contract does not accept an advanced
 engine, parser implementation, native presenter or C ABI layout.
+
+## D-020 — Additive opt-in semantic model v2
+
+**Date:** 2026-10-27
+
+**Status:** owner selected the additive versioning direction; implementation
+contract awaits phase review and owner-authorized merge.
+
+CORE-003B2 requires reference destinations outside their referring node, while
+frozen v1 requires occurrence-contained destination spans. Add opt-in v2 with
+explicit inline/reference provenance while preserving v1's API, strict decoder,
+schema and fixtures. Do not silently reinterpret v1 fields or default formats.
+New adapters explicitly choose supported versions; facade negotiation remains
+CORE-006A. The v2 contract and explicit migration are in
+`specs/semantic-model/v2/README.md`; targets grant no I/O or URI activation.

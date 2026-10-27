@@ -10,7 +10,7 @@ The [JSON Schema](document.schema.json) has ID `urn:markdown:semantic-document:1
 It is generated from the wire types; the schema snapshot test detects drift.
 The default core build has no schema dependency; feature `schema` enables
 export and schema consistency tests. Serialization/validation use serde,
-serde_json and SHA-256; there is no parser dependency or filesystem access.
+serde_json and SHA-256; v1 validation does not invoke the parser or access files.
 
 ## Values, ownership and versions
 

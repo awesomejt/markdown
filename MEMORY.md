@@ -11,27 +11,29 @@ design belong in `docs/` or `agents/`; runtime transcripts do not belong here.
 - Later platforms: iOS and iPadOS after the desktop contracts are stable.
 - Organization: one native monorepo with independent native UIs,
   shared specifications/fixtures/benchmarks, and a candidate portable core.
-- Status: CORE-001A completed via PR #1 (`8a164ad`), CORE-002A via PR #2
-  (`e5f1a17`), CORE-003A via owner-authorized PR #3 (`872061c`, fixed head
-  `7ef0a4c`). All original review findings were addressed; required hosted CI
-  passed. No additional bot approval is inferred. CORE-003A state closeout
-  travels in this phase's branch.
-- CORE-003B was split into B1 metadata, B2 reference/URI compatibility, B3 other
-  extension semantics and B4 conformance/fuzz/performance. Thirteen supported
-  operations (four tasks/nine edges) were rehearsed and applied; original
-  aggregate acceptance and native gates remain. CORE-004A is independently ready.
-- Selected: CORE-003B1 on `feat/core-003b1-front-matter`, bounded typed flat
-  front matter with atomic rejection, exact source retention, shared text-budget
-  accounting and privacy-safe diagnostics. See `docs/Front-Matter.md`. No new
-  dependency/schema, URI/reference, engine, session, FFI or UI change. Unicode
-  destinations are still denied by the conservative URI policy until B2.
-  Inspect actual current-head phase checks/review before continuing. Earlier
-  Owner authorized PR #4 review fixes/checks/merge/cleanup on 2026-10-27, as before.
-  Fixes cover control/Cf string safety and nonblank titles, literal ISO date/time,
-  consistent block lists, exact BOM offsets and blank-rule ambiguity; legacy YAML
-  booleans remain documented strings. Verify final head/CI/merge; no new bot
-  approval is inferred. IDs and
-  cancellation remain CORE-004A; Linux LNX-001D1/ADV-005 conditions remain intact.
+- Status: CORE-001A, CORE-002A, CORE-003A and CORE-003B1 are merged.
+  B1's owner-authorized PR #4 merge is `0ce353f` (fixed head `22146cc`); all
+  four concerns/two nits were addressed and required CI passed. No further bot
+  approval is inferred. Its supported state closeout travels in this branch.
+- CORE-003B retains B1 metadata, B2 references/URI, B3 other extension semantics
+  and B4 conformance/fuzz/performance with original aggregate/native gates.
+- Selected: CORE-003B2 on `feat/core-003b2-references-uri`. Owner selected
+  additive opt-in model v2 (D-020), preserving v1 APIs/decoder/schema/goldens.
+  Feature `model-v2` exposes `parse_markdown_v2` and `v2::Document`: explicit
+  reference/inline source provenance, source-backed validation and typed URI
+  targets. V1 remains default; explicit upgrades retain denials; no lossy
+  downgrade or facade/native format switch is implied. See the v2 spec and
+  docs/URI-Policy.md for decode-once/capability rules and residual limits.
+  URL/IDNA is optional; 60 all-feature packages with reviewed scoped Unicode
+  exceptions. Metadata/engines/FFI/UI/session ownership are not expanded here.
+  PR #5 Grok review found invisible non-Cf Unicode can pass URI and shared
+  metadata guards; v1 blockquote-continuation destination spans also changed
+  as a correction without a dedicated v1 regression. These were fixed in PR #5
+  (B2F scope): URI targets deny Default_Ignorable_Code_Point values and U+2800,
+  while metadata keeps Cf only; there is a v1 span regression; and v2 has a
+  bounded `reference_definition_shadowed` info diagnostic. After verifying the
+  merge, carry the B2 and B2F state closeout in the next feature PR. Node identity/
+  cancellation remains CORE-004A; preserve Linux LNX-001D1 and ADV-005 conditions.
 - License: owner selected Apache-2.0 for implementation source (D-019).
 - The required real Windows, macOS, and Linux renderer and shared-core
   integration evidence is recorded, and the capability matrix reconciles it.

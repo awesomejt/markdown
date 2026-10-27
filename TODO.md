@@ -11,7 +11,7 @@ batching ready work on the current OS. Each delivery phase uses one feature
 branch and PR. Once ready, post a separate PR comment exactly `/grok review`,
 address the feedback, and obtain owner merge approval. Follow
 [Delivery-Workflow.md](docs/Delivery-Workflow.md) for branch, review and handoff
-rules. GATE-001 is approved (D-018). CORE-001A, CORE-002A and CORE-003A are merged; CORE-003B1 is selected;
+rules. GATE-001 is approved (D-018). CORE-001A through CORE-003A and CORE-003B1 are merged; CORE-003B2 is selected;
 ADV-005 carries deferred engine work after DESK-002.
 
 ## Current phase: portable core and early native foundations
@@ -19,21 +19,33 @@ ADV-005 carries deferred engine work after DESK-002.
 The gate is complete; the small child tasks are materialized in project state.
 CORE-001A infrastructure, CORE-002A semantic v1 and CORE-003A basic parsing are
 merged. CORE-003B1 adds [bounded typed front matter](docs/Front-Matter.md).
+CORE-003B2 adds [opt-in v2 provenance/URI targets](specs/semantic-model/v2/README.md)
+while preserving default v1 (owner-selected D-020).
 Native app shells remain separate; no working reader UI is delivered by the
 core alone.
 
 ## Immediate session handoff
 
-Work on `feat/core-003b1-front-matter` through its PR/check/Grok lifecycle.
-CORE-003A merged state closeout travels here. CORE-003B was refined into four
+PR #5 is owner-authorized for merge, and its Grok findings were fixed on that
+branch. After verifying the merge, carry the CORE-003B2 and **CORE-003B2F**
+state closeout, both delivered by PR #5, in the next feature PR.
+CORE-003B1 merged state closeout travels here. CORE-003B was refined into four
 tracked children: B1 metadata; B2 reference representation/URI compatibility;
 B3 remaining extension semantics; B4 conformance/fuzz/property and parser
 budgets. See [the catalog](docs/Implementation-Plan.md) for scope/dependencies.
 The parent retains all original acceptance and native packaging gates.
 CORE-004A remains independently ready. Inspect state and `HANDOFF.md` before
-any pass. Scoped commits/pushes/PR/review are authorized; earlier review/merge
-exceptions do not apply to this phase. Merge requires owner authorization;
-concurrency remains one.
+any pass. Scoped commits/pushes/PR/review are authorized; merge requires
+owner authorization; concurrency remains one.
+
+- **CORE-003B2F — PR 5 URI and source-span follow-up (delivered in PR #5).** Harden the Unicode
+  visibility policy for URI targets and shared front-matter text, considering
+  compatibility with legitimate text and pinned Unicode provenance. Test
+  literal and percent-encoded invisible characters in paths and external URIs.
+  Document and regression-test the v1 correction for blockquote continuation
+  destination spans. Evaluate a bounded diagnostic for shadowed duplicate
+  reference definitions; retain CommonMark first-definition precedence and
+  document the decision. This follows B2 and gates B4 and the B aggregate.
 
 The numbered steps below are the earlier handoff for GATE-001 preparation,
 kept as a record; steps 1–3 are done.
@@ -265,7 +277,8 @@ REQ-001 -> FEAS-001 -> FEAS-002 ---------------------------+
 
 GATE-001 -> CORE-001A -> CORE-002A -> CORE-003A -> CORE-004A -> CORE-006A
 CORE-003A -> CORE-003B1, CORE-003B2
-CORE-003B1 -> CORE-003B3; CORE-003B2 + CORE-003B3 -> CORE-003B4
+CORE-003B1 -> CORE-003B3; CORE-003B2 -> CORE-003B2F
+CORE-003B2F + CORE-003B3 -> CORE-003B4
 CORE-003B1–B4 -> CORE-003B; CORE-004A -> CORE-005A -> CORE-005B
 CORE-001A -> each host 001A; CORE-006A + own 001A -> own 001B -> ... -> 001I
 CORE-005A -> own 001F; CORE-003B -> own 001I
