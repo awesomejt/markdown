@@ -62,7 +62,8 @@ facade negotiation. This is additive, not an implicit model-version migration.
 - Produce immutable semantic snapshots and diagnostics.
 - Apply extension passes deterministically.
 - Compute outline, properties, anchors, word/section data, and link intents.
-- Search approved document snapshots within caller-supplied budgets.
+- Search approved document snapshots within caller-supplied budgets
+  ([document find and reading metadata](../specs/search/README.md)).
 - Resolve portable settings semantics.
 - Reject or classify unsafe HTML, URLs, and resources.
 

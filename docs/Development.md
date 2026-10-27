@@ -53,6 +53,9 @@ regressions plus 8,192 generated inputs. Core checks run default, model-v2-only
 and all-feature configurations; schemas/source goldens are checked independently.
 CORE-004A adds session generation/latest-wins race, cancellation, lifetime,
 external-change and anchor regressions ([session contract](../specs/session/README.md)).
+CORE-005A adds `tests/search.rs` for [find and reading metadata](../specs/search/README.md):
+source-span/UTF-8 invariants, Unicode folding/cluster cases, budgets,
+cancellation, v1/v2 parity and word/section goldens.
 CORE-006A adds `markdown-ffi` extern-function tests (negotiation, handles,
 ownership, panics, cancellation, bulk-view round trips) and `tests/c_abi.rs`:
 a header constant drift check and a C smoke compiled with the host `cc`

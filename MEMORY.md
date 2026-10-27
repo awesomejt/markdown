@@ -17,8 +17,15 @@ design belong in `docs/` or `agents/`; runtime transcripts do not belong here.
   approval is inferred. Its supported state closeout travels in this branch.
 - CORE-003B retains B1 metadata, B2 references/URI, B3 other extension semantics
   and B4 conformance/fuzz/performance with original aggregate/native gates.
-- Status 2026-10-27: PR #6 (CORE-004A) merged as `3b1eb4e`. CORE-006A is in
-  progress on `feat/core-006a-ffi-facade`: crate `markdown-ffi` and the
+- Status 2026-10-27: PR #7 (CORE-006A) merged as `a751f48`. CORE-005A is in
+  progress on `feat/core-005a-find-wordcount`: `markdown_core::search`
+  (specs/search/README.md) adds literal source-mapped find (simple case fold,
+  no NFC/NFD normalization, approximate cluster/whole-word boundaries, bounded
+  and cancellable), simplified-UAX #29 word count (one word per CJK
+  ideograph) and intro/heading section timing at 160 wpm (markdown-viewer
+  D-32 parity). Core semantics only; FFI exposure is a proposed follow-up
+  needing an owner call on ABI v1 additive growth (md_abi_info/md_live_handles).
+- CORE-006A (merged, PR #7 `a751f48`): crate `markdown-ffi` and the
   hand-written `core/include/markdown_core.h` (specs/ffi/README.md) expose
   registry handles, exact struct-size/ABI/model negotiation, typed status
   codes, contained panics, sessions/jobs/anchors and a bulk flat snapshot

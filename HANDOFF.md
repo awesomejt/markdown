@@ -1,11 +1,29 @@
 # Agent Session and Platform Handoff
 
-Updated: 2026-10-27, CORE-006A C ABI facade on `feat/core-006a-ffi-facade`.
-Source baseline: `3b1eb4e` on main (PR #6 merge) plus this phase's changes. Preserve intended
+Updated: 2026-10-27, CORE-005A find and reading metadata on `feat/core-005a-find-wordcount`.
+Source baseline: `a751f48` on main (PR #7 merge) plus this phase's changes. Preserve intended
 source, lock/spec/golden files, docs and state together. Never transfer caches,
 environments, build products, private runtime state or user documents.
 
-## Resume here — CORE-006A C ABI facade
+## Resume here — CORE-005A find, word count and section timing
+
+PR #7 (CORE-006A C ABI) merged as `a751f48`; its state closeout is owned by the
+orchestrator's project-state pass. CORE-005A adds `markdown_core::search` per
+[the search contract](specs/search/README.md): literal find over visible
+semantic text (leaf units in reading order, inline boundaries transparent),
+exact/atomic source mapping with per-node segments, simple case folding without
+locale tailoring or NFC/NFD normalization, approximate grapheme/whole-word
+boundaries, KMP matching with a `max_matches` budget, `truncated` flag and
+cancellation; word count by a simplified UAX #29 rule (one word per CJK
+ideograph); intro plus per-heading own/cumulative timing at 160 wpm (60–600),
+matching markdown-viewer `b881034` defaults/exclusions. No new dependency, no
+model/ABI change. FFI exposure is deliberately split out: ABI v1 cannot report
+new struct sizes in `md_abi_info` or count new handle types in
+`md_live_handles`, so the owner should choose the additive-growth rule first.
+Next: phase PR, `/grok review`, owner-authorized merge; then the FFI follow-up
+before each platform's 001F find UI.
+
+## CORE-006A C ABI facade (merged in PR #7)
 
 PR #6 (CORE-004A sessions) merged as `3b1eb4e`; its state closeout travels on
 this branch. The owner accepted snapshot-local node IDs with block anchors for
