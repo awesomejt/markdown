@@ -1,0 +1,143 @@
+{
+  "model_version": 1,
+  "document_id": "doc-unicode",
+  "revision_id": "rev-1",
+  "source": {
+    "bytes": 38,
+    "sha256": "9e1c0ab33c3115074042f620368e9a98ff3c2df0871a3afecf4ce963b06d5ed2"
+  },
+  "capabilities": [],
+  "roots": [
+    "h",
+    "p"
+  ],
+  "nodes": [
+    {
+      "id": "h",
+      "span": {
+        "start": 0,
+        "end": 7
+      },
+      "content": {
+        "kind": "heading",
+        "level": 1,
+        "anchor": "café",
+        "children": [
+          "ht"
+        ]
+      }
+    },
+    {
+      "id": "ht",
+      "span": {
+        "start": 2,
+        "end": 7
+      },
+      "content": {
+        "kind": "text",
+        "text": "Café"
+      }
+    },
+    {
+      "id": "p",
+      "span": {
+        "start": 11,
+        "end": 36
+      },
+      "content": {
+        "kind": "paragraph",
+        "children": [
+          "hello",
+          "bold",
+          "and",
+          "code",
+          "dot"
+        ]
+      }
+    },
+    {
+      "id": "hello",
+      "span": {
+        "start": 11,
+        "end": 17
+      },
+      "content": {
+        "kind": "text",
+        "text": "Hello "
+      }
+    },
+    {
+      "id": "bold",
+      "span": {
+        "start": 17,
+        "end": 27
+      },
+      "content": {
+        "kind": "strong",
+        "children": [
+          "bt"
+        ]
+      }
+    },
+    {
+      "id": "bt",
+      "span": {
+        "start": 19,
+        "end": 25
+      },
+      "content": {
+        "kind": "text",
+        "text": "café"
+      }
+    },
+    {
+      "id": "and",
+      "span": {
+        "start": 27,
+        "end": 32
+      },
+      "content": {
+        "kind": "text",
+        "text": " and "
+      }
+    },
+    {
+      "id": "code",
+      "span": {
+        "start": 32,
+        "end": 35
+      },
+      "content": {
+        "kind": "code_span",
+        "text": "x"
+      }
+    },
+    {
+      "id": "dot",
+      "span": {
+        "start": 35,
+        "end": 36
+      },
+      "content": {
+        "kind": "text",
+        "text": "."
+      }
+    }
+  ],
+  "outline": [
+    {
+      "node": "h",
+      "level": 1,
+      "title": "Café",
+      "anchor": "café"
+    }
+  ],
+  "metadata": {
+    "front_matter_span": null,
+    "title": null,
+    "properties": {}
+  },
+  "links": [],
+  "resources": [],
+  "diagnostics": []
+}

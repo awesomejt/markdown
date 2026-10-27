@@ -1,0 +1,128 @@
+{
+  "model_version": 1,
+  "document_id": "doc-fallback",
+  "revision_id": "rev-1",
+  "source": {
+    "bytes": 17,
+    "sha256": "007021d46b431ef88f99dd78e27c19a6852a6b518f04a3a6ea8e9848bb01d73b"
+  },
+  "capabilities": [],
+  "roots": [
+    "list",
+    "p2"
+  ],
+  "nodes": [
+    {
+      "id": "list",
+      "span": {
+        "start": 0,
+        "end": 7
+      },
+      "content": {
+        "kind": "list",
+        "ordered": true,
+        "start": 0,
+        "tight": false,
+        "items": [
+          "item"
+        ]
+      }
+    },
+    {
+      "id": "item",
+      "span": {
+        "start": 0,
+        "end": 7
+      },
+      "content": {
+        "kind": "list_item",
+        "checked": null,
+        "children": [
+          "p1"
+        ]
+      }
+    },
+    {
+      "id": "p1",
+      "span": {
+        "start": 3,
+        "end": 7
+      },
+      "content": {
+        "kind": "paragraph",
+        "children": [
+          "t1"
+        ]
+      }
+    },
+    {
+      "id": "t1",
+      "span": {
+        "start": 3,
+        "end": 7
+      },
+      "content": {
+        "kind": "text",
+        "text": "zero"
+      }
+    },
+    {
+      "id": "p2",
+      "span": {
+        "start": 9,
+        "end": 16
+      },
+      "content": {
+        "kind": "paragraph",
+        "children": [
+          "x",
+          "math",
+          "y"
+        ]
+      }
+    },
+    {
+      "id": "x",
+      "span": {
+        "start": 9,
+        "end": 11
+      },
+      "content": {
+        "kind": "text",
+        "text": "x "
+      }
+    },
+    {
+      "id": "math",
+      "span": {
+        "start": 11,
+        "end": 14
+      },
+      "content": {
+        "kind": "unsupported_inline",
+        "feature": "math",
+        "reason": "unavailable"
+      }
+    },
+    {
+      "id": "y",
+      "span": {
+        "start": 14,
+        "end": 16
+      },
+      "content": {
+        "kind": "text",
+        "text": " y"
+      }
+    }
+  ],
+  "outline": [],
+  "metadata": {
+    "front_matter_span": null,
+    "title": null,
+    "properties": {}
+  },
+  "links": [],
+  "resources": [],
+  "diagnostics": []
+}

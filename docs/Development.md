@@ -41,8 +41,19 @@ Normally rustup uses the committed toolchain file automatically.
 | `python tools/check.py core` | Workspace formatting, Clippy with warnings denied, debug/release test harnesses, resolved dependency/license policy and policy regressions |
 | `python tools/check.py all` | Both suites |
 
-The initial crate has no behavior tests: Cargo's empty unit/doc test harnesses
-pass but prove no product behavior. Model/parser tests belong to later phases.
+CORE-002A tests the owned v1 model in debug/release, with default and optional
+schema builds. Checked-in goldens cover all node kinds; Rust verifies typed
+round trips and generated-schema consistency, while Python independently
+validates the schema/fixtures and source hashes. Model tests are not parser or
+native UI conformance. Regenerate the schema deliberately with:
+
+```sh
+cargo run --locked --example export_schema --features schema > build/document.schema.json
+```
+
+Compare it with `specs/semantic-model/v1/document.schema.json`; changes to the
+frozen v1 wire contract require compatibility/version review. Exact source
+fixture bytes are preserved across checkouts with `.gitattributes`.
 Local links check common inline link/image file targets, excluding code fences,
 inline code and URI schemes. Titles, angle destinations and percent-encoded
 paths are supported; missing targets are aggregated and locally deleted docs

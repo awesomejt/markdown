@@ -8,7 +8,11 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 CRATES_IO = "registry+https://github.com/rust-lang/crates.io-index"
-ALLOWED = {"Apache-2.0", "MIT", "Apache-2.0 OR MIT", "MIT OR Apache-2.0"}
+# Exact transitive declarations reviewed for CORE-002A. OR alternatives retain
+# an already permitted license; unicode-ident also requires Unicode-3.0 notices.
+ALLOWED = {"Apache-2.0", "MIT", "Apache-2.0 OR MIT", "MIT OR Apache-2.0",
+           "Unlicense OR MIT", "Apache-2.0 OR BSL-1.0", "MIT/Apache-2.0",
+           "(MIT OR Apache-2.0) AND Unicode-3.0"}
 
 
 def violations(metadata: dict) -> list[str]:

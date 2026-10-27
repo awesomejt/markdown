@@ -1,0 +1,349 @@
+{
+  "model_version": 1,
+  "document_id": "doc-containers",
+  "revision_id": "rev-1",
+  "source": {
+    "bytes": 141,
+    "sha256": "d7b1d31992e81593ceec822156c5b618db74254e36fd5c4dcaed0ceec8e09030"
+  },
+  "capabilities": [
+    "strikethrough",
+    "alerts"
+  ],
+  "roots": [
+    "quote",
+    "alert",
+    "rule",
+    "code",
+    "h",
+    "lp"
+  ],
+  "nodes": [
+    {
+      "id": "quote",
+      "span": {
+        "start": 0,
+        "end": 24
+      },
+      "content": {
+        "kind": "block_quote",
+        "children": [
+          "qp"
+        ]
+      }
+    },
+    {
+      "id": "qp",
+      "span": {
+        "start": 2,
+        "end": 24
+      },
+      "content": {
+        "kind": "paragraph",
+        "children": [
+          "plain",
+          "hard",
+          "next",
+          "soft",
+          "final"
+        ]
+      }
+    },
+    {
+      "id": "plain",
+      "span": {
+        "start": 2,
+        "end": 7
+      },
+      "content": {
+        "kind": "text",
+        "text": "plain"
+      }
+    },
+    {
+      "id": "hard",
+      "span": {
+        "start": 7,
+        "end": 10
+      },
+      "content": {
+        "kind": "hard_break"
+      }
+    },
+    {
+      "id": "next",
+      "span": {
+        "start": 12,
+        "end": 16
+      },
+      "content": {
+        "kind": "text",
+        "text": "next"
+      }
+    },
+    {
+      "id": "soft",
+      "span": {
+        "start": 16,
+        "end": 17
+      },
+      "content": {
+        "kind": "soft_break"
+      }
+    },
+    {
+      "id": "final",
+      "span": {
+        "start": 19,
+        "end": 24
+      },
+      "content": {
+        "kind": "text",
+        "text": "final"
+      }
+    },
+    {
+      "id": "alert",
+      "span": {
+        "start": 26,
+        "end": 52
+      },
+      "content": {
+        "kind": "alert",
+        "category": "note",
+        "children": [
+          "ap"
+        ]
+      }
+    },
+    {
+      "id": "ap",
+      "span": {
+        "start": 38,
+        "end": 52
+      },
+      "content": {
+        "kind": "paragraph",
+        "children": [
+          "em",
+          "sp",
+          "strike"
+        ]
+      }
+    },
+    {
+      "id": "em",
+      "span": {
+        "start": 38,
+        "end": 44
+      },
+      "content": {
+        "kind": "emphasis",
+        "children": [
+          "calm"
+        ]
+      }
+    },
+    {
+      "id": "calm",
+      "span": {
+        "start": 39,
+        "end": 43
+      },
+      "content": {
+        "kind": "text",
+        "text": "calm"
+      }
+    },
+    {
+      "id": "sp",
+      "span": {
+        "start": 44,
+        "end": 45
+      },
+      "content": {
+        "kind": "text",
+        "text": " "
+      }
+    },
+    {
+      "id": "strike",
+      "span": {
+        "start": 45,
+        "end": 52
+      },
+      "content": {
+        "kind": "strikethrough",
+        "children": [
+          "old"
+        ]
+      }
+    },
+    {
+      "id": "old",
+      "span": {
+        "start": 47,
+        "end": 50
+      },
+      "content": {
+        "kind": "text",
+        "text": "old"
+      }
+    },
+    {
+      "id": "rule",
+      "span": {
+        "start": 54,
+        "end": 57
+      },
+      "content": {
+        "kind": "thematic_break"
+      }
+    },
+    {
+      "id": "code",
+      "span": {
+        "start": 59,
+        "end": 77
+      },
+      "content": {
+        "kind": "code_block",
+        "info": "rs",
+        "text": "let x=1;\n"
+      }
+    },
+    {
+      "id": "h",
+      "span": {
+        "start": 79,
+        "end": 84
+      },
+      "content": {
+        "kind": "heading",
+        "level": 1,
+        "anchor": "top",
+        "children": [
+          "ht"
+        ]
+      }
+    },
+    {
+      "id": "ht",
+      "span": {
+        "start": 81,
+        "end": 84
+      },
+      "content": {
+        "kind": "text",
+        "text": "Top"
+      }
+    },
+    {
+      "id": "lp",
+      "span": {
+        "start": 86,
+        "end": 140
+      },
+      "content": {
+        "kind": "paragraph",
+        "children": [
+          "link",
+          "space",
+          "image"
+        ]
+      }
+    },
+    {
+      "id": "link",
+      "span": {
+        "start": 86,
+        "end": 98
+      },
+      "content": {
+        "kind": "link",
+        "target": "link-1",
+        "title": null,
+        "children": [
+          "lt"
+        ]
+      }
+    },
+    {
+      "id": "lt",
+      "span": {
+        "start": 87,
+        "end": 91
+      },
+      "content": {
+        "kind": "text",
+        "text": "jump"
+      }
+    },
+    {
+      "id": "space",
+      "span": {
+        "start": 98,
+        "end": 99
+      },
+      "content": {
+        "kind": "text",
+        "text": " "
+      }
+    },
+    {
+      "id": "image",
+      "span": {
+        "start": 99,
+        "end": 140
+      },
+      "content": {
+        "kind": "image",
+        "resource": "res-1",
+        "alt": "blocked",
+        "title": null
+      }
+    }
+  ],
+  "outline": [
+    {
+      "node": "h",
+      "level": 1,
+      "title": "Top",
+      "anchor": "top"
+    }
+  ],
+  "metadata": {
+    "front_matter_span": null,
+    "title": null,
+    "properties": {}
+  },
+  "links": [
+    {
+      "id": "link-1",
+      "span": {
+        "start": 93,
+        "end": 97
+      },
+      "destination": "#top",
+      "disposition": {
+        "kind": "fragment",
+        "anchor": "top"
+      }
+    }
+  ],
+  "resources": [
+    {
+      "id": "res-1",
+      "span": {
+        "start": 110,
+        "end": 139
+      },
+      "destination": "https://example.invalid/a.png",
+      "access": {
+        "kind": "denied",
+        "reason": "remote_images_disabled"
+      }
+    }
+  ],
+  "diagnostics": []
+}

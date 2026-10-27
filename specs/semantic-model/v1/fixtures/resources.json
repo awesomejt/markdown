@@ -1,0 +1,289 @@
+{
+  "model_version": 1,
+  "document_id": "doc-resources",
+  "revision_id": "rev-1",
+  "source": {
+    "bytes": 223,
+    "sha256": "e0c45b9f243c5619cb964ff55e4f3c794066a0a2b01b3f64f77c084f4f371ecf"
+  },
+  "capabilities": [
+    "front_matter"
+  ],
+  "roots": [
+    "p",
+    "diagram",
+    "html"
+  ],
+  "nodes": [
+    {
+      "id": "p",
+      "span": {
+        "start": 76,
+        "end": 171
+      },
+      "content": {
+        "kind": "paragraph",
+        "children": [
+          "local",
+          "space1",
+          "web",
+          "space2",
+          "no",
+          "space3",
+          "image"
+        ]
+      }
+    },
+    {
+      "id": "local",
+      "span": {
+        "start": 76,
+        "end": 101
+      },
+      "content": {
+        "kind": "link",
+        "target": "link-local",
+        "title": null,
+        "children": [
+          "localt"
+        ]
+      }
+    },
+    {
+      "id": "localt",
+      "span": {
+        "start": 77,
+        "end": 82
+      },
+      "content": {
+        "kind": "text",
+        "text": "local"
+      }
+    },
+    {
+      "id": "web",
+      "span": {
+        "start": 102,
+        "end": 132
+      },
+      "content": {
+        "kind": "link",
+        "target": "link-web",
+        "title": null,
+        "children": [
+          "webt"
+        ]
+      }
+    },
+    {
+      "id": "webt",
+      "span": {
+        "start": 103,
+        "end": 106
+      },
+      "content": {
+        "kind": "text",
+        "text": "web"
+      }
+    },
+    {
+      "id": "no",
+      "span": {
+        "start": 133,
+        "end": 155
+      },
+      "content": {
+        "kind": "link",
+        "target": "link-no",
+        "title": null,
+        "children": [
+          "not"
+        ]
+      }
+    },
+    {
+      "id": "not",
+      "span": {
+        "start": 134,
+        "end": 136
+      },
+      "content": {
+        "kind": "text",
+        "text": "no"
+      }
+    },
+    {
+      "id": "space1",
+      "span": {
+        "start": 101,
+        "end": 102
+      },
+      "content": {
+        "kind": "text",
+        "text": " "
+      }
+    },
+    {
+      "id": "space2",
+      "span": {
+        "start": 132,
+        "end": 133
+      },
+      "content": {
+        "kind": "text",
+        "text": " "
+      }
+    },
+    {
+      "id": "space3",
+      "span": {
+        "start": 155,
+        "end": 156
+      },
+      "content": {
+        "kind": "text",
+        "text": " "
+      }
+    },
+    {
+      "id": "image",
+      "span": {
+        "start": 156,
+        "end": 171
+      },
+      "content": {
+        "kind": "image",
+        "resource": "res-1",
+        "alt": "alt",
+        "title": null
+      }
+    },
+    {
+      "id": "diagram",
+      "span": {
+        "start": 173,
+        "end": 203
+      },
+      "content": {
+        "kind": "unsupported_block",
+        "feature": "mermaid",
+        "reason": "unavailable"
+      }
+    },
+    {
+      "id": "html",
+      "span": {
+        "start": 205,
+        "end": 222
+      },
+      "content": {
+        "kind": "unsupported_block",
+        "feature": "raw_html",
+        "reason": "disabled"
+      }
+    }
+  ],
+  "outline": [],
+  "metadata": {
+    "front_matter_span": {
+      "start": 0,
+      "end": 74
+    },
+    "title": "Links",
+    "properties": {
+      "title": {
+        "kind": "string",
+        "value": "Links"
+      },
+      "enabled": {
+        "kind": "boolean",
+        "value": true
+      },
+      "count": {
+        "kind": "integer",
+        "value": 2
+      },
+      "speakers": {
+        "kind": "strings",
+        "value": [
+          "A",
+          "B"
+        ]
+      },
+      "missing": {
+        "kind": "null"
+      }
+    }
+  },
+  "links": [
+    {
+      "id": "link-local",
+      "span": {
+        "start": 84,
+        "end": 100
+      },
+      "destination": "../café.md#part",
+      "disposition": {
+        "kind": "requires_capability"
+      }
+    },
+    {
+      "id": "link-web",
+      "span": {
+        "start": 108,
+        "end": 131
+      },
+      "destination": "https://example.invalid",
+      "disposition": {
+        "kind": "external"
+      }
+    },
+    {
+      "id": "link-no",
+      "span": {
+        "start": 138,
+        "end": 154
+      },
+      "destination": "javascript:alert",
+      "disposition": {
+        "kind": "denied",
+        "reason": "unsafe_scheme"
+      }
+    }
+  ],
+  "resources": [
+    {
+      "id": "res-1",
+      "span": {
+        "start": 163,
+        "end": 170
+      },
+      "destination": "img.png",
+      "access": {
+        "kind": "requires_capability"
+      }
+    }
+  ],
+  "diagnostics": [
+    {
+      "code": "unsupported_feature",
+      "severity": "info",
+      "message": "Show the original source.",
+      "span": {
+        "start": 173,
+        "end": 203
+      },
+      "node": "diagram"
+    },
+    {
+      "code": "unsupported_feature",
+      "severity": "info",
+      "message": "Show the original source.",
+      "span": {
+        "start": 205,
+        "end": 222
+      },
+      "node": "html"
+    }
+  ]
+}

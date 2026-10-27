@@ -1,55 +1,52 @@
 # Agent Session and Platform Handoff
 
-Updated: 2026-10-26, GATE-001 approved and CORE-001A started.
-Source baseline: `b95351f` plus approved gate closeout and CORE-001A changes.
-Preserve intended source, locks, docs and project state together. Do not copy
-environments, caches, binaries, signing identities or private runtime state.
+Updated: 2026-10-26, CORE-001A merged closeout and CORE-002A model v1.
+Source baseline: `8a164ad` on main plus CORE-002A changes.
+Preserve intended source, locks, specs/goldens, docs and state together. Do not
+copy environments, build products, private runtime state or user documents.
 
-## Resume here — CORE-001A branch and PR
+## Resume here — CORE-002A semantic model
 
-The owner explicitly approved the assembled baseline and advancement in D-018.
-GATE-001 is complete and portable-core active. All 36 initial child tasks and
-92 edges are materialized. Do not rerun graph expansion or reopen gate choices.
-D-019 selects Apache-2.0 for implementation; fixtures keep their original
-license/provenance. The early LNX-001D1 proof remains required before
-LNX-001E/001F. Advanced engine work stays in ADV-005 after DESK-002.
+CORE-001A is completed via owner merge of [PR #1](https://github.com/awesomejt/markdown/pull/1)
+as `8a164ad`, containing corrected head `24994fc`. Six known Grok findings were
+addressed and all checks passed; no fresh bot approval is inferred from its
+review-request comment. The merged operational closeout travels in this phase.
+Aggregate CORE-001 still waits for the native shell CI milestones.
 
-Selected task: **CORE-001A**, branch `feat/core-001a-workspace-ci`.
-PR: [PR #1](https://github.com/awesomejt/markdown/pull/1) (created draft; inspect live status).
-Scope: Rust workspace/common checks/dependency-license policy and host-isolated
-CI definitions. No product parser/model, native shell, signing or publishing.
-Gate documentation/state closeout travels in this feature PR per workflow.
+Selected task: **CORE-002A**, branch `feat/core-002a-semantic-model`.
+Scope: owned model v1, strict source/graph/intent validation, schema and goldens.
+No Markdown parser, identity matching, sessions, FFI or native UI implementation.
+Read [the contract](specs/semantic-model/v1/README.md),
+[development checks](docs/Development.md) and [dependency inventory](docs/Dependencies.md).
 
-See [development checks](docs/Development.md),
-[dependency policy](docs/Dependencies.md),
-[accepted baseline](docs/Implementation-Baseline.md) and
-[delivery workflow](docs/Delivery-Workflow.md).
+The immutable Document boundary requires matching exact UTF-8 source length/
+SHA-256 and caller limits. DTOs remain unchecked until validation. Golden
+fixtures cover all 24 node kinds, NFC/NFD and CRLF, tables/tasks/footnotes,
+metadata/intents/diagnostics and unsupported source fallbacks. Source bytes are
+pinned with `.gitattributes`. Identity stability is a lineage contract; its
+algorithm remains CORE-004A. Source hashes are not signatures, and resource
+intents are not grants or complete sanitization.
 
-Mac local common/core checks pass with the verified isolated Rust 1.99.1 toolchain;
-see the documented environment override. The crate has no behavior tests yet;
-empty Cargo harnesses are not product validation. Fixture/capability/path checks,
-host-selection regressions, license-policy regressions and workflow lint passed.
-The first Grok review reported three concerns and three smaller issues. All
-six have verified fixes: conservative host selection/event tests, both sides
-of renames, committed/staged whitespace checks, inline-link handling, dependency
-source approval and non-cancelling main/manual CI. Tests include real temporary
-Git repositories. The optional cargo-deny suggestion is deferred until needed;
-Git pinning by Cargo.lock is distinct from source approval. See PR discussion
-for disposition and actual latest-head CI/review receipts. A new source head
-requires a fresh `/grok review` after its checks pass.
+The default build uses serde/serde_json and sha2; optional feature `schema`
+adds schemars. Four exact transitive license declarations were reviewed and
+added to the policy, including unicode-ident's additional Unicode notice.
+All resolved packages and pins are in Cargo.lock and the inventory; no new
+implementation language or parser dependency is introduced.
 
-The connected GitHub integration could not create a PR (403); authenticated
-`gh` created PR #1 successfully. Use that authorized fallback for write actions.
+Mac full checks pass with the documented isolated Rust 1.99.1 setup. Test the
+actual PR head on hosted Linux/macOS/Windows before marking ready. Then post
+one exact `/grok review` comment for that ready head and inspect actual findings.
+The GitHub connector lacks write permission; authenticated `gh` is the authorized
+fallback. Record review receipts/disposition in PR discussion rather than another
+source commit solely for receipts. Use `gh pr view feat/core-002a-semantic-model`
+to locate the PR once created. Task stays partial while CI/review/merge is pending;
+only an owner-authorized merge releases CORE-003A and dependent phases.
 
-Closeout snapshot: revision **279**, partial with no active/stale passes
-or warnings. CORE-001A intentionally remains working without a lease.
-Inspect live state, Git and the PR before resuming. Use
-`gh pr view feat/core-001a-workspace-ci --json url,state,headRefOid`.
-Before review, keep the PR draft until required checks pass, then post a new
-conversation comment exactly `/grok review`. Record receipts/review discussion
-in the PR to avoid changing the source head solely to log a review. Leave a
-partial pass without a live lease during long waits; task completion requires
-an owner-authorized merge. No dependent work starts merely because code is ready.
+Closeout snapshot: revision **285**, CORE-002A partial; no active/stale
+passes or warnings. Its working status without a lease is intentional.
+Inspect live state and Git before resuming the same task. No runtime/private
+artifacts, user source, transcripts or credentials belong in commits. The early
+Linux LNX-001D1 condition and post-MVP ADV-005 deferral remain intact.
 
 ## Feasibility evidence retained for implementation
 

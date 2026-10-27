@@ -13,9 +13,10 @@ replaced or moved into this repository.
 ## Current state
 
 GATE-001 is approved (D-018); **portable-core implementation** has begun.
-CORE-001A establishes the Rust workspace, common checks and platform-isolated
-CI definitions. Native application shells remain separate phases; no working
-reader is delivered by this scaffold. The accepted
+CORE-001A's workspace/check/CI scaffold is merged. CORE-002A now defines the
+[v1 semantic model](specs/semantic-model/v1/README.md) and schema/goldens.
+Parser and native application shells remain separate phases; no working
+reader is delivered by the model contract. The accepted
 [implementation baseline](docs/Implementation-Baseline.md) and
 [architecture](docs/Architecture.md) preserve the required native evidence.
 

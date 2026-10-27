@@ -11,21 +11,21 @@ batching ready work on the current OS. Each delivery phase uses one feature
 branch and PR. Once ready, post a separate PR comment exactly `/grok review`,
 address the feedback, and obtain owner merge approval. Follow
 [Delivery-Workflow.md](docs/Delivery-Workflow.md) for branch, review and handoff
-rules. GATE-001 is approved (D-018). CORE-001A is the selected task;
+rules. GATE-001 is approved (D-018). CORE-001A is merged; CORE-002A is selected;
 ADV-005 carries deferred engine work after DESK-002.
 
 ## Current phase: portable core and early native foundations
 
 The gate is complete; the small child tasks are materialized in project state.
-CORE-001A creates workspace/check/CI infrastructure only. Each host's app shell
-and the semantic model have separate tasks. Production reader behavior is not
-delivered by this scaffold.
+CORE-001A workspace/check/CI infrastructure is merged. CORE-002A defines the
+semantic model, schema and goldens. Each host's app shell is separate. Production
+reader behavior is not delivered by this model contract.
 
 ## Immediate session handoff
 
-Work on `feat/core-001a-workspace-ci` through its PR/check/Grok lifecycle.
-Resume CORE-001A while it is partial; dependent tasks wait for its reviewed,
-owner-authorized merge. The owner approved phase commits, pushes, PR updates
+Work on `feat/core-002a-semantic-model` through its PR/check/Grok lifecycle.
+CORE-001A closeout is carried in this branch. Resume CORE-002A while partial;
+dependents wait for its reviewed, owner-authorized merge. The owner approved phase commits, pushes, PR updates
 and `/grok review`; merge still requires explicit authorization. Inspect
 `project.yaml` and `HANDOFF.md` before any pass; concurrency remains one.
 

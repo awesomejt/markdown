@@ -1,0 +1,16 @@
+---
+title: Links
+enabled: true
+count: 2
+speakers: [A, B]
+missing: null
+---
+
+[local](../café.md#part) [web](https://example.invalid) [no](javascript:alert) ![alt](img.png)
+
+```mermaid
+graph TD
+ A-->B
+```
+
+<div>unsafe</div>

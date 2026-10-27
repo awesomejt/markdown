@@ -42,6 +42,14 @@ class DependencyPolicyTests(unittest.TestCase):
             manifest_path=str(ROOT / "build/registry/external/Cargo.toml")))
         return graph
 
+    def test_reviewed_model_dependency_license_alternatives_are_allowed(self):
+        for expression in ("Unlicense OR MIT", "Apache-2.0 OR BSL-1.0", "MIT/Apache-2.0",
+                           "(MIT OR Apache-2.0) AND Unicode-3.0"):
+            graph = self.external(CRATES_IO)
+            graph["packages"][-1]["license"] = expression
+            with self.subTest(expression=expression):
+                self.assertEqual(violations(graph), [])
+
     def test_crates_io_dependency_is_allowed(self):
         self.assertEqual(violations(self.external(CRATES_IO)), [])
 
