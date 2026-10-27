@@ -1,5 +1,7 @@
 //! Literal, source-mapped find over a snapshot's visible text.
-use super::unicode::{ZWJ, fold_case, is_extend, is_regional_indicator, joins_word};
+use super::unicode::{
+    ZWJ, fold_case, is_extend, is_format, is_regional_indicator, joins_word, mid_joins,
+};
 use super::{CANCEL_CHECK_CHARS, Piece, PieceKind, SearchDocument, SearchError, Walker};
 use crate::{CancellationToken, SourceSpan};
 
@@ -146,7 +148,10 @@ const SEPARATOR: u32 = 0x11_0000;
 
 #[derive(Clone, Copy)]
 struct Char {
+    /// Comparison key (folded scalar, space or separator).
     key: u32,
+    /// Original scalar for boundary checks; `None` for separators.
+    ch: Option<char>,
     piece: u32,
     start: usize,
     len: u8,
@@ -155,7 +160,7 @@ struct Char {
 }
 impl Char {
     fn scalar(&self) -> Option<char> {
-        char::from_u32(self.key)
+        self.ch
     }
 }
 
@@ -174,7 +179,7 @@ fn normalize_query(query: &str, case_sensitive: bool) -> Vec<u32> {
             if out.last() != Some(&SPACE) {
                 out.push(SPACE);
             }
-        } else {
+        } else if !is_format(c) {
             out.push(key(c, case_sensitive));
         }
     }
@@ -200,14 +205,20 @@ fn build(
     token: &CancellationToken,
 ) -> Result<(), SearchError> {
     out.clear();
-    let push = |out: &mut Vec<Char>, key: u32, piece: usize, start: usize, len: usize| {
-        let ri = match (char::from_u32(key), out.last()) {
+    let push = |out: &mut Vec<Char>,
+                key: u32,
+                ch: Option<char>,
+                piece: usize,
+                start: usize,
+                len: usize| {
+        let ri = match (ch, out.last()) {
             (Some(c), Some(prev)) if is_regional_indicator(c) => prev.ri + 1,
             (Some(c), None) if is_regional_indicator(c) => 1,
             _ => 0,
         };
         out.push(Char {
             key,
+            ch,
             piece: piece as u32,
             start,
             len: len as u8,
@@ -216,10 +227,10 @@ fn build(
     };
     for (p, piece) in pieces.iter().enumerate() {
         match piece.kind {
-            PieceKind::Separator => push(out, SEPARATOR, p, 0, 0),
+            PieceKind::Separator => push(out, SEPARATOR, None, p, 0, 0),
             PieceKind::Break => {
                 if out.last().is_none_or(|c| c.key != SPACE) {
-                    push(out, SPACE, p, 0, 0);
+                    push(out, SPACE, Some(' '), p, 0, 0);
                 }
             }
             _ => {
@@ -227,10 +238,13 @@ fn build(
                     poll(budget, token)?;
                     if c.is_whitespace() {
                         if out.last().is_none_or(|c| c.key != SPACE) {
-                            push(out, SPACE, p, start, c.len_utf8());
+                            push(out, SPACE, Some(c), p, start, c.len_utf8());
                         }
-                    } else {
-                        push(out, key(c, case_sensitive), p, start, c.len_utf8());
+                    } else if !is_format(c) {
+                        // Invisible format characters (soft hyphen, word
+                        // joiner, BOM, bidi marks) are skipped, so `foobar`
+                        // matches `foo\u{AD}bar`; the span still covers them.
+                        push(out, key(c, case_sensitive), Some(c), p, start, c.len_utf8());
                     }
                 }
             }
@@ -267,6 +281,13 @@ fn continues_cluster(a: &Char, b: &Char) -> bool {
 fn joins(a: &Char, b: &Char) -> bool {
     match (a.scalar(), b.scalar()) {
         (Some(x), Some(y)) => joins_word(x, y),
+        _ => false,
+    }
+}
+/// `a mid c` joins one word as in the word counter (`cat's`, `3.14`).
+fn joins_across(a: &Char, mid: &Char, c: &Char) -> bool {
+    match (a.scalar(), mid.scalar(), c.scalar()) {
+        (Some(x), Some(y), Some(z)) => mid_joins(x, y, z),
         _ => false,
     }
 }
@@ -311,10 +332,18 @@ fn search_unit(
         {
             continue;
         }
-        if options.whole_word
-            && (before.is_some_and(|b| joins(b, first)) || after.is_some_and(|a| joins(last, a)))
-        {
-            continue;
+        if options.whole_word {
+            let before2 = i.checked_sub(2).map(|b| &chars[b]);
+            let after2 = chars.get(j + 2);
+            let joined_before = before.is_some_and(|b| {
+                joins(b, first) || before2.is_some_and(|b2| joins_across(b2, b, first))
+            });
+            let joined_after = after.is_some_and(|a| {
+                joins(last, a) || after2.is_some_and(|a2| joins_across(last, a, a2))
+            });
+            if joined_before || joined_after {
+                continue;
+            }
         }
         if results.matches.len() == options.max_matches {
             results.truncated = true;
@@ -337,17 +366,26 @@ fn to_match(unit: usize, pieces: &[Piece<'_>], chars: &[Char]) -> FindMatch {
         let piece = &pieces[c.piece as usize];
         let len = usize::from(c.len);
         let span = piece.source(c.start, len);
-        let is_exact = matches!(piece.mapping, super::Mapping::Exact(_));
+        // A character is exact when it maps to its own source bytes; a break
+        // maps to the break itself. Whitespace from an atomic piece is not.
+        let is_exact =
+            matches!(piece.mapping, super::Mapping::Exact(_)) || piece.kind == PieceKind::Break;
         let text_start = (piece.text_offset + c.start) as u64;
         let text_end = text_start + len as u64;
-        // Whitespace normalization is documented; only non-space characters
-        // must map to their own source bytes for an exact match.
-        let is_exact = is_exact || c.key == SPACE;
         exact &= is_exact;
         source.start = source.start.min(span.start);
         source.end = source.end.max(span.end);
         match segments.last_mut() {
-            Some(s) if s.node == piece.node => {
+            // Merge within one node unless that would make an exact segment
+            // cover source bytes that are not its display text (for example a
+            // `>` prefix between code lines). Skipped whitespace or format
+            // characters inside one exact piece have equal text/source gaps.
+            Some(s)
+                if s.node == piece.node
+                    && (!(s.exact && is_exact)
+                        || text_start.checked_sub(s.text_end)
+                            == span.start.checked_sub(s.source.end)) =>
+            {
                 s.text_end = s.text_end.max(text_end);
                 s.source.start = s.source.start.min(span.start);
                 s.source.end = s.source.end.max(span.end);

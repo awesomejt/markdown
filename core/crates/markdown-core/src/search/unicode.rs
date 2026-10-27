@@ -67,6 +67,17 @@ pub(crate) fn is_extend(c: char) -> bool {
 
 pub(crate) const ZWJ: char = '\u{200D}';
 
+/// Approximate Word_Break=Format: invisible Cf characters (soft hyphen, word
+/// joiner, BOM, bidi controls) that neither split words nor break matches.
+/// ZWSP (a break opportunity), ZWNJ and ZWJ are not included.
+pub fn is_format(c: char) -> bool {
+    matches!(c as u32,
+        0xAD | 0x600..=0x605 | 0x61C | 0x6DD | 0x70F | 0x890..=0x891 | 0x8E2 | 0x180E
+        | 0x200E..=0x200F | 0x202A..=0x202E | 0x2060..=0x2064 | 0x2066..=0x206F | 0xFEFF
+        | 0xFFF9..=0xFFFB | 0x110BD | 0x110CD | 0x13430..=0x1343F | 0x1BCA0..=0x1BCA3
+        | 0x1D173..=0x1D17A | 0xE0001)
+}
+
 pub(crate) fn is_regional_indicator(c: char) -> bool {
     matches!(c as u32, 0x1F1E6..=0x1F1FF)
 }
@@ -111,7 +122,7 @@ fn is_symbol_number(u: u32) -> bool {
 
 pub(crate) fn word_class(c: char) -> WordClass {
     let u = c as u32;
-    if is_extend(c) {
+    if is_extend(c) || is_format(c) {
         WordClass::Extend
     } else if is_ideograph(u) {
         WordClass::Ideograph
@@ -141,6 +152,19 @@ pub(crate) fn word_class(c: char) -> WordClass {
 
 /// True when `a` immediately followed by `b` continues one word (used for
 /// whole-word find). Ideographs are words of their own and never join.
+/// True when `a mid c` stays one word under the counter's mid rules:
+/// letter-letter across MidLetter/MidNumLet, digit-digit across
+/// MidNum/MidNumLet (`cat's`, `e.g`, `3.14`, `1,000`).
+pub(crate) fn mid_joins(a: char, mid: char, c: char) -> bool {
+    let (a, c) = (word_class(a), word_class(c));
+    match word_class(mid) {
+        WordClass::MidLetter => a == WordClass::Letter && c == WordClass::Letter,
+        WordClass::MidNum => a == WordClass::Digit && c == WordClass::Digit,
+        WordClass::MidNumLet => a == c && matches!(a, WordClass::Letter | WordClass::Digit),
+        _ => false,
+    }
+}
+
 pub(crate) fn joins_word(a: char, b: char) -> bool {
     let joinable = |c| {
         matches!(

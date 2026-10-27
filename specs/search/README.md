@@ -72,22 +72,35 @@ Every piece of display text maps to source in one of two ways:
   outside text spans), code-span content between its backtick runs (with one
   stripped space), plain image alt directly after `![`, unsupported source, and
   each code-block line that is a suffix of its source line (after the fence,
-  indentation or `>`/list prefixes).
+  indentation or `>`/list prefixes), plus its LF line ending. Whether a block
+  is fenced comes from the model (`info` is present only for fenced blocks),
+  never from its text, so an indented block whose first line is ```` ``` ````
+  still maps line by line.
 - **Atomic:** the display text is derived. Examples are entity and character
   references (`&amp;` displays as `&`), code spans whose line endings became
   spaces, alt text that contained markup, and code lines with expanded tabs.
   Any matched part maps to the whole node span, or to the code line. CRLF
   line endings normalized to LF in code text map to the source line ending.
+  This applies to whitespace too: a space derived from a code span's line
+  ending is atomic.
 
 `FindMatch.source` is the smallest range covering every matched character. It
 includes any markup interleaved within the match, for example `foo **bar`.
-`exact` is true when every non-whitespace matched character maps exactly.
-Whitespace is matched in normalized form, so `foo\r\nbar` satisfies
-`foo bar`. Segments split a match by node in reading order. Each segment has a
+`exact` is true when every matched character, whitespace included, maps to
+its own source bytes; a soft/hard break maps to the break itself. Any
+character from an atomic piece clears it. Whitespace is compared in
+normalized form, so `foo\r\nbar` satisfies `foo bar` and stays exact.
+Segments split a match by node in reading order. An exact segment's source
+slice equals its display-text range byte for byte, so one node yields several
+segments when source bytes such as a `>` prefix lie between its lines;
+`FindMatch.exact` equals "every segment is exact". Each segment has a
 range in that node's display text: `text` for text, code spans and code
 blocks; `alt` for images; the source slice for unsupported nodes. Breaks have
 an empty range at 0. Native presenters highlight from segments (display
-coordinates) and navigate or restore from `source`. All spans and text ranges
+coordinates). They navigate by **match index** and use `source` only as a
+coarse anchor: several matches inside one atomic node (for example two `a`
+in a code span whose line ending became a space) share the same `source`, so `next_from`/`previous_before` and `Snapshot::anchor_at`
+cannot tell them apart; segment text offsets can. All spans and text ranges
 lie on UTF-8 boundaries, inside their unit and node spans.
 
 ## Matching rules
@@ -97,7 +110,11 @@ lie on UTF-8 boundaries, inside their unit and node spans.
   order with stable indices for a given snapshot, query and options.
 - **Whitespace:** in both query and text, every run of Unicode `White_Space`
   (spaces, tabs, NBSP, CR/LF) and every soft/hard break collapses to one
-  space. An empty or whitespace-only query returns no matches without error.
+  space. Invisible format characters (`is_format`: soft hyphen U+00AD, word
+  joiner U+2060, BOM U+FEFF, bidi marks and controls and similar Cf
+  characters) are skipped in both, so `foobar` matches `foo\u{AD}bar` and the
+  match span still covers the skipped bytes. ZWSP, ZWNJ and ZWJ are not
+  skipped. An empty or whitespace-only query returns no matches without error.
   Queries over 4,096 UTF-8 bytes fail with `QueryTooLong`.
 - **Case:** `case_sensitive` compares scalars exactly. Otherwise each scalar
   passes through `fold_case`. This is Unicode simple case folding (status C+S):
@@ -119,12 +136,17 @@ lie on UTF-8 boundaries, inside their unit and node spans.
   Brahmic/Southeast-Asian sign. It is also rejected when it follows or ends
   with a ZWJ, or when it would split a regional-indicator (flag) pair.
   `cafe` does not match inside NFD `café`, and `👨` does not match inside a
-  ZWJ family. Hangul jamo sequences and full UAX #29 rules are not modelled.
+  ZWJ family. Boundary checks use the original scalars, not case-folded keys:
+  U+0345 folds to `ι` but stays a combining mark, so `ι` does not match it
+  alone and `α` does not match inside `α\u{345}`. Hangul jamo sequences and
+  full UAX #29 rules are not modelled.
 - **Whole word:** when a query edge character is a word character, the
   adjacent text character must not join with it. Word characters are letters,
   digits, katakana, connector punctuation and attached marks. Ideographs and
   Hiragana are words of their own, so `中文` is a whole word inside `我中文好`.
   `cat.` matches `Cat.`; `cat` does not match `cats`, `cat_s` or `concat`.
+  Edges use the word counter's mid-letter/mid-number context, so `cat` does
+  not match in `cat's`, nor `3` in `3.14`, nor `000` in `1,000`.
 - **RTL and bidi:** matching is in logical (source) order. Visual reordering
   and highlight geometry belong to the native text system.
 
@@ -143,6 +165,8 @@ UAX #29 word-boundary rule over each unit's countable text:
 - Each Han ideograph or Hiragana scalar is one word. A Katakana run is one
   word. Hangul words are space-separated letter runs.
 - Emoji, symbols, superscripts, fractions and enclosed numbers are not words.
+- Format characters (`is_format`, such as a soft hyphen) are ignored like
+  marks, so `foo\u{AD}bar` is one word; ZWSP separates words.
 - Inline formatting boundaries do not split words (`foo**bar**` is one word).
 
 Parity with markdown-viewer (`web/src/markdown/readTime.ts`, D-32, at
@@ -157,6 +181,7 @@ The deliberate deviations are:
 | Thai, Lao, Khmer, Myanmar | ICU dictionary words | One per space-separated run (undercounts) |
 | Markup inside a word | Counts each mdast text node separately | Counts the unit's joined text |
 | Alerts and math | Alert titles and math are skipped | The current basic parser has no alert/math nodes (CORE-003B3), so `[!NOTE]` and `$...$` count as text until B3 |
+| Footnotes | GFM footnote references are not counted (`[^1]` plus definition `x y` is 2 words) | The basic parser does not enable footnotes yet, so `[^1]` and the definition label are literal text (4 words) until CORE-003B3; footnote nodes already follow the rules above |
 
 markdown-viewer's options, defaults and exclusions match: 160 wpm, headings
 and code excluded by default, front matter, HTML, images and math never
@@ -167,10 +192,13 @@ counted, and advanced fences never counted.
 - `words_per_minute` must be an integer in 60..=600 (markdown-viewer's
   bounds); otherwise `InvalidOptions`. The default is 160, the owner's measured
   script-reading speed (markdown-viewer D-32).
-- Seconds are `round(words × 60 / wpm)`, with halves rounded up, computed in
-  integers (`estimated_seconds`). This matches markdown-viewer's
-  `Math.round(words / wpm * 60)`. Totals use total words, not a sum of rounded
-  sections. Formatting such as "about 8 min" is native UI.
+- Seconds are `round(words × 60 / wpm)`, with exact halves rounded up,
+  computed in integers (`estimated_seconds`). markdown-viewer computes
+  `Math.round(words / wpm * 60)` in floating point, where an exact half can
+  land just below .5: across 60..=600 wpm and 0..=20,000 words, 1,317 pairs
+  differ by one second (34 at 160 wpm; for example 164 words is 62 s here and
+  61 s there). The core keeps the exact integer rule. Totals use total words,
+  not a sum of rounded sections. Formatting such as "about 8 min" is native UI.
 - Sections are the intro (text before the first heading, always present,
   level 0) followed by one section per heading of any level, in reading order.
   This includes headings nested in block quotes or list items. `words` covers
@@ -206,7 +234,12 @@ all-feature builds:
 - Literal and case rules: German ß/ẞ, Greek sigma, Kelvin and micro signs,
   Cherokee and Turkish i.
 - Cross-inline matches, whitespace, breaks and CRLF.
-- Entity atomic mapping, code spans, CRLF code blocks and quoted code blocks.
+- Entity atomic mapping, code spans, CRLF code blocks and quoted code blocks,
+  indented blocks that look fenced, and atomic whitespace clearing `exact`.
+- Original-scalar cluster checks (U+0345), mid-letter/number whole-word
+  edges, format characters and shared coarse sources inside atomic nodes.
+- 4,096 deterministic generated markup-heavy inputs (300,000 run locally)
+  against the strict exactness and range invariants.
 - Images, raw HTML and unsupported fences. Front matter is excluded.
 - The repository's NFC/NFD Unicode fixture, emoji ZWJ, skin-tone and flag
   sequences, Hebrew/Arabic and CJK.

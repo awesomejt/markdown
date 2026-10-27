@@ -63,7 +63,7 @@ fn normalize(text: &str, case_sensitive: bool) -> String {
             if !out.ends_with(' ') {
                 out.push(' ');
             }
-        } else {
+        } else if !is_format(c) {
             out.push(if case_sensitive { c } else { fold_case(c) });
         }
     }
@@ -122,7 +122,7 @@ fn check_invariants(
             ) {
                 joined.push(' ');
             } else {
-                if s.exact && !piece.chars().any(char::is_whitespace) {
+                if s.exact {
                     assert_eq!(
                         s.source.slice(source),
                         Some(piece),
@@ -132,14 +132,9 @@ fn check_invariants(
                 joined.push_str(piece);
             }
         }
-        if m.exact {
-            assert!(m.segments.iter().all(|s| s.exact || {
-                let text = display_text(&nodes[s.node], source);
-                text[s.text_start as usize..s.text_end as usize]
-                    .chars()
-                    .all(char::is_whitespace)
-            }));
-        }
+        // Exact matches consist only of exact segments; any derived
+        // (atomic) character, whitespace included, clears `exact`.
+        assert_eq!(m.exact, m.segments.iter().all(|s| s.exact));
         assert_eq!(
             normalize(&joined, options.case_sensitive).trim(),
             normalize(query, options.case_sensitive).trim(),
@@ -258,7 +253,10 @@ fn images_unsupported_and_footnotes() {
         .collect();
     assert_eq!(kinds, ["image", "text", "unsupported"]);
     assert_eq!(ci(source, "<span>").matches.len(), 1);
-    // A footnote reference separates text; its label is not searchable.
+    // The basic parser does not enable footnotes yet (CORE-003B3), so
+    // `[^1]` and its definition stay literal text: `text[^1].` contains
+    // neither `text1` nor `text.`. Footnote nodes are covered by the v1
+    // goldens in `model_goldens_cover_every_node_kind`.
     assert!(ci(source, "text1").matches.is_empty());
     assert!(ci(source, "text.").matches.is_empty());
 }
@@ -841,4 +839,195 @@ fn corpus_reading_goldens() {
     }
     // gfm-tour at 160 wpm: 215 words is 81 s (80.625 rounded).
     assert_eq!(stats(&repo(CORPUS[0]), ReadOptions::default()).seconds, 81);
+}
+
+#[test]
+fn indented_code_that_looks_fenced_maps_to_its_own_lines() {
+    // Review regression: fencing comes from the model, not from the text.
+    let source = "    ```\n    ```\n";
+    let r = ci(source, "```");
+    let starts: Vec<u64> = r.matches.iter().map(|m| m.source.start).collect();
+    assert_eq!(starts, [4, 12]);
+    assert!(r.matches.iter().all(|m| m.exact));
+    let source = "    ~~~a\n    b\n";
+    let r = ci(source, "a");
+    assert_eq!(slices(source, &r), ["a"]);
+    assert_eq!(r.matches[0].source.start, 7);
+    // A real fence still skips its opening line.
+    let source = "~~~\na\n~~~\n";
+    assert_eq!(ci(source, "a").matches[0].source.start, 4);
+}
+
+#[test]
+fn whitespace_from_derived_text_is_not_exact() {
+    // Review regression: the code span's line ending became a space (atomic).
+    let source = "`b\n`a\n";
+    let r = ci(source, " a");
+    assert_eq!(r.matches.len(), 1);
+    let m = &r.matches[0];
+    assert!(!m.exact);
+    assert!(!m.segments[0].exact);
+    assert!(m.segments[1].exact);
+    // CRLF code line endings are derived; LF ones are exact.
+    let crlf = "```\nx\r\ny\n```\n";
+    assert!(!ci(crlf, "x y").matches[0].exact);
+    let lf = "```\nx\ny\n```\n";
+    assert!(ci(lf, "x y").matches[0].exact);
+    // Soft breaks map to themselves and stay exact.
+    assert!(ci("foo\r\nbar\n", "foo bar").matches[0].exact);
+}
+
+#[test]
+fn boundaries_use_original_scalars_not_folded_keys() {
+    // U+0345 (combining iota subscript) folds to ι but is still a mark.
+    let source = "α\u{345} end\n";
+    assert!(
+        ci(source, "ι").matches.is_empty(),
+        "lone mark is not a match"
+    );
+    assert!(
+        ci(source, "α").matches.is_empty(),
+        "no match inside the cluster"
+    );
+    let sensitive = FindOptions {
+        case_sensitive: true,
+        ..FindOptions::default()
+    };
+    assert!(find_in(source, "α", sensitive).matches.is_empty());
+    assert_eq!(ci(source, "α\u{345}").matches.len(), 1);
+}
+
+#[test]
+fn whole_word_respects_mid_letter_and_number_context() {
+    let options = FindOptions {
+        whole_word: true,
+        ..FindOptions::default()
+    };
+    let source = "cat's cat. 3.14 3 1,000 e.g x:y a-b\n";
+    assert_eq!(slices(source, &find_in(source, "cat", options)), ["cat"]);
+    assert_eq!(find_in(source, "cat", options).matches[0].source.start, 6);
+    assert_eq!(slices(source, &find_in(source, "3", options)), ["3"]);
+    assert_eq!(find_in(source, "3", options).matches[0].source.start, 16);
+    assert!(find_in(source, "000", options).matches.is_empty());
+    assert!(find_in(source, "g", options).matches.is_empty());
+    assert!(find_in(source, "y", options).matches.is_empty());
+    assert_eq!(find_in(source, "b", options).matches.len(), 1);
+    // Word count agrees on the same text.
+    assert_eq!(word_count(source), 9);
+}
+
+#[test]
+fn format_characters_are_invisible() {
+    for c in ['\u{AD}', '\u{2060}', '\u{FEFF}', '\u{200E}'] {
+        let source = format!("foo{c}bar baz\n");
+        assert_eq!(word_count(&format!("foo{c}bar")), 1);
+        let r = ci(&source, "foobar");
+        assert_eq!(slices(&source, &r), [format!("foo{c}bar").as_str()]);
+        assert!(r.matches[0].exact);
+        assert_eq!(r.matches[0].segments.len(), 1);
+        assert_eq!(ci(&source, &format!("foo{c}bar")).matches.len(), 1);
+    }
+    // ZWSP is a break opportunity, as in Intl.Segmenter.
+    assert_eq!(word_count("foo\u{200B}bar"), 2);
+}
+
+#[test]
+fn matches_in_one_atomic_node_share_a_coarse_source() {
+    // Two matches inside `&amp;&amp;` both map to the entity spans; hosts
+    // navigate by match index and use `source` as a coarse anchor.
+    let source = "x &amp;&amp; y\n";
+    let r = ci(source, "&");
+    assert_eq!(slices(source, &r), ["&amp;", "&amp;"]);
+    let source = "`a\nb a`\n";
+    let r = ci(source, "a");
+    assert_eq!(r.matches.len(), 2);
+    assert_eq!(r.matches[0].source, r.matches[1].source);
+    assert_ne!(
+        r.matches[0].segments[0].text_start,
+        r.matches[1].segments[0].text_start
+    );
+    assert_eq!(r.next_from(r.matches[0].source.start), Some(0));
+}
+
+fn generated_cases(count: u64) {
+    const PARTS: &[&str] = &[
+        "a",
+        "b",
+        "ab ",
+        " ",
+        "  ",
+        "\n",
+        "\r\n",
+        "\n\n",
+        "*",
+        "**",
+        "`",
+        "``",
+        "&amp;",
+        "&#x41;",
+        "\\*",
+        "    ",
+        "> ",
+        "- ",
+        "# ",
+        "```",
+        "~~~",
+        "[x](y)",
+        "![a b](i.png)",
+        "<b>",
+        "é",
+        "e\u{301}",
+        "\u{AD}",
+        "\u{345}",
+        "👍🏽",
+        "🇺🇸",
+        "中",
+        "|",
+        "---",
+        "1.5",
+        "'",
+        "\t",
+    ];
+    const QUERIES: &[&str] = &[
+        "a", "b", " a", "a b", "ab", "e", "*", "`", "&", "x", "中", "1",
+    ];
+    let mut state: u64 = 0x5eed;
+    let mut next = |n: usize| {
+        state = state
+            .wrapping_mul(6_364_136_223_846_793_005)
+            .wrapping_add(1_442_695_040_888_963_407);
+        ((state >> 33) as usize) % n
+    };
+    for _ in 0..count {
+        let len = 1 + next(24);
+        let source: String = (0..len).map(|_| PARTS[next(PARTS.len())]).collect();
+        let Ok(doc) = parse_markdown(
+            &source,
+            DocumentId("doc".into()),
+            RevisionId("r1".into()),
+            ParseLimits::default(),
+        ) else {
+            continue;
+        };
+        let view = SearchDocument::from_v1(&doc, &source).unwrap();
+        let query = QUERIES[next(QUERIES.len())];
+        let options = FindOptions {
+            case_sensitive: next(2) == 0,
+            whole_word: next(2) == 0,
+            ..FindOptions::default()
+        };
+        let r = find(&view, query, &options).unwrap();
+        check_invariants(&doc, &source, query, &options, &r);
+        read_stats(&view, &ReadOptions::default()).unwrap();
+    }
+}
+
+#[test]
+fn generated_inputs_keep_range_invariants() {
+    generated_cases(
+        std::env::var("SEARCH_CASES")
+            .ok()
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(4096),
+    );
 }

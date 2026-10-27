@@ -21,7 +21,7 @@ pub use read::{
     DEFAULT_WORDS_PER_MINUTE, MAX_WORDS_PER_MINUTE, MIN_WORDS_PER_MINUTE, ReadOptions, ReadStats,
     SectionStats, estimated_seconds, read_stats, read_stats_cancellable,
 };
-pub use unicode::{fold_case, word_count};
+pub use unicode::{fold_case, is_format, word_count};
 
 /// Typed failures. None carries document contents or query text.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -243,8 +243,8 @@ impl<'a> Walker<'a> {
         let source = self.doc.source;
         let node = &self.doc.nodes[unit];
         match &node.content {
-            NodeKind::CodeBlock { text, .. } => {
-                code_block_pieces(source, unit, node.span, text, out)
+            NodeKind::CodeBlock { info, text } => {
+                code_block_pieces(source, unit, node.span, info.is_some(), text, out)
             }
             NodeKind::UnsupportedBlock { .. } => raw_piece(source, unit, node.span, out),
             content => {
@@ -348,11 +348,15 @@ fn alt_mapping(source: &str, span: SourceSpan, alt: &str) -> Mapping {
 /// Map each code-block text line to the suffix of its source line (after any
 /// fence, indentation or container prefix). Lines that are not an exact
 /// suffix (for example expanded tabs) map atomically to that source line;
-/// normalized line endings map atomically to the source line ending.
+/// LF line endings are exact and CRLF (normalized to LF) map atomically to
+/// the source line ending.
+/// Fencing comes from the model (`info` is present only for fenced blocks),
+/// never from the text: an indented block may itself start with ``` .
 fn code_block_pieces<'a>(
     source: &'a str,
     node: usize,
     span: SourceSpan,
+    fenced: bool,
     text: &'a str,
     out: &mut Vec<Piece<'a>>,
 ) {
@@ -372,7 +376,7 @@ fn code_block_pieces<'a>(
     };
     let mut cursor = base;
     let opener = block.trim_start_matches([' ', '\t']);
-    if opener.starts_with("```") || opener.starts_with("~~~") {
+    if fenced && (opener.starts_with("```") || opener.starts_with("~~~")) {
         cursor = block.find('\n').map_or(end, |p| base + p + 1);
     }
     let mut offset = 0;
@@ -406,7 +410,9 @@ fn code_block_pieces<'a>(
                 kind: PieceKind::CodeBlock,
                 text: &line[content.len()..],
                 text_offset: offset + content.len(),
-                mapping: if cursor < end {
+                mapping: if cursor < end && source.get(row_end..eol_end) == Some("\n") {
+                    Mapping::Exact(row_end)
+                } else if cursor < end {
                     Mapping::Atomic(SourceSpan {
                         start: row_end as u64,
                         end: eol_end as u64,
