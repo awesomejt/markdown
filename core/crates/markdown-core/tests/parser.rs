@@ -244,7 +244,7 @@ fn conservative_uri_policy_denies_obfuscation_remote_images_and_traversal() {
     ));
 }
 #[test]
-fn front_matter_reference_links_and_engines_are_explicitly_deferred() {
+fn front_matter_is_typed_while_reference_links_and_engines_are_deferred() {
     let source = "---\r\ntitle: Example\r\n---\r\n# Body\r\n\r\n[ref][id] ![alt][id]\r\n\r\n[id]: local.md\r\n\r\n```mermaid\r\ngraph TD; A-->B\r\n```\r\n";
     let d = parse(source);
     assert_eq!(d.input().outline.len(), 1);
@@ -252,7 +252,7 @@ fn front_matter_reference_links_and_engines_are_explicitly_deferred() {
         d.input().metadata.front_matter_span.unwrap().slice(source),
         Some("---\r\ntitle: Example\r\n---\r\n")
     );
-    assert!(d.input().metadata.properties.is_empty());
+    assert_eq!(d.input().metadata.title.as_deref(), Some("Example"));
     assert!(d.input().links.is_empty() && d.input().resources.is_empty());
     assert_eq!(
         kinds(&d, |k| matches!(k, NodeKind::UnsupportedInline { .. })),
@@ -424,12 +424,8 @@ fn heading_html_tags_are_inert_source_but_not_outline_labels() {
         d.input().metadata.front_matter_span.unwrap().slice(source),
         Some(source)
     );
-    assert!(
-        d.input()
-            .diagnostics
-            .iter()
-            .any(|d| d.code == "front_matter_deferred")
-    );
+    assert!(d.input().metadata.properties.is_empty());
+    assert!(d.input().diagnostics.is_empty());
 }
 
 #[test]
@@ -549,12 +545,7 @@ fn incompatible_tab_container_offsets_fall_back_to_exact_inert_body() {
             );
             if !prefix.is_empty() {
                 assert!(d.input().capabilities.contains(&Capability::FrontMatter));
-                assert!(
-                    d.input()
-                        .diagnostics
-                        .iter()
-                        .any(|d| d.code == "front_matter_deferred")
-                );
+                assert_eq!(d.input().metadata.title.as_deref(), Some("private"));
             }
         }
     }

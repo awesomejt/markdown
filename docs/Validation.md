@@ -4,7 +4,9 @@ Common and core entry points are documented in [Development.md](Development.md).
 CORE-001A established portable CI/policy checks; CORE-002A adds v1 model,
 schema and golden validation. CORE-003A adds bounded basic parser and safety
 regressions under [Parsing.md](Parsing.md); extension/fuzz/performance acceptance
-remains CORE-003B, and native acceptance remains in platform phases.
+remains in CORE-003B children, and native acceptance remains in platform phases.
+CORE-003B1 adds [typed metadata](Front-Matter.md) boundary, atomic-rejection,
+copy-budget and deterministic generated-input regressions.
 
 ## Evidence levels
 

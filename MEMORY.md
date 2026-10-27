@@ -11,24 +11,27 @@ design belong in `docs/` or `agents/`; runtime transcripts do not belong here.
 - Later platforms: iOS and iPadOS after the desktop contracts are stable.
 - Organization: one native monorepo with independent native UIs,
   shared specifications/fixtures/benchmarks, and a candidate portable core.
-- Status: CORE-001A completed via PR #1 (`8a164ad`). CORE-002A completed via
-  owner-authorized PR #2 merge `e5f1a17`, including fixed head `75a8bc8`.
-  Its four Grok findings were addressed; owner waived another review while
-  troubleshooting integration. CI passed on Linux/macOS/Windows; no bot approval
-  is inferred. State/model-freeze closeout travels in the CORE-003A branch.
-- CORE-003A is selected on `feat/core-003a-basic-parser`: bounded basic
-  pulldown-cmark parsing, immutable v1 output, source spans/outline, tables/tasks,
-  conservative URI intents and inert HTML/engine fallbacks. See `docs/Parsing.md`.
-  References are source fallbacks; first-position front matter retains its source
-  span without typed properties. Full extension/conformance, URI refinement,
-  fuzz/property and time/memory budgets remain CORE-003B. IDs are snapshot-local;
-  sessions/cancellation/identity remain CORE-004A. Native UI/FFI are later phases.
-  PR #3 review fixes address email routing, Unicode/bidi URI obfuscation and
-  nested-link/tab-container validation failures; see Parsing.md for inert body
-  fallback and temporary ASCII-only activation restrictions. The owner authorized
-  fixing, pushing, waiting for checks, merging and branch cleanup on 2026-10-27,
-  as with PR #2. Verify final head/checks/merge; never infer bot approval.
-  No dependent work before verified merge; carry state closeout in next PR.
+- Status: CORE-001A completed via PR #1 (`8a164ad`), CORE-002A via PR #2
+  (`e5f1a17`), CORE-003A via owner-authorized PR #3 (`872061c`, fixed head
+  `7ef0a4c`). All original review findings were addressed; required hosted CI
+  passed. No additional bot approval is inferred. CORE-003A state closeout
+  travels in this phase's branch.
+- CORE-003B was split into B1 metadata, B2 reference/URI compatibility, B3 other
+  extension semantics and B4 conformance/fuzz/performance. Thirteen supported
+  operations (four tasks/nine edges) were rehearsed and applied; original
+  aggregate acceptance and native gates remain. CORE-004A is independently ready.
+- Selected: CORE-003B1 on `feat/core-003b1-front-matter`, bounded typed flat
+  front matter with atomic rejection, exact source retention, shared text-budget
+  accounting and privacy-safe diagnostics. See `docs/Front-Matter.md`. No new
+  dependency/schema, URI/reference, engine, session, FFI or UI change. Unicode
+  destinations are still denied by the conservative URI policy until B2.
+  Inspect actual current-head phase checks/review before continuing. Earlier
+  Owner authorized PR #4 review fixes/checks/merge/cleanup on 2026-10-27, as before.
+  Fixes cover control/Cf string safety and nonblank titles, literal ISO date/time,
+  consistent block lists, exact BOM offsets and blank-rule ambiguity; legacy YAML
+  booleans remain documented strings. Verify final head/CI/merge; no new bot
+  approval is inferred. IDs and
+  cancellation remain CORE-004A; Linux LNX-001D1/ADV-005 conditions remain intact.
 - License: owner selected Apache-2.0 for implementation source (D-019).
 - The required real Windows, macOS, and Linux renderer and shared-core
   integration evidence is recorded, and the capability matrix reconciles it.

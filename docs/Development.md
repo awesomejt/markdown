@@ -46,7 +46,9 @@ schema builds. Checked-in goldens cover all node kinds; Rust verifies typed
 round trips and generated-schema consistency, while Python independently
 validates the schema/fixtures and source hashes. CORE-003A adds parser tests and an original serialized snapshot for the
 [bounded basic surface](Parsing.md), including explicit extension deferrals.
-Neither suite proves native UI conformance. Regenerate the schema deliberately with:
+CORE-003B1 adds restricted typed metadata, ceiling/atomic-failure/privacy checks
+and 4,096 generated metadata cases; see [Front-Matter.md](Front-Matter.md).
+These suites do not prove native UI conformance. Regenerate the schema deliberately with:
 
 ```sh
 cargo run --locked --example export_schema --features schema > build/document.schema.json

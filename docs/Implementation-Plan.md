@@ -55,11 +55,23 @@ Refine an oversized row before coding, preserving its parent acceptance criteria
 | CORE-001A | Accepted workspace, common checks, dependency/license inventory and platform-isolated CI definitions; common checks run | GATE-001 |
 | CORE-002A | Versioned model/capabilities, identity/spans/resource intents and golden fixtures; schema/compatibility checks pass | CORE-001A |
 | CORE-003A | Bounded basic parsing and safety policy; basic/malformed/unsafe corpus passes | CORE-002A |
-| CORE-003B | Typed metadata, reference-link representation/activation, other extension/URI/conformance gaps, hostile inputs, fuzz/property and parser performance budgets pass | CORE-003A |
+| CORE-003B | Aggregate acceptance retained: all B1–B4 merged, supported conformance/hostile inputs/fuzz/property and measured parser budgets pass | CORE-003A, CORE-003B1–B4 |
+| CORE-003B1 | Bounded typed first-position metadata, atomic duplicate/unsupported rejection, exact source and copy-budget/privacy tests | CORE-003A |
+| CORE-003B2 | Reference representation/activation under version/compatibility rules; URI refinement including Unicode without obfuscation; exact spans and safety corpus | CORE-003A |
+| CORE-003B3 | Remaining bounded MVP extension semantics and explicit advanced fallbacks; malformed/undefined and source-span checks, no advanced engines | CORE-003B1 |
+| CORE-003B4 | Supported semantic corpus reconciliation, hostile/fuzz/property checks and measured named-host parser time/memory budgets; remaining offset fallbacks | CORE-003B2, CORE-003B3 |
 | CORE-004A | Immutable sessions, generations, cancellation, external changes and anchors; race/lifetime checks pass | CORE-003A |
 | CORE-005A | Source-accurate document find, word count and section timing; Unicode/range checks pass | CORE-004A |
 | CORE-005B | Capability-fed workspace search primitives, cancellation and resource budgets; bounded-search checks pass | CORE-005A |
 | CORE-006A | Bulk facade, value ownership, typed errors and version negotiation; ABI/lifetime tests and current-host package smoke pass | CORE-004A |
+
+CORE-003B was refined after CORE-003A review because metadata, reference/model
+compatibility, extension semantics and fuzz/performance acceptance were too
+large for one review. The four children and nine new dependency edges were
+rehearsed on disposable state, then materialized through the state helper.
+The original CORE-003B prerequisites/dependents, native gates and aggregate
+acceptance remain intact. CORE-004A remains independently ready after CORE-003A;
+metadata does not add a new prerequisite for sessions or native A phases.
 
 CORE-006A enables native adapters without waiting for all workspace-search work.
 It does not close CORE-006: all three native package consumers must pass in their

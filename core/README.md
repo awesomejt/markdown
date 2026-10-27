@@ -4,6 +4,8 @@ CORE-002A implements the [v1 semantic model](../specs/semantic-model/v1/README.m
 as owned Rust values with strict JSON decoding, source association, structural
 validation and schema/golden checks. CORE-003A adds bounded basic parsing and
 conservative safety classification; see [Parsing.md](../docs/Parsing.md).
+CORE-003B1 adds [bounded typed front matter](../docs/Front-Matter.md) without a
+new dependency or wire schema. Invalid/unsupported metadata retains source.
 It does not reconcile IDs across revisions, implement sessions/search, expose
 C ABI functions or render UI.
 Those remain separate phases. Feasibility crates are not workspace dependencies.

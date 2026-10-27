@@ -4,6 +4,7 @@
 //! Use [`Document::new`] or [`Document::from_json`] to obtain validated snapshots.
 #![forbid(unsafe_code)]
 
+mod metadata;
 mod model;
 mod parse;
 mod validate;

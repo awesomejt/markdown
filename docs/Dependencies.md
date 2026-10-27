@@ -77,6 +77,11 @@ and [Unicode License V3](https://www.unicode.org/license.txt).
 Further unlisted declarations fail and need dependency/policy review. The parser is added under CORE-003A with the bounds in [Parsing.md](Parsing.md). A dedicated tool such as cargo-deny can replace the
 small policy once the graph warrants it; source/license tests remain required.
 
+The metadata string-safety predicate includes pinned Unicode 16.0 Cf category
+facts, checked against the official UCD and Python Unicode 16.0 data. Its source
+copyright/provenance and `licenses/Unicode-3.0.txt` retain the Unicode notice.
+This adds no Cargo package and does not alter the reviewed dependency graph.
+
 ## Development tooling and feasibility
 
 | Tool/graph | Pin | Policy boundary |
