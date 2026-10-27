@@ -1,0 +1,16 @@
+---
+title: Reference document
+---
+# Café
+
+[Full][readme] [readme][] [readme] ![Café **image**][picture]
+
+[Inline](<docs/café one.md#café>) [Web](https://例え.test/a%20b)
+[Jump](#caf%C3%A9) [Mail](mailto:a@example.com)
+
+[Blocked][unsafe] ![Remote][remote]
+
+[readme]: <docs/café%20one.md> "Read it"
+[picture]: images/cafe%CC%81.png
+[unsafe]: javascript:alert(1)
+[remote]: https://example.com/image.png

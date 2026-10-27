@@ -1,71 +1,80 @@
 # Agent Session and Platform Handoff
 
-Updated: 2026-10-27, CORE-003A merged closeout and CORE-003B1 typed metadata.
-Source baseline: `872061c` on main plus this phase's changes. Preserve intended
-source, locks/specs, docs and state together. Do not copy environments, build
-products, private runtime state or user documents.
+Updated: 2026-10-27, CORE-003B1 merged closeout and CORE-003B2 opt-in v2.
+Source baseline: `0ce353f` on main plus this phase's changes. Preserve intended
+source, lock/spec/golden files, docs and state together. Never transfer caches,
+environments, build products, private runtime state or user documents.
 
-## Resume here — CORE-003B1 typed front matter
+## Resume here — CORE-003B2 references and URI targets
 
-CORE-003A completed via owner-authorized [PR #3](https://github.com/awesomejt/markdown/pull/3)
-merge `872061c`, containing corrected head `7ef0a4c`. All three Grok concerns
-were addressed and required hosted checks passed. Owner requested fixing,
-checking and merging as with PR #2, without waiting for another review; no new
-bot approval is inferred. Its supported state closeout travels here. CORE-001A
-and CORE-002A were already merged; aggregate CORE-001 waits for native shell CI.
+CORE-003B1 completed via owner-authorized [PR #4](https://github.com/awesomejt/markdown/pull/4)
+merge `0ce353f`, containing corrected head `22146cc`. All four concerns/two nits
+were addressed; required CI passed. The owner requested fixes/checks/merge and
+cleanup as before, not another bot-response wait; no extra approval is inferred.
+Its supported state closeout travels here. The four B children and aggregate/
+native gates remain intact; B1 metadata does not complete CORE-003B.
 
-The oversized CORE-003B phase was refined before coding, as required by the
-[delivery catalog](docs/Implementation-Plan.md): B1 typed metadata; B2 reference
-representation/URI compatibility; B3 other extension semantics; B4 conformance,
-fuzz/property and measured parser budgets. Four tasks/nine edges were rehearsed
-on disposable state and applied through the helper. The parent remains
-incomplete until all children/original acceptance pass. Existing prerequisites,
-native packaging dependents, Linux LNX-001D1 and ADV-005 gates are retained.
-CORE-004A and platform A phases remain independently ready after merge closeout.
+Selected: **CORE-003B2**, branch `feat/core-003b2-references-uri`.
+The owner chose additive opt-in model v2 with explicit reference provenance,
+preserving v1 API/decoder/schema/goldens (D-020). Read
+[the v2 contract](specs/semantic-model/v2/README.md), [URI policy](docs/URI-Policy.md),
+[Parsing.md](docs/Parsing.md), [development checks](docs/Development.md) and
+[dependency inventory](docs/Dependencies.md). V2 is still under phase-PR review;
+freeze at owner-authorized merge. No default model/facade/native format switch.
 
-Selected task: **CORE-003B1**, branch `feat/core-003b1-front-matter`.
-Read [Front-Matter.md](docs/Front-Matter.md), [Parsing.md](docs/Parsing.md),
-[development checks](docs/Development.md), the frozen semantic model and task
-state. This phase adds no dependency or wire/model field. It parses a restricted
-flat metadata grammar, not general YAML: null/bool/i64/string/string-list values,
-quoted escapes, comments, plain properties and an optional nonblank string title.
-PR #4 review fixes reject decoded/literal controls and Unicode 16.0 Cf format
-characters; accept literal ISO dates/datetimes, consistent zero/positive-indent
-lists, and BOM-prefixed headers while retaining exact source. A blank line after
-the opening rule selects ordinary Markdown. YAML 1.1 legacy boolean spellings
-remain documented strings; comma-leading scalars are unsupported. All unsupported
-metadata still rejects atomically; no schema/dependency/URI policy changes.
-First-position delimiter precedence and original UTF-8/LF/CRLF source spans stay
-unchanged. The pulldown-cmark YAML metadata option remains disabled (D-015).
+Enable feature `model-v2` for `parse_markdown_v2`/`v2::Document`. The v1 parser
+remains default with reference fallbacks/conservative URI subset. V2 separates
+reference definition/destination spans from occurrence spans; supports full,
+collapsed, shortcut and image references with parser case-fold/duplicate rules.
+All targets are source-proven through a bounded expected-intent reparse, not
+merely span geometry: forged destinations and unrelated definition bindings
+are rejected. General display text/metadata fidelity is not a source signature.
+Both decoders reject the other's wire shape/version. Explicit upgrade retains
+legacy denials; old reference fallback nodes need source reparse to become links.
 
-Duplicate/unsupported/oversized metadata atomically omits the entire map/title
-with a structural warning and retains the original source/capability. Presenters
-must keep source readable. Metadata/string/item/property ceilings are explicit;
-keys/strings/promoted title and failed attempts share the parser text-copy
-counter. Exceeding that caller budget is a fatal TextLimit, never a warning.
-The tab-offset whole-body fallback preserves typed metadata and its diagnostics.
+Typed v2 targets separate internal fragments, decoded-once relative capability
+paths, canonical external URLs and static denials. Unicode/NFD/encoded spaces,
+IDNs and visible parent-relative paths are supported with guards for malformed/
+encoded control/Cf values, schemes, authority/userinfo, path separators/dot
+obfuscation and Windows device variants. Adapters MUST NOT decode file targets
+again, pass them to URL launchers or expand shell/tilde/env syntax. Native file
+APIs must enforce approved-root containment through symlinks/reparse points and
+revocation/type checks; targets grant no I/O. Remote images remain denied.
+Mailto/query/URI edge cases remain intentionally limited; see the policy.
 
-No URI/reference change, advanced engine, incremental identity/session,
-cancellation, search, FFI, native UI or I/O is introduced. References and other
-extensions remain source/basic Markdown behavior. Non-ASCII destinations remain
-visible but denied until B2; platform adapters still own permission containment
-and safe activation. No existing frozen model/FEAS/parser golden is rewritten.
+Source mapping now excludes quote continuation markers for multiline inline/
+reference link/image destinations. Linked images keep both intents; nested links
+remain inert. Known upstream tab-offset cases retain exact whole-body source
+fallback and metadata, dropping targets. Proof scan budgets are independent of
+published node/event counts; source depth/fact count and fixed 64 MiB fact-string
+ceiling bound its extra work. It is not a deadline/allocator quota. Primary
+parsing charges retained targets to the copy budget. B4 must measure costs.
 
-Regressions include supported types, quote/comment/Unicode semantics, atomic
-hostile/duplicate rejection, exact boundaries and one-over ceilings, budget and
-privacy checks, frozen GFM properties, source offsets/fallback preservation and
-4,096 generated metadata inputs alongside the existing 20,000 markup cases.
-Full common/core checks and hosted latest-head Linux/macOS/Windows/common checks
-must pass before marking the phase PR ready and posting one exact `/grok review`.
-Keep receipts/disposition in PR discussion, not another source-only receipt
-commit. The GitHub connector lacks write access; authenticated `gh` is fallback.
+Optional url 2.5.8/IDNA/ICU adds 28 packages to the full graph (60 including
+schema tooling). V1 plus schema remains 32 and default v1 does not enable URL.
+Eighteen package/version Unicode-3.0 exceptions were verified against local
+manifests/LICENSE and scoped in policy; source restrictions remain unchanged.
+No new installed software beyond normal Cargo fetching is needed. No UI,
+advanced engine, FFI, stable identity/session/cancellation or I/O is implemented.
 
-Keep the pass partial with no lease while waiting for review/merge. Inspect
-actual phase PR and supported state before resuming. The owner now authorized PR #4 review fixes, pushing, waiting for automatic
-checks, merging and branch cleanup, using the same sequence as before. Post a
-fresh review trigger for the fixed ready head but do not wait for another bot
-response or infer approval. Inspect actual comments before merging.  No dependent implementation before merge.
-After merge, carry state closeout in the next feature PR, never directly to main.
+Regressions cover version/migration compatibility, exact source/schema/golden,
+forged targets/definitions, references/linked images/quote continuations,
+Unicode/percent/IDN/mail/fragment routing, hostile URIs/devices, budget separation
+and 8,192 generated v2 inputs, plus existing v1/parser/metadata suites. Independent
+read-only review found source-proof, quote mapping, linked-image, colon/authority,
+device and budget issues; fixes/regressions passed its isolated re-review with
+no remaining blocking correctness/security finding. Full conformance/fuzz/perf
+remains B4; required current-head hosted common/Linux/macOS/Windows checks and
+actual phase review/owner merge still must be inspected before completion.
+
+Finish this phase partial without an active lease while awaiting CI/review/merge.
+Once ready, post exact `/grok review` separately; receipts/disposition belong in
+PR discussion, not another source-only receipt commit. Connector writes are
+unavailable; authenticated `gh` is the fallback. Earlier merge/review exceptions
+applied only to PR #2–#4. Do not merge this phase without owner authorization.
+After verified merge, carry state closeout in the next feature PR, not directly
+to main. B3/B4 and CORE-004A/native A phases keep their dependencies. Preserve
+Linux LNX-001D1 and ADV-005 gates.
 
 ## Feasibility evidence retained for implementation
 

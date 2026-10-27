@@ -8,6 +8,16 @@ The [model contract](../specs/semantic-model/v1/README.md) remains frozen and
 unchanged. Snapshot IDs are deterministic ordinals; CORE-004A must reconcile
 identities across revisions before an adapter relies on persistent node IDs.
 
+## Opt-in v2
+
+CORE-003B2 adds `parse_markdown_v2` behind feature `model-v2`. The owner selected
+an additive version with [explicit reference provenance](../specs/semantic-model/v2/README.md)
+and [typed URI targets](URI-Policy.md), preserving the default v1 API/schema.
+V2 resolves references and supports legitimate Unicode/encoded destinations;
+v1's reference fallbacks and conservative activation subset below remain its
+contract. Shared parsing also corrects multiline quoted-container destination
+spans without changing v1 wire meaning. No default format or facade is switched.
+
 ## Implemented surface
 
 Pinned pulldown-cmark 0.13.5 runs with default features disabled and only tables,
@@ -92,8 +102,7 @@ unchanged; source-offset fallback also preserves metadata warnings/properties.
 Resolved reference links/images use explicit inline source fallbacks and a
 `reference_link_deferred` diagnostic. V1 intent spans must be inside the
 occurrence, while reference destinations live in a separate definition; this
-phase does not invent a destination span or change the frozen model. CORE-003B
-must settle reference source representation/compatibility and activation.
+phase does not invent a destination span or change the frozen model. CORE-003B2 implements these under opt-in v2 rather than changing v1.
 Unresolved references remain ordinary CommonMark text. Reference definitions
 are parser syntax and need not appear as body nodes, as with other delimiters.
 

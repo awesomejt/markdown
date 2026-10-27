@@ -8,6 +8,10 @@ remains in CORE-003B children, and native acceptance remains in platform phases.
 CORE-003B1 adds [typed metadata](Front-Matter.md) boundary, atomic-rejection,
 copy-budget and deterministic generated-input regressions.
 
+CORE-003B2 adds opt-in v2 source-backed intents/URI targets, strict version
+separation, explicit-upgrade tests, v2 schema/golden checks and generated input.
+Default v1 behavior/schema compatibility is required throughout.
+
 ## Evidence levels
 
 ### Documentation changes

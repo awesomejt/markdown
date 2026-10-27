@@ -126,6 +126,22 @@ impl Document {
 }
 
 fn validate(d: &DocumentInput, source: &str, limits: ModelLimits) -> Result<(), ModelError> {
+    validate_parts(d, source, limits, true)
+}
+#[cfg(feature = "model-v2")]
+pub(crate) fn validate_structure(
+    d: &DocumentInput,
+    source: &str,
+    limits: ModelLimits,
+) -> Result<(), ModelError> {
+    validate_parts(d, source, limits, false)
+}
+fn validate_parts(
+    d: &DocumentInput,
+    source: &str,
+    limits: ModelLimits,
+    intents: bool,
+) -> Result<(), ModelError> {
     require(
         d.model_version == MODEL_VERSION,
         "model_version",
@@ -338,7 +354,9 @@ fn validate(d: &DocumentInput, source: &str, limits: ModelLimits) -> Result<(), 
         "metadata",
     )?;
     require(d.capabilities == caps, "capabilities", "capabilities")?;
-    validate_intents(d, source)?;
+    if intents {
+        validate_intents(d, source)?;
+    }
     for (i, diagnostic) in d.diagnostics.iter().enumerate() {
         require_lazy(
             text_present(&diagnostic.code) && text_present(&diagnostic.message),

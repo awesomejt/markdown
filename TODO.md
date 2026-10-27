@@ -11,7 +11,7 @@ batching ready work on the current OS. Each delivery phase uses one feature
 branch and PR. Once ready, post a separate PR comment exactly `/grok review`,
 address the feedback, and obtain owner merge approval. Follow
 [Delivery-Workflow.md](docs/Delivery-Workflow.md) for branch, review and handoff
-rules. GATE-001 is approved (D-018). CORE-001A, CORE-002A and CORE-003A are merged; CORE-003B1 is selected;
+rules. GATE-001 is approved (D-018). CORE-001A through CORE-003A and CORE-003B1 are merged; CORE-003B2 is selected;
 ADV-005 carries deferred engine work after DESK-002.
 
 ## Current phase: portable core and early native foundations
@@ -19,13 +19,15 @@ ADV-005 carries deferred engine work after DESK-002.
 The gate is complete; the small child tasks are materialized in project state.
 CORE-001A infrastructure, CORE-002A semantic v1 and CORE-003A basic parsing are
 merged. CORE-003B1 adds [bounded typed front matter](docs/Front-Matter.md).
+CORE-003B2 adds [opt-in v2 provenance/URI targets](specs/semantic-model/v2/README.md)
+while preserving default v1 (owner-selected D-020).
 Native app shells remain separate; no working reader UI is delivered by the
 core alone.
 
 ## Immediate session handoff
 
-Work on `feat/core-003b1-front-matter` through its PR/check/Grok lifecycle.
-CORE-003A merged state closeout travels here. CORE-003B was refined into four
+Work on `feat/core-003b2-references-uri` through its PR/check/Grok lifecycle.
+CORE-003B1 merged state closeout travels here. CORE-003B was refined into four
 tracked children: B1 metadata; B2 reference representation/URI compatibility;
 B3 remaining extension semantics; B4 conformance/fuzz/property and parser
 budgets. See [the catalog](docs/Implementation-Plan.md) for scope/dependencies.

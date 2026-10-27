@@ -48,6 +48,9 @@ validates the schema/fixtures and source hashes. CORE-003A adds parser tests and
 [bounded basic surface](Parsing.md), including explicit extension deferrals.
 CORE-003B1 adds restricted typed metadata, ceiling/atomic-failure/privacy checks
 and 4,096 generated metadata cases; see [Front-Matter.md](Front-Matter.md).
+Feature `model-v2` adds v2 reference/provenance/URI, source-forgery and migration
+regressions plus 8,192 generated inputs. Core checks run default, model-v2-only
+and all-feature configurations; schemas/source goldens are checked independently.
 These suites do not prove native UI conformance. Regenerate the schema deliberately with:
 
 ```sh

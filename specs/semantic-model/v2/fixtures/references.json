@@ -1,0 +1,614 @@
+{
+  "model_version": 2,
+  "document_id": "example",
+  "revision_id": "r1",
+  "source": {
+    "bytes": 407,
+    "sha256": "2ef1b5bbf1f24bdcfef09ae273c3d775516ec543006fd2c99f8579a74b921e7c"
+  },
+  "capabilities": [
+    "front_matter"
+  ],
+  "roots": [
+    "n0",
+    "n2",
+    "n13",
+    "n25"
+  ],
+  "nodes": [
+    {
+      "id": "n0",
+      "span": {
+        "start": 34,
+        "end": 42
+      },
+      "content": {
+        "kind": "heading",
+        "level": 1,
+        "anchor": "café",
+        "children": [
+          "n1"
+        ]
+      }
+    },
+    {
+      "id": "n1",
+      "span": {
+        "start": 36,
+        "end": 41
+      },
+      "content": {
+        "kind": "text",
+        "text": "Café"
+      }
+    },
+    {
+      "id": "n2",
+      "span": {
+        "start": 43,
+        "end": 106
+      },
+      "content": {
+        "kind": "paragraph",
+        "children": [
+          "n3",
+          "n5",
+          "n6",
+          "n8",
+          "n9",
+          "n11",
+          "n12"
+        ]
+      }
+    },
+    {
+      "id": "n3",
+      "span": {
+        "start": 43,
+        "end": 57
+      },
+      "content": {
+        "kind": "link",
+        "target": "l0",
+        "title": "Read it",
+        "children": [
+          "n4"
+        ]
+      }
+    },
+    {
+      "id": "n4",
+      "span": {
+        "start": 44,
+        "end": 48
+      },
+      "content": {
+        "kind": "text",
+        "text": "Full"
+      }
+    },
+    {
+      "id": "n5",
+      "span": {
+        "start": 57,
+        "end": 58
+      },
+      "content": {
+        "kind": "text",
+        "text": " "
+      }
+    },
+    {
+      "id": "n6",
+      "span": {
+        "start": 58,
+        "end": 66
+      },
+      "content": {
+        "kind": "link",
+        "target": "l1",
+        "title": "Read it",
+        "children": [
+          "n7"
+        ]
+      }
+    },
+    {
+      "id": "n7",
+      "span": {
+        "start": 59,
+        "end": 65
+      },
+      "content": {
+        "kind": "text",
+        "text": "readme"
+      }
+    },
+    {
+      "id": "n8",
+      "span": {
+        "start": 68,
+        "end": 69
+      },
+      "content": {
+        "kind": "text",
+        "text": " "
+      }
+    },
+    {
+      "id": "n9",
+      "span": {
+        "start": 69,
+        "end": 77
+      },
+      "content": {
+        "kind": "link",
+        "target": "l2",
+        "title": "Read it",
+        "children": [
+          "n10"
+        ]
+      }
+    },
+    {
+      "id": "n10",
+      "span": {
+        "start": 70,
+        "end": 76
+      },
+      "content": {
+        "kind": "text",
+        "text": "readme"
+      }
+    },
+    {
+      "id": "n11",
+      "span": {
+        "start": 77,
+        "end": 78
+      },
+      "content": {
+        "kind": "text",
+        "text": " "
+      }
+    },
+    {
+      "id": "n12",
+      "span": {
+        "start": 78,
+        "end": 105
+      },
+      "content": {
+        "kind": "image",
+        "resource": "r0",
+        "alt": "Café image",
+        "title": null
+      }
+    },
+    {
+      "id": "n13",
+      "span": {
+        "start": 107,
+        "end": 224
+      },
+      "content": {
+        "kind": "paragraph",
+        "children": [
+          "n14",
+          "n16",
+          "n17",
+          "n19",
+          "n20",
+          "n22",
+          "n23"
+        ]
+      }
+    },
+    {
+      "id": "n14",
+      "span": {
+        "start": 107,
+        "end": 142
+      },
+      "content": {
+        "kind": "link",
+        "target": "l3",
+        "title": null,
+        "children": [
+          "n15"
+        ]
+      }
+    },
+    {
+      "id": "n15",
+      "span": {
+        "start": 108,
+        "end": 114
+      },
+      "content": {
+        "kind": "text",
+        "text": "Inline"
+      }
+    },
+    {
+      "id": "n16",
+      "span": {
+        "start": 142,
+        "end": 143
+      },
+      "content": {
+        "kind": "text",
+        "text": " "
+      }
+    },
+    {
+      "id": "n17",
+      "span": {
+        "start": 143,
+        "end": 175
+      },
+      "content": {
+        "kind": "link",
+        "target": "l4",
+        "title": null,
+        "children": [
+          "n18"
+        ]
+      }
+    },
+    {
+      "id": "n18",
+      "span": {
+        "start": 144,
+        "end": 147
+      },
+      "content": {
+        "kind": "text",
+        "text": "Web"
+      }
+    },
+    {
+      "id": "n19",
+      "span": {
+        "start": 175,
+        "end": 176
+      },
+      "content": {
+        "kind": "soft_break"
+      }
+    },
+    {
+      "id": "n20",
+      "span": {
+        "start": 176,
+        "end": 194
+      },
+      "content": {
+        "kind": "link",
+        "target": "l5",
+        "title": null,
+        "children": [
+          "n21"
+        ]
+      }
+    },
+    {
+      "id": "n21",
+      "span": {
+        "start": 177,
+        "end": 181
+      },
+      "content": {
+        "kind": "text",
+        "text": "Jump"
+      }
+    },
+    {
+      "id": "n22",
+      "span": {
+        "start": 194,
+        "end": 195
+      },
+      "content": {
+        "kind": "text",
+        "text": " "
+      }
+    },
+    {
+      "id": "n23",
+      "span": {
+        "start": 195,
+        "end": 223
+      },
+      "content": {
+        "kind": "link",
+        "target": "l6",
+        "title": null,
+        "children": [
+          "n24"
+        ]
+      }
+    },
+    {
+      "id": "n24",
+      "span": {
+        "start": 196,
+        "end": 200
+      },
+      "content": {
+        "kind": "text",
+        "text": "Mail"
+      }
+    },
+    {
+      "id": "n25",
+      "span": {
+        "start": 225,
+        "end": 261
+      },
+      "content": {
+        "kind": "paragraph",
+        "children": [
+          "n26",
+          "n28",
+          "n29"
+        ]
+      }
+    },
+    {
+      "id": "n26",
+      "span": {
+        "start": 225,
+        "end": 242
+      },
+      "content": {
+        "kind": "link",
+        "target": "l7",
+        "title": null,
+        "children": [
+          "n27"
+        ]
+      }
+    },
+    {
+      "id": "n27",
+      "span": {
+        "start": 226,
+        "end": 233
+      },
+      "content": {
+        "kind": "text",
+        "text": "Blocked"
+      }
+    },
+    {
+      "id": "n28",
+      "span": {
+        "start": 242,
+        "end": 243
+      },
+      "content": {
+        "kind": "text",
+        "text": " "
+      }
+    },
+    {
+      "id": "n29",
+      "span": {
+        "start": 243,
+        "end": 260
+      },
+      "content": {
+        "kind": "image",
+        "resource": "r1",
+        "alt": "Remote",
+        "title": null
+      }
+    }
+  ],
+  "outline": [
+    {
+      "node": "n0",
+      "level": 1,
+      "title": "Café",
+      "anchor": "café"
+    }
+  ],
+  "metadata": {
+    "front_matter_span": {
+      "start": 0,
+      "end": 34
+    },
+    "title": "Reference document",
+    "properties": {
+      "title": {
+        "kind": "string",
+        "value": "Reference document"
+      }
+    }
+  },
+  "links": [
+    {
+      "id": "l0",
+      "source": {
+        "kind": "reference",
+        "definition": {
+          "start": 262,
+          "end": 303
+        },
+        "span": {
+          "start": 273,
+          "end": 292
+        }
+      },
+      "destination": "docs/café%20one.md",
+      "target": {
+        "kind": "requires_capability",
+        "path": "docs/café one.md",
+        "fragment": null
+      }
+    },
+    {
+      "id": "l1",
+      "source": {
+        "kind": "reference",
+        "definition": {
+          "start": 262,
+          "end": 303
+        },
+        "span": {
+          "start": 273,
+          "end": 292
+        }
+      },
+      "destination": "docs/café%20one.md",
+      "target": {
+        "kind": "requires_capability",
+        "path": "docs/café one.md",
+        "fragment": null
+      }
+    },
+    {
+      "id": "l2",
+      "source": {
+        "kind": "reference",
+        "definition": {
+          "start": 262,
+          "end": 303
+        },
+        "span": {
+          "start": 273,
+          "end": 292
+        }
+      },
+      "destination": "docs/café%20one.md",
+      "target": {
+        "kind": "requires_capability",
+        "path": "docs/café one.md",
+        "fragment": null
+      }
+    },
+    {
+      "id": "l3",
+      "source": {
+        "kind": "inline",
+        "span": {
+          "start": 117,
+          "end": 140
+        }
+      },
+      "destination": "docs/café one.md#café",
+      "target": {
+        "kind": "requires_capability",
+        "path": "docs/café one.md",
+        "fragment": "café"
+      }
+    },
+    {
+      "id": "l4",
+      "source": {
+        "kind": "inline",
+        "span": {
+          "start": 149,
+          "end": 174
+        }
+      },
+      "destination": "https://例え.test/a%20b",
+      "target": {
+        "kind": "external",
+        "uri": "https://xn--r8jz45g.test/a%20b"
+      }
+    },
+    {
+      "id": "l5",
+      "source": {
+        "kind": "inline",
+        "span": {
+          "start": 183,
+          "end": 193
+        }
+      },
+      "destination": "#caf%C3%A9",
+      "target": {
+        "kind": "fragment",
+        "anchor": "café"
+      }
+    },
+    {
+      "id": "l6",
+      "source": {
+        "kind": "inline",
+        "span": {
+          "start": 202,
+          "end": 222
+        }
+      },
+      "destination": "mailto:a@example.com",
+      "target": {
+        "kind": "external",
+        "uri": "mailto:a@example.com"
+      }
+    },
+    {
+      "id": "l7",
+      "source": {
+        "kind": "reference",
+        "definition": {
+          "start": 337,
+          "end": 366
+        },
+        "span": {
+          "start": 347,
+          "end": 366
+        }
+      },
+      "destination": "javascript:alert(1)",
+      "target": {
+        "kind": "denied",
+        "reason": "unsupported_scheme"
+      }
+    }
+  ],
+  "resources": [
+    {
+      "id": "r0",
+      "source": {
+        "kind": "reference",
+        "definition": {
+          "start": 304,
+          "end": 336
+        },
+        "span": {
+          "start": 315,
+          "end": 336
+        }
+      },
+      "destination": "images/cafe%CC%81.png",
+      "target": {
+        "kind": "requires_capability",
+        "path": "images/café.png",
+        "fragment": null
+      }
+    },
+    {
+      "id": "r1",
+      "source": {
+        "kind": "reference",
+        "definition": {
+          "start": 367,
+          "end": 406
+        },
+        "span": {
+          "start": 377,
+          "end": 406
+        }
+      },
+      "destination": "https://example.com/image.png",
+      "target": {
+        "kind": "denied",
+        "reason": "remote_resource"
+      }
+    }
+  ],
+  "diagnostics": []
+}

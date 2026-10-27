@@ -339,7 +339,7 @@ pub struct Diagnostic {
     pub node: Option<NodeId>,
 }
 
-fn unique_capabilities<'de, D: serde::Deserializer<'de>>(
+pub(crate) fn unique_capabilities<'de, D: serde::Deserializer<'de>>(
     deserializer: D,
 ) -> Result<BTreeSet<Capability>, D::Error> {
     let values = Vec::<Capability>::deserialize(deserializer)?;
@@ -352,7 +352,7 @@ fn unique_capabilities<'de, D: serde::Deserializer<'de>>(
     Ok(set)
 }
 
-fn unique_properties<'de, D: serde::Deserializer<'de>>(
+pub(crate) fn unique_properties<'de, D: serde::Deserializer<'de>>(
     deserializer: D,
 ) -> Result<BTreeMap<String, MetadataValue>, D::Error> {
     struct Properties;

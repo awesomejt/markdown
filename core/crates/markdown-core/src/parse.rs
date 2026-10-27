@@ -75,6 +75,9 @@ struct Builder<'a> {
     depth: usize,
     anchors: BTreeSet<String>,
     suffixes: BTreeMap<String, usize>,
+    references: bool,
+    link_definitions: BTreeMap<LinkId, SourceSpan>,
+    resource_definitions: BTreeMap<ResourceId, SourceSpan>,
 }
 
 /// Produce a validated immutable snapshot from exact UTF-8 bytes, with no I/O.
@@ -85,6 +88,26 @@ pub fn parse_markdown(
     revision_id: RevisionId,
     limits: ParseLimits,
 ) -> Result<Document, ParseError> {
+    let b = build(source, document_id, revision_id, limits, false)?;
+    finish_v1(b.doc, source, limits)
+}
+#[cfg(feature = "model-v2")]
+pub fn parse_markdown_v2(
+    source: &str,
+    document_id: DocumentId,
+    revision_id: RevisionId,
+    limits: ParseLimits,
+) -> Result<crate::v2::Document, ParseError> {
+    let b = build(source, document_id, revision_id, limits, true)?;
+    finish_v2(b, source, limits)
+}
+fn build<'a>(
+    source: &'a str,
+    document_id: DocumentId,
+    revision_id: RevisionId,
+    limits: ParseLimits,
+    references: bool,
+) -> Result<Builder<'a>, ParseError> {
     if source.len() > limits.model.max_source_bytes {
         return Err(ParseError::SourceLimit);
     }
@@ -97,6 +120,9 @@ pub fn parse_markdown(
         depth: 0,
         anchors: BTreeSet::new(),
         suffixes: BTreeMap::new(),
+        references,
+        link_definitions: BTreeMap::new(),
+        resource_definitions: BTreeMap::new(),
         doc: DocumentInput {
             model_version: MODEL_VERSION,
             document_id,
@@ -142,33 +168,58 @@ pub fn parse_markdown(
         Options::ENABLE_TABLES | Options::ENABLE_TASKLISTS | Options::ENABLE_STRIKETHROUGH;
     // Deliberately no YAML metadata mode (D-015), HTML renderer, smart punctuation,
     // heading attributes, math, footnotes, alerts or broken-link callback.
-    for (count, (event, range)) in Parser::new_ext(&source[offset..], options)
-        .into_offset_iter()
-        .enumerate()
-    {
+    let mut events = Parser::new_ext(&source[offset..], options).into_offset_iter();
+    let mut count = 0usize;
+    while let Some((event, range)) = events.next() {
         if count >= limits.max_events {
             return Err(ParseError::EventLimit);
         }
-        let range = range.start + offset..range.end + offset;
-        b.event(event, range)?;
+        count += 1;
+        let definition = if references {
+            match &event {
+                Event::Start(
+                    Tag::Link { link_type, id, .. } | Tag::Image { link_type, id, .. },
+                ) if matches!(
+                    link_type,
+                    LinkType::Reference | LinkType::Collapsed | LinkType::Shortcut
+                ) =>
+                {
+                    events
+                        .reference_definitions()
+                        .get(id)
+                        .map(|d| span(d.span.start + offset..d.span.end + offset))
+                }
+                _ => None,
+            }
+        } else {
+            None
+        };
+        b.event(event, range.start + offset..range.end + offset, definition)?;
     }
     if !b.stack.is_empty() || b.capture.is_some() {
         return Err(ParseError::SourceMapping);
     }
+    Ok(b)
+}
+fn finish_v1(
+    doc: DocumentInput,
+    source: &str,
+    limits: ParseLimits,
+) -> Result<Document, ParseError> {
+    let offset = doc.metadata.front_matter_span.map_or(0, |s| s.end as usize);
     // Some upstream tab-expanded container offsets cannot satisfy the frozen
     // containment/order contract. Keep the original body readable without
     // inventing offsets or publishing any of the invalid graph's intents.
-    let identity = (b.doc.document_id.clone(), b.doc.revision_id.clone());
-    let source_info = b.doc.source.clone();
-    let metadata = b.doc.metadata.clone();
-    let metadata_diagnostics: Vec<_> = b
-        .doc
+    let identity = (doc.document_id.clone(), doc.revision_id.clone());
+    let source_info = doc.source.clone();
+    let metadata = doc.metadata.clone();
+    let metadata_diagnostics: Vec<_> = doc
         .diagnostics
         .iter()
         .filter(|d| d.node.is_none() && d.span == metadata.front_matter_span)
         .cloned()
         .collect();
-    match Document::new(b.doc, source, limits.model) {
+    match Document::new(doc, source, limits.model) {
         Err(error) if matches!(error.code, "child_span" | "sibling_order") => {
             let body_span = span(offset..source.len());
             let id = NodeId("n0".into());
@@ -331,7 +382,12 @@ impl Builder<'_> {
         }
         Ok(())
     }
-    fn event(&mut self, event: Event<'_>, range: Range<usize>) -> Result<(), ParseError> {
+    fn event(
+        &mut self,
+        event: Event<'_>,
+        range: Range<usize>,
+        definition: Option<SourceSpan>,
+    ) -> Result<(), ParseError> {
         if matches!(event, Event::Start(_)) {
             self.depth += 1;
             if self.depth > self.limits.model.max_depth {
@@ -375,7 +431,7 @@ impl Builder<'_> {
             return Ok(());
         }
         match event {
-            Event::Start(tag) => self.start(tag, range)?,
+            Event::Start(tag) => self.start(tag, range, definition)?,
             Event::End(end) => {
                 // Inline end events are part of a synthetic paragraph; block ends close it.
                 if self.stack.last().is_some_and(|f| f.end.is_none()) {
@@ -439,7 +495,12 @@ impl Builder<'_> {
         }
         Ok(())
     }
-    fn start(&mut self, tag: Tag<'_>, range: Range<usize>) -> Result<(), ParseError> {
+    fn start(
+        &mut self,
+        tag: Tag<'_>,
+        range: Range<usize>,
+        definition: Option<SourceSpan>,
+    ) -> Result<(), ParseError> {
         let inline = matches!(
             tag,
             Tag::Emphasis | Tag::Strong | Tag::Strikethrough | Tag::Link { .. } | Tag::Image { .. }
@@ -580,7 +641,8 @@ impl Builder<'_> {
                 } else if !matches!(
                     link_type,
                     LinkType::Inline | LinkType::Autolink | LinkType::Email
-                ) {
+                ) && !(self.references && definition.is_some())
+                {
                     capture = Some(Capture::Fallback);
                     diagnostic = Some("reference_link_deferred");
                     NodeKind::UnsupportedInline {
@@ -594,10 +656,18 @@ impl Builder<'_> {
                         self.text(&dest_url)?
                     };
                     let target = LinkId(format!("l{}", self.doc.links.len()));
+                    if let Some(definition) = definition {
+                        self.link_definitions.insert(target.clone(), definition);
+                    }
+                    let intent_span = if let Some(definition) = definition {
+                        reference_destination(self.source, definition)?
+                    } else {
+                        span(range.clone())
+                    };
                     let disposition = classify_link(&destination);
                     self.doc.links.push(LinkIntent {
                         id: target.clone(),
-                        span: span(range.clone()),
+                        span: intent_span,
                         destination,
                         disposition,
                     });
@@ -621,7 +691,8 @@ impl Builder<'_> {
                 if !matches!(
                     link_type,
                     LinkType::Inline | LinkType::Autolink | LinkType::Email
-                ) {
+                ) && !(self.references && definition.is_some())
+                {
                     capture = Some(Capture::Fallback);
                     diagnostic = Some("reference_link_deferred");
                     NodeKind::UnsupportedInline {
@@ -638,9 +709,18 @@ impl Builder<'_> {
                         }
                     };
                     let resource = ResourceId(format!("r{}", self.doc.resources.len()));
+                    if let Some(definition) = definition {
+                        self.resource_definitions
+                            .insert(resource.clone(), definition);
+                    }
+                    let intent_span = if let Some(definition) = definition {
+                        reference_destination(self.source, definition)?
+                    } else {
+                        span(range.clone())
+                    };
                     self.doc.resources.push(ResourceIntent {
                         id: resource.clone(),
-                        span: span(range.clone()),
+                        span: intent_span,
                         destination,
                         access,
                     });
@@ -748,6 +828,9 @@ impl Builder<'_> {
             target, children, ..
         } = &self.doc.nodes[node].content
         {
+            if self.link_definitions.contains_key(target) {
+                return Ok(());
+            }
             let label_end = children
                 .last()
                 .map(|id| {
@@ -762,18 +845,45 @@ impl Builder<'_> {
             let pos = target.0[1..]
                 .parse::<usize>()
                 .map_err(|_| ParseError::SourceMapping)?;
-            self.doc.links[pos].span =
-                destination_span(self.source, self.doc.nodes[node].span, label_end)?;
+            self.doc.links[pos].span = destination_span(
+                self.source,
+                self.doc.nodes[node].span,
+                label_end,
+                self.stack
+                    .iter()
+                    .filter(|f| {
+                        matches!(
+                            self.doc.nodes[f.node].content,
+                            NodeKind::BlockQuote { .. } | NodeKind::Alert { .. }
+                        )
+                    })
+                    .count(),
+            )?;
         }
         Ok(())
     }
     fn finish_image_span(&mut self, node: usize, label_end: usize) -> Result<(), ParseError> {
         if let NodeKind::Image { resource, .. } = &self.doc.nodes[node].content {
+            if self.resource_definitions.contains_key(resource) {
+                return Ok(());
+            }
             let pos = resource.0[1..]
                 .parse::<usize>()
                 .map_err(|_| ParseError::SourceMapping)?;
-            self.doc.resources[pos].span =
-                destination_span(self.source, self.doc.nodes[node].span, label_end)?;
+            self.doc.resources[pos].span = destination_span(
+                self.source,
+                self.doc.nodes[node].span,
+                label_end,
+                self.stack
+                    .iter()
+                    .filter(|f| {
+                        matches!(
+                            self.doc.nodes[f.node].content,
+                            NodeKind::BlockQuote { .. } | NodeKind::Alert { .. }
+                        )
+                    })
+                    .count(),
+            )?;
         }
         Ok(())
     }
@@ -783,6 +893,7 @@ fn destination_span(
     source: &str,
     whole: SourceSpan,
     label_end: usize,
+    quotes: usize,
 ) -> Result<SourceSpan, ParseError> {
     let start = whole.start as usize;
     let end = whole.end as usize;
@@ -794,13 +905,42 @@ fn destination_span(
         .get(label_end..end)
         .ok_or(ParseError::SourceMapping)?;
     let relative = tail.find("](").ok_or(ParseError::SourceMapping)? + 2;
-    let mut pos = label_end + relative;
-    while source
-        .as_bytes()
-        .get(pos)
-        .is_some_and(u8::is_ascii_whitespace)
-    {
-        pos += 1;
+    scan_destination(source, label_end + relative, end, quotes)
+}
+fn scan_destination(
+    source: &str,
+    mut pos: usize,
+    end: usize,
+    quotes: usize,
+) -> Result<SourceSpan, ParseError> {
+    loop {
+        let mut continuation = false;
+        while source
+            .as_bytes()
+            .get(pos)
+            .is_some_and(u8::is_ascii_whitespace)
+        {
+            continuation |= source.as_bytes()[pos] == b'\n';
+            pos += 1;
+        }
+        if continuation {
+            for _ in 0..quotes {
+                if source.as_bytes().get(pos) != Some(&b'>') {
+                    break;
+                }
+                pos += 1;
+                while matches!(source.as_bytes().get(pos), Some(b' ' | b'\t')) {
+                    pos += 1;
+                }
+            }
+        }
+        if !source
+            .as_bytes()
+            .get(pos)
+            .is_some_and(u8::is_ascii_whitespace)
+        {
+            break;
+        }
     }
     let angled = source.as_bytes().get(pos) == Some(&b'<');
     if angled {
@@ -835,7 +975,11 @@ fn destination_span(
         }
         pos += 1;
     }
-    Err(ParseError::SourceMapping)
+    if !angled && depth == 0 {
+        Ok(span(begin..end))
+    } else {
+        Err(ParseError::SourceMapping)
+    }
 }
 
 // Deliberately conservative URI policy. The platform must still decode/resolve
@@ -875,4 +1019,332 @@ fn classify_link(value: &str) -> LinkDisposition {
     LinkDisposition::Denied {
         reason: "unsafe_or_unsupported_destination".into(),
     }
+}
+
+fn reference_destination(source: &str, definition: SourceSpan) -> Result<SourceSpan, ParseError> {
+    let raw = definition.slice(source).ok_or(ParseError::SourceMapping)?;
+    let start = raw.find('[').ok_or(ParseError::SourceMapping)?;
+    let bytes = raw.as_bytes();
+    let mut i = start + 1;
+    while i + 1 < bytes.len() {
+        if bytes[i] == b'\\' {
+            i += 2;
+            continue;
+        }
+        if bytes[i] == b']' && bytes[i + 1] == b':' {
+            return scan_destination(
+                source,
+                definition.start as usize + i + 2,
+                definition.end as usize,
+                source[..definition.start as usize]
+                    .rsplit('\n')
+                    .next()
+                    .unwrap_or("")
+                    .chars()
+                    .filter(|&c| c == '>')
+                    .count(),
+            );
+        }
+        i += 1;
+    }
+    Err(ParseError::SourceMapping)
+}
+#[cfg(feature = "model-v2")]
+fn finish_v2(
+    mut b: Builder<'_>,
+    source: &str,
+    limits: ParseLimits,
+) -> Result<crate::v2::Document, ParseError> {
+    use crate::v2;
+    let mut links = Vec::new();
+    let mut resources = Vec::new();
+    for l in std::mem::take(&mut b.doc.links) {
+        let target = v2::classify(&l.destination, false);
+        charge_target(&mut b, &target)?;
+        let provenance = match b.link_definitions.remove(&l.id) {
+            Some(definition) => v2::IntentSource::Reference {
+                definition,
+                span: l.span,
+            },
+            None => v2::IntentSource::Inline { span: l.span },
+        };
+        links.push(v2::LinkIntent {
+            id: l.id,
+            source: provenance,
+            destination: l.destination,
+            target,
+        });
+    }
+    for r in std::mem::take(&mut b.doc.resources) {
+        let target = v2::classify(&r.destination, true);
+        charge_target(&mut b, &target)?;
+        let provenance = match b.resource_definitions.remove(&r.id) {
+            Some(definition) => v2::IntentSource::Reference {
+                definition,
+                span: r.span,
+            },
+            None => v2::IntentSource::Inline { span: r.span },
+        };
+        resources.push(v2::ResourceIntent {
+            id: r.id,
+            source: provenance,
+            destination: r.destination,
+            target,
+        });
+    }
+    let identity = (b.doc.document_id.clone(), b.doc.revision_id.clone());
+    let source_info = b.doc.source.clone();
+    let metadata = b.doc.metadata.clone();
+    let mut diagnostics: Vec<_> = b
+        .doc
+        .diagnostics
+        .iter()
+        .filter(|d| d.node.is_none() && d.span == metadata.front_matter_span)
+        .cloned()
+        .collect();
+    match v2::Document::new(
+        v2::DocumentInput::from_structure(b.doc, links, resources),
+        source,
+        limits.model,
+    ) {
+        Err(error) if matches!(error.code, "child_span" | "sibling_order") => {
+            let body = SourceSpan {
+                start: metadata.front_matter_span.map_or(0, |s| s.end),
+                end: source.len() as u64,
+            };
+            let id = NodeId("n0".into());
+            diagnostics.push(Diagnostic{code:"source_mapping_fallback".into(),severity:Severity::Warning,message:"Container source offsets cannot be represented; the body is preserved as inert source.".into(),span:Some(body),node:Some(id.clone())});
+            let capabilities = if metadata.front_matter_span.is_some() {
+                BTreeSet::from([Capability::FrontMatter])
+            } else {
+                BTreeSet::new()
+            };
+            let d = DocumentInput {
+                model_version: 1,
+                document_id: identity.0,
+                revision_id: identity.1,
+                source: source_info,
+                capabilities,
+                roots: vec![id.clone()],
+                nodes: vec![Node {
+                    id,
+                    span: body,
+                    content: NodeKind::UnsupportedBlock {
+                        feature: "unrepresentable_source_mapping".into(),
+                        reason: UnsupportedReason::InvalidInput,
+                    },
+                }],
+                outline: Vec::new(),
+                metadata,
+                links: Vec::new(),
+                resources: Vec::new(),
+                diagnostics,
+            };
+            v2::Document::new(
+                v2::DocumentInput::from_structure(d, Vec::new(), Vec::new()),
+                source,
+                limits.model,
+            )
+            .map_err(ParseError::Model)
+        }
+        result => result.map_err(ParseError::Model),
+    }
+}
+#[cfg(feature = "model-v2")]
+fn charge_target(b: &mut Builder<'_>, t: &crate::v2::Target) -> Result<(), ParseError> {
+    let len = match t {
+        crate::v2::Target::Fragment { anchor } => anchor.len(),
+        crate::v2::Target::External { uri } => uri.len(),
+        crate::v2::Target::RequiresCapability { path, fragment } => {
+            path.len() + fragment.as_ref().map_or(0, String::len)
+        }
+        _ => 0,
+    };
+    b.copied = b.copied.checked_add(len).ok_or(ParseError::TextLimit)?;
+    if b.copied > b.limits.max_text_bytes {
+        return Err(ParseError::TextLimit);
+    }
+    Ok(())
+}
+
+#[cfg(feature = "model-v2")]
+pub(crate) struct IntentFact {
+    pub destination: String,
+    pub source: crate::v2::IntentSource,
+}
+#[cfg(feature = "model-v2")]
+pub(crate) fn intent_facts(
+    source: &str,
+    limits: ModelLimits,
+) -> Result<BTreeMap<(u64, u64, bool), IntentFact>, ModelError> {
+    use crate::v2::IntentSource;
+    struct Active {
+        depth: usize,
+        whole: SourceSpan,
+        image: bool,
+        destination: String,
+        definition: Option<SourceSpan>,
+        label_end: usize,
+        quotes: usize,
+    }
+    let fail = |code| ModelError {
+        code,
+        path: "document".into(),
+    };
+    let offset = front_matter_end(source).unwrap_or(0);
+    let options =
+        Options::ENABLE_TABLES | Options::ENABLE_TASKLISTS | Options::ENABLE_STRIKETHROUGH;
+    let mut events = Parser::new_ext(&source[offset..], options).into_offset_iter();
+    let mut facts = BTreeMap::new();
+    let mut active: Vec<Active> = Vec::new();
+    let mut depth = 0usize;
+    let mut quotes = 0usize;
+    let mut mask = None;
+    let mut copied = 0usize;
+    // Finite source/event iterator, source byte cap and depth/fact/string caps
+    // bound this pass. Node count is not an event budget (image alt is captured).
+    while let Some((event, range)) = events.next() {
+        let end_event = matches!(event, Event::End(_));
+        for a in &mut active {
+            if !(end_event && a.depth == depth) {
+                a.label_end = a.label_end.max(range.end + offset);
+            }
+        }
+        match event {
+            Event::Start(tag) => {
+                depth += 1;
+                if depth > limits.max_depth {
+                    return Err(fail("source_depth_limit"));
+                }
+                if matches!(tag, Tag::BlockQuote(_)) {
+                    quotes += 1;
+                }
+                if mask.is_some() {
+                    continue;
+                }
+                let image = matches!(tag, Tag::Image { .. });
+                if let Tag::Link {
+                    link_type,
+                    dest_url,
+                    id,
+                    ..
+                }
+                | Tag::Image {
+                    link_type,
+                    dest_url,
+                    id,
+                    ..
+                } = tag
+                {
+                    if !image && !active.is_empty() {
+                        mask = Some(depth);
+                        continue;
+                    }
+                    if image {
+                        mask = Some(depth);
+                    }
+                    let definition = if matches!(
+                        link_type,
+                        LinkType::Reference | LinkType::Collapsed | LinkType::Shortcut
+                    ) {
+                        let d = events
+                            .reference_definitions()
+                            .get(&id)
+                            .ok_or_else(|| fail("source_provenance"))?;
+                        Some(span(d.span.start + offset..d.span.end + offset))
+                    } else {
+                        None
+                    };
+                    copied = copied
+                        .checked_add(
+                            dest_url.len() + if link_type == LinkType::Email { 7 } else { 0 },
+                        )
+                        .ok_or_else(|| fail("source_text_limit"))?;
+                    if copied > 64 * 1024 * 1024 {
+                        return Err(fail("source_text_limit"));
+                    }
+                    let destination = if link_type == LinkType::Email {
+                        format!("mailto:{dest_url}")
+                    } else {
+                        dest_url.into_string()
+                    };
+                    active.push(Active {
+                        depth,
+                        whole: span(range.start + offset..range.end + offset),
+                        image,
+                        destination,
+                        definition,
+                        label_end: range.start + offset + if image { 2 } else { 1 },
+                        quotes,
+                    });
+                }
+            }
+            Event::End(end) => {
+                if active.last().is_some_and(|a| a.depth == depth) {
+                    let a = active.pop().ok_or_else(|| fail("source_provenance"))?;
+                    let provenance = if let Some(definition) = a.definition {
+                        IntentSource::Reference {
+                            definition,
+                            span: reference_destination(source, definition)
+                                .map_err(|_| fail("source_provenance"))?,
+                        }
+                    } else {
+                        IntentSource::Inline {
+                            span: destination_span(source, a.whole, a.label_end, a.quotes)
+                                .map_err(|_| fail("source_provenance"))?,
+                        }
+                    };
+                    if !lexeme_matches(source, provenance.span(), &a.destination) {
+                        return Err(fail("source_provenance"));
+                    }
+                    if facts.len() >= limits.max_nodes {
+                        return Err(fail("source_intent_limit"));
+                    }
+                    if facts
+                        .insert(
+                            (a.whole.start, a.whole.end, a.image),
+                            IntentFact {
+                                destination: a.destination,
+                                source: provenance,
+                            },
+                        )
+                        .is_some()
+                    {
+                        return Err(fail("source_provenance"));
+                    }
+                }
+                if mask == Some(depth) {
+                    mask = None;
+                }
+                if matches!(end, TagEnd::BlockQuote(_)) {
+                    quotes = quotes
+                        .checked_sub(1)
+                        .ok_or_else(|| fail("source_provenance"))?;
+                }
+                depth = depth
+                    .checked_sub(1)
+                    .ok_or_else(|| fail("source_provenance"))?;
+            }
+            _ => {}
+        }
+    }
+    if !active.is_empty() || depth != 0 {
+        return Err(fail("source_provenance"));
+    }
+    Ok(facts)
+}
+#[cfg(feature = "model-v2")]
+fn lexeme_matches(source: &str, span: SourceSpan, destination: &str) -> bool {
+    let Some(raw) = span.slice(source) else {
+        return false;
+    };
+    if raw == destination || destination.strip_prefix("mailto:") == Some(raw) {
+        return true;
+    }
+    // Use the pinned parser for CommonMark backslash/entity decoding. Requiring
+    // the whole synthetic link prevents candidate text from closing/injecting a
+    // second construct. This is bounded by the already bounded source lexeme.
+    [format!("[x]({raw})"),format!("[x](<{raw}>)")].iter().any(|sample| {
+        Parser::new(sample).into_offset_iter().any(|(event,range)|matches!(event,Event::Start(Tag::Link{dest_url,..}) if range.start==0&&range.end==sample.len()&&dest_url.as_ref()==destination))
+    })
 }

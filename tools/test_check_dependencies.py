@@ -52,7 +52,7 @@ class DependencyPolicyTests(unittest.TestCase):
     def test_reviewed_licenses_do_not_approve_other_packages_versions_or_expressions(self):
         for (name, version), expression in REVIEWED.items():
             for changes in ({"name": "unreviewed"}, {"version": "99.0.0"},
-                            {"license": "Unicode-3.0"}):
+                            {"license": expression + " OR UNREVIEWED"}):
                 graph = self.external(CRATES_IO)
                 graph["packages"][-1].update(name=name, version=version, license=expression)
                 graph["packages"][-1].update(changes)

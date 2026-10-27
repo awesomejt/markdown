@@ -309,7 +309,7 @@ fn comment_if_plain(raw: &str) -> Result<&str, Error> {
 // Unicode 16.0 General_Category=Cf ranges. Copyright (c) 2024 Unicode, Inc.
 // Source/provenance and Unicode-3.0
 // notice: docs/Front-Matter.md and licenses/Unicode-3.0.txt. No runtime data load.
-fn unsafe_character(c: char) -> bool {
+pub(crate) fn unsafe_character(c: char) -> bool {
     c.is_control()
         || matches!(c as u32,
             0xAD |

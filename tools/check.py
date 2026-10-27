@@ -46,6 +46,7 @@ def main() -> None:
         run("cargo", "fmt", "--all", "--", "--check")
         run("cargo", "clippy", "--workspace", "--all-targets", "--all-features", "--locked", "--", "-D", "warnings")
         run("cargo", "test", "--workspace", "--locked")
+        run("cargo", "test", "--workspace", "--features", "model-v2", "--locked")
         run("cargo", "test", "--workspace", "--all-features", "--locked")
         run("cargo", "test", "--workspace", "--all-features", "--locked", "--release")
         run(sys.executable, "tools/check_dependencies.py")

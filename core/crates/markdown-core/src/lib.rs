@@ -7,8 +7,12 @@
 mod metadata;
 mod model;
 mod parse;
+#[cfg(feature = "model-v2")]
+pub mod v2;
 mod validate;
 pub use model::*;
+#[cfg(feature = "model-v2")]
+pub use parse::parse_markdown_v2;
 pub use parse::{ParseError, ParseLimits, parse_markdown};
 pub use validate::{Document, ModelError, ModelLimits};
 
