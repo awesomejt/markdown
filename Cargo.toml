@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["core/crates/markdown-core"]
+members = ["core/crates/markdown-core", "core/crates/markdown-ffi"]
 
 [workspace.package]
 edition = "2024"
