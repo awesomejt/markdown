@@ -1,7 +1,7 @@
 # Semantic document model v1
 
-Status: CORE-002A implementation contract under feature-PR review. Freeze this
-v1 contract at owner-authorized merge. Parsing, generation/cancellation and
+Status: frozen by owner-authorized CORE-002A PR #2 merge (`e5f1a17`).
+CORE-003A implements basic parsing without changing this wire contract. Parsing, generation/cancellation and
 identity reconciliation, search, C ABI negotiation and native UI remain their
 own delivery phases. This is not the flat FEAS-006/008 model.
 

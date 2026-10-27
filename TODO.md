@@ -11,23 +11,27 @@ batching ready work on the current OS. Each delivery phase uses one feature
 branch and PR. Once ready, post a separate PR comment exactly `/grok review`,
 address the feedback, and obtain owner merge approval. Follow
 [Delivery-Workflow.md](docs/Delivery-Workflow.md) for branch, review and handoff
-rules. GATE-001 is approved (D-018). CORE-001A is merged; CORE-002A is selected;
+rules. GATE-001 is approved (D-018). CORE-001A and CORE-002A are merged; CORE-003A is selected;
 ADV-005 carries deferred engine work after DESK-002.
 
 ## Current phase: portable core and early native foundations
 
 The gate is complete; the small child tasks are materialized in project state.
-CORE-001A workspace/check/CI infrastructure is merged. CORE-002A defines the
-semantic model, schema and goldens. Each host's app shell is separate. Production
-reader behavior is not delivered by this model contract.
+CORE-001A workspace/check/CI and CORE-002A semantic v1 are merged. CORE-003A
+implements the bounded basic parser and conservative safety subset in
+[Parsing.md](docs/Parsing.md). Native app shells remain separate; no working
+reader UI is delivered by the core alone.
 
 ## Immediate session handoff
 
-Work on `feat/core-002a-semantic-model` through its PR/check/Grok lifecycle.
-CORE-001A closeout is carried in this branch. Resume CORE-002A while partial;
-dependents wait for its reviewed, owner-authorized merge. The owner approved phase commits, pushes, PR updates
-and `/grok review`; merge still requires explicit authorization. Inspect
-`project.yaml` and `HANDOFF.md` before any pass; concurrency remains one.
+Work on `feat/core-003a-basic-parser` through its PR/check/Grok lifecycle.
+CORE-002A merged closeout travels here. Resume CORE-003A while partial; dependents
+wait for its owner-authorized merge. CORE-003B owns typed first-position metadata,
+reference-link representation/activation, remaining extensions, URI refinement,
+full conformance/fuzz/property and parser budgets. State remains authoritative;
+inspect it and `HANDOFF.md` before any pass. Previous PR #2 review/merge exceptions
+do not apply to this phase. Scoped commits/pushes/PR/review are authorized; merge
+still requires owner authorization. Concurrency remains one.
 
 The numbered steps below are the earlier handoff for GATE-001 preparation,
 kept as a record; steps 1–3 are done.

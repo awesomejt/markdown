@@ -15,8 +15,9 @@ replaced or moved into this repository.
 GATE-001 is approved (D-018); **portable-core implementation** has begun.
 CORE-001A's workspace/check/CI scaffold is merged. CORE-002A now defines the
 [v1 semantic model](specs/semantic-model/v1/README.md) and schema/goldens.
-Parser and native application shells remain separate phases; no working
-reader is delivered by the model contract. The accepted
+CORE-003A adds [bounded basic parsing](docs/Parsing.md) and conservative safety
+classification. Extension conformance and native application shells remain
+separate phases; no working reader is delivered by the core alone. The accepted
 [implementation baseline](docs/Implementation-Baseline.md) and
 [architecture](docs/Architecture.md) preserve the required native evidence.
 

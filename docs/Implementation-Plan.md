@@ -55,7 +55,7 @@ Refine an oversized row before coding, preserving its parent acceptance criteria
 | CORE-001A | Accepted workspace, common checks, dependency/license inventory and platform-isolated CI definitions; common checks run | GATE-001 |
 | CORE-002A | Versioned model/capabilities, identity/spans/resource intents and golden fixtures; schema/compatibility checks pass | CORE-001A |
 | CORE-003A | Bounded basic parsing and safety policy; basic/malformed/unsafe corpus passes | CORE-002A |
-| CORE-003B | Extension/conformance gaps, hostile inputs, fuzz/property and parser performance budgets pass | CORE-003A |
+| CORE-003B | Typed metadata, reference-link representation/activation, other extension/URI/conformance gaps, hostile inputs, fuzz/property and parser performance budgets pass | CORE-003A |
 | CORE-004A | Immutable sessions, generations, cancellation, external changes and anchors; race/lifetime checks pass | CORE-003A |
 | CORE-005A | Source-accurate document find, word count and section timing; Unicode/range checks pass | CORE-004A |
 | CORE-005B | Capability-fed workspace search primitives, cancellation and resource budgets; bounded-search checks pass | CORE-005A |

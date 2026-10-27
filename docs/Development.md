@@ -44,8 +44,9 @@ Normally rustup uses the committed toolchain file automatically.
 CORE-002A tests the owned v1 model in debug/release, with default and optional
 schema builds. Checked-in goldens cover all node kinds; Rust verifies typed
 round trips and generated-schema consistency, while Python independently
-validates the schema/fixtures and source hashes. Model tests are not parser or
-native UI conformance. Regenerate the schema deliberately with:
+validates the schema/fixtures and source hashes. CORE-003A adds parser tests and an original serialized snapshot for the
+[bounded basic surface](Parsing.md), including explicit extension deferrals.
+Neither suite proves native UI conformance. Regenerate the schema deliberately with:
 
 ```sh
 cargo run --locked --example export_schema --features schema > build/document.schema.json
