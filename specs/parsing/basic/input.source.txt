@@ -1,0 +1,31 @@
+# Café **reader**
+
+A *native* ~~web~~ reader with `code`, &amp; entities and [local](docs/read.md#intro),
+[web](https://example.com), [blocked](javascript:alert(1)) and ![an **image**](assets/image.png).
+
+- [x] First
+- [ ] Second
+  - Nested
+
+0. Zero
+1. One
+
+| Name | Value |
+| :--- | ---: |
+| a | **b** |
+
+> Quote
+
+---
+
+```unknown
+literal <script> & text
+```
+
+<script>alert(1)</script>
+
+```mermaid
+graph TD; A-->B
+```
+
+# Café **reader**

@@ -280,14 +280,16 @@ Imported fixtures retain their existing notices, license and pinned provenance.
 Third-party dependency/font licenses remain independent. Publishing releases,
 signing and deployment still require separate authorization.
 
-## Proposed contract — CORE-002A semantic model v1
+## Accepted contract — CORE-002A semantic model v1
 
-The implementation contract in `specs/semantic-model/v1/README.md` is under
-CORE-002A PR review; freeze v1 at owner-authorized merge. It uses owned values,
+The implementation contract in `specs/semantic-model/v1/README.md` froze at
+owner-authorized PR #2 merge `e5f1a17` on 2026-10-27. All four original Grok
+findings were addressed; the owner explicitly waived a second review while
+troubleshooting its integration. Required checks passed for head `75a8bc8`. It uses owned values,
 flat ID-referenced typed nodes, exact UTF-8 spans/source fingerprinting,
 diagnostics/metadata/outline, semantic capability flags and explicit unsupported
 fallbacks. JSON shape is generated from Rust types; strict validation is still
 required beyond schema. Stable ID reconciliation remains CORE-004A, not a new
 algorithm chosen here. Default safety ceilings are caller-adjustable and are
-not accepted performance budgets. This proposal does not accept an advanced
+not accepted performance budgets. This contract does not accept an advanced
 engine, parser implementation, native presenter or C ABI layout.

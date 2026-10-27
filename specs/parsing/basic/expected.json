@@ -1,0 +1,1002 @@
+{
+  "model_version": 1,
+  "document_id": "example",
+  "revision_id": "r1",
+  "source": {
+    "bytes": 439,
+    "sha256": "aebc8eebd29662e59cc398a97de462f1977dd4d92f575369b6de10c760721d73"
+  },
+  "capabilities": [
+    "tables",
+    "task_lists",
+    "strikethrough"
+  ],
+  "roots": [
+    "n0",
+    "n4",
+    "n28",
+    "n39",
+    "n46",
+    "n58",
+    "n61",
+    "n62",
+    "n63",
+    "n64",
+    "n65"
+  ],
+  "nodes": [
+    {
+      "id": "n0",
+      "span": {
+        "start": 0,
+        "end": 19
+      },
+      "content": {
+        "kind": "heading",
+        "level": 1,
+        "anchor": "café-reader",
+        "children": [
+          "n1",
+          "n2"
+        ]
+      }
+    },
+    {
+      "id": "n1",
+      "span": {
+        "start": 2,
+        "end": 8
+      },
+      "content": {
+        "kind": "text",
+        "text": "Café "
+      }
+    },
+    {
+      "id": "n2",
+      "span": {
+        "start": 8,
+        "end": 18
+      },
+      "content": {
+        "kind": "strong",
+        "children": [
+          "n3"
+        ]
+      }
+    },
+    {
+      "id": "n3",
+      "span": {
+        "start": 10,
+        "end": 16
+      },
+      "content": {
+        "kind": "text",
+        "text": "reader"
+      }
+    },
+    {
+      "id": "n4",
+      "span": {
+        "start": 20,
+        "end": 205
+      },
+      "content": {
+        "kind": "paragraph",
+        "children": [
+          "n5",
+          "n6",
+          "n8",
+          "n9",
+          "n11",
+          "n12",
+          "n13",
+          "n14",
+          "n15",
+          "n16",
+          "n18",
+          "n19",
+          "n20",
+          "n22",
+          "n23",
+          "n25",
+          "n26",
+          "n27"
+        ]
+      }
+    },
+    {
+      "id": "n5",
+      "span": {
+        "start": 20,
+        "end": 22
+      },
+      "content": {
+        "kind": "text",
+        "text": "A "
+      }
+    },
+    {
+      "id": "n6",
+      "span": {
+        "start": 22,
+        "end": 30
+      },
+      "content": {
+        "kind": "emphasis",
+        "children": [
+          "n7"
+        ]
+      }
+    },
+    {
+      "id": "n7",
+      "span": {
+        "start": 23,
+        "end": 29
+      },
+      "content": {
+        "kind": "text",
+        "text": "native"
+      }
+    },
+    {
+      "id": "n8",
+      "span": {
+        "start": 30,
+        "end": 31
+      },
+      "content": {
+        "kind": "text",
+        "text": " "
+      }
+    },
+    {
+      "id": "n9",
+      "span": {
+        "start": 31,
+        "end": 38
+      },
+      "content": {
+        "kind": "strikethrough",
+        "children": [
+          "n10"
+        ]
+      }
+    },
+    {
+      "id": "n10",
+      "span": {
+        "start": 33,
+        "end": 36
+      },
+      "content": {
+        "kind": "text",
+        "text": "web"
+      }
+    },
+    {
+      "id": "n11",
+      "span": {
+        "start": 38,
+        "end": 51
+      },
+      "content": {
+        "kind": "text",
+        "text": " reader with "
+      }
+    },
+    {
+      "id": "n12",
+      "span": {
+        "start": 51,
+        "end": 57
+      },
+      "content": {
+        "kind": "code_span",
+        "text": "code"
+      }
+    },
+    {
+      "id": "n13",
+      "span": {
+        "start": 57,
+        "end": 59
+      },
+      "content": {
+        "kind": "text",
+        "text": ", "
+      }
+    },
+    {
+      "id": "n14",
+      "span": {
+        "start": 59,
+        "end": 64
+      },
+      "content": {
+        "kind": "text",
+        "text": "&"
+      }
+    },
+    {
+      "id": "n15",
+      "span": {
+        "start": 64,
+        "end": 78
+      },
+      "content": {
+        "kind": "text",
+        "text": " entities and "
+      }
+    },
+    {
+      "id": "n16",
+      "span": {
+        "start": 78,
+        "end": 105
+      },
+      "content": {
+        "kind": "link",
+        "target": "l0",
+        "title": null,
+        "children": [
+          "n17"
+        ]
+      }
+    },
+    {
+      "id": "n17",
+      "span": {
+        "start": 79,
+        "end": 84
+      },
+      "content": {
+        "kind": "text",
+        "text": "local"
+      }
+    },
+    {
+      "id": "n18",
+      "span": {
+        "start": 105,
+        "end": 106
+      },
+      "content": {
+        "kind": "text",
+        "text": ","
+      }
+    },
+    {
+      "id": "n19",
+      "span": {
+        "start": 106,
+        "end": 107
+      },
+      "content": {
+        "kind": "soft_break"
+      }
+    },
+    {
+      "id": "n20",
+      "span": {
+        "start": 107,
+        "end": 133
+      },
+      "content": {
+        "kind": "link",
+        "target": "l1",
+        "title": null,
+        "children": [
+          "n21"
+        ]
+      }
+    },
+    {
+      "id": "n21",
+      "span": {
+        "start": 108,
+        "end": 111
+      },
+      "content": {
+        "kind": "text",
+        "text": "web"
+      }
+    },
+    {
+      "id": "n22",
+      "span": {
+        "start": 133,
+        "end": 135
+      },
+      "content": {
+        "kind": "text",
+        "text": ", "
+      }
+    },
+    {
+      "id": "n23",
+      "span": {
+        "start": 135,
+        "end": 165
+      },
+      "content": {
+        "kind": "link",
+        "target": "l2",
+        "title": null,
+        "children": [
+          "n24"
+        ]
+      }
+    },
+    {
+      "id": "n24",
+      "span": {
+        "start": 136,
+        "end": 143
+      },
+      "content": {
+        "kind": "text",
+        "text": "blocked"
+      }
+    },
+    {
+      "id": "n25",
+      "span": {
+        "start": 165,
+        "end": 170
+      },
+      "content": {
+        "kind": "text",
+        "text": " and "
+      }
+    },
+    {
+      "id": "n26",
+      "span": {
+        "start": 170,
+        "end": 203
+      },
+      "content": {
+        "kind": "image",
+        "resource": "r0",
+        "alt": "an image",
+        "title": null
+      }
+    },
+    {
+      "id": "n27",
+      "span": {
+        "start": 203,
+        "end": 204
+      },
+      "content": {
+        "kind": "text",
+        "text": "."
+      }
+    },
+    {
+      "id": "n28",
+      "span": {
+        "start": 206,
+        "end": 243
+      },
+      "content": {
+        "kind": "list",
+        "ordered": false,
+        "start": null,
+        "tight": true,
+        "items": [
+          "n29",
+          "n32"
+        ]
+      }
+    },
+    {
+      "id": "n29",
+      "span": {
+        "start": 206,
+        "end": 218
+      },
+      "content": {
+        "kind": "list_item",
+        "checked": true,
+        "children": [
+          "n30"
+        ]
+      }
+    },
+    {
+      "id": "n30",
+      "span": {
+        "start": 212,
+        "end": 217
+      },
+      "content": {
+        "kind": "paragraph",
+        "children": [
+          "n31"
+        ]
+      }
+    },
+    {
+      "id": "n31",
+      "span": {
+        "start": 212,
+        "end": 217
+      },
+      "content": {
+        "kind": "text",
+        "text": "First"
+      }
+    },
+    {
+      "id": "n32",
+      "span": {
+        "start": 218,
+        "end": 243
+      },
+      "content": {
+        "kind": "list_item",
+        "checked": false,
+        "children": [
+          "n33",
+          "n35"
+        ]
+      }
+    },
+    {
+      "id": "n33",
+      "span": {
+        "start": 224,
+        "end": 230
+      },
+      "content": {
+        "kind": "paragraph",
+        "children": [
+          "n34"
+        ]
+      }
+    },
+    {
+      "id": "n34",
+      "span": {
+        "start": 224,
+        "end": 230
+      },
+      "content": {
+        "kind": "text",
+        "text": "Second"
+      }
+    },
+    {
+      "id": "n35",
+      "span": {
+        "start": 233,
+        "end": 243
+      },
+      "content": {
+        "kind": "list",
+        "ordered": false,
+        "start": null,
+        "tight": true,
+        "items": [
+          "n36"
+        ]
+      }
+    },
+    {
+      "id": "n36",
+      "span": {
+        "start": 233,
+        "end": 243
+      },
+      "content": {
+        "kind": "list_item",
+        "checked": null,
+        "children": [
+          "n37"
+        ]
+      }
+    },
+    {
+      "id": "n37",
+      "span": {
+        "start": 235,
+        "end": 241
+      },
+      "content": {
+        "kind": "paragraph",
+        "children": [
+          "n38"
+        ]
+      }
+    },
+    {
+      "id": "n38",
+      "span": {
+        "start": 235,
+        "end": 241
+      },
+      "content": {
+        "kind": "text",
+        "text": "Nested"
+      }
+    },
+    {
+      "id": "n39",
+      "span": {
+        "start": 243,
+        "end": 259
+      },
+      "content": {
+        "kind": "list",
+        "ordered": true,
+        "start": 0,
+        "tight": true,
+        "items": [
+          "n40",
+          "n43"
+        ]
+      }
+    },
+    {
+      "id": "n40",
+      "span": {
+        "start": 243,
+        "end": 251
+      },
+      "content": {
+        "kind": "list_item",
+        "checked": null,
+        "children": [
+          "n41"
+        ]
+      }
+    },
+    {
+      "id": "n41",
+      "span": {
+        "start": 246,
+        "end": 250
+      },
+      "content": {
+        "kind": "paragraph",
+        "children": [
+          "n42"
+        ]
+      }
+    },
+    {
+      "id": "n42",
+      "span": {
+        "start": 246,
+        "end": 250
+      },
+      "content": {
+        "kind": "text",
+        "text": "Zero"
+      }
+    },
+    {
+      "id": "n43",
+      "span": {
+        "start": 251,
+        "end": 259
+      },
+      "content": {
+        "kind": "list_item",
+        "checked": null,
+        "children": [
+          "n44"
+        ]
+      }
+    },
+    {
+      "id": "n44",
+      "span": {
+        "start": 254,
+        "end": 257
+      },
+      "content": {
+        "kind": "paragraph",
+        "children": [
+          "n45"
+        ]
+      }
+    },
+    {
+      "id": "n45",
+      "span": {
+        "start": 254,
+        "end": 257
+      },
+      "content": {
+        "kind": "text",
+        "text": "One"
+      }
+    },
+    {
+      "id": "n46",
+      "span": {
+        "start": 259,
+        "end": 306
+      },
+      "content": {
+        "kind": "table",
+        "alignments": [
+          "left",
+          "right"
+        ],
+        "rows": [
+          "n47",
+          "n52"
+        ]
+      }
+    },
+    {
+      "id": "n47",
+      "span": {
+        "start": 259,
+        "end": 276
+      },
+      "content": {
+        "kind": "table_row",
+        "header": true,
+        "cells": [
+          "n48",
+          "n50"
+        ]
+      }
+    },
+    {
+      "id": "n48",
+      "span": {
+        "start": 260,
+        "end": 266
+      },
+      "content": {
+        "kind": "table_cell",
+        "children": [
+          "n49"
+        ]
+      }
+    },
+    {
+      "id": "n49",
+      "span": {
+        "start": 261,
+        "end": 265
+      },
+      "content": {
+        "kind": "text",
+        "text": "Name"
+      }
+    },
+    {
+      "id": "n50",
+      "span": {
+        "start": 267,
+        "end": 274
+      },
+      "content": {
+        "kind": "table_cell",
+        "children": [
+          "n51"
+        ]
+      }
+    },
+    {
+      "id": "n51",
+      "span": {
+        "start": 268,
+        "end": 273
+      },
+      "content": {
+        "kind": "text",
+        "text": "Value"
+      }
+    },
+    {
+      "id": "n52",
+      "span": {
+        "start": 292,
+        "end": 306
+      },
+      "content": {
+        "kind": "table_row",
+        "header": false,
+        "cells": [
+          "n53",
+          "n55"
+        ]
+      }
+    },
+    {
+      "id": "n53",
+      "span": {
+        "start": 293,
+        "end": 296
+      },
+      "content": {
+        "kind": "table_cell",
+        "children": [
+          "n54"
+        ]
+      }
+    },
+    {
+      "id": "n54",
+      "span": {
+        "start": 294,
+        "end": 295
+      },
+      "content": {
+        "kind": "text",
+        "text": "a"
+      }
+    },
+    {
+      "id": "n55",
+      "span": {
+        "start": 297,
+        "end": 304
+      },
+      "content": {
+        "kind": "table_cell",
+        "children": [
+          "n56"
+        ]
+      }
+    },
+    {
+      "id": "n56",
+      "span": {
+        "start": 298,
+        "end": 303
+      },
+      "content": {
+        "kind": "strong",
+        "children": [
+          "n57"
+        ]
+      }
+    },
+    {
+      "id": "n57",
+      "span": {
+        "start": 300,
+        "end": 301
+      },
+      "content": {
+        "kind": "text",
+        "text": "b"
+      }
+    },
+    {
+      "id": "n58",
+      "span": {
+        "start": 307,
+        "end": 315
+      },
+      "content": {
+        "kind": "block_quote",
+        "children": [
+          "n59"
+        ]
+      }
+    },
+    {
+      "id": "n59",
+      "span": {
+        "start": 309,
+        "end": 315
+      },
+      "content": {
+        "kind": "paragraph",
+        "children": [
+          "n60"
+        ]
+      }
+    },
+    {
+      "id": "n60",
+      "span": {
+        "start": 309,
+        "end": 314
+      },
+      "content": {
+        "kind": "text",
+        "text": "Quote"
+      }
+    },
+    {
+      "id": "n61",
+      "span": {
+        "start": 316,
+        "end": 320
+      },
+      "content": {
+        "kind": "thematic_break"
+      }
+    },
+    {
+      "id": "n62",
+      "span": {
+        "start": 321,
+        "end": 359
+      },
+      "content": {
+        "kind": "code_block",
+        "info": "unknown",
+        "text": "literal <script> & text\n"
+      }
+    },
+    {
+      "id": "n63",
+      "span": {
+        "start": 361,
+        "end": 387
+      },
+      "content": {
+        "kind": "unsupported_block",
+        "feature": "raw_html",
+        "reason": "disabled"
+      }
+    },
+    {
+      "id": "n64",
+      "span": {
+        "start": 388,
+        "end": 418
+      },
+      "content": {
+        "kind": "unsupported_block",
+        "feature": "mermaid",
+        "reason": "unavailable"
+      }
+    },
+    {
+      "id": "n65",
+      "span": {
+        "start": 420,
+        "end": 439
+      },
+      "content": {
+        "kind": "heading",
+        "level": 1,
+        "anchor": "café-reader-1",
+        "children": [
+          "n66",
+          "n67"
+        ]
+      }
+    },
+    {
+      "id": "n66",
+      "span": {
+        "start": 422,
+        "end": 428
+      },
+      "content": {
+        "kind": "text",
+        "text": "Café "
+      }
+    },
+    {
+      "id": "n67",
+      "span": {
+        "start": 428,
+        "end": 438
+      },
+      "content": {
+        "kind": "strong",
+        "children": [
+          "n68"
+        ]
+      }
+    },
+    {
+      "id": "n68",
+      "span": {
+        "start": 430,
+        "end": 436
+      },
+      "content": {
+        "kind": "text",
+        "text": "reader"
+      }
+    }
+  ],
+  "outline": [
+    {
+      "node": "n0",
+      "level": 1,
+      "title": "Café reader",
+      "anchor": "café-reader"
+    },
+    {
+      "node": "n65",
+      "level": 1,
+      "title": "Café reader",
+      "anchor": "café-reader-1"
+    }
+  ],
+  "metadata": {
+    "front_matter_span": null,
+    "title": null,
+    "properties": {}
+  },
+  "links": [
+    {
+      "id": "l0",
+      "span": {
+        "start": 86,
+        "end": 104
+      },
+      "destination": "docs/read.md#intro",
+      "disposition": {
+        "kind": "requires_capability"
+      }
+    },
+    {
+      "id": "l1",
+      "span": {
+        "start": 113,
+        "end": 132
+      },
+      "destination": "https://example.com",
+      "disposition": {
+        "kind": "external"
+      }
+    },
+    {
+      "id": "l2",
+      "span": {
+        "start": 145,
+        "end": 164
+      },
+      "destination": "javascript:alert(1)",
+      "disposition": {
+        "kind": "denied",
+        "reason": "unsafe_or_unsupported_destination"
+      }
+    }
+  ],
+  "resources": [
+    {
+      "id": "r0",
+      "span": {
+        "start": 186,
+        "end": 202
+      },
+      "destination": "assets/image.png",
+      "access": {
+        "kind": "requires_capability"
+      }
+    }
+  ],
+  "diagnostics": [
+    {
+      "code": "raw_html_disabled",
+      "severity": "info",
+      "message": "Unsupported content is preserved as source and cannot execute.",
+      "span": {
+        "start": 361,
+        "end": 387
+      },
+      "node": "n63"
+    },
+    {
+      "code": "advanced_fence_disabled",
+      "severity": "info",
+      "message": "Unsupported content is preserved as source and cannot execute.",
+      "span": {
+        "start": 388,
+        "end": 418
+      },
+      "node": "n64"
+    }
+  ]
+}

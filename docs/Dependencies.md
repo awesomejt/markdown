@@ -12,6 +12,7 @@ Choosing a project license does not change third-party licenses.
 
 | Package | Version | License declaration | Source |
 | --- | --- | --- | --- |
+| bitflags | 2.13.2 | MIT OR Apache-2.0 | [crates.io](https://crates.io/crates/bitflags/2.13.2) |
 | block-buffer | 0.10.4 | MIT OR Apache-2.0 | [crates.io](https://crates.io/crates/block-buffer/0.10.4) |
 | cfg-if | 1.0.5 | MIT OR Apache-2.0 | [crates.io](https://crates.io/crates/cfg-if/1.0.5) |
 | cpufeatures | 0.2.17 | MIT OR Apache-2.0 | [crates.io](https://crates.io/crates/cpufeatures/0.2.17) |
@@ -24,6 +25,7 @@ Choosing a project license does not change third-party licenses.
 | markdown-core | 0.1.0 | Apache-2.0 | This repository, unpublished |
 | memchr | 2.8.3 | Unlicense OR MIT | [crates.io](https://crates.io/crates/memchr/2.8.3) |
 | proc-macro2 | 1.0.107 | MIT OR Apache-2.0 | [crates.io](https://crates.io/crates/proc-macro2/1.0.107) |
+| pulldown-cmark | 0.13.5 | MIT | [crates.io](https://crates.io/crates/pulldown-cmark/0.13.5) |
 | quote | 1.0.47 | MIT OR Apache-2.0 | [crates.io](https://crates.io/crates/quote/1.0.47) |
 | ref-cast | 1.0.27 | MIT OR Apache-2.0 | [crates.io](https://crates.io/crates/ref-cast/1.0.27) |
 | ref-cast-impl | 1.0.27 | MIT OR Apache-2.0 | [crates.io](https://crates.io/crates/ref-cast-impl/1.0.27) |
@@ -39,8 +41,15 @@ Choosing a project license does not change third-party licenses.
 | syn | 2.0.119 | MIT OR Apache-2.0 | [crates.io](https://crates.io/crates/syn/2.0.119) |
 | syn | 3.0.9 | MIT OR Apache-2.0 | [crates.io](https://crates.io/crates/syn/3.0.9) |
 | typenum | 1.20.1 | MIT OR Apache-2.0 | [crates.io](https://crates.io/crates/typenum/1.20.1) |
+| unicase | 2.10.0 | MIT OR Apache-2.0 | [crates.io](https://crates.io/crates/unicase/2.10.0) |
 | unicode-ident | 1.0.27 | (MIT OR Apache-2.0) AND Unicode-3.0 | [crates.io](https://crates.io/crates/unicode-ident/1.0.27) |
 | version_check | 0.9.5 | MIT/Apache-2.0 | [crates.io](https://crates.io/crates/version_check/0.9.5) |
+
+CORE-003A adds pinned pulldown-cmark with `default-features = false`: only
+bitflags and unicase join the existing graph (memchr is already present). The
+parser HTML output/CLI and optional SIMD/serde features are excluded. All three
+new packages use existing MIT/Apache policy; no license exception is added.
+The reviewed local package manifests and LICENSE files agree with the table.
 
 CORE-002A adds serde/serde_json for the wire contract and sha2 for exact source
 fingerprints. The optional `schema` feature adds schemars for schema export;
@@ -65,8 +74,7 @@ its included LICENSE-UNICODE in eventual distribution inventories. See
 [Cargo license declarations](https://doc.rust-lang.org/cargo/reference/manifest.html#the-license-and-license-file-fields)
 and [Unicode License V3](https://www.unicode.org/license.txt).
 
-Further unlisted declarations fail and need dependency/policy review. No parser
-is added in this phase. A dedicated tool such as cargo-deny can replace the
+Further unlisted declarations fail and need dependency/policy review. The parser is added under CORE-003A with the bounds in [Parsing.md](Parsing.md). A dedicated tool such as cargo-deny can replace the
 small policy once the graph warrants it; source/license tests remain required.
 
 ## Development tooling and feasibility

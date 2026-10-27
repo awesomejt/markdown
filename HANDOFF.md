@@ -1,60 +1,62 @@
 # Agent Session and Platform Handoff
 
-Updated: 2026-10-27, CORE-002A PR #2 review fixes and authorized merge preparation.
-Source baseline: `8a164ad` on main plus CORE-002A changes.
-Preserve intended source, locks, specs/goldens, docs and state together. Do not
-copy environments, build products, private runtime state or user documents.
+Updated: 2026-10-27, CORE-002A merged closeout and CORE-003A basic parser.
+Source baseline: `e5f1a17` on main plus this phase's changes. Preserve intended
+source, locks, authored specs/goldens, docs and state together. Do not copy
+environments, build products, private runtime state or user documents.
 
-## Resume here — CORE-002A semantic model
+## Resume here — CORE-003A basic parser
 
-CORE-001A is completed via owner merge of [PR #1](https://github.com/awesomejt/markdown/pull/1)
-as `8a164ad`, containing corrected head `24994fc`. Six known Grok findings were
-addressed and all checks passed; no fresh bot approval is inferred from its
-review-request comment. The merged operational closeout travels in this phase.
-Aggregate CORE-001 still waits for the native shell CI milestones.
+CORE-002A is completed via owner-authorized [PR #2](https://github.com/awesomejt/markdown/pull/2)
+merge `e5f1a17`, containing corrected head `75a8bc8`. All four Grok findings
+were addressed and all required hosted checks passed. The owner explicitly
+waived another review while troubleshooting automation; no bot approval is
+claimed. Its state closeout and frozen-model documentation travel in this phase.
+CORE-001A was merged in PR #1; aggregate CORE-001 waits for native shell CI.
 
-Selected task: **CORE-002A**, branch `feat/core-002a-semantic-model`.
-Scope: owned model v1, strict source/graph/intent validation, schema and goldens.
-No Markdown parser, identity matching, sessions, FFI or native UI implementation.
-Read [the contract](specs/semantic-model/v1/README.md),
-[development checks](docs/Development.md) and [dependency inventory](docs/Dependencies.md).
+Selected task: **CORE-003A**, branch `feat/core-003a-basic-parser`.
+Read [Parsing.md](docs/Parsing.md), [the model](specs/semantic-model/v1/README.md),
+[development checks](docs/Development.md) and [dependencies](docs/Dependencies.md).
+The core parses bounded UTF-8 into validated owned v1 snapshots with deterministic
+snapshot-local IDs. No source/model schema change, session identity, cancellation,
+search, FFI, native UI, I/O or advanced engine is implemented.
 
-The immutable Document boundary requires matching exact UTF-8 source length/
-SHA-256 and caller limits. DTOs remain unchecked until validation. Golden
-fixtures cover all 24 node kinds, NFC/NFD and CRLF, tables/tasks/footnotes,
-metadata/intents/diagnostics and unsupported source fallbacks. Source bytes are
-pinned with `.gitattributes`. Identity stability is a lineage contract; its
-algorithm remains CORE-004A. Source hashes are not signatures, and resource
-intents are not grants or complete sanitization.
+Implementation covers basic blocks/inlines, GFM tables/tasks/strike, outline,
+exact source/destination spans, literal code and local/external/denied intents.
+Raw HTML and advanced fences are inert source fallbacks. Reference links/images
+use source fallbacks because definitions are outside v1 occurrence-contained
+intent spans. First-position front matter retains its exact span and diagnostic
+but has no typed properties yet. Presenters must keep that source readable.
 
-The default build uses serde/serde_json and sha2; optional feature `schema`
-adds schemars. Four exact transitive license declarations were reviewed and
-added to the policy, including unicode-ident's additional Unicode notice.
-All resolved packages and pins are in Cargo.lock and the inventory; no new
-implementation language or parser dependency is introduced.
+CORE-003B owns reference representation/activation, typed metadata, other
+extensions, URI refinement, full conformance/fuzz/property and measured budgets.
+The current conservative URI subset denies percent encoding, whitespace,
+backslashes, absolute paths and dot segments; native adapters must still enforce
+capability containment and safe URI activation. Resource intents grant no I/O.
+Parser construction can scan/allocate for bounded source before event limits
+apply; these limits are not time/allocator quotas or native performance proof.
 
-[PR #2](https://github.com/awesomejt/markdown/pull/2) carries the model.
-Grok's first review found one concern and three nits; all four are addressed:
-strict empty-struct link/resource variants reject extra fields without changing
-wire shape/schema; model JSON reads explicitly use UTF-8; validation error
-paths are built lazily; additional license declarations are scoped to reviewed
-package versions. Regressions cover strict `invalid_json` failures, lazy paths
-and rejection of unreviewed packages/versions/expressions. The owner authorized
-pushing fixes, merging PR #2, syncing main and deleting the feature branch.
+The parser dependency is pulldown-cmark 0.13.5 without default HTML/CLI features.
+It adds bitflags/unicase to the graph; all 32 resolved packages pass existing
+license/source policy. Frozen FEAS and model goldens/schema are unchanged.
+An original parser source/JSON golden is in `specs/parsing/basic/`; its exact
+source bytes are preserved by `.gitattributes`. An example regenerates output
+from deliberately supplied bounded stdin; never commit user snapshots.
 
-Mac full checks and an EncodingWarning-as-error model validation pass. Required
-hosted checks and a fresh `/grok review` still must be inspected for the final
-fix head. Review request receipts and disposition belong in PR discussion.
-The GitHub connector lacks write permission; authenticated `gh` is the fallback.
-After the authorized merge, reconcile live state through the helper and carry
-post-merge state/documentation closeout in the next feature PR or housekeeping
-PR, never a direct main push. CORE-003A is the next shared parser phase only
-after verified merge. Native foundation phases are also independently ready.
+Mac full common/core checks pass, including parser/model debug/release/default/
+schema builds, Python regressions, Markdown/links and dependency/source policy.
+Inspect actual PR head and hosted Linux/macOS/Windows/common checks before
+marking ready; then post one exact `/grok review` comment for that ready head.
+Assess feedback and request owner authorization before merging. The previous
+merge/review exception applied only to PR #2. The connector lacks write access;
+authenticated `gh` is the authorized fallback. Keep review receipts in PR notes.
 
-The review-fix pass finishes partial before push/review; inspect live state and
-Git before resuming. No runtime/private artifacts, user source, transcripts or
-credentials belong in commits. Preserve early Linux LNX-001D1 and post-MVP
-ADV-005 conditions.
+Finish CORE-003A partial with no active lease while waiting for CI/review/merge.
+Inspect live state before resuming; partial working status without a lease is
+intentional. After verified owner-authorized merge, carry supported state
+closeout in the next feature PR; do not push closeout directly to main.
+Next shared phases: CORE-003B or CORE-004A after this merge; native foundation
+A phases remain independently ready. Preserve Linux LNX-001D1 and ADV-005 gates.
 
 ## Feasibility evidence retained for implementation
 
