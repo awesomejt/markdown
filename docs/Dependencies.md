@@ -18,14 +18,21 @@ There are **no third-party production dependencies** in CORE-001A. Cargo.lock
 pins the resolved graph; `python tools/check_dependencies.py` checks every
 resolved package, including transitive packages. It rejects missing/unapproved
 license expressions, publishable workspace members, portable workspace members
-outside `core/`, and dependencies on `spikes/`.
+outside `core/`, and dependencies on `spikes/`. Workspace packages must be
+local; non-workspace packages must come from the canonical crates.io registry.
+Git, alternate-registry and non-workspace path dependencies require a deliberate
+policy change/review, even when they carry an allowed SPDX expression.
+Cargo.lock can pin Git revisions; origin approval is a separate constraint.
+Metadata is resolved with all features so optional dependencies are checked too.
 
 The initial SPDX allowlist is Apache-2.0, MIT, and their explicit OR combinations.
 An unlisted expression fails and requires deliberate dependency/policy review;
 it is not a judgment that the dependency cannot be used. Future phases must
 update this inventory with purpose, version, source and provenance when adding
 production dependencies. Parser selection does not add a dependency until its
-implementation phase.
+implementation phase. Consider a dedicated policy tool such as cargo-deny if
+the graph grows; adopting another tool is unnecessary for this dependency-free
+scaffold, and the present checks have targeted regressions.
 
 ## Development tooling and feasibility
 

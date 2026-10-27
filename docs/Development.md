@@ -43,18 +43,32 @@ Normally rustup uses the committed toolchain file automatically.
 
 The initial crate has no behavior tests: Cargo's empty unit/doc test harnesses
 pass but prove no product behavior. Model/parser tests belong to later phases.
-Local links check file existence, not heading anchors or network availability.
+Local links check common inline link/image file targets, excluding code fences,
+inline code and URI schemes. Titles, angle destinations and percent-encoded
+paths are supported; missing targets are aggregated and locally deleted docs
+are skipped. Reference-style links, nested labels, heading anchors and network
+availability are not checked by this bounded tooling parser.
+
+Whitespace checks use `CHECK_BASE...HEAD` in CI with full history, then include
+staged/unstaged tracked changes. An all-zero initial-push base checks the whole
+initial tree. Without CHECK_BASE, local/manual runs check the latest commit plus
+staged/unstaged changes. Set `CHECK_BASE=origin/main` for the full local branch
+range. Untracked files enter the Git whitespace check once staged.
 `tools/test_project_state.py` remains a separate host setup check requiring the
 installed Codex state backend; CI does not depend on a private user-level skill.
 
 ## CI and native boundaries
 
 `.github/workflows/ci.yml` runs common checks on Ubuntu for every PR/main push.
-Shared core/spec/fixture/tool/workflow changes select the Rust suite on Linux,
-macOS and Windows. Platform-only app paths select their matching host; iOS
-paths select macOS. Docs-only changes run common checks and skip host steps.
-Manual dispatch selects all hosts. `Checks / complete` fails if a required job
-fails or is cancelled. Host-selection logic has regression tests.
+Unknown build/configuration paths select every host by default; only known
+prose/operational paths skip host steps. Shared core/spec/fixture/tool/workflow
+changes select Linux, macOS and Windows. Known platform-only app paths select
+their matching host; iOS selects macOS, and unknown app roots select every host.
+Renames count both source and destination. Manual, missing-base and initial-push
+events select all hosts. Only PR runs share a cancellable group; main/manual
+runs have unique groups so newer pushes cannot cancel their pending checks. `Checks / complete` fails if a required job
+fails or is cancelled. Host-selection/event logic, real Git rename/whitespace behavior and inline
+link cases have regression tests.
 
 Actions use pinned source commits, read-only contents permission and no retained
 checkout credentials. No deploy, signing, release or automatic merge is present.

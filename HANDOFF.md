@@ -29,13 +29,19 @@ Mac local common/core checks pass with the verified isolated Rust 1.99.1 toolcha
 see the documented environment override. The crate has no behavior tests yet;
 empty Cargo harnesses are not product validation. Fixture/capability/path checks,
 host-selection regressions, license-policy regressions and workflow lint passed.
-Hosted runner checks are in progress; Grok has not yet been requested at this
-checkpoint. Inspect the latest PR head/checks, make ready only after they pass,
-then post `/grok review` once for that head. Review receipts live in PR discussion.
+The first Grok review reported three concerns and three smaller issues. All
+six have verified fixes: conservative host selection/event tests, both sides
+of renames, committed/staged whitespace checks, inline-link handling, dependency
+source approval and non-cancelling main/manual CI. Tests include real temporary
+Git repositories. The optional cargo-deny suggestion is deferred until needed;
+Git pinning by Cargo.lock is distinct from source approval. See PR discussion
+for disposition and actual latest-head CI/review receipts. A new source head
+requires a fresh `/grok review` after its checks pass.
+
 The connected GitHub integration could not create a PR (403); authenticated
 `gh` created PR #1 successfully. Use that authorized fallback for write actions.
 
-Closeout snapshot: revision **277**, partial with no active/stale passes
+Closeout snapshot: revision **279**, partial with no active/stale passes
 or warnings. CORE-001A intentionally remains working without a lease.
 Inspect live state, Git and the PR before resuming. Use
 `gh pr view feat/core-001a-workspace-ci --json url,state,headRefOid`.

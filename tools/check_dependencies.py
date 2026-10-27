@@ -7,6 +7,7 @@ import subprocess
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
+CRATES_IO = "registry+https://github.com/rust-lang/crates.io-index"
 ALLOWED = {"Apache-2.0", "MIT", "Apache-2.0 OR MIT", "MIT OR Apache-2.0"}
 
 
@@ -20,10 +21,14 @@ def violations(metadata: dict) -> list[str]:
             errors.append(f"{name}: unapproved or missing SPDX license {expression!r}")
         manifest = Path(package["manifest_path"]).resolve()
         if package["id"] in members:
+            if package.get("source") is not None:
+                errors.append(f"{name}: workspace source must be local")
             if not manifest.is_relative_to(ROOT / "core"):
                 errors.append(f"{name}: portable workspace member outside core/")
             if package.get("publish") != []:
                 errors.append(f"{name}: production crates must remain unpublished")
+        elif package.get("source") != CRATES_IO:
+            errors.append(f"{name}: non-crates.io source {package.get('source')!r} needs policy review")
         if manifest.is_relative_to(ROOT / "spikes"):
             errors.append(f"{name}: production graph depends on a feasibility spike")
     return errors
@@ -31,7 +36,7 @@ def violations(metadata: dict) -> list[str]:
 
 def main() -> int:
     metadata = json.loads(subprocess.check_output(
-        ["cargo", "metadata", "--locked", "--format-version", "1"], cwd=ROOT, text=True))
+        ["cargo", "metadata", "--locked", "--all-features", "--format-version", "1"], cwd=ROOT, text=True))
     errors = violations(metadata)
     if errors:
         print("\n".join(errors), file=sys.stderr)

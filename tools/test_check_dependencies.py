@@ -1,7 +1,7 @@
 """Regression checks for dependency-policy failures that must block CI."""
 import unittest
 
-from check_dependencies import ROOT, violations
+from check_dependencies import CRATES_IO, ROOT, violations
 
 
 class DependencyPolicyTests(unittest.TestCase):
@@ -34,6 +34,32 @@ class DependencyPolicyTests(unittest.TestCase):
         graph["packages"].append(dict(id="external", name="external", version="1.0.0",
             license=None, manifest_path=str(ROOT / "build/registry/external/Cargo.toml")))
         self.assertTrue(any("external" in e for e in violations(graph)))
+
+    def external(self, source):
+        graph = self.package()
+        graph["packages"].append(dict(id="external", name="external", version="1.0.0",
+            license="MIT", source=source,
+            manifest_path=str(ROOT / "build/registry/external/Cargo.toml")))
+        return graph
+
+    def test_crates_io_dependency_is_allowed(self):
+        self.assertEqual(violations(self.external(CRATES_IO)), [])
+
+    def test_git_alternate_registry_and_path_sources_need_review(self):
+        for source in (None, "git+https://example.invalid/repo#commit",
+                       "registry+https://example.invalid/index"):
+            with self.subTest(source=source):
+                self.assertTrue(any("needs policy review" in e
+                                    for e in violations(self.external(source))))
+
+    def test_app_path_dependency_is_rejected_even_with_an_allowed_license(self):
+        graph = self.external(None)
+        graph["packages"][-1]["manifest_path"] = str(ROOT / "apps/windows/adapter/Cargo.toml")
+        self.assertTrue(any("needs policy review" in e for e in violations(graph)))
+
+    def test_workspace_source_and_location_are_restricted(self):
+        self.assertTrue(violations(self.package(source=CRATES_IO)))
+        self.assertTrue(violations(self.package(manifest_path=str(ROOT / "build/other/Cargo.toml"))))
 
 
 if __name__ == "__main__":

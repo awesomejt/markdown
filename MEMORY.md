@@ -218,7 +218,11 @@ post-MVP engine validation. See `docs/Implementation-Baseline.md`.
 
 CORE-001A: the root Rust workspace is independent from all feasibility crates;
 production third-party dependency count is zero. Common/core checks and host
-selection are in `tools/check.py` and `.github/workflows/ci.yml`. See
+selection are in `tools/check.py` and `.github/workflows/ci.yml`. First Grok feedback (six findings) is addressed
+with conservative path/event selection, rename-aware diffs, real committed
+whitespace validation, inline-link fixes, crates.io source approval and unique
+non-PR CI groups. Regression tests cover the failing boundaries. Latest-head
+CI/re-review still must be verified on PR #1. See
 `docs/Development.md` and `docs/Dependencies.md`. Review/merge workflow is in
 `docs/Delivery-Workflow.md`. Do not start CORE-002A until CORE-001A is reviewed
 and owner-authorized merged; do not complete the aggregate CORE-001 prematurely.

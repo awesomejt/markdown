@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 import argparse
+import os
 from pathlib import Path
-import re
 import shutil
 import subprocess
 import sys
+
+from check_git import check_whitespace
+from check_links import check_paths
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -20,18 +23,7 @@ def run(*command: str) -> None:
 def links() -> None:
     paths = subprocess.check_output(
         ["git", "ls-files", "--cached", "--others", "--exclude-standard", "-z", "*.md"], cwd=ROOT)
-    count = 0
-    for name in set(paths.decode().split("\0")) - {""}:
-        if name.startswith("fixtures/markdown/"):
-            continue
-        path = ROOT / name
-        for target in re.findall(r"\[[^\]]*\]\(([^)]+)\)", path.read_text(encoding="utf-8")):
-            if "://" in target or target.startswith("#"):
-                continue
-            target = target.split("#")[0]
-            if not (path.parent / target).exists():
-                raise ValueError(f"{name}: missing local target {target}")
-            count += 1
+    count = check_paths(ROOT, [p for p in paths.decode().split("\0") if p])
     print(f"Checked {count} local link paths (anchors/network URLs not checked)")
 
 
@@ -41,14 +33,15 @@ def main() -> None:
     args = parser.parse_args()
     if args.suite in ("common", "all"):
         for script in ("validate_fixtures.py", "validate_capabilities.py",
-                       "test_path_fixtures.py", "test_validate_capabilities.py", "test_ci_paths.py"):
+                       "test_path_fixtures.py", "test_validate_capabilities.py", "test_ci_paths.py",
+                       "test_check_tools.py"):
             run(sys.executable, "tools/" + script)
         links()
         npm = shutil.which("npm")
         if not npm:
             raise SystemExit("Node/npm required: install dev dependencies with npm ci")
         run(npm, "run", "lint:markdown")
-        run("git", "diff", "--check")
+        check_whitespace(os.environ.get("CHECK_BASE", ""), cwd=ROOT)
     if args.suite in ("core", "all"):
         run("cargo", "fmt", "--all", "--", "--check")
         run("cargo", "clippy", "--workspace", "--all-targets", "--locked", "--", "-D", "warnings")
