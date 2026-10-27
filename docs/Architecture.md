@@ -139,6 +139,13 @@ should be coarse enough to avoid per-node FFI chatter and unnecessary copies.
 - Panic/exception containment at the boundary.
 - Benchmarks that isolate conversion and copy cost.
 
+CORE-006A implements this as [C ABI v1](../specs/ffi/README.md) in
+`core/include/markdown_core.h` and crate `markdown-ffi`: registry handles,
+exact struct-size negotiation, explicit v1/v2 model selection, typed status
+and outcome codes, panic containment and a bulk read-only snapshot view of
+fixed-size records plus one string table, owned by the snapshot handle.
+Native consumers are validated in each platform's 001B phase.
+
 The Linux Rust host consumes the same public C facade as the other apps;
 it does not depend on the core's internal Rust models or lifetimes.
 

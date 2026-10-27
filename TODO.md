@@ -12,7 +12,7 @@ branch and PR. Once ready, post a separate PR comment exactly `/grok review`,
 address the feedback, and obtain owner merge approval. Follow
 [Delivery-Workflow.md](docs/Delivery-Workflow.md) for branch, review and handoff
 rules. GATE-001 is approved (D-018). CORE-001A through CORE-003A, CORE-003B1 and
-CORE-003B2/B2F are merged; CORE-004A is selected; ADV-005 carries deferred
+CORE-003B2/B2F and CORE-004A are merged; CORE-006A is selected; ADV-005 carries deferred
 engine work after DESK-002.
 
 ## Current phase: portable core and early native foundations
@@ -27,12 +27,14 @@ core alone.
 
 ## Immediate session handoff
 
-PR #5 merged (`752912a`) with the CORE-003B2 and **CORE-003B2F** scope; their
-state closeout travels in the CORE-004A branch `feat/core-004a-sessions`.
-**CORE-004A** (sessions, generations, cancellation, external changes and
-anchors; [contract](specs/session/README.md)) is the active phase there and
-stays partial until review disposition and owner-authorized merge. Then
-CORE-005A and CORE-006A become dependency-ready. CORE-003B was refined into four
+PR #6 (CORE-004A sessions) merged as `3b1eb4e`; the owner accepted its
+snapshot-local node IDs for the MVP (D-021). **CORE-006A** (bulk C ABI facade,
+value ownership, typed errors, version negotiation;
+[contract](specs/ffi/README.md)) is the active phase on
+`feat/core-006a-ffi-facade` and stays partial until review disposition and
+owner-authorized merge. It unblocks each host's 001B adapter phase; CORE-006
+stays open until the Swift, C# and gtk-rs consumers pass there. CORE-005A is
+also dependency-ready. CORE-003B was refined into four
 tracked children: B1 metadata; B2 reference representation/URI compatibility;
 B3 remaining extension semantics; B4 conformance/fuzz/property and parser
 budgets. See [the catalog](docs/Implementation-Plan.md) for scope/dependencies.

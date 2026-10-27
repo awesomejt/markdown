@@ -53,7 +53,13 @@ regressions plus 8,192 generated inputs. Core checks run default, model-v2-only
 and all-feature configurations; schemas/source goldens are checked independently.
 CORE-004A adds session generation/latest-wins race, cancellation, lifetime,
 external-change and anchor regressions ([session contract](../specs/session/README.md)).
-These suites do not prove native UI conformance. Regenerate the schema deliberately with:
+CORE-006A adds `markdown-ffi` extern-function tests (negotiation, handles,
+ownership, panics, cancellation, bulk-view round trips) and `tests/c_abi.rs`:
+a header constant drift check and a C smoke compiled with the host `cc`
+against `core/include`, linked to the built library, comparing struct
+layouts and exercising the [C ABI](../specs/ffi/README.md). `check.py` sets
+`MD_REQUIRE_C_SMOKE=1` on macOS/Linux so a missing compiler fails; Windows
+skips the C smoke until WIN-001B wires MSVC. These suites do not prove native UI conformance. Regenerate the schema deliberately with:
 
 ```sh
 cargo run --locked --example export_schema --features schema > build/document.schema.json
