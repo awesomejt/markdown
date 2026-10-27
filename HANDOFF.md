@@ -16,7 +16,7 @@ uncancelled output), adapter-reported `Modified`/`Deleted`/`Unreadable` state
 with opaque revision-token and exact-byte deduplication, and block anchors
 resolved as exact/relocated/nearest/lost. No I/O, threads, FFI, new dependency
 or wire change. Node IDs stay snapshot-local; anchors carry cross-generation
-correspondence (see the contract for the identity discrepancy to confirm).
+correspondence; the owner accepted this for the MVP (D-021).
 Next: phase PR, `/grok review`, owner-authorized merge; then CORE-005A/006A.
 
 ## PR #5 review (historical)

@@ -142,20 +142,20 @@ anchors as private document-derived state: never log or upload them.
 Resolution is linear in block count and the per-snapshot index is built lazily
 once. This is a heuristic, not a diff or minimal edit script.
 
-## Node identity discrepancy — owner confirmation pending
+## Node identity — resolved (D-021)
 
-Earlier text expected CORE-004A to reconcile node IDs: the
-[v1 contract](../semantic-model/v1/README.md) says surviving identities should
-keep IDs across revisions, and `docs/Parsing.md` said adapters need reconciled
-IDs before relying on persistent node IDs. This phase instead keeps wire IDs
-snapshot-local and provides block-level anchors for scroll/reading restoration.
-The frozen v1/v2 contracts are not edited. The owner must confirm this or
-request persistent IDs. Persistent IDs would need a follow-up task to define:
+The owner accepted this approach for the MVP in
+[D-021](../../agents/Decisions.md): node IDs stay snapshot-local and
+deterministic, and block anchors carry reading position across generations.
+It clarifies the frozen [v1 contract](../semantic-model/v1/README.md)'s
+"should keep IDs" wording for the MVP; the v1/v2 contracts are not edited.
+Persistent IDs are deferred. A follow-up would need to define:
 a whole-tree matching algorithm (including inline nodes and moved subtrees),
 lineage-scoped ID allocation that never reuses deleted IDs, consistent rewriting
 of roots/children/outline/diagnostic/link/resource references with
 revalidation, cost bounds on large documents, golden/compatibility impact for
-session output versus `parse_markdown`, and probably a decision record.
+session output versus `parse_markdown`, and a decision record. An anchor-based
+old-block to new-block mapping is the likely cheaper first step.
 
 ## CORE-006A facade expectations
 

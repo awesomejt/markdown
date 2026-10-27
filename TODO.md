@@ -267,6 +267,7 @@ kept as a record; steps 1–3 are done.
   recommend adoption or further deferral per engine. Split into bounded
   platform/engine delivery tasks before implementation. It lives in the
   desktop-apps state bucket so it need not wait for the entire mobile phase.
+- **Follow-up:** Revisit persistent cross-revision node identity (see D-021).
 
 ## Dependency summary
 

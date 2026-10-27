@@ -7,7 +7,8 @@ performs no filesystem, network, URI activation, rendering or process calls.
 The [model contract](../specs/semantic-model/v1/README.md) remains frozen and
 unchanged. Snapshot IDs are deterministic ordinals and are not persistent
 across revisions; CORE-004A [sessions](../specs/session/README.md) provide
-block-level cross-generation correspondence through anchors instead.
+block-level cross-generation correspondence through anchors instead. The owner
+accepted snapshot-local IDs for the MVP in [D-021](../agents/Decisions.md).
 
 ## Opt-in v2
 

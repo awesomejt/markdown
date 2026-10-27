@@ -21,7 +21,8 @@ design belong in `docs/` or `agents/`; runtime transcripts do not belong here.
   progress on `feat/core-004a-sessions`: `markdown_core::session` adds `Arc`
   snapshots, generations, latest-wins publication, cooperative cancellation,
   no-I/O external-change state and block anchors (specs/session/README.md).
-  Node IDs remain snapshot-local; anchors carry cross-generation identity.
+  Node IDs remain snapshot-local; anchors carry cross-generation identity
+  (owner-accepted for the MVP in D-021; persistent IDs deferred).
 - Previously selected: CORE-003B2 on `feat/core-003b2-references-uri`. Owner selected
   additive opt-in model v2 (D-020), preserving v1 APIs/decoder/schema/goldens.
   Feature `model-v2` exposes `parse_markdown_v2` and `v2::Document`: explicit
