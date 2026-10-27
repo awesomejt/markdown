@@ -47,7 +47,8 @@ paths, fonts, colors, or operating-system handles.
 The CORE-002A v1 implementation contract is in
 [the semantic-model spec](../specs/semantic-model/v1/README.md). Its owned Rust
 values, strict wire/schema checks and source-bound goldens froze at PR #2
-merge. [Basic parsing](Parsing.md) consumes this contract without altering it. The model is separate from parsing, ID reconciliation, C ABI functions
+merge. [Basic parsing](Parsing.md) and [typed front matter](Front-Matter.md)
+consume this contract without altering it. The model is separate from parsing, ID reconciliation, C ABI functions
 and native presentation; selecting its types does not prove those behaviors.
 
 ## Core responsibilities

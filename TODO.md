@@ -11,27 +11,29 @@ batching ready work on the current OS. Each delivery phase uses one feature
 branch and PR. Once ready, post a separate PR comment exactly `/grok review`,
 address the feedback, and obtain owner merge approval. Follow
 [Delivery-Workflow.md](docs/Delivery-Workflow.md) for branch, review and handoff
-rules. GATE-001 is approved (D-018). CORE-001A and CORE-002A are merged; CORE-003A is selected;
+rules. GATE-001 is approved (D-018). CORE-001A, CORE-002A and CORE-003A are merged; CORE-003B1 is selected;
 ADV-005 carries deferred engine work after DESK-002.
 
 ## Current phase: portable core and early native foundations
 
 The gate is complete; the small child tasks are materialized in project state.
-CORE-001A workspace/check/CI and CORE-002A semantic v1 are merged. CORE-003A
-implements the bounded basic parser and conservative safety subset in
-[Parsing.md](docs/Parsing.md). Native app shells remain separate; no working
-reader UI is delivered by the core alone.
+CORE-001A infrastructure, CORE-002A semantic v1 and CORE-003A basic parsing are
+merged. CORE-003B1 adds [bounded typed front matter](docs/Front-Matter.md).
+Native app shells remain separate; no working reader UI is delivered by the
+core alone.
 
 ## Immediate session handoff
 
-Work on `feat/core-003a-basic-parser` through its PR/check/Grok lifecycle.
-CORE-002A merged closeout travels here. Resume CORE-003A while partial; dependents
-wait for its owner-authorized merge. CORE-003B owns typed first-position metadata,
-reference-link representation/activation, remaining extensions, URI refinement,
-full conformance/fuzz/property and parser budgets. State remains authoritative;
-inspect it and `HANDOFF.md` before any pass. Previous PR #2 review/merge exceptions
-do not apply to this phase. Scoped commits/pushes/PR/review are authorized; merge
-still requires owner authorization. Concurrency remains one.
+Work on `feat/core-003b1-front-matter` through its PR/check/Grok lifecycle.
+CORE-003A merged state closeout travels here. CORE-003B was refined into four
+tracked children: B1 metadata; B2 reference representation/URI compatibility;
+B3 remaining extension semantics; B4 conformance/fuzz/property and parser
+budgets. See [the catalog](docs/Implementation-Plan.md) for scope/dependencies.
+The parent retains all original acceptance and native packaging gates.
+CORE-004A remains independently ready. Inspect state and `HANDOFF.md` before
+any pass. Scoped commits/pushes/PR/review are authorized; earlier review/merge
+exceptions do not apply to this phase. Merge requires owner authorization;
+concurrency remains one.
 
 The numbered steps below are the earlier handoff for GATE-001 preparation,
 kept as a record; steps 1–3 are done.
@@ -262,7 +264,9 @@ REQ-001 -> FEAS-001 -> FEAS-002 ---------------------------+
        \-> FEAS-005 (Linux renderer) -----------------------+
 
 GATE-001 -> CORE-001A -> CORE-002A -> CORE-003A -> CORE-004A -> CORE-006A
-CORE-003A -> CORE-003B; CORE-004A -> CORE-005A -> CORE-005B
+CORE-003A -> CORE-003B1, CORE-003B2
+CORE-003B1 -> CORE-003B3; CORE-003B2 + CORE-003B3 -> CORE-003B4
+CORE-003B1–B4 -> CORE-003B; CORE-004A -> CORE-005A -> CORE-005B
 CORE-001A -> each host 001A; CORE-006A + own 001A -> own 001B -> ... -> 001I
 CORE-005A -> own 001F; CORE-003B -> own 001I
 LNX-001D -> LNX-001D1 (early accessibility proof) -> LNX-001E + LNX-001F

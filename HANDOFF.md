@@ -1,77 +1,64 @@
 # Agent Session and Platform Handoff
 
-Updated: 2026-10-27, CORE-003A PR #3 review fixes and merge preparation.
-Source baseline: `e5f1a17` on main plus this phase's changes. Preserve intended
-source, locks, authored specs/goldens, docs and state together. Do not copy
-environments, build products, private runtime state or user documents.
+Updated: 2026-10-27, CORE-003A merged closeout and CORE-003B1 typed metadata.
+Source baseline: `872061c` on main plus this phase's changes. Preserve intended
+source, locks/specs, docs and state together. Do not copy environments, build
+products, private runtime state or user documents.
 
-## Resume here — CORE-003A basic parser
+## Resume here — CORE-003B1 typed front matter
 
-CORE-002A is completed via owner-authorized [PR #2](https://github.com/awesomejt/markdown/pull/2)
-merge `e5f1a17`, containing corrected head `75a8bc8`. All four Grok findings
-were addressed and all required hosted checks passed. The owner explicitly
-waived another review while troubleshooting automation; no bot approval is
-claimed. Its state closeout and frozen-model documentation travel in this phase.
-CORE-001A was merged in PR #1; aggregate CORE-001 waits for native shell CI.
+CORE-003A completed via owner-authorized [PR #3](https://github.com/awesomejt/markdown/pull/3)
+merge `872061c`, containing corrected head `7ef0a4c`. All three Grok concerns
+were addressed and required hosted checks passed. Owner requested fixing,
+checking and merging as with PR #2, without waiting for another review; no new
+bot approval is inferred. Its supported state closeout travels here. CORE-001A
+and CORE-002A were already merged; aggregate CORE-001 waits for native shell CI.
 
-Selected task: **CORE-003A**, branch `feat/core-003a-basic-parser`.
-Read [Parsing.md](docs/Parsing.md), [the model](specs/semantic-model/v1/README.md),
-[development checks](docs/Development.md) and [dependencies](docs/Dependencies.md).
-The core parses bounded UTF-8 into validated owned v1 snapshots with deterministic
-snapshot-local IDs. No source/model schema change, session identity, cancellation,
-search, FFI, native UI, I/O or advanced engine is implemented.
+The oversized CORE-003B phase was refined before coding, as required by the
+[delivery catalog](docs/Implementation-Plan.md): B1 typed metadata; B2 reference
+representation/URI compatibility; B3 other extension semantics; B4 conformance,
+fuzz/property and measured parser budgets. Four tasks/nine edges were rehearsed
+on disposable state and applied through the helper. The parent remains
+incomplete until all children/original acceptance pass. Existing prerequisites,
+native packaging dependents, Linux LNX-001D1 and ADV-005 gates are retained.
+CORE-004A and platform A phases remain independently ready after merge closeout.
 
-Implementation covers basic blocks/inlines, GFM tables/tasks/strike, outline,
-exact source/destination spans, literal code and local/external/denied intents.
-Raw HTML and advanced fences are inert source fallbacks. Reference links/images
-use source fallbacks because definitions are outside v1 occurrence-contained
-intent spans. First-position front matter retains its exact span and diagnostic
-but has no typed properties yet. Presenters must keep that source readable.
+Selected task: **CORE-003B1**, branch `feat/core-003b1-front-matter`.
+Read [Front-Matter.md](docs/Front-Matter.md), [Parsing.md](docs/Parsing.md),
+[development checks](docs/Development.md), the frozen semantic model and task
+state. This phase adds no dependency or wire/model field. It parses a restricted
+flat metadata grammar, not general YAML: null/bool/i64/string/string-list values,
+quoted escapes, comments, plain properties and an optional string display title.
+First-position delimiter precedence and original UTF-8/LF/CRLF source spans stay
+unchanged. The pulldown-cmark YAML metadata option remains disabled (D-015).
 
-CORE-003B owns reference representation/activation, typed metadata, other
-extensions, URI refinement, full conformance/fuzz/property and measured budgets.
-The current conservative URI subset denies non-ASCII destinations, percent encoding, whitespace,
-backslashes, absolute paths and dot segments; native adapters must still enforce
-capability containment and safe URI activation. Resource intents grant no I/O.
-Parser construction can scan/allocate for bounded source before event limits
-apply; these limits are not time/allocator quotas or native performance proof.
+Duplicate/unsupported/oversized metadata atomically omits the entire map/title
+with a structural warning and retains the original source/capability. Presenters
+must keep source readable. Metadata/string/item/property ceilings are explicit;
+keys/strings/promoted title and failed attempts share the parser text-copy
+counter. Exceeding that caller budget is a fatal TextLimit, never a warning.
+The tab-offset whole-body fallback preserves typed metadata and its diagnostics.
 
-The parser dependency is pulldown-cmark 0.13.5 without default HTML/CLI features.
-It adds bitflags/unicase to the graph; all 32 resolved packages pass existing
-license/source policy. Frozen FEAS and model goldens/schema are unchanged.
-An original parser source/JSON golden is in `specs/parsing/basic/`; its exact
-source bytes are preserved by `.gitattributes`. An example regenerates output
-from deliberately supplied bounded stdin; never commit user snapshots.
+No URI/reference change, advanced engine, incremental identity/session,
+cancellation, search, FFI, native UI or I/O is introduced. References and other
+extensions remain source/basic Markdown behavior. Non-ASCII destinations remain
+visible but denied until B2; platform adapters still own permission containment
+and safe activation. No existing frozen model/FEAS/parser golden is rewritten.
 
-[PR #3](https://github.com/awesomejt/markdown/pull/3) review identified three
-legitimate concerns. Fixed email autolinks now carry `mailto:` and an external
-intent with the exact address source span. Nested autolinks are inert source
-fallbacks, with no inner intent. Upstream tab-expanded offsets violating child
-containment/sibling ordering return the whole exact body as an inert source
-fallback, discarding the invalid graph/intents/outline while preserving source,
-IDs and first-position metadata. Other model/mapping errors still surface.
-Unicode format/bidi destinations are denied through a temporary ASCII-only
-activation policy; legitimate Unicode names/IDNs/fragments also remain visible
-but denied pending CORE-003B. No dependency/schema/golden change is required.
+Regressions include supported types, quote/comment/Unicode semantics, atomic
+hostile/duplicate rejection, exact boundaries and one-over ceilings, budget and
+privacy checks, frozen GFM properties, source offsets/fallback preservation and
+4,096 generated metadata inputs alongside the existing 20,000 markup cases.
+Full common/core checks and hosted latest-head Linux/macOS/Windows/common checks
+must pass before marking the phase PR ready and posting one exact `/grok review`.
+Keep receipts/disposition in PR discussion, not another source-only receipt
+commit. The GitHub connector lacks write access; authenticated `gh` is fallback.
 
-Regressions reproduce the original failures, verify exact fallback bytes and
-metadata, preserve ASCII/email activation and denied Unicode values, and check
-20,000 deterministic generated-markup inputs for validated output or limit
-errors. This bounded invariant check does not replace CORE-003B fuzz/performance.
-
-The owner requested fixing legitimate concerns, committing/pushing, waiting for
-automatic checks, merging PR #3 and cleaning up, as with PR #2. Post the required
-fresh review trigger after current-head checks, but do not infer bot approval
-or wait for another review contrary to that requested sequence. Inspect actual
-comments before merging and address concrete new findings if present. The
-GitHub connector lacks write access; authenticated `gh` is the fallback.
-
-Finish the review-fix pass partial before CI/merge, with no active lease.
-After verified owner-authorized merge, sync main and delete the phase branch.
-Carry supported state closeout in the next feature PR; never push closeout
-directly to main. Inspect actual PR/live state before the next task. CORE-003B
-or CORE-004A follows this merge; platform A phases are independently ready.
-Preserve Linux LNX-001D1 and ADV-005 gates.
+Keep the pass partial with no lease while waiting for review/merge. Inspect
+actual phase PR and supported state before resuming. Earlier merge/review
+exceptions applied to PR #2/#3 only; this phase still requires owner-authorized
+merge after actual review disposition. No dependent implementation before merge.
+After merge, carry state closeout in the next feature PR, never directly to main.
 
 ## Feasibility evidence retained for implementation
 

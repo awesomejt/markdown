@@ -1,6 +1,6 @@
 # Basic parsing and safety contract
 
-CORE-003A adds `parse_markdown(source, document_id, revision_id, limits)` to
+CORE-003A added `parse_markdown(source, document_id, revision_id, limits)` to
 `markdown-core`. It returns a validated immutable semantic v1 `Document` or a
 structural `ParseError`. Source is exact UTF-8 supplied by the caller. The core
 performs no filesystem, network, URI activation, rendering or process calls.
@@ -76,15 +76,16 @@ retained as untrusted values, never copied into shell commands or HTML.
 ## Explicit phase boundaries
 
 Only a first-byte `---` line, terminated by a later exact `---` or `...` line,
-is recognized as front matter (LF/CRLF). Its full source span is retained with
-a diagnostic and front-matter capability; properties remain empty. Presenters
-must keep that source span readable while property parsing is deferred. D-015
-delimiter precedence also applies when the body is not a YAML mapping; for
-example a heading between initial delimiters belongs to deferred front matter.
-Unterminated
-or mid-document delimiters follow CommonMark. No YAML metadata parser option
-is enabled, preserving D-015's first-position rule. CORE-003B owns typed property
-parsing, syntax errors and the remaining extension rules.
+is recognized as front matter (LF/CRLF). CORE-003B1 adds the
+[bounded typed metadata grammar](Front-Matter.md): flat null/bool/i64/string/
+string-list properties and an optional string display title. Unsupported,
+duplicate or oversized metadata atomically omits properties with a structural
+warning, preserving the exact source span and front-matter capability. Presenters
+must keep that source readable. Empty/comment-only mappings are valid.
+Delimiter precedence still follows D-015, even for Markdown-looking bodies.
+Unterminated, BOM-prefixed or mid-document delimiters follow CommonMark. No YAML
+metadata parser option is enabled. Body offsets and source fingerprints are
+unchanged; source-offset fallback also preserves metadata warnings/properties.
 
 Resolved reference links/images use explicit inline source fallbacks and a
 `reference_link_deferred` diagnostic. V1 intent spans must be inside the
@@ -108,7 +109,7 @@ full success against its deferred extension expectations.
 | Events | 1,000,000 | Before adapting each emitted event |
 | Nodes | 250,000 | Before adding a model node |
 | Depth | 128 | Parser events and model/synthetic-paragraph ancestry |
-| Copied text | 32 MiB | Cumulative copied source-derived strings, including repeated destinations/titles |
+| Copied text | 32 MiB | Cumulative copied source-derived strings, including repeated destinations/titles and metadata |
 
 Limits are caller-adjustable defensive ceilings, not release performance
 budgets or allocator quotas. Parser construction can scan/allocate for the

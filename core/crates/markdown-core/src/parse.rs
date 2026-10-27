@@ -118,7 +118,23 @@ pub fn parse_markdown(
     if offset > 0 {
         b.doc.metadata.front_matter_span = Some(span(0..offset));
         b.doc.capabilities.insert(Capability::FrontMatter);
-        b.diagnostic("front_matter_deferred", span(0..offset), None);
+        match crate::metadata::parse(&source[..offset], &mut b.copied, limits.max_text_bytes) {
+            Ok(properties) => {
+                if let Some(MetadataValue::String { value }) = properties.get("title") {
+                    b.doc.metadata.title = Some(b.text(value)?);
+                }
+                b.doc.metadata.properties = properties;
+            }
+            Err(crate::metadata::Error::TextLimit) => return Err(ParseError::TextLimit),
+            Err(error) => {
+                let code = match error {
+                    crate::metadata::Error::Duplicate => "front_matter_duplicate",
+                    crate::metadata::Error::Limit => "front_matter_limit",
+                    _ => "front_matter_unsupported",
+                };
+                b.diagnostic(code, span(0..offset), None);
+            }
+        }
     }
     let options =
         Options::ENABLE_TABLES | Options::ENABLE_TASKLISTS | Options::ENABLE_STRIKETHROUGH;
@@ -143,22 +159,21 @@ pub fn parse_markdown(
     let identity = (b.doc.document_id.clone(), b.doc.revision_id.clone());
     let source_info = b.doc.source.clone();
     let metadata = b.doc.metadata.clone();
+    let metadata_diagnostics: Vec<_> = b
+        .doc
+        .diagnostics
+        .iter()
+        .filter(|d| d.node.is_none() && d.span == metadata.front_matter_span)
+        .cloned()
+        .collect();
     match Document::new(b.doc, source, limits.model) {
         Err(error) if matches!(error.code, "child_span" | "sibling_order") => {
             let body_span = span(offset..source.len());
             let id = NodeId("n0".into());
             let mut capabilities = BTreeSet::new();
-            let mut diagnostics = Vec::new();
-            if let Some(front_matter) = metadata.front_matter_span {
+            let mut diagnostics = metadata_diagnostics;
+            if metadata.front_matter_span.is_some() {
                 capabilities.insert(Capability::FrontMatter);
-                diagnostics.push(Diagnostic {
-                    code: "front_matter_deferred".into(),
-                    severity: Severity::Info,
-                    message: "Front matter is preserved as source; property parsing is deferred."
-                        .into(),
-                    span: Some(front_matter),
-                    node: None,
-                });
             }
             diagnostics.push(Diagnostic {
                 code: "source_mapping_fallback".into(), severity: Severity::Warning,
@@ -230,11 +245,11 @@ impl Builder<'_> {
     fn diagnostic(&mut self, code: &str, span: SourceSpan, node: Option<NodeId>) {
         self.doc.diagnostics.push(Diagnostic {
             code: code.into(),
-            severity: Severity::Info,
+            severity: if code.starts_with("front_matter_") { Severity::Warning } else { Severity::Info },
             message: match code {
-                "front_matter_deferred" => {
-                    "Front matter is preserved as source; property parsing is deferred."
-                }
+                "front_matter_duplicate" => "Duplicate front-matter keys; properties are omitted and source is retained.",
+                "front_matter_limit" => "Front matter exceeds supported metadata limits; properties are omitted and source is retained.",
+                "front_matter_unsupported" => "Unsupported front matter; properties are omitted and source is retained.",
                 "reference_link_deferred" => {
                     "Reference link is preserved as source; resolution is deferred."
                 }
