@@ -12,7 +12,9 @@
  *   MD_ERR_STRUCT_SIZE.
  * - Every function returns an md_status, never unwinds and never aborts on a
  *   Rust panic (MD_ERR_PANIC). Outputs are zeroed (struct_size kept) before
- *   any other work, so they are defined even on failure.
+ *   any other work and receive final values only on success, so they are
+ *   zeroed on every failure. Exceptions: BUFFER_TOO_SMALL reports the needed
+ *   length, and a VERSION_MISMATCH from md_abi_negotiate fills md_abi_info.
  * - Handles are opaque nonzero 64-bit values owned by the core. Each handle
  *   type has exactly one release function. Releasing 0 is a no-op (MD_OK);
  *   releasing an unknown, already released or wrong-type handle returns
@@ -21,6 +23,9 @@
  * - All memory reachable from an md_snapshot_view is core-owned, immutable
  *   and valid until that snapshot handle is released. Never free it, write
  *   to it, or read it concurrently with or after md_snapshot_release().
+ * - Output pointers must not overlap each other, any input or any buffer.
+ *   If they do, the values written are unspecified, but the core only ever
+ *   writes outputs through raw stores, so it remains memory-safe.
  * - The core never receives paths. Callers read bytes under their own
  *   permission model and pass copies; the core copies its inputs during the
  *   call and retains no caller pointer.

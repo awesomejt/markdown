@@ -744,8 +744,7 @@ fn v1_golden_fixtures_round_trip_all_node_kinds() {
         let json = std::fs::read(root.join(format!("{name}.json"))).unwrap();
         let document = Document::from_json(&json, &source, ModelLimits::default()).unwrap();
         let flat = flat::Flat::encode_model(&SnapshotModel::V1(document.clone())).unwrap();
-        let mut v = md_snapshot_view::default();
-        flat.view(&source, 7, &mut v);
+        let v = flat.view(&source, 7);
         assert_eq!(v.generation, 7);
         kinds.extend(Tables::slice(v.nodes, v.node_count).iter().map(|n| n.kind));
         assert_eq!(&Tables { v: &v }.v1(), document.input(), "{name}");
@@ -777,6 +776,54 @@ fn v2_view_round_trips_provenance_and_targets() {
     );
     assert!(kinds.iter().any(|(_, t)| *t == MD_TARGET_DENIED));
     assert_eq!(md_session_release(session), MD_OK);
+}
+
+#[test]
+fn handles_to_one_snapshot_share_one_encoding() {
+    let _s = serial();
+    let session = create(MD_MODEL_V1);
+    let first = publish(session, "# Shared\n\nbody\n");
+    let mut current = 0;
+    // SAFETY: valid pointer.
+    assert_eq!(unsafe { md_session_current(session, &mut current) }, MD_OK);
+    assert_ne!(current, first);
+    let (a, b) = (view(first), view(current));
+    assert_eq!((a.nodes, a.strings), (b.nodes, b.strings), "one encoding");
+    // Releasing one handle leaves the other's view intact.
+    assert_eq!(md_snapshot_release(first), MD_OK);
+    assert_eq!(Tables { v: &b }.v1(), *model(current).v1().unwrap().input());
+    // A different snapshot gets its own encoding (compared while both live).
+    let other = publish(session, "# Other\n");
+    assert_ne!(view(other).strings, b.strings);
+    assert_eq!(md_snapshot_release(current), MD_OK);
+    assert_eq!(md_snapshot_release(other), MD_OK);
+    assert_eq!(md_session_release(session), MD_OK);
+}
+
+#[test]
+fn overlapping_outputs_are_memory_safe() {
+    let _s = serial();
+    let session = create(MD_MODEL_V1);
+    // The contract forbids overlapping outputs; the result is unspecified,
+    // but the core only performs raw writes, so this is not UB.
+    let mut shared = 5u64;
+    let p: *mut u64 = &mut shared;
+    // SAFETY: one valid location passed three times.
+    assert_eq!(unsafe { md_live_handles(p, p, p) }, MD_OK);
+    assert_eq!(shared, 0, "snapshot count, written last");
+    let mut both = 0u64;
+    let job_ptr: *mut u64 = &mut both;
+    // SAFETY: the same valid location for job and generation.
+    let status =
+        unsafe { md_session_submit(session, b"x".as_ptr(), 1, null(), 0, job_ptr, job_ptr) };
+    assert_eq!(status, MD_OK);
+    assert_eq!(both, 1, "generation, written after the job handle");
+    assert_eq!(md_session_release(session), MD_OK);
+    let (_, jobs, _) = live();
+    assert_eq!(jobs, 1);
+    // Release the job through the registry, whose handle was overwritten.
+    let handle = *registry().jobs.keys().next().unwrap();
+    assert_eq!(md_job_release(handle), MD_OK);
 }
 
 #[test]
@@ -896,6 +943,24 @@ fn generations_outcomes_and_status() {
 #[test]
 fn limits_map_to_typed_failures() {
     let _s = serial();
+    // An oversized submission still consumes a generation and fails as
+    // SourceLimit; only a bounded prefix is copied.
+    let mut opts = options(MD_MODEL_V1);
+    opts.max_source_bytes = 16;
+    let session = create_with(&opts).unwrap();
+    let big = vec![b'x'; 1 << 20];
+    let (job, generation) = submit_token(session, &big, b"");
+    assert_eq!(generation, 1);
+    let out = run(job);
+    assert_eq!(
+        (out.outcome, out.failure),
+        (MD_OUTCOME_FAILED, MD_FAILURE_SOURCE_LIMIT)
+    );
+    let at_limit = run(submit(session, "exactly 16 bytes"));
+    assert_eq!(at_limit.outcome, MD_OUTCOME_PUBLISHED);
+    assert_eq!(md_snapshot_release(at_limit.snapshot), MD_OK);
+    assert_eq!(status(session).latest, 2);
+    assert_eq!(md_session_release(session), MD_OK);
     let mut opts = options(MD_MODEL_V1);
     opts.max_source_bytes = 4;
     let session = create_with(&opts).unwrap();
@@ -1376,6 +1441,13 @@ fn panics_are_contained_at_every_entry_point() {
             MD_ERR_PANIC
         );
         assert_eq!(length, 0);
+        length = 7;
+        inject_panic();
+        assert_eq!(
+            md_snapshot_anchor_for_node(snapshot, 0, 0, buffer.as_mut_ptr(), 64, &mut length),
+            MD_ERR_PANIC
+        );
+        assert_eq!(length, 0);
         inject_panic();
         assert_eq!(md_session_cancel(session, &mut u), MD_ERR_PANIC);
         assert_eq!(u, 0);
@@ -1383,13 +1455,27 @@ fn panics_are_contained_at_every_entry_point() {
         assert_eq!(md_session_current(session, &mut handle), MD_ERR_PANIC);
         assert_eq!(handle, 0);
     }
-    // A job whose run panics before executing is consumed but still released once.
+    // A panic after the job ran (its snapshot already published) leaves the
+    // result zeroed: no generation, outcome or leaked snapshot handle.
     let job = submit(session, "# Q\n");
     let mut out = result();
+    out.generation = 99;
+    out.snapshot = 99;
     inject_panic();
     // SAFETY: valid pointer.
     assert_eq!(unsafe { md_job_run(job, &mut out) }, MD_ERR_PANIC);
-    assert_eq!(out.outcome, 0);
+    assert_eq!(
+        (
+            out.struct_size,
+            out.outcome,
+            out.generation,
+            out.latest,
+            out.snapshot,
+            out.failure
+        ),
+        (size::<md_job_result>(), 0, 0, 0, 0, 0)
+    );
+    assert_eq!(live().2, 1, "only the test's own snapshot handle");
     inject_panic();
     assert_eq!(md_job_cancel(job), MD_ERR_PANIC);
     inject_panic();

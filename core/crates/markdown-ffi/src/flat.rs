@@ -265,8 +265,8 @@ impl Flat {
         }
     }
 
-    /// Fill `view` with pointers into this immutable encoding.
-    pub(crate) fn view(&self, source: &str, generation: u64, view: &mut md_snapshot_view) {
+    /// A view with pointers into this immutable encoding and `source`.
+    pub(crate) fn view(&self, source: &str, generation: u64) -> md_snapshot_view {
         fn ptr<T>(values: &[T]) -> *const T {
             if values.is_empty() {
                 std::ptr::null()
@@ -277,8 +277,8 @@ impl Flat {
         // Every table length was checked against u32 by `finish`.
         let count = |n: usize| n as u32;
         let source = source.as_bytes();
-        *view = md_snapshot_view {
-            struct_size: view.struct_size,
+        md_snapshot_view {
+            struct_size: size::<md_snapshot_view>(),
             model_version: self.model_version,
             generation,
             source_length: source.len() as u64,
@@ -313,7 +313,7 @@ impl Flat {
             revision_id: self.revision_id,
             source_sha256: self.source_sha256,
             title: self.title,
-        };
+        }
     }
 }
 
@@ -602,6 +602,7 @@ impl<'a> Builder<'a> {
         }
         let f = &self.flat;
         for len in [
+            f.roots.len(),
             f.children.len(),
             f.alignments.len(),
             f.links.len(),

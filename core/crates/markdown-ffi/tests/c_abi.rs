@@ -1,9 +1,11 @@
 //! Header drift checks and the current-host C package smoke.
 //!
 //! `header_constants_match_rust` parses `core/include/markdown_core.h`.
-//! `c_smoke` compiles `tests/c/smoke.c` with the host C compiler (`$CC`, else
-//! `cc`), links the built `markdown_ffi` shared library and runs it: once to
-//! compare every struct size/field offset with Rust, once to exercise the ABI.
+//! `c_smoke` builds the `markdown_ffi` shared library for this test's profile
+//! and features, compiles `tests/c/smoke.c` with the host C compiler (`$CC`,
+//! else `cc`), links a private copy of the library and runs it: once to
+//! compare every struct size/field offset with Rust, once to exercise the ABI
+//! (asserting the model mask the linked library reports).
 //! Without a compiler the smoke is skipped unless `MD_REQUIRE_C_SMOKE=1`
 //! (set by `tools/check.py` on macOS/Linux), which turns a skip into a failure.
 //! Windows always skips the C smoke (MSVC/import-library wiring is WIN-001B);
@@ -122,24 +124,80 @@ fn rust_layout() -> BTreeMap<String, usize> {
     }
 }
 
-/// The directory holding the shared library cargo built for this test run.
-/// `cargo test` leaves the cdylib next to the test binary in
-/// `target/<profile>/deps` (only `cargo build` copies it one level up), so a
-/// stale top-level library from an earlier build is never picked up.
-fn library_dir() -> PathBuf {
-    let exe = std::env::current_exe().unwrap();
-    let deps = exe.parent().unwrap().to_path_buf();
-    let name = if cfg!(target_os = "macos") {
-        "libmarkdown_ffi.dylib"
+const LIBRARY: &str = if cfg!(target_os = "macos") {
+    "libmarkdown_ffi.dylib"
+} else {
+    "libmarkdown_ffi.so"
+};
+
+/// Build the shared library for exactly this test binary's profile and
+/// feature set. The cdylib cargo leaves in `target/<profile>/deps` is not
+/// feature-hashed and is not rewritten when a previously built feature set is
+/// fresh, so it can belong to a different configuration. A nested build into
+/// a target directory keyed by profile and model mask is always the matching
+/// one (and incremental after the first run); `--offline --locked` forbids
+/// network access or lock changes.
+fn built_library() -> PathBuf {
+    let profile = if cfg!(debug_assertions) {
+        "debug"
     } else {
-        "libmarkdown_ffi.so"
+        "release"
     };
-    assert!(
-        deps.join(name).is_file(),
-        "missing {name} in {}",
-        deps.display()
-    );
-    deps
+    let target = root().join(format!(
+        "target/markdown-ffi-smoke/{profile}-models{}",
+        expected_models()
+    ));
+    let cargo = std::env::var("CARGO").unwrap_or_else(|_| "cargo".into());
+    let mut command = Command::new(cargo);
+    command
+        .args([
+            "build",
+            "--package",
+            "markdown-ffi",
+            "--lib",
+            "--locked",
+            "--offline",
+        ])
+        .arg("--target-dir")
+        .arg(&target)
+        .current_dir(root());
+    if !cfg!(debug_assertions) {
+        command.arg("--release");
+    }
+    if cfg!(feature = "model-v2") {
+        command.args(["--features", "model-v2"]);
+    }
+    let status = command.status().expect("run cargo build");
+    assert!(status.success(), "building the library failed: {command:?}");
+    let library = target.join(profile).join(LIBRARY);
+    assert!(library.is_file(), "missing {}", library.display());
+    library
+}
+
+/// `model_versions` this test binary's feature set implies.
+fn expected_models() -> u32 {
+    let mut mask = 1 << MD_MODEL_V1;
+    if cfg!(feature = "model-v2") {
+        mask |= 1 << MD_MODEL_V2;
+    }
+    mask
+}
+
+/// Copy the library into a fresh per-run directory, so concurrent or later
+/// builds cannot swap it underneath the smoke. On macOS also give the copy an
+/// `@rpath` install name: a cargo-built dylib records its absolute build
+/// path, which would make the smoke load that file instead of the copy.
+fn stage_library(dir: &Path) {
+    std::fs::copy(built_library(), dir.join(LIBRARY)).unwrap();
+    if cfg!(target_os = "macos") {
+        let status = Command::new("install_name_tool")
+            .arg("-id")
+            .arg(format!("@rpath/{LIBRARY}"))
+            .arg(dir.join(LIBRARY))
+            .status()
+            .expect("run install_name_tool");
+        assert!(status.success(), "install_name_tool failed");
+    }
 }
 
 fn compiler() -> Option<String> {
@@ -158,7 +216,8 @@ fn compiler() -> Option<String> {
 }
 
 fn build_smoke(cc: &str, out: &Path) -> PathBuf {
-    let lib = library_dir();
+    stage_library(out);
+    let lib = out;
     let exe = out.join("smoke");
     let mut command = Command::new(cc);
     command
@@ -197,7 +256,17 @@ fn c_smoke() {
         eprintln!("SKIPPED: no C compiler found; C package smoke not run on this host");
         return;
     };
-    let out = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("markdown-ffi-c-smoke");
+    let profile = if cfg!(debug_assertions) {
+        "debug"
+    } else {
+        "release"
+    };
+    let out = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join(format!(
+        "markdown-ffi-c-smoke-{profile}-models{}-{}",
+        expected_models(),
+        std::process::id()
+    ));
+    let _ = std::fs::remove_dir_all(&out);
     std::fs::create_dir_all(&out).unwrap();
     let exe = build_smoke(&cc, &out);
 
@@ -217,10 +286,15 @@ fn c_smoke() {
         "C header layout differs from Rust repr(C)"
     );
 
-    let run = Command::new(&exe).arg("run").output().unwrap();
+    let run = Command::new(&exe)
+        .arg("run")
+        .arg(expected_models().to_string())
+        .output()
+        .unwrap();
     let stdout = String::from_utf8_lossy(&run.stdout);
     let stderr = String::from_utf8_lossy(&run.stderr);
     assert!(run.status.success(), "C smoke failed:\n{stdout}\n{stderr}");
     assert!(stdout.contains("c smoke ok"), "{stdout}");
     eprintln!("{}", stdout.trim());
+    let _ = std::fs::remove_dir_all(&out);
 }

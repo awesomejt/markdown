@@ -64,6 +64,10 @@ leak checks; it never exposes contents.
 - `md_job_run` consumes the job's work; a second run is
   `MD_ERR_INVALID_STATE`. Release an unrun job to clear its pending state.
 - View pointers stay valid and unchanged until the snapshot handle is released.
+  Handles to the same published snapshot (a job result and later
+  `md_session_current` calls) share one flat encoding, built on the first
+  view; it is freed when the last of them is released, and a later handle
+  re-encodes on its first view.
   Hosts must not free or write them, keep them past release, or race
   `md_snapshot_release` against reads (the same rule as FEAS-006). Copy what
   the UI needs, then release (see the C smoke).
@@ -82,9 +86,20 @@ hold it while parsing.
 
 ## Errors and panics
 
-Functions return `md_status`; outputs are zeroed (keeping `struct_size`)
-before other work, so they are defined on every failure. Rejected versioned
-structs are left unwritten. `md_status_name` returns static ASCII names.
+Functions return `md_status`. Outputs are zeroed (keeping `struct_size`)
+before other work and receive their final values in one write after all
+fallible work, so every failure (including a contained panic) leaves them
+zeroed. The exceptions are deliberate: `MD_ERR_BUFFER_TOO_SMALL` reports the
+required length, and `md_abi_negotiate` fills `md_abi_info` on a version
+mismatch. Rejected versioned structs (wrong `struct_size`) are left
+unwritten. `md_status_name` returns static ASCII names; it is the one
+function without `catch_unwind`, because a match over constants returning
+static strings cannot panic.
+
+Output pointers must not overlap each other, any input or any buffer. The
+core never forms Rust references to caller output memory and writes it only
+through raw stores, so overlap yields unspecified values, not undefined
+behaviour (tested for repeated `md_live_handles` and submit outputs).
 No status, name or field carries document contents, paths or tokens.
 
 | Status | Meaning |
@@ -117,7 +132,9 @@ document contents.
 
 The functions map one-to-one to the [session contract](../session/README.md):
 `md_session_submit` copies bytes and an optional 1–256 byte revision token
-(length 0 means none); `md_session_external_change` takes `MD_CHANGE_*` plus a
+(length 0 means none). Input longer than the session's source limit still
+takes a generation and fails as `MD_FAILURE_SOURCE_LIMIT`, but only the limit
+plus one byte is copied; `md_session_external_change` takes `MD_CHANGE_*` plus a
 reason (`MD_REASON_*`, only for `MD_CHANGE_UNREADABLE`) and a token (only for
 `MD_CHANGE_MODIFIED`), and returns an `MD_DISPOSITION_*` with the pending or
 recorded generation. Generations start at 1; 0 means "none" in every field.
@@ -176,13 +193,18 @@ not fit returns `MD_ERR_LIMIT`, which the session ceilings prevent in practice.
   snapshot-outlives-session, outcomes/status/failures/limits, cancellation
   before and during runs from another thread, external-change dispositions,
   anchor round trips and forged anchors, panic injection at every entry point
-  (including while the registry lock is held) and multi-threaded sessions.
+  (including while the registry lock is held, and after a job ran, proving
+  zeroed results), shared encodings, bounded oversized submissions,
+  overlapping outputs and multi-threaded sessions.
   Every test asserts that all handles return to zero.
 - `core/crates/markdown-ffi/tests/c_abi.rs` checks every header constant
-  against Rust, then compiles `tests/c/smoke.c` with the host C compiler
-  (`-std=c11 -Wall -Wextra -Werror -pedantic`), links the built shared library
-  and compares every struct size and field offset with Rust before running the
-  C smoke: negotiation, v1 and (when built) v2 sessions, bulk copy, anchor
+  against Rust. It then builds the shared library for its own profile and
+  feature set into `target/markdown-ffi-smoke/<profile>-models<mask>` (the
+  unhashed `deps/` cdylib can belong to another feature set), copies it to a
+  per-run directory (with an `@rpath` install name on macOS), compiles
+  `tests/c/smoke.c` with the host C compiler (`-std=c11 -Wall -Wextra -Werror
+  -pedantic`), compares every struct size and field offset with Rust and runs
+  the C smoke, which asserts the library's model mask matches the build: negotiation, v1 and (when built) v2 sessions, bulk copy, anchor
   round trip, external change, cancellation, snapshot-outlives-session and
   200 lifecycle iterations ending with zero live handles.
 - `tools/check.py core` runs both in debug and release across default,

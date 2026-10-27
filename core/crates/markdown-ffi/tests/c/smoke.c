@@ -5,7 +5,8 @@
  * host would.
  *
  *   smoke layout   print sizeof/offsetof for every ABI struct field
- *   smoke run      exercise negotiation, sessions, bulk views, anchors and release
+ *   smoke run MASK exercise negotiation, sessions, bulk views, anchors and release;
+ *                  MASK is the model_versions bitmask the linked build must report
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -169,7 +170,7 @@ static void check_view(const md_snapshot_view *view) {
     CHECK(view->source_sha256.length == 64);
 }
 
-static int run(void) {
+static int run(uint32_t expected_models) {
     md_abi_info info;
     memset(&info, 0, sizeof info);
     info.struct_size = sizeof info;
@@ -187,7 +188,8 @@ static int run(void) {
     CHECK(info.property_size == sizeof(md_property));
     CHECK(info.anchor_resolution_size == sizeof(md_anchor_resolution));
     CHECK(info.max_anchor_bytes == MD_ANCHOR_MAX_BYTES);
-    CHECK(info.model_versions & (1u << MD_MODEL_V1));
+    /* Proves the linked library is the build under test (feature set). */
+    CHECK(info.model_versions == expected_models);
     CHECK_STATUS(md_abi_negotiate(MD_ABI_VERSION + 1, &info), MD_ERR_VERSION_MISMATCH);
     info.struct_size = sizeof info - 4;
     CHECK_STATUS(md_abi_negotiate(MD_ABI_VERSION, &info), MD_ERR_STRUCT_SIZE);
@@ -319,7 +321,9 @@ static int run(void) {
 
 int main(int argc, char **argv) {
     if (argc == 2 && strcmp(argv[1], "layout") == 0) return layout();
-    if (argc == 2 && strcmp(argv[1], "run") == 0) return run();
-    fprintf(stderr, "usage: smoke layout|run\n");
+    if (argc == 3 && strcmp(argv[1], "run") == 0) {
+        return run((uint32_t)strtoul(argv[2], NULL, 0));
+    }
+    fprintf(stderr, "usage: smoke layout | smoke run MASK\n");
     return 2;
 }

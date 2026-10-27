@@ -31,9 +31,12 @@ struct JobEntry {
     token: CancellationToken,
     job: Mutex<Option<Job>>,
 }
+/// The flat encoding of one `Arc<Snapshot>`, built on first view and shared
+/// by every live handle to that same snapshot.
+type Encoding = Arc<OnceLock<Result<flat::Flat, md_status>>>;
 struct SnapshotEntry {
     snapshot: Arc<Snapshot>,
-    flat: OnceLock<Result<flat::Flat, md_status>>,
+    flat: Encoding,
 }
 struct Registry {
     next: u64,
@@ -81,14 +84,21 @@ fn snapshot(handle: md_snapshot) -> Result<Arc<SnapshotEntry>, md_status> {
         .cloned()
         .ok_or(MD_ERR_INVALID_HANDLE)
 }
+/// Register a new handle. Handles to the same `Arc<Snapshot>` (for example a
+/// job result and later `md_session_current` calls) share one encoding; the
+/// scan is linear in live snapshot handles, which hosts keep few.
 fn insert_snapshot(snapshot: Arc<Snapshot>) -> Result<md_snapshot, md_status> {
-    let entry = Arc::new(SnapshotEntry {
-        snapshot,
-        flat: OnceLock::new(),
-    });
     let mut registry = registry();
+    let flat = registry
+        .snapshots
+        .values()
+        .find(|e| Arc::ptr_eq(&e.snapshot, &snapshot))
+        .map(|e| Arc::clone(&e.flat))
+        .unwrap_or_default();
     let id = registry.allocate()?;
-    registry.snapshots.insert(id, entry);
+    registry
+        .snapshots
+        .insert(id, Arc::new(SnapshotEntry { snapshot, flat }));
     Ok(id)
 }
 
@@ -137,43 +147,73 @@ unsafe fn bytes<'a>(ptr: *const u8, len: usize) -> Result<&'a [u8], md_status> {
     Ok(unsafe { std::slice::from_raw_parts(ptr, len) })
 }
 
-/// Validate a caller output pointer and zero it.
-///
-/// # Safety
-/// A non-null, aligned `ptr` must be valid for writes of `T`.
-unsafe fn output<'a, T: Default>(ptr: *mut T) -> Result<&'a mut T, md_status> {
-    if ptr.is_null() || !ptr.is_aligned() {
-        return Err(MD_ERR_INVALID_ARGUMENT);
+/// A caller output location. Only raw writes go through it: no Rust
+/// reference to caller memory is ever created, so overlapping or aliased
+/// outputs give unspecified values but no undefined behaviour. Each entry
+/// point zeroes its outputs on entry and writes final values once, last,
+/// after all fallible work, so every failure leaves them zeroed.
+struct Out<T>(*mut T);
+impl<T: Default> Out<T> {
+    /// Validate and zero a required output.
+    ///
+    /// # Safety
+    /// A non-null, aligned `ptr` must be valid for writes of `T`.
+    unsafe fn new(ptr: *mut T) -> Result<Self, md_status> {
+        if ptr.is_null() || !ptr.is_aligned() {
+            return Err(MD_ERR_INVALID_ARGUMENT);
+        }
+        // SAFETY: non-null, aligned and writable per the caller contract; a
+        // raw write never reads the possibly uninitialized caller bytes.
+        unsafe { ptr.write(T::default()) };
+        Ok(Self(ptr))
     }
-    // SAFETY: non-null, aligned and writable per the caller contract. The
-    // value is overwritten without reading the caller's bytes.
-    unsafe {
-        ptr.write(T::default());
-        Ok(&mut *ptr)
+    /// Like [`Out::new`], but null means "not wanted".
+    ///
+    /// # Safety
+    /// As for [`Out::new`] when non-null.
+    unsafe fn optional(ptr: *mut T) -> Result<Option<Self>, md_status> {
+        if ptr.is_null() {
+            return Ok(None);
+        }
+        // SAFETY: forwarded caller contract.
+        unsafe { Self::new(ptr) }.map(Some)
+    }
+    fn set(&self, value: T) {
+        // SAFETY: validated by `new`; the caller contract keeps it writable
+        // for the whole call.
+        unsafe { self.0.write(value) };
     }
 }
-/// Like [`output`] for optional out-parameters: null means "not wanted".
-///
-/// # Safety
-/// As for [`output`] when non-null.
-unsafe fn optional_output<'a, T: Default>(ptr: *mut T) -> Result<Option<&'a mut T>, md_status> {
-    if ptr.is_null() {
-        Ok(None)
-    } else {
-        // SAFETY: forwarded caller contract.
-        unsafe { output(ptr) }.map(Some)
+impl<T: Versioned> Out<T> {
+    /// Validate a versioned output: exact `struct_size`, then zero it while
+    /// keeping `struct_size`. A rejected struct is not written.
+    ///
+    /// # Safety
+    /// A non-null, aligned `ptr` must be valid for reads and writes of `T`.
+    unsafe fn versioned(ptr: *mut T) -> Result<Self, md_status> {
+        if ptr.is_null() || !ptr.is_aligned() {
+            return Err(MD_ERR_INVALID_ARGUMENT);
+        }
+        // SAFETY: non-null and aligned; `struct_size` is the leading u32 of
+        // every versioned struct (repr(C)) and the caller initialized it.
+        let declared = unsafe { ptr.cast::<u32>().read() };
+        if declared != size::<T>() {
+            return Err(MD_ERR_STRUCT_SIZE);
+        }
+        let out = Self(ptr);
+        out.set(T::sized());
+        Ok(out)
     }
 }
 
-/// Header-versioned structs: read `struct_size` first, require an exact
-/// match, then zero everything after it.
+/// Header-versioned structs: a zeroed value with `struct_size` filled in.
 trait Versioned: Default {
-    fn set_struct_size(&mut self, size: u32);
+    fn sized() -> Self;
 }
 macro_rules! sized {
     ($($t:ty),+) => {$(
         impl Versioned for $t {
-            fn set_struct_size(&mut self, size: u32) { self.struct_size = size; }
+            fn sized() -> Self { Self { struct_size: size::<$t>(), ..Self::default() } }
         }
     )+};
 }
@@ -186,46 +226,25 @@ sized!(
     md_anchor_resolution
 );
 
-/// Validate a versioned output struct and zero it, keeping `struct_size`.
-///
-/// # Safety
-/// A non-null, aligned `ptr` must be valid for reads and writes of `T`.
-unsafe fn versioned_output<'a, T: Versioned>(ptr: *mut T) -> Result<&'a mut T, md_status> {
-    if ptr.is_null() || !ptr.is_aligned() {
-        return Err(MD_ERR_INVALID_ARGUMENT);
-    }
-    // SAFETY: non-null and aligned; `struct_size` is the first u32 field of
-    // every versioned struct (repr(C)), readable per the caller contract.
-    let size = unsafe { ptr.cast::<u32>().read() };
-    if size != size_of_u32::<T>() {
-        return Err(MD_ERR_STRUCT_SIZE);
-    }
-    // SAFETY: the caller declared a buffer of exactly size_of::<T>() bytes.
-    let value = unsafe { &mut *ptr };
-    *value = T::default();
-    value.set_struct_size(size);
-    Ok(value)
-}
-const fn size_of_u32<T>() -> u32 {
-    abi::size::<T>()
-}
-
+/// Two-call buffer protocol: `length` always receives the required size;
+/// data is copied only when it fits.
 fn write_buffer(
     data: &[u8],
     buffer: *mut u8,
     capacity: usize,
-    length: &mut usize,
+    length: &Out<usize>,
 ) -> Result<(), md_status> {
-    *length = data.len();
     if capacity < data.len() {
+        length.set(data.len());
         return Err(MD_ERR_BUFFER_TOO_SMALL);
     }
     if buffer.is_null() {
         return Err(MD_ERR_INVALID_ARGUMENT);
     }
     // SAFETY: the caller promised `capacity >= data.len()` writable bytes at
-    // a non-null `buffer`; the regions cannot overlap (core-owned source).
+    // a non-null `buffer`; `data` is core-owned, so they cannot overlap.
     unsafe { std::ptr::copy_nonoverlapping(data.as_ptr(), buffer, data.len()) };
+    length.set(data.len());
     Ok(())
 }
 
@@ -241,7 +260,10 @@ fn failure_code(error: &SessionError) -> u32 {
             ParseError::SourceMapping => MD_FAILURE_SOURCE_MAPPING,
             ParseError::Model(_) => MD_FAILURE_MODEL,
         },
-        _ => MD_FAILURE_OTHER,
+        // Session-construction errors never resolve a submission.
+        SessionError::InvalidDocumentId
+        | SessionError::RevisionToken
+        | SessionError::GenerationExhausted => MD_FAILURE_OTHER,
     }
 }
 fn session_error(error: SessionError) -> md_status {
@@ -249,7 +271,8 @@ fn session_error(error: SessionError) -> md_status {
         SessionError::InvalidDocumentId => MD_ERR_INVALID_DOCUMENT_ID,
         SessionError::RevisionToken => MD_ERR_INVALID_REVISION_TOKEN,
         SessionError::GenerationExhausted => MD_ERR_GENERATION_EXHAUSTED,
-        _ => MD_ERR_INTERNAL,
+        // Only job outcomes carry these; create/submit/change never return them.
+        SessionError::InvalidUtf8 | SessionError::Parse(_) => MD_ERR_INTERNAL,
     }
 }
 fn anchor_error(error: AnchorError) -> md_status {
@@ -321,16 +344,17 @@ fn session_options(options: &md_session_options) -> Result<SessionOptions, md_st
 /// Report the library ABI and every struct size.
 ///
 /// # Safety
-/// `info` must be null or point to a writable, aligned `md_abi_info` whose
-/// `struct_size` the caller has set.
+/// `info` must point to a writable, aligned `md_abi_info` whose `struct_size`
+/// the caller has set.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn md_abi_negotiate(abi_version: u32, info: *mut md_abi_info) -> md_status {
     guard(|| {
         // SAFETY: forwarded caller contract.
-        let info = unsafe { versioned_output(info) }?;
+        let out = unsafe { Out::versioned(info) }?;
         checkpoint();
-        *info = md_abi_info {
-            struct_size: info.struct_size,
+        // Written even on a version mismatch so the caller can report it.
+        out.set(md_abi_info {
+            struct_size: size::<md_abi_info>(),
             abi_version: MD_ABI_VERSION,
             model_versions: model_versions(),
             anchor_version: ANCHOR_VERSION,
@@ -346,7 +370,7 @@ pub unsafe extern "C" fn md_abi_negotiate(abi_version: u32, info: *mut md_abi_in
             diagnostic_size: size::<md_diagnostic>(),
             property_size: size::<md_property>(),
             anchor_resolution_size: size::<md_anchor_resolution>(),
-        };
+        });
         if abi_version != MD_ABI_VERSION {
             return Err(MD_ERR_VERSION_MISMATCH);
         }
@@ -355,6 +379,8 @@ pub unsafe extern "C" fn md_abi_negotiate(abi_version: u32, info: *mut md_abi_in
 }
 
 /// Static, NUL-terminated ASCII name of a status; never null, never freed.
+/// Not wrapped in `guard`: a match over constants returning static strings
+/// cannot panic.
 #[unsafe(no_mangle)]
 pub extern "C" fn md_status_name(status: md_status) -> *const std::ffi::c_char {
     let name: &'static std::ffi::CStr = match status {
@@ -393,22 +419,25 @@ pub unsafe extern "C" fn md_live_handles(
 ) -> md_status {
     guard(|| {
         // SAFETY: forwarded caller contract for each optional pointer.
-        let (sessions, jobs, snapshots) = unsafe {
-            (
-                optional_output(sessions)?,
-                optional_output(jobs)?,
-                optional_output(snapshots)?,
-            )
+        let outs = unsafe {
+            [
+                Out::optional(sessions)?,
+                Out::optional(jobs)?,
+                Out::optional(snapshots)?,
+            ]
         };
-        let registry = registry();
-        checkpoint();
-        for (out, count) in [
-            (sessions, registry.sessions.len()),
-            (jobs, registry.jobs.len()),
-            (snapshots, registry.snapshots.len()),
-        ] {
+        let counts = {
+            let registry = registry();
+            checkpoint();
+            [
+                registry.sessions.len(),
+                registry.jobs.len(),
+                registry.snapshots.len(),
+            ]
+        };
+        for (out, count) in outs.iter().zip(counts) {
             if let Some(out) = out {
-                *out = count as u64;
+                out.set(count as u64);
             }
         }
         Ok(())
@@ -433,7 +462,7 @@ pub unsafe extern "C" fn md_session_create(
 ) -> md_status {
     guard(|| {
         // SAFETY: forwarded caller contract.
-        let out = unsafe { output(out_session) }?;
+        let out = unsafe { Out::new(out_session) }?;
         if options.is_null() || !options.is_aligned() {
             return Err(MD_ERR_INVALID_ARGUMENT);
         }
@@ -442,18 +471,22 @@ pub unsafe extern "C" fn md_session_create(
         if unsafe { options.cast::<u32>().read() } != size::<md_session_options>() {
             return Err(MD_ERR_STRUCT_SIZE);
         }
-        // SAFETY: the declared size matches md_session_options exactly.
-        let options = session_options(unsafe { &*options })?;
+        // SAFETY: the declared size matches md_session_options exactly; the
+        // value is copied out, not borrowed.
+        let options = session_options(&unsafe { options.read() })?;
         // SAFETY: forwarded caller contract.
         let id = unsafe { bytes(document_id, document_id_length) }?;
         let id = std::str::from_utf8(id).map_err(|_| MD_ERR_INVALID_DOCUMENT_ID)?;
         let session =
             DocumentSession::new(DocumentId(id.to_owned()), options).map_err(session_error)?;
         checkpoint();
-        let mut registry = registry();
-        let handle = registry.allocate()?;
-        registry.sessions.insert(handle, Arc::new(session));
-        *out = handle;
+        let handle = {
+            let mut registry = registry();
+            let handle = registry.allocate()?;
+            registry.sessions.insert(handle, Arc::new(session));
+            handle
+        };
+        out.set(handle);
         Ok(())
     })
 }
@@ -490,7 +523,7 @@ pub unsafe extern "C" fn md_session_submit(
 ) -> md_status {
     guard(|| {
         // SAFETY: forwarded caller contract.
-        let (out, generation) = unsafe { (output(out_job)?, optional_output(out_generation)?) };
+        let (out, generation) = unsafe { (Out::new(out_job)?, Out::optional(out_generation)?) };
         // SAFETY: forwarded caller contract.
         let (source, token_bytes) = unsafe {
             (
@@ -500,21 +533,31 @@ pub unsafe extern "C" fn md_session_submit(
         };
         let token = self::token(token_bytes)?;
         let session = self::session(session)?;
+        // An oversized source must still fail as `SourceLimit` for its own
+        // generation (session semantics), but copying it whole is wasted
+        // work: the job rejects any input longer than the limit before
+        // reading it, so one byte past the limit preserves the outcome while
+        // bounding the copy by the session limit (itself <= the ABI ceiling).
+        let limit = session.options().limits.model.max_source_bytes;
+        let copied = &source[..source.len().min(limit.saturating_add(1))];
         checkpoint();
         let job = session
-            .submit(source.to_vec(), token)
+            .submit(copied.to_vec(), token)
             .map_err(session_error)?;
         let job_generation = job.generation().get();
         let entry = Arc::new(JobEntry {
             token: job.cancellation_token().clone(),
             job: Mutex::new(Some(job)),
         });
-        let mut registry = registry();
-        let handle = registry.allocate()?;
-        registry.jobs.insert(handle, entry);
-        *out = handle;
+        let handle = {
+            let mut registry = registry();
+            let handle = registry.allocate()?;
+            registry.jobs.insert(handle, entry);
+            handle
+        };
+        out.set(handle);
         if let Some(generation) = generation {
-            *generation = job_generation;
+            generation.set(job_generation);
         }
         Ok(())
     })
@@ -538,7 +581,7 @@ pub unsafe extern "C" fn md_session_external_change(
     guard(|| {
         // SAFETY: forwarded caller contract.
         let (disposition, generation) =
-            unsafe { (output(out_disposition)?, optional_output(out_generation)?) };
+            unsafe { (Out::new(out_disposition)?, Out::optional(out_generation)?) };
         // SAFETY: forwarded caller contract.
         let token = self::token(unsafe { bytes(token, token_length) }?)?;
         let change = match (change, reason) {
@@ -563,9 +606,9 @@ pub unsafe extern "C" fn md_session_external_change(
             ChangeDisposition::Pending(g) => (MD_DISPOSITION_PENDING, g.get()),
             ChangeDisposition::Recorded(g) => (MD_DISPOSITION_RECORDED, g.get()),
         };
-        *disposition = code;
+        disposition.set(code);
         if let Some(generation) = generation {
-            *generation = value;
+            generation.set(value);
         }
         Ok(())
     })
@@ -582,12 +625,12 @@ pub unsafe extern "C" fn md_session_cancel(
 ) -> md_status {
     guard(|| {
         // SAFETY: forwarded caller contract.
-        let out = unsafe { optional_output(out_cancelled) }?;
+        let out = unsafe { Out::optional(out_cancelled) }?;
         let session = self::session(session)?;
         checkpoint();
         let cancelled = session.cancel();
         if let Some(out) = out {
-            *out = u32::from(cancelled);
+            out.set(u32::from(cancelled));
         }
         Ok(())
     })
@@ -605,24 +648,25 @@ pub unsafe extern "C" fn md_session_get_status(
 ) -> md_status {
     guard(|| {
         // SAFETY: forwarded caller contract.
-        let out = unsafe { versioned_output(out_status) }?;
+        let out = unsafe { Out::versioned(out_status) }?;
         let session = self::session(session)?;
         checkpoint();
         let status = session.status();
         let generation = |g: Option<Generation>| g.map_or(0, Generation::get);
-        out.flags = if status.is_current() {
+        let mut info = md_session_status_info::sized();
+        info.flags = if status.is_current() {
             MD_STATUS_IS_CURRENT
         } else {
             0
         };
-        out.latest = generation(status.latest);
-        out.confirmed = generation(status.confirmed);
-        out.pending = generation(status.pending);
-        out.published = status
+        info.latest = generation(status.latest);
+        info.confirmed = generation(status.confirmed);
+        info.pending = generation(status.pending);
+        info.published = status
             .published
             .as_ref()
             .map_or(0, |s| s.generation().get());
-        (out.availability, out.unreadable_reason) = match status.availability {
+        (info.availability, info.unreadable_reason) = match status.availability {
             Availability::Available => (MD_AVAILABLE, MD_REASON_NONE),
             Availability::Deleted => (MD_DELETED, MD_REASON_NONE),
             Availability::Unreadable(reason) => (
@@ -636,9 +680,10 @@ pub unsafe extern "C" fn md_session_get_status(
             ),
         };
         if let Some((g, error)) = &status.failure {
-            out.failure_generation = g.get();
-            out.failure = failure_code(error);
+            info.failure_generation = g.get();
+            info.failure = failure_code(error);
         }
+        out.set(info);
         Ok(())
     })
 }
@@ -654,11 +699,11 @@ pub unsafe extern "C" fn md_session_current(
 ) -> md_status {
     guard(|| {
         // SAFETY: forwarded caller contract.
-        let out = unsafe { output(out_snapshot) }?;
+        let out = unsafe { Out::new(out_snapshot) }?;
         let session = self::session(session)?;
         checkpoint();
         if let Some(snapshot) = session.current() {
-            *out = insert_snapshot(snapshot)?;
+            out.set(insert_snapshot(snapshot)?);
         }
         Ok(())
     })
@@ -677,7 +722,7 @@ pub unsafe extern "C" fn md_session_current(
 pub unsafe extern "C" fn md_job_run(job: md_job, out_result: *mut md_job_result) -> md_status {
     guard(|| {
         // SAFETY: forwarded caller contract.
-        let out = unsafe { versioned_output(out_result) }?;
+        let out = unsafe { Out::versioned(out_result) }?;
         let entry = self::job(job)?;
         let work = entry
             .job
@@ -685,41 +730,44 @@ pub unsafe extern "C" fn md_job_run(job: md_job, out_result: *mut md_job_result)
             .unwrap_or_else(PoisonError::into_inner)
             .take()
             .ok_or(MD_ERR_INVALID_STATE)?;
-        checkpoint();
         // Every outcome reports the job's own generation; an `Unchanged`
         // snapshot keeps the generation it was published at.
-        out.generation = work.generation().get();
-        let snapshot = match work.run() {
+        let mut result = md_job_result::sized();
+        result.generation = work.generation().get();
+        let outcome = work.run();
+        checkpoint();
+        let snapshot = match outcome {
             Outcome::Published(s) => {
-                out.outcome = MD_OUTCOME_PUBLISHED;
+                result.outcome = MD_OUTCOME_PUBLISHED;
                 Some(s)
             }
             Outcome::Unchanged(s) => {
-                out.outcome = MD_OUTCOME_UNCHANGED;
+                result.outcome = MD_OUTCOME_UNCHANGED;
                 Some(s)
             }
             Outcome::Superseded { latest, .. } => {
-                out.outcome = MD_OUTCOME_SUPERSEDED;
-                out.latest = latest.get();
+                result.outcome = MD_OUTCOME_SUPERSEDED;
+                result.latest = latest.get();
                 None
             }
             Outcome::Cancelled { .. } => {
-                out.outcome = MD_OUTCOME_CANCELLED;
+                result.outcome = MD_OUTCOME_CANCELLED;
                 None
             }
             Outcome::Failed { error, .. } => {
-                out.outcome = MD_OUTCOME_FAILED;
-                out.failure = failure_code(&error);
+                result.outcome = MD_OUTCOME_FAILED;
+                result.failure = failure_code(&error);
                 None
             }
             Outcome::Closed { .. } => {
-                out.outcome = MD_OUTCOME_CLOSED;
+                result.outcome = MD_OUTCOME_CLOSED;
                 None
             }
         };
         if let Some(snapshot) = snapshot {
-            out.snapshot = insert_snapshot(snapshot)?;
+            result.snapshot = insert_snapshot(snapshot)?;
         }
+        out.set(result);
         Ok(())
     })
 }
@@ -765,7 +813,7 @@ pub unsafe extern "C" fn md_snapshot_get_view(
 ) -> md_status {
     guard(|| {
         // SAFETY: forwarded caller contract.
-        let out = unsafe { versioned_output(out_view) }?;
+        let out = unsafe { Out::versioned(out_view) }?;
         let entry = self::snapshot(snapshot)?;
         checkpoint();
         let flat = entry
@@ -773,13 +821,13 @@ pub unsafe extern "C" fn md_snapshot_get_view(
             .get_or_init(|| flat::Flat::encode(&entry.snapshot))
             .as_ref()
             .map_err(|e| *e)?;
-        // The registry keeps `entry` (and so `flat`) alive after this clone
-        // drops, until md_snapshot_release.
-        flat.view(
-            entry.snapshot.source(),
-            entry.snapshot.generation().get(),
-            out,
-        );
+        // The pointers target heap buffers owned by the shared encoding and
+        // the snapshot source. Our `entry` clone only covers this call; after
+        // it, they stay valid while this handle's registry entry (or another
+        // handle sharing the encoding) holds them, which the contract
+        // guarantees until the caller releases this handle. A release racing
+        // this call is a caller contract violation.
+        out.set(flat.view(entry.snapshot.source(), entry.snapshot.generation().get()));
         Ok(())
     })
 }
@@ -807,14 +855,14 @@ pub unsafe extern "C" fn md_snapshot_anchor_at(
 ) -> md_status {
     guard(|| {
         // SAFETY: forwarded caller contract.
-        let length = unsafe { output(out_length) }?;
+        let length = unsafe { Out::new(out_length) }?;
         let entry = self::snapshot(snapshot)?;
         checkpoint();
         let anchor = entry
             .snapshot
             .anchor_at(source_offset)
             .map_err(anchor_error)?;
-        write_buffer(&anchor_bytes(&anchor)?, buffer, capacity, length)
+        write_buffer(&anchor_bytes(&anchor)?, buffer, capacity, &length)
     })
 }
 
@@ -833,7 +881,7 @@ pub unsafe extern "C" fn md_snapshot_anchor_for_node(
 ) -> md_status {
     guard(|| {
         // SAFETY: forwarded caller contract.
-        let length = unsafe { output(out_length) }?;
+        let length = unsafe { Out::new(out_length) }?;
         let entry = self::snapshot(snapshot)?;
         checkpoint();
         let id = nodes(&entry.snapshot)
@@ -844,7 +892,7 @@ pub unsafe extern "C" fn md_snapshot_anchor_for_node(
             .snapshot
             .anchor_for(&id, offset)
             .map_err(anchor_error)?;
-        write_buffer(&anchor_bytes(&anchor)?, buffer, capacity, length)
+        write_buffer(&anchor_bytes(&anchor)?, buffer, capacity, &length)
     })
 }
 
@@ -871,8 +919,7 @@ pub unsafe extern "C" fn md_snapshot_resolve_anchor(
 ) -> md_status {
     guard(|| {
         // SAFETY: forwarded caller contract.
-        let out = unsafe { versioned_output(out_resolution) }?;
-        out.node = MD_NONE;
+        let out = unsafe { Out::versioned(out_resolution) }?;
         // SAFETY: forwarded caller contract.
         let data = unsafe { bytes(anchor, anchor_length) }?;
         let entry = self::snapshot(snapshot)?;
@@ -881,28 +928,35 @@ pub unsafe extern "C" fn md_snapshot_resolve_anchor(
         }
         let anchor: Anchor = serde_json::from_slice(data).map_err(|_| MD_ERR_ANCHOR_INVALID)?;
         checkpoint();
-        let Some(resolved) = entry.snapshot.resolve(&anchor).map_err(anchor_error)? else {
-            out.quality = MD_ANCHOR_LOST;
-            return Ok(());
-        };
-        out.node = nodes(&entry.snapshot)
-            .iter()
-            .position(|n| n.id == resolved.node)
-            .and_then(|i| u32::try_from(i).ok())
-            .ok_or(MD_ERR_INTERNAL)?;
-        out.quality = match resolved.quality {
-            AnchorMatch::Exact => MD_ANCHOR_EXACT,
-            AnchorMatch::Relocated => MD_ANCHOR_RELOCATED,
-            AnchorMatch::Nearest => MD_ANCHOR_NEAREST,
-        };
-        out.offset = resolved.offset;
-        out.source_offset = resolved.source_offset;
+        let mut result = md_anchor_resolution::sized();
+        match entry.snapshot.resolve(&anchor).map_err(anchor_error)? {
+            None => {
+                result.quality = MD_ANCHOR_LOST;
+                result.node = MD_NONE;
+            }
+            Some(resolved) => {
+                result.node = nodes(&entry.snapshot)
+                    .iter()
+                    .position(|n| n.id == resolved.node)
+                    .and_then(|i| u32::try_from(i).ok())
+                    .ok_or(MD_ERR_INTERNAL)?;
+                result.quality = match resolved.quality {
+                    AnchorMatch::Exact => MD_ANCHOR_EXACT,
+                    AnchorMatch::Relocated => MD_ANCHOR_RELOCATED,
+                    AnchorMatch::Nearest => MD_ANCHOR_NEAREST,
+                };
+                result.offset = resolved.offset;
+                result.source_offset = resolved.source_offset;
+            }
+        }
+        out.set(result);
         Ok(())
     })
 }
 
-/// Release a snapshot handle; its view memory is freed when the last handle
-/// to the same encoding is gone. Other handles and sessions are unaffected.
+/// Release a snapshot handle. Its view pointers become invalid; the shared
+/// encoding is freed once no other handle to the same snapshot remains.
+/// Other handles and sessions are unaffected.
 #[unsafe(no_mangle)]
 pub extern "C" fn md_snapshot_release(snapshot: md_snapshot) -> md_status {
     guard(|| {
