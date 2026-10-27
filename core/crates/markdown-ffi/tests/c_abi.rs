@@ -237,12 +237,31 @@ fn build_smoke(cc: &str, out: &Path) -> PathBuf {
         .arg(format!("-L{}", lib.display()))
         .arg("-lmarkdown_ffi")
         .arg(format!("-Wl,-rpath,{}", lib.display()));
+    if cfg!(target_os = "linux") {
+        // DT_RPATH (not RUNPATH) is searched before LD_LIBRARY_PATH; dladdr
+        // lives in libdl on glibc before 2.34.
+        command.args(["-Wl,--disable-new-dtags", "-ldl"]);
+    }
     let status = command.status().expect("run C compiler");
     assert!(
         status.success(),
         "C smoke failed to compile/link: {command:?}"
     );
     exe
+}
+
+/// Run the smoke without the loader search paths cargo test sets (it puts
+/// `target/<profile>` and `deps` on them), so only the staged copy can load.
+fn smoke(exe: &Path) -> Command {
+    let mut command = Command::new(exe);
+    for variable in [
+        "LD_LIBRARY_PATH",
+        "DYLD_LIBRARY_PATH",
+        "DYLD_FALLBACK_LIBRARY_PATH",
+    ] {
+        command.env_remove(variable);
+    }
+    command
 }
 
 #[test]
@@ -270,7 +289,7 @@ fn c_smoke() {
     std::fs::create_dir_all(&out).unwrap();
     let exe = build_smoke(&cc, &out);
 
-    let layout = Command::new(&exe).arg("layout").output().unwrap();
+    let layout = smoke(&exe).arg("layout").output().unwrap();
     assert!(layout.status.success());
     let c: BTreeMap<String, usize> = String::from_utf8(layout.stdout)
         .unwrap()
@@ -286,7 +305,7 @@ fn c_smoke() {
         "C header layout differs from Rust repr(C)"
     );
 
-    let run = Command::new(&exe)
+    let run = smoke(&exe)
         .arg("run")
         .arg(expected_models().to_string())
         .output()
@@ -295,6 +314,15 @@ fn c_smoke() {
     let stderr = String::from_utf8_lossy(&run.stderr);
     assert!(run.status.success(), "C smoke failed:\n{stdout}\n{stderr}");
     assert!(stdout.contains("c smoke ok"), "{stdout}");
+    let loaded = stdout
+        .lines()
+        .find_map(|line| line.strip_prefix("library "))
+        .expect("smoke reports the loaded library");
+    assert_eq!(
+        std::fs::canonicalize(loaded).unwrap(),
+        std::fs::canonicalize(out.join(LIBRARY)).unwrap(),
+        "the smoke loaded a library other than the staged copy"
+    );
     eprintln!("{}", stdout.trim());
     let _ = std::fs::remove_dir_all(&out);
 }

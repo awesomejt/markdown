@@ -66,8 +66,9 @@ leak checks; it never exposes contents.
 - View pointers stay valid and unchanged until the snapshot handle is released.
   Handles to the same published snapshot (a job result and later
   `md_session_current` calls) share one flat encoding, built on the first
-  view; it is freed when the last of them is released, and a later handle
-  re-encodes on its first view.
+  view and found in O(1) through an address-keyed side index; it is freed
+  (and its index entry pruned) when the last of them is released, and a
+  later handle re-encodes on its first view.
   Hosts must not free or write them, keep them past release, or race
   `md_snapshot_release` against reads (the same rule as FEAS-006). Copy what
   the UI needs, then release (see the C smoke).
@@ -124,7 +125,9 @@ reports the newest failure the same way.
 Every entry point runs under `catch_unwind` and maps a panic to
 `MD_ERR_PANIC`; the registry recovers a poisoned lock. Build with the default
 `panic = "unwind"`; with `panic = "abort"` a core bug aborts the process
-instead (it still never unwinds into the host). A panic message reaches the
+instead (it still never unwinds into the host). ABI v1 has no field that
+reports the panic strategy, so hosts cannot query it; packaging phases must
+ship the default `unwind` build. A panic message reaches the
 process panic hook (normally stderr); core panic messages must not contain
 document contents.
 
@@ -201,10 +204,14 @@ not fit returns `MD_ERR_LIMIT`, which the session ceilings prevent in practice.
   against Rust. It then builds the shared library for its own profile and
   feature set into `target/markdown-ffi-smoke/<profile>-models<mask>` (the
   unhashed `deps/` cdylib can belong to another feature set), copies it to a
-  per-run directory (with an `@rpath` install name on macOS), compiles
+  per-run directory (with an `@rpath` install name on macOS; DT_RPATH via
+  `--disable-new-dtags` on Linux), compiles
   `tests/c/smoke.c` with the host C compiler (`-std=c11 -Wall -Wextra -Werror
   -pedantic`), compares every struct size and field offset with Rust and runs
-  the C smoke, which asserts the library's model mask matches the build: negotiation, v1 and (when built) v2 sessions, bulk copy, anchor
+  the C smoke with `LD_LIBRARY_PATH`, `DYLD_LIBRARY_PATH` and
+  `DYLD_FALLBACK_LIBRARY_PATH` removed. The smoke reports the file that
+  provides `md_abi_negotiate` via `dladdr`, which must canonicalize to the
+  staged copy, and asserts the library's model mask matches the build: negotiation, v1 and (when built) v2 sessions, bulk copy, anchor
   round trip, external change, cancellation, snapshot-outlives-session and
   200 lifecycle iterations ending with zero live handles.
 - `tools/check.py core` runs both in debug and release across default,

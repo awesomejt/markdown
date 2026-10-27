@@ -10,8 +10,12 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+/* dladdr/Dl_info are GNU extensions in glibc's <dlfcn.h>; macOS declares them
+   unconditionally under -std=c11. Define before any system header. */
+#define _GNU_SOURCE 1
 #include "markdown_core.h"
 
+#include <dlfcn.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -170,7 +174,24 @@ static void check_view(const md_snapshot_view *view) {
     CHECK(view->source_sha256.length == 64);
 }
 
+/* Print the file that provides md_abi_negotiate, so the test can prove the
+   staged library (not one from a search path) was loaded. ISO C has no
+   function-to-object pointer conversion, so copy the representation. */
+static int report_library(void) {
+    md_status (*symbol)(uint32_t, md_abi_info *) = md_abi_negotiate;
+    void *address = NULL;
+    memcpy(&address, &symbol, sizeof address);
+    Dl_info found;
+    if (!dladdr(address, &found) || found.dli_fname == NULL) {
+        fprintf(stderr, "dladdr failed\n");
+        return 1;
+    }
+    printf("library %s\n", found.dli_fname);
+    return 0;
+}
+
 static int run(uint32_t expected_models) {
+    if (report_library() != 0) failures++;
     md_abi_info info;
     memset(&info, 0, sizeof info);
     info.struct_size = sizeof info;

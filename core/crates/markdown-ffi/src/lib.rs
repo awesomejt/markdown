@@ -20,9 +20,10 @@ mod tests;
 use abi::*;
 use markdown_core::session::*;
 use markdown_core::*;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
+use std::hash::{BuildHasherDefault, DefaultHasher};
 use std::panic::{AssertUnwindSafe, catch_unwind};
-use std::sync::{Arc, Mutex, MutexGuard, OnceLock, PoisonError};
+use std::sync::{Arc, Mutex, MutexGuard, OnceLock, PoisonError, Weak};
 
 // ---------------------------------------------------------------------------
 // Handle registry
@@ -38,17 +39,27 @@ struct SnapshotEntry {
     snapshot: Arc<Snapshot>,
     flat: Encoding,
 }
+/// Side index from a snapshot's `Arc` address to its shared encoding. The
+/// `Weak<Snapshot>` keeps the address from being reused while the entry
+/// exists, and lookups still require `Arc::ptr_eq`; entries are pruned when
+/// the last handle sharing the encoding is released.
+struct EncodingRef {
+    snapshot: Weak<Snapshot>,
+    flat: Weak<OnceLock<Result<flat::Flat, md_status>>>,
+}
 struct Registry {
     next: u64,
     sessions: BTreeMap<u64, Arc<DocumentSession>>,
     jobs: BTreeMap<u64, Arc<JobEntry>>,
     snapshots: BTreeMap<u64, Arc<SnapshotEntry>>,
+    encodings: HashMap<usize, EncodingRef, BuildHasherDefault<DefaultHasher>>,
 }
 static REGISTRY: Mutex<Registry> = Mutex::new(Registry {
     next: 1,
     sessions: BTreeMap::new(),
     jobs: BTreeMap::new(),
     snapshots: BTreeMap::new(),
+    encodings: HashMap::with_hasher(BuildHasherDefault::new()),
 });
 
 /// Registry access survives a poisoned lock: every mutation is a single map
@@ -85,21 +96,55 @@ fn snapshot(handle: md_snapshot) -> Result<Arc<SnapshotEntry>, md_status> {
         .ok_or(MD_ERR_INVALID_HANDLE)
 }
 /// Register a new handle. Handles to the same `Arc<Snapshot>` (for example a
-/// job result and later `md_session_current` calls) share one encoding; the
-/// scan is linear in live snapshot handles, which hosts keep few.
+/// job result and later `md_session_current` calls) share one encoding,
+/// found in O(1) through the address-keyed side index.
 fn insert_snapshot(snapshot: Arc<Snapshot>) -> Result<md_snapshot, md_status> {
+    let key = Arc::as_ptr(&snapshot) as usize;
     let mut registry = registry();
-    let flat = registry
-        .snapshots
-        .values()
-        .find(|e| Arc::ptr_eq(&e.snapshot, &snapshot))
-        .map(|e| Arc::clone(&e.flat))
-        .unwrap_or_default();
     let id = registry.allocate()?;
+    let shared = registry.encodings.get(&key).and_then(|r| {
+        let same = r
+            .snapshot
+            .upgrade()
+            .is_some_and(|s| Arc::ptr_eq(&s, &snapshot));
+        same.then(|| r.flat.upgrade()).flatten()
+    });
+    let flat = match shared {
+        Some(flat) => flat,
+        None => {
+            let flat: Encoding = Arc::default();
+            registry.encodings.insert(
+                key,
+                EncodingRef {
+                    snapshot: Arc::downgrade(&snapshot),
+                    flat: Arc::downgrade(&flat),
+                },
+            );
+            flat
+        }
+    };
     registry
         .snapshots
         .insert(id, Arc::new(SnapshotEntry { snapshot, flat }));
     Ok(id)
+}
+/// Remove a snapshot handle, pruning the side index when no other handle
+/// shares its encoding. The entry is returned so it drops outside the lock.
+fn remove_snapshot(handle: md_snapshot) -> Option<Arc<SnapshotEntry>> {
+    let mut registry = registry();
+    let entry = registry.snapshots.remove(&handle)?;
+    // Each handle's entry holds one strong reference to its encoding.
+    if Arc::strong_count(&entry.flat) == 1 {
+        let key = Arc::as_ptr(&entry.snapshot) as usize;
+        if registry
+            .encodings
+            .get(&key)
+            .is_some_and(|r| std::ptr::eq(r.flat.as_ptr(), Arc::as_ptr(&entry.flat)))
+        {
+            registry.encodings.remove(&key);
+        }
+    }
+    Some(entry)
 }
 
 // ---------------------------------------------------------------------------
@@ -964,7 +1009,8 @@ pub extern "C" fn md_snapshot_release(snapshot: md_snapshot) -> md_status {
             return Ok(());
         }
         checkpoint();
-        let removed = registry().snapshots.remove(&snapshot);
-        removed.map(drop).ok_or(MD_ERR_INVALID_HANDLE)
+        remove_snapshot(snapshot)
+            .map(drop)
+            .ok_or(MD_ERR_INVALID_HANDLE)
     })
 }

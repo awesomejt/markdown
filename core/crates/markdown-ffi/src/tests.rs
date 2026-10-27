@@ -13,6 +13,7 @@ impl Drop for Serial {
     fn drop(&mut self) {
         if !std::thread::panicking() {
             assert_eq!(live(), (0, 0, 0), "handles leaked by this test");
+            assert!(registry().encodings.is_empty(), "encoding index not pruned");
         }
     }
 }
@@ -795,8 +796,24 @@ fn handles_to_one_snapshot_share_one_encoding() {
     // A different snapshot gets its own encoding (compared while both live).
     let other = publish(session, "# Other\n");
     assert_ne!(view(other).strings, b.strings);
+    assert_eq!(registry().encodings.len(), 2);
     assert_eq!(md_snapshot_release(current), MD_OK);
+    assert_eq!(registry().encodings.len(), 1, "last sharer pruned");
     assert_eq!(md_snapshot_release(other), MD_OK);
+    assert!(registry().encodings.is_empty());
+    // A new handle to an already released snapshot re-registers and shares.
+    let (mut again, mut twice) = (0, 0);
+    // SAFETY: valid pointers.
+    unsafe {
+        assert_eq!(md_session_current(session, &mut again), MD_OK);
+        assert_eq!(md_session_current(session, &mut twice), MD_OK);
+    }
+    assert_eq!(registry().encodings.len(), 1);
+    assert_eq!(view(again).strings, view(twice).strings);
+    assert_eq!(md_snapshot_release(again), MD_OK);
+    assert_eq!(registry().encodings.len(), 1, "one sharer remains");
+    assert_eq!(md_snapshot_release(twice), MD_OK);
+    assert!(registry().encodings.is_empty());
     assert_eq!(md_session_release(session), MD_OK);
 }
 

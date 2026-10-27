@@ -10,8 +10,10 @@
  * - Every struct passed in either direction starts with struct_size, which the
  *   caller sets to sizeof(type). ABI v1 rejects any other value with
  *   MD_ERR_STRUCT_SIZE.
- * - Every function returns an md_status, never unwinds and never aborts on a
- *   Rust panic (MD_ERR_PANIC). Outputs are zeroed (struct_size kept) before
+ * - Every function returns an md_status and never unwinds across the
+ *   boundary. In the default panic=unwind build a Rust panic returns
+ *   MD_ERR_PANIC; a library built with panic=abort aborts the process
+ *   instead (ABI v1 cannot report which). Outputs are zeroed (struct_size kept) before
  *   any other work and receive final values only on success, so they are
  *   zeroed on every failure. Exceptions: BUFFER_TOO_SMALL reports the needed
  *   length, and a VERSION_MISMATCH from md_abi_negotiate fills md_abi_info.
