@@ -35,6 +35,7 @@ Choosing a project license does not change third-party licenses.
 | libc | 0.2.191 | MIT OR Apache-2.0 | [crates.io](https://crates.io/crates/libc/0.2.191) |
 | litemap | 0.8.3 | Unicode-3.0 | [crates.io](https://crates.io/crates/litemap/0.8.3) |
 | markdown-core | 0.1.0 | Apache-2.0 | This repository, unpublished |
+| markdown-ffi | 0.1.0 | Apache-2.0 | This repository, unpublished |
 | memchr | 2.8.3 | Unlicense OR MIT | [crates.io](https://crates.io/crates/memchr/2.8.3) |
 | percent-encoding | 2.3.2 | MIT OR Apache-2.0 | [crates.io](https://crates.io/crates/percent-encoding/2.3.2) |
 | potential_utf | 0.1.6 | Unicode-3.0 | [crates.io](https://crates.io/crates/potential_utf/0.1.6) |
@@ -72,6 +73,10 @@ Choosing a project license does not change third-party licenses.
 | zerotrie | 0.2.5 | Unicode-3.0 | [crates.io](https://crates.io/crates/zerotrie/0.2.5) |
 | zerovec | 0.11.9 | Unicode-3.0 | [crates.io](https://crates.io/crates/zerovec/0.11.9) |
 | zerovec-derive | 0.11.7 | Unicode-3.0 | [crates.io](https://crates.io/crates/zerovec-derive/0.11.7) |
+
+CORE-006A adds the workspace crate markdown-ffi (the hand-written C ABI). It
+depends only on markdown-core and the already-pinned serde_json, so no package
+or license is added; the C header is hand-written, not generated (no cbindgen).
 
 CORE-003B2 adds url 2.5.8 only through opt-in feature `model-v2`. Its WHATWG
 parser/IDNA backend handles canonical external URLs without network access.

@@ -308,3 +308,38 @@ schema and fixtures. Do not silently reinterpret v1 fields or default formats.
 New adapters explicitly choose supported versions; facade negotiation remains
 CORE-006A. The v2 contract and explicit migration are in
 `specs/semantic-model/v2/README.md`; targets grant no I/O or URI activation.
+
+## D-021 — Snapshot-local node IDs with block anchors for the MVP
+
+**Date:** 2026-10-27
+
+**Status:** accepted by owner
+
+**Context:** The frozen [v1 contract](../specs/semantic-model/v1/README.md)
+says surviving semantic identities "should keep IDs across revisions", and
+`docs/Parsing.md` previously expected adapters to need reconciled IDs before
+relying on persistent node IDs. CORE-004A instead kept node IDs snapshot-local
+and added block-level session anchors, recording the discrepancy for the owner.
+
+**Decision:** For the MVP, node IDs stay snapshot-local, deterministic
+ordinals: the same bytes always produce the same IDs. Block-level session
+anchors (content fingerprint, neighbour context, intra-block offset) carry
+reading position across generations. Persistent cross-revision node IDs are
+deferred and will be revisited. This decision clarifies the v1/v2 "should"
+wording for the MVP; the frozen model READMEs are not edited.
+
+**Rationale:** Deterministic IDs keep session output identical to
+`parse_markdown`/goldens, avoid whole-tree matching cost and mis-match risk,
+and anchors are persistable values for relaunch restoration. The owner expects
+small impact: most documents are small and only visible rows are realized.
+
+**Consequences:** Native lists rebuild rows on reload; selection and
+assistive-technology focus must be re-found through anchors; caches key by
+content fingerprint, not node ID. Adapters must not persist node IDs.
+
+**Revisit trigger:** A platform B-phase accessibility or interaction check
+shows user impact, for example Narrator/VoiceOver/Orca focus jumping on
+reload or lost multi-block selection. The likely cheaper path is an
+anchor-based old-block to new-block mapping rather than full persistent IDs.
+The follow-up requirements are listed in
+[the session contract](../specs/session/README.md).

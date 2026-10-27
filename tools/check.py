@@ -43,6 +43,11 @@ def main() -> None:
         run(npm, "run", "lint:markdown")
         check_whitespace(os.environ.get("CHECK_BASE", ""), cwd=ROOT)
     if args.suite in ("core", "all"):
+        # The markdown-ffi C package smoke compiles against core/include with the
+        # host C compiler. It is mandatory where `cc` is standard (macOS/Linux).
+        # Windows always skips it until WIN-001B wires MSVC and the import library.
+        if sys.platform != "win32":
+            os.environ.setdefault("MD_REQUIRE_C_SMOKE", "1")
         run("cargo", "fmt", "--all", "--", "--check")
         run("cargo", "clippy", "--workspace", "--all-targets", "--all-features", "--locked", "--", "-D", "warnings")
         run("cargo", "test", "--workspace", "--locked")

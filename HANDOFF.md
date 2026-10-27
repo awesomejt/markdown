@@ -1,23 +1,35 @@
 # Agent Session and Platform Handoff
 
-Updated: 2026-10-27, CORE-004A sessions on `feat/core-004a-sessions`.
-Source baseline: `752912a` on main (PR #5 merge) plus this phase's changes. Preserve intended
+Updated: 2026-10-27, CORE-006A C ABI facade on `feat/core-006a-ffi-facade`.
+Source baseline: `3b1eb4e` on main (PR #6 merge) plus this phase's changes. Preserve intended
 source, lock/spec/golden files, docs and state together. Never transfer caches,
 environments, build products, private runtime state or user documents.
 
-## Resume here — CORE-004A sessions
+## Resume here — CORE-006A C ABI facade
 
-PR #5 merged as `752912a`; the CORE-003B2/B2F state closeout travels on this
-branch. CORE-004A adds `markdown_core::session` per
-[the session contract](specs/session/README.md): `Arc` snapshots, strictly
-increasing generations, single-point latest-wins publication, cooperative
-`CancellationToken` polling (every 256 events and between phases, identical
-uncancelled output), adapter-reported `Modified`/`Deleted`/`Unreadable` state
-with opaque revision-token and exact-byte deduplication, and block anchors
-resolved as exact/relocated/nearest/lost. No I/O, threads, FFI, new dependency
-or wire change. Node IDs stay snapshot-local; anchors carry cross-generation
-correspondence (see the contract for the identity discrepancy to confirm).
-Next: phase PR, `/grok review`, owner-authorized merge; then CORE-005A/006A.
+PR #6 (CORE-004A sessions) merged as `3b1eb4e`; its state closeout travels on
+this branch. The owner accepted snapshot-local node IDs with block anchors for
+the MVP (D-021). CORE-006A adds crate `core/crates/markdown-ffi` and the
+hand-written header `core/include/markdown_core.h` per
+[the C ABI contract](specs/ffi/README.md): `md_abi_negotiate` with exact
+struct sizes, per-session v1/v2 model choice, nonzero registry handles with one
+release each (double release detected), typed `md_status` codes and static
+names, `catch_unwind` on every entry point, session/job/snapshot functions,
+anchor value copies and a bulk read-only snapshot view (fixed-size records
+plus one string table) that round-trips the full v1/v2 model. No new package.
+`tools/check.py core` runs the extern tests and a host-`cc` C smoke with layout
+comparison; it is required on macOS/Linux and skipped on Windows.
+Next: phase PR, `/grok review`, owner-authorized merge; then each host's 001B
+consumer (Swift/AppKit, C# Native AOT, gtk-rs) validates CORE-006 on its host.
+
+## CORE-004A sessions (merged in PR #6)
+
+`markdown_core::session` per [the session contract](specs/session/README.md):
+`Arc` snapshots, strictly increasing generations, single-point latest-wins
+publication, cooperative `CancellationToken` polling, adapter-reported
+`Modified`/`Deleted`/`Unreadable` state with opaque revision-token and
+exact-byte deduplication, and block anchors resolved as
+exact/relocated/nearest/lost. Node IDs stay snapshot-local (D-021).
 
 ## PR #5 review (historical)
 

@@ -46,6 +46,11 @@ panic containment, native source/PDB debugging and normal-DLL package launches.
 It does not substitute for Swift/AppKit and GTK package tests, mixed managed/Rust
 IDE stepping, full semantic conformance or clean-machine deployment.
 
+CORE-006A's [C ABI](../specs/ffi/README.md) checks run in `tools/check.py core`:
+extern-function lifetime/error/panic tests and a current-host C package smoke
+with header layout comparison. Swift, C# Native AOT and gtk-rs consumers remain
+the platform 001B evidence.
+
 ### Native platform UI changes
 
 - Platform-native format/lint/static-analysis rules selected at GATE-001.

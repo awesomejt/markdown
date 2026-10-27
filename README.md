@@ -19,7 +19,8 @@ CORE-003A adds [bounded basic parsing](docs/Parsing.md) and conservative safety
 classification. CORE-003B1 adds [bounded typed front matter](docs/Front-Matter.md).
 CORE-003B2 adds opt-in [v2 references and URI targets](specs/semantic-model/v2/README.md)
 while preserving default v1. CORE-004A adds [document sessions](specs/session/README.md)
-with generations, cancellation, external-change state and anchors. Remaining extension conformance and native application shells remain
+with generations, cancellation, external-change state and anchors. CORE-006A
+adds the hand-written [C ABI](specs/ffi/README.md) facade. Remaining extension conformance and native application shells remain
 separate phases; no working reader is delivered by the core alone. The accepted
 [implementation baseline](docs/Implementation-Baseline.md) and
 [architecture](docs/Architecture.md) preserve the required native evidence.
