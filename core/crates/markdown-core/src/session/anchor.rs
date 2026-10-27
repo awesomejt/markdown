@@ -266,22 +266,28 @@ impl Snapshot {
         }
         let new_len = self.source().len() as u64;
         let best = |candidates: &mut dyn Iterator<Item = (usize, u32)>| {
-            candidates
-                .max_by(|(a, sa), (b, sb)| {
-                    let (da, db) = (
-                        distance(anchor, index.blocks[*a].start, new_len),
-                        distance(anchor, index.blocks[*b].start, new_len),
-                    );
-                    // Highest score, then nearest proportional position, then earliest.
-                    sa.cmp(sb).then(db.cmp(&da)).then(b.cmp(a))
-                })
-                .map(|(i, _)| i)
+            candidates.max_by(|(a, sa), (b, sb)| {
+                let (da, db) = (
+                    distance(anchor, index.blocks[*a].start, new_len),
+                    distance(anchor, index.blocks[*b].start, new_len),
+                );
+                // Highest score, then nearest proportional position, then earliest.
+                sa.cmp(sb).then(db.cmp(&da)).then(b.cmp(a))
+            })
         };
+        // Only a real shared neighbour counts; absent == absent earns nothing.
+        let same = |a: Option<u64>, b: Option<u64>| a.is_some() && a == b;
+        // Context score: shared predecessor/successor (2 each), same heading (1).
         let context = |i: usize| {
             let (previous, next) = index.neighbours(i);
-            (previous == anchor.previous, next == anchor.next)
+            let (p, n) = (same(previous, anchor.previous), same(next, anchor.next));
+            let section = same(index.blocks[i].section, anchor.section);
+            (
+                p || n,
+                2 * u32::from(p) + 2 * u32::from(n) + u32::from(section),
+            )
         };
-        // 1. Identical content.
+        // 1. Identical content; occurrence only breaks context ties.
         let exact = best(
             &mut index
                 .blocks
@@ -289,17 +295,14 @@ impl Snapshot {
                 .enumerate()
                 .filter(|(_, b)| b.kind == anchor.kind && b.fingerprint == anchor.fingerprint)
                 .map(|(i, b)| {
-                    let (p, n) = context(i);
-                    let score = 2 * u32::from(p)
-                        + 2 * u32::from(n)
-                        + u32::from(b.occurrence == anchor.occurrence);
-                    (i, score)
+                    (
+                        i,
+                        2 * context(i).1 + u32::from(b.occurrence == anchor.occurrence),
+                    )
                 }),
-        );
-        if let Some(i) = exact {
-            return Ok(Some(self.resolved(i, anchor.offset, AnchorMatch::Exact)));
-        }
-        // 2. Same kind in the same neighbourhood, excluding the neighbours themselves.
+        )
+        .map(|(i, score)| (i, score / 2));
+        // 2. Same kind with a shared neighbour, excluding the old neighbours.
         let relocated = best(&mut index.blocks.iter().enumerate().filter_map(|(i, b)| {
             if b.kind != anchor.kind
                 || Some(b.fingerprint) == anchor.previous
@@ -307,15 +310,26 @@ impl Snapshot {
             {
                 return None;
             }
-            let (p, n) = context(i);
-            (p || n).then_some((i, u32::from(p) + u32::from(n)))
+            let (neighbour, score) = context(i);
+            neighbour.then_some((i, score))
         }));
-        if let Some(i) = relocated {
-            return Ok(Some(self.resolved(
-                i,
-                anchor.offset,
-                AnchorMatch::Relocated,
-            )));
+        // Identical content wins unless an edited block sits in a strictly
+        // better-matching context (for example a duplicate elsewhere).
+        match (exact, relocated) {
+            (Some((i, e)), Some((_, r))) if e >= r => {
+                return Ok(Some(self.resolved(i, anchor.offset, AnchorMatch::Exact)));
+            }
+            (Some((i, _)), None) => {
+                return Ok(Some(self.resolved(i, anchor.offset, AnchorMatch::Exact)));
+            }
+            (_, Some((i, _))) => {
+                return Ok(Some(self.resolved(
+                    i,
+                    anchor.offset,
+                    AnchorMatch::Relocated,
+                )));
+            }
+            (None, None) => {}
         }
         // 3. Nearest survivor: after the old predecessor, the old successor,
         // the enclosing heading, then the proportional source position.
@@ -329,6 +343,7 @@ impl Snapshot {
                     .filter(|(_, b)| b.fingerprint == fingerprint)
                     .map(|(i, _)| (i, 0)),
             )
+            .map(|(i, _)| i)
         };
         let nearest = find(anchor.previous)
             .map(|i| (i + 1).min(index.blocks.len() - 1))

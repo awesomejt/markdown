@@ -112,8 +112,13 @@ pub enum ChangeDisposition {
     Unchanged,
     /// Read fresh bytes and [`submit`](DocumentSession::submit) them.
     ReadRequired,
+    /// The token matches the newest, still-running submission at this
+    /// generation; no read is needed and that job is not superseded.
+    Pending(Generation),
     /// Availability change recorded at this generation; in-flight work was
     /// superseded. The last published snapshot remains readable but stale.
+    /// Repeating an already-recorded state with nothing in flight returns the
+    /// existing generation without consuming a new one.
     Recorded(Generation),
 }
 
@@ -232,7 +237,8 @@ pub struct SessionStatus {
     /// represent (its own generation, or a later deduplicated submission).
     pub confirmed: Option<Generation>,
     pub availability: Availability,
-    /// The latest submission, while it is neither resolved nor cancelled.
+    /// The latest submission, while it is neither resolved nor cancelled
+    /// (by the session, its own token or supersession).
     pub pending: Option<Generation>,
     /// Failure of the newest resolved submission, cleared by a later success.
     pub failure: Option<(Generation, SessionError)>,
@@ -275,9 +281,14 @@ struct Shared {
     options: SessionOptions,
     state: Mutex<State>,
 }
+struct Inflight {
+    generation: u64,
+    cancel: CancellationToken,
+    token: Option<RevisionToken>,
+}
 struct State {
     last: u64,
-    inflight: Option<(u64, CancellationToken)>,
+    inflight: Option<Inflight>,
     published: Option<Arc<Snapshot>>,
     confirmed: u64,
     availability: Availability,
@@ -291,8 +302,8 @@ impl State {
             .checked_add(1)
             .ok_or(SessionError::GenerationExhausted)?;
         self.last = next;
-        if let Some((_, token)) = self.inflight.take() {
-            token.cancel();
+        if let Some(inflight) = self.inflight.take() {
+            inflight.cancel.cancel();
         }
         Ok(next)
     }
@@ -300,7 +311,7 @@ impl State {
         if self
             .inflight
             .as_ref()
-            .is_some_and(|(g, _)| *g == generation)
+            .is_some_and(|i| i.generation == generation)
         {
             self.inflight = None;
         }
@@ -313,8 +324,8 @@ fn lock(state: &Mutex<State>) -> MutexGuard<'_, State> {
 impl Drop for Shared {
     fn drop(&mut self) {
         let state = self.state.get_mut().unwrap_or_else(PoisonError::into_inner);
-        if let Some((_, token)) = state.inflight.take() {
-            token.cancel();
+        if let Some(inflight) = state.inflight.take() {
+            inflight.cancel.cancel();
         }
     }
 }
@@ -361,7 +372,11 @@ impl DocumentSession {
         let mut state = lock(&self.shared.state);
         let generation = state.bump()?;
         let cancel = CancellationToken::new();
-        state.inflight = Some((generation, cancel.clone()));
+        state.inflight = Some(Inflight {
+            generation,
+            cancel: cancel.clone(),
+            token: token.clone(),
+        });
         Ok(Job {
             generation,
             cancel,
@@ -378,9 +393,18 @@ impl DocumentSession {
         let mut state = lock(&self.shared.state);
         let availability = match change {
             ExternalChange::Modified { token } => {
-                let known = state.availability == Availability::Available
-                    && token.is_some()
-                    && token == state.accepted;
+                if token.is_none() {
+                    return Ok(ChangeDisposition::ReadRequired);
+                }
+                if let Some(inflight) = state
+                    .inflight
+                    .as_ref()
+                    .filter(|i| !i.cancel.is_cancelled() && i.token == token)
+                {
+                    return Ok(ChangeDisposition::Pending(Generation(inflight.generation)));
+                }
+                let known =
+                    state.availability == Availability::Available && token == state.accepted;
                 return Ok(if known {
                     ChangeDisposition::Unchanged
                 } else {
@@ -390,6 +414,10 @@ impl DocumentSession {
             ExternalChange::Deleted => Availability::Deleted,
             ExternalChange::Unreadable(reason) => Availability::Unreadable(reason),
         };
+        // Duplicate notices: nothing changed since the state was recorded.
+        if state.availability == availability && state.inflight.is_none() && state.last > 0 {
+            return Ok(ChangeDisposition::Recorded(Generation(state.last)));
+        }
         let generation = state.bump()?;
         state.availability = availability;
         state.accepted = None;
@@ -400,9 +428,10 @@ impl DocumentSession {
     pub fn cancel(&self) -> bool {
         let mut state = lock(&self.shared.state);
         match state.inflight.take() {
-            Some((_, token)) => {
-                token.cancel();
-                true
+            Some(inflight) => {
+                let live = !inflight.cancel.is_cancelled();
+                inflight.cancel.cancel();
+                live
             }
             None => false,
         }
@@ -419,7 +448,11 @@ impl DocumentSession {
             published: state.published.clone(),
             confirmed: generation(state.confirmed),
             availability: state.availability,
-            pending: state.inflight.as_ref().map(|(g, _)| Generation(*g)),
+            pending: state
+                .inflight
+                .as_ref()
+                .filter(|i| !i.cancel.is_cancelled())
+                .map(|i| Generation(i.generation)),
             failure: state.failure.clone(),
         }
     }
@@ -588,6 +621,47 @@ impl Drop for Job {
     fn drop(&mut self) {
         if let Some(shared) = self.shared.upgrade() {
             lock(&shared.state).clear_inflight(self.generation);
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn generation_exhaustion_leaves_state_unchanged() {
+        let session =
+            DocumentSession::new(DocumentId("doc".into()), SessionOptions::default()).unwrap();
+        let job = session.submit(b"kept".to_vec(), None).unwrap();
+        lock(&session.shared.state).last = u64::MAX;
+        // The in-flight job now holds a stale generation; reseed it as newest.
+        let mut job = job;
+        job.generation = u64::MAX;
+        lock(&session.shared.state)
+            .inflight
+            .as_mut()
+            .unwrap()
+            .generation = u64::MAX;
+        assert_eq!(
+            session.submit(b"x".to_vec(), None).err(),
+            Some(SessionError::GenerationExhausted)
+        );
+        assert_eq!(
+            session.external_change(ExternalChange::Deleted).err(),
+            Some(SessionError::GenerationExhausted)
+        );
+        let status = session.status();
+        assert_eq!(status.latest, Some(Generation(u64::MAX)));
+        assert_eq!(status.pending, Some(Generation(u64::MAX)));
+        assert_eq!(status.availability, Availability::Available);
+        assert!(!job.cancellation_token().is_cancelled());
+        match job.run() {
+            Outcome::Published(snapshot) => {
+                assert_eq!(snapshot.generation(), Generation(u64::MAX));
+                assert_eq!(snapshot.source(), "kept");
+            }
+            other => panic!("{other:?}"),
         }
     }
 }
