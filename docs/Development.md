@@ -51,6 +51,8 @@ and 4,096 generated metadata cases; see [Front-Matter.md](Front-Matter.md).
 Feature `model-v2` adds v2 reference/provenance/URI, source-forgery and migration
 regressions plus 8,192 generated inputs. Core checks run default, model-v2-only
 and all-feature configurations; schemas/source goldens are checked independently.
+CORE-004A adds session generation/latest-wins race, cancellation, lifetime,
+external-change and anchor regressions ([session contract](../specs/session/README.md)).
 These suites do not prove native UI conformance. Regenerate the schema deliberately with:
 
 ```sh

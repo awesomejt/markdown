@@ -76,7 +76,9 @@ Each application owns:
 - Process/window/scene lifecycle and state restoration.
 - Native file/folder selection, permission persistence, and file identity.
 - File coordination, change watching, network-volume/provider behavior.
-- Document session scheduling, cancellation, and stale-result rejection.
+- Document session scheduling and worker threads; the portable
+  [session](../specs/session/README.md) supplies generations, cancellation
+  tokens, stale-result rejection and anchors.
 - Native text/block layout, selection, accessibility, links, images, and code.
 - Outline/search/properties UI and platform conventions.
 - Print, share/export, clipboard, drag/drop, settings, and recent items.
@@ -97,7 +99,9 @@ budgets into the semantic layer; they receive values and diagnostics back.
 5. The session drops obsolete generations and publishes the newest snapshot.
 6. The native renderer presents semantic blocks lazily/incrementally.
 7. External changes trigger a coordinated reread and restore position using a
-   stable block ID plus intra-block offset.
+   block anchor (content fingerprint, neighbour context and intra-block offset)
+   resolved against the new snapshot; node IDs are snapshot-local
+   ([session contract](../specs/session/README.md)).
 
 ## Native rendering
 

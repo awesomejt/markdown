@@ -107,7 +107,8 @@ parser corrects v1 destination spans on blockquote continuation lines
 The
 [full dependency inventory](Dependencies.md) records 60 all-feature packages,
 reviewed Unicode notices and the footprint tradeoff. Parser/URL/provenance proof
-work has no hard deadline/cancellation guarantee; CORE-004A and B4 retain those
+work has no hard deadline guarantee; CORE-004A adds cooperative cancellation
+between parser events and phases, not inside proof scans; B4 retains timing
 gates. No new software installation is needed beyond normal Cargo dependency
 fetching on the documented toolchain.
 

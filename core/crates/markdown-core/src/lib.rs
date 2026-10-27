@@ -2,18 +2,24 @@
 //!
 //! Basic Markdown parsing and validation perform no file access, UI or FFI calls.
 //! Use [`Document::new`] or [`Document::from_json`] to obtain validated snapshots.
+//! [`session`] adds generations, cancellation, external-change state and anchors.
 #![forbid(unsafe_code)]
 
+mod cancel;
 mod metadata;
 mod model;
 mod parse;
+pub mod session;
 #[cfg(feature = "model-v2")]
 pub mod v2;
 mod validate;
+pub use cancel::{CancellableParseError, CancellationToken, Cancelled};
 pub use model::*;
+pub use parse::{
+    CANCEL_CHECK_EVENTS, ParseError, ParseLimits, parse_markdown, parse_markdown_cancellable,
+};
 #[cfg(feature = "model-v2")]
-pub use parse::parse_markdown_v2;
-pub use parse::{ParseError, ParseLimits, parse_markdown};
+pub use parse::{parse_markdown_v2, parse_markdown_v2_cancellable};
 pub use validate::{Document, ModelError, ModelLimits};
 
 /// Generated schema for tooling; no schema dependency is enabled by default.

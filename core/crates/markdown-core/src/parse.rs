@@ -1,4 +1,5 @@
-//! Bounded basic parser. Extension conformance and session identity are separate phases.
+//! Bounded basic parser. Extension conformance is a separate phase; sessions,
+//! generations and anchors live in `session`.
 use crate::*;
 use pulldown_cmark::{CodeBlockKind, Event, LinkType, Options, Parser, Tag, TagEnd};
 use std::collections::{BTreeMap, BTreeSet};
@@ -88,7 +89,15 @@ pub fn parse_markdown(
     revision_id: RevisionId,
     limits: ParseLimits,
 ) -> Result<Document, ParseError> {
-    let b = build(source, document_id, revision_id, limits, false)?;
+    let b = build(
+        source,
+        document_id,
+        revision_id,
+        limits,
+        false,
+        &Uninterrupted,
+    )
+    .map_err(Stop::never)?;
     finish_v1(b.doc, source, limits)
 }
 #[cfg(feature = "model-v2")]
@@ -98,19 +107,108 @@ pub fn parse_markdown_v2(
     revision_id: RevisionId,
     limits: ParseLimits,
 ) -> Result<crate::v2::Document, ParseError> {
-    let b = build(source, document_id, revision_id, limits, true)?;
+    let b = build(
+        source,
+        document_id,
+        revision_id,
+        limits,
+        true,
+        &Uninterrupted,
+    )
+    .map_err(Stop::never)?;
     finish_v2(b, source, limits)
 }
-fn build<'a>(
+
+/// [`parse_markdown`] with cooperative cancellation. The token is polled before
+/// work starts, every [`CANCEL_CHECK_EVENTS`] parser events and between phases.
+/// Output is identical to [`parse_markdown`] when the token is never cancelled.
+/// The upstream parser's initial block scan cannot be interrupted; it is bounded
+/// by `limits.model.max_source_bytes`.
+pub fn parse_markdown_cancellable(
+    source: &str,
+    document_id: DocumentId,
+    revision_id: RevisionId,
+    limits: ParseLimits,
+    token: &CancellationToken,
+) -> Result<Document, CancellableParseError> {
+    let b = build(source, document_id, revision_id, limits, false, token)?;
+    token.check()?;
+    Ok(finish_v1(b.doc, source, limits)?)
+}
+/// [`parse_markdown_v2`] with the same cancellation contract as
+/// [`parse_markdown_cancellable`].
+#[cfg(feature = "model-v2")]
+pub fn parse_markdown_v2_cancellable(
+    source: &str,
+    document_id: DocumentId,
+    revision_id: RevisionId,
+    limits: ParseLimits,
+    token: &CancellationToken,
+) -> Result<crate::v2::Document, CancellableParseError> {
+    let b = build(source, document_id, revision_id, limits, true, token)?;
+    token.check()?;
+    Ok(finish_v2(b, source, limits)?)
+}
+
+/// Parser events between cancellation polls; a bounded constant, not a budget.
+pub const CANCEL_CHECK_EVENTS: usize = 256;
+
+/// Interruption source polled by the builder. The uninterrupted form has an
+/// uninhabited error so the default entry points cannot observe cancellation.
+trait Checkpoint {
+    type Interrupt;
+    fn poll(&self) -> Result<(), Self::Interrupt>;
+}
+struct Uninterrupted;
+impl Checkpoint for Uninterrupted {
+    type Interrupt = std::convert::Infallible;
+    fn poll(&self) -> Result<(), Self::Interrupt> {
+        Ok(())
+    }
+}
+impl Checkpoint for CancellationToken {
+    type Interrupt = Cancelled;
+    fn poll(&self) -> Result<(), Cancelled> {
+        self.check()
+    }
+}
+enum Stop<I> {
+    Parse(ParseError),
+    Interrupted(I),
+}
+impl<I> From<ParseError> for Stop<I> {
+    fn from(error: ParseError) -> Self {
+        Self::Parse(error)
+    }
+}
+impl Stop<std::convert::Infallible> {
+    fn never(self) -> ParseError {
+        match self {
+            Self::Parse(error) => error,
+            Self::Interrupted(never) => match never {},
+        }
+    }
+}
+impl From<Stop<Cancelled>> for CancellableParseError {
+    fn from(stop: Stop<Cancelled>) -> Self {
+        match stop {
+            Stop::Parse(error) => Self::Parse(error),
+            Stop::Interrupted(Cancelled) => Self::Cancelled,
+        }
+    }
+}
+fn build<'a, C: Checkpoint>(
     source: &'a str,
     document_id: DocumentId,
     revision_id: RevisionId,
     limits: ParseLimits,
     references: bool,
-) -> Result<Builder<'a>, ParseError> {
+    checkpoint: &C,
+) -> Result<Builder<'a>, Stop<C::Interrupt>> {
     if source.len() > limits.model.max_source_bytes {
-        return Err(ParseError::SourceLimit);
+        return Err(ParseError::SourceLimit.into());
     }
+    checkpoint.poll().map_err(Stop::Interrupted)?;
     let mut b = Builder {
         source,
         limits,
@@ -153,7 +251,7 @@ fn build<'a>(
                 }
                 b.doc.metadata.properties = properties;
             }
-            Err(crate::metadata::Error::TextLimit) => return Err(ParseError::TextLimit),
+            Err(crate::metadata::Error::TextLimit) => return Err(ParseError::TextLimit.into()),
             Err(error) => {
                 let code = match error {
                     crate::metadata::Error::Duplicate => "front_matter_duplicate",
@@ -164,6 +262,7 @@ fn build<'a>(
             }
         }
     }
+    checkpoint.poll().map_err(Stop::Interrupted)?;
     let options =
         Options::ENABLE_TABLES | Options::ENABLE_TASKLISTS | Options::ENABLE_STRIKETHROUGH;
     // Deliberately no YAML metadata mode (D-015), HTML renderer, smart punctuation,
@@ -174,7 +273,10 @@ fn build<'a>(
     let mut covered: Vec<Range<usize>> = Vec::new();
     while let Some((event, range)) = events.next() {
         if count >= limits.max_events {
-            return Err(ParseError::EventLimit);
+            return Err(ParseError::EventLimit.into());
+        }
+        if count.is_multiple_of(CANCEL_CHECK_EVENTS) {
+            checkpoint.poll().map_err(Stop::Interrupted)?;
         }
         count += 1;
         if references
@@ -212,9 +314,10 @@ fn build<'a>(
         b.event(event, range.start + offset..range.end + offset, definition)?;
     }
     if !b.stack.is_empty() || b.capture.is_some() {
-        return Err(ParseError::SourceMapping);
+        return Err(ParseError::SourceMapping.into());
     }
     if references {
+        checkpoint.poll().map_err(Stop::Interrupted)?;
         let body = &source[offset..];
         for r in shadowed_definitions(body, events.reference_definitions(), covered, options) {
             b.diagnostic(

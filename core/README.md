@@ -6,8 +6,10 @@ validation and schema/golden checks. CORE-003A adds bounded basic parsing and
 conservative safety classification; see [Parsing.md](../docs/Parsing.md).
 CORE-003B1 adds [bounded typed front matter](../docs/Front-Matter.md) without a
 new dependency or wire schema. Invalid/unsupported metadata retains source.
-It does not reconcile IDs across revisions, implement sessions/search, expose
-C ABI functions or render UI.
+CORE-004A adds [document sessions](../specs/session/README.md): immutable
+`Arc` snapshots, generations, latest-wins publication, cooperative cancellation,
+typed external-change state and anchors, with no I/O or threads. Node IDs stay
+snapshot-local. It does not implement search, expose C ABI functions or render UI.
 Those remain separate phases. Feasibility crates are not workspace dependencies.
 
 Feature `model-v2` adds [reference provenance and URI targets](../specs/semantic-model/v2/README.md)
