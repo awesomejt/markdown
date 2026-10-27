@@ -17,7 +17,12 @@ design belong in `docs/` or `agents/`; runtime transcripts do not belong here.
   approval is inferred. Its supported state closeout travels in this branch.
 - CORE-003B retains B1 metadata, B2 references/URI, B3 other extension semantics
   and B4 conformance/fuzz/performance with original aggregate/native gates.
-- Selected: CORE-003B2 on `feat/core-003b2-references-uri`. Owner selected
+- Status 2026-10-27: PR #5 (B2/B2F) merged as `752912a`. CORE-004A is in
+  progress on `feat/core-004a-sessions`: `markdown_core::session` adds `Arc`
+  snapshots, generations, latest-wins publication, cooperative cancellation,
+  no-I/O external-change state and block anchors (specs/session/README.md).
+  Node IDs remain snapshot-local; anchors carry cross-generation identity.
+- Previously selected: CORE-003B2 on `feat/core-003b2-references-uri`. Owner selected
   additive opt-in model v2 (D-020), preserving v1 APIs/decoder/schema/goldens.
   Feature `model-v2` exposes `parse_markdown_v2` and `v2::Document`: explicit
   reference/inline source provenance, source-backed validation and typed URI

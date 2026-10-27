@@ -76,7 +76,9 @@ Each application owns:
 - Process/window/scene lifecycle and state restoration.
 - Native file/folder selection, permission persistence, and file identity.
 - File coordination, change watching, network-volume/provider behavior.
-- Document session scheduling, cancellation, and stale-result rejection.
+- Document session scheduling and worker threads; the portable
+  [session](../specs/session/README.md) supplies generations, cancellation
+  tokens, stale-result rejection and anchors.
 - Native text/block layout, selection, accessibility, links, images, and code.
 - Outline/search/properties UI and platform conventions.
 - Print, share/export, clipboard, drag/drop, settings, and recent items.

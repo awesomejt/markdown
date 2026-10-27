@@ -5,8 +5,9 @@ CORE-003A added `parse_markdown(source, document_id, revision_id, limits)` to
 structural `ParseError`. Source is exact UTF-8 supplied by the caller. The core
 performs no filesystem, network, URI activation, rendering or process calls.
 The [model contract](../specs/semantic-model/v1/README.md) remains frozen and
-unchanged. Snapshot IDs are deterministic ordinals; CORE-004A must reconcile
-identities across revisions before an adapter relies on persistent node IDs.
+unchanged. Snapshot IDs are deterministic ordinals and are not persistent
+across revisions; CORE-004A [sessions](../specs/session/README.md) provide
+block-level cross-generation correspondence through anchors instead.
 
 ## Opt-in v2
 
@@ -135,10 +136,12 @@ have temporary/spare capacity; static diagnostics and IDs have additional
 bounded overhead. Model validation independently verifies the result; wire
 limits apply to decoding, not to serialized output size.
 
-Errors never echo source, destinations or caller identifiers. No deadline,
-mid-parse cancellation or incremental update is promised in this phase;
-CORE-004A owns session/generation cancellation. Host applications must schedule
-parsing away from the UI thread. CORE-003B owns hostile-input fuzz/property
+Errors never echo source, destinations or caller identifiers. No deadline or
+incremental update is promised. CORE-004A adds `parse_markdown_cancellable` and
+`parse_markdown_v2_cancellable`, which poll a cooperative token every 256 events
+and between phases with otherwise identical output; the upstream block scan and
+final validation are not interruptible ([session contract](../specs/session/README.md)).
+Host applications must schedule parsing away from the UI thread. CORE-003B owns hostile-input fuzz/property
 coverage and measured parser time/memory budgets; native launch/scroll/memory
 acceptance remains in platform phases.
 

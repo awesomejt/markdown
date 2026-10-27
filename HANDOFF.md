@@ -1,11 +1,25 @@
 # Agent Session and Platform Handoff
 
-Updated: 2026-10-27, CORE-003B1 merged closeout and CORE-003B2 opt-in v2.
-Source baseline: `0ce353f` on main plus this phase's changes. Preserve intended
+Updated: 2026-10-27, CORE-004A sessions on `feat/core-004a-sessions`.
+Source baseline: `752912a` on main (PR #5 merge) plus this phase's changes. Preserve intended
 source, lock/spec/golden files, docs and state together. Never transfer caches,
 environments, build products, private runtime state or user documents.
 
-## PR #5 review and next pass
+## Resume here — CORE-004A sessions
+
+PR #5 merged as `752912a`; the CORE-003B2/B2F state closeout travels on this
+branch. CORE-004A adds `markdown_core::session` per
+[the session contract](specs/session/README.md): `Arc` snapshots, strictly
+increasing generations, single-point latest-wins publication, cooperative
+`CancellationToken` polling (every 256 events and between phases, identical
+uncancelled output), adapter-reported `Modified`/`Deleted`/`Unreadable` state
+with opaque revision-token and exact-byte deduplication, and block anchors
+resolved as exact/relocated/nearest/lost. No I/O, threads, FFI, new dependency
+or wire change. Node IDs stay snapshot-local; anchors carry cross-generation
+correspondence (see the contract for the identity discrepancy to confirm).
+Next: phase PR, `/grok review`, owner-authorized merge; then CORE-005A/006A.
+
+## PR #5 review (historical)
 
 The owner asked for the [Grok review](https://github.com/awesomejt/markdown/pull/5#pullrequestreview-5671367164)
 findings to be fixed on the PR #5 branch before the authorized merge, so the
