@@ -17,11 +17,12 @@ boundaries, KMP matching with a `max_matches` budget, `truncated` flag and
 cancellation; word count by a simplified UAX #29 rule (one word per CJK
 ideograph); intro plus per-heading own/cumulative timing at 160 wpm (60–600),
 matching markdown-viewer `b881034` defaults/exclusions. No new dependency, no
-model/ABI change. FFI exposure is deliberately split out: ABI v1 cannot report
-new struct sizes in `md_abi_info` or count new handle types in
-`md_live_handles`, so the owner should choose the additive-growth rule first.
-Next: phase PR, `/grok review`, owner-authorized merge; then the FFI follow-up
-before each platform's 001F find UI.
+model/ABI change. The owner split FFI exposure into CORE-005A2 under D-022
+(ABI v1 grows by new functions only, filling caller-owned arrays; no new
+handle types or changes to existing items) and froze the PR #7 flat view as
+an ABI v1 representation (D-023). Independent review findings 1–8 are fixed
+on this branch. Next: phase PR, `/grok review`, owner-authorized merge; then
+CORE-005A2 before each platform's 001F find UI.
 
 ## CORE-006A C ABI facade (merged in PR #7)
 

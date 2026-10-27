@@ -9,7 +9,7 @@ over one validated [v1](../semantic-model/v1/README.md) or
 locale data, wire-model change or new dependency. V1/v2 APIs, schemas and
 goldens are unchanged.
 
-Out of scope here: C ABI exposure (proposed as a follow-up phase, below),
+Out of scope here: C ABI exposure (CORE-005A2, owner-approved split, below),
 workspace/multi-file search (CORE-005B) and native find UI, highlighting and
 navigation commands (each platform's 001F phase).
 
@@ -257,20 +257,16 @@ all-feature builds:
 - Inclusion rules, own and cumulative sections, rounding and rate bounds.
 - Word and section goldens for the corpus.
 
-## Proposals for the owner
+## Decided follow-up and open proposals
 
-1. **C ABI exposure (follow-up phase, proposed as CORE-005A2 before 001F):**
-   ABI v1 can grow additively with new functions and new `struct_size`-checked
-   structs. For example, `md_snapshot_find` could fill a caller array of
-   fixed-size match and segment records with a count, a `truncated` flag and
-   `MD_ERR_BUFFER_TOO_SMALL` sizing, and `md_snapshot_read_stats` could fill
-   section records. Two v1 limits need an owner decision first:
-   - `md_abi_info` cannot report new struct sizes without changing its own
-     size.
-   - `md_live_handles` cannot count a new result-handle type.
-
-   Caller-owned buffers avoid a new handle type. Without a cancel handle, FFI
-   find would be bounded only by `max_matches` and the snapshot limits.
+1. **C ABI exposure** is decided: the owner split it into CORE-005A2 under
+   [D-022](../../agents/Decisions.md). ABI v1 grows only by new functions that
+   fill caller-owned arrays (for example `md_snapshot_find` and
+   `md_snapshot_read_stats` over a snapshot handle). Each new record struct
+   has a header size constant checked through `struct_size`. There are no new
+   handle types and no changes to `md_abi_info` or `md_live_handles`. Without
+   a cancel handle, FFI find is bounded by `max_matches` and the snapshot
+   limits. Each platform's 001F depends on it.
 2. **Normalization-insensitive find:** canonical-equivalence matching needs
    NFC/NFD data. `icu_normalizer` is already in the optional `model-v2` graph,
    so an opt-in mode could reuse it rather than add a package.

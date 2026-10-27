@@ -33,9 +33,9 @@ until the Swift, C# and gtk-rs consumers pass there. **CORE-005A**
 (source-accurate find, word count and section timing;
 [contract](specs/search/README.md)) is the active phase on
 `feat/core-005a-find-wordcount` and stays partial until review disposition and
-owner-authorized merge. It delivers the Rust core semantics only; C ABI
-exposure is proposed as a separate follow-up before the platform 001F phases
-(see the contract's proposals). CORE-003B was refined into four
+owner-authorized merge. It delivers the Rust core semantics only; the owner
+split C ABI exposure into **CORE-005A2** (additive-only ABI growth, D-022),
+which each platform's 001F phase requires. CORE-003B was refined into four
 tracked children: B1 metadata; B2 reference representation/URI compatibility;
 B3 remaining extension semantics; B4 conformance/fuzz/property and parser
 budgets. See [the catalog](docs/Implementation-Plan.md) for scope/dependencies.
@@ -286,8 +286,9 @@ CORE-003A -> CORE-003B1, CORE-003B2
 CORE-003B1 -> CORE-003B3; CORE-003B2 -> CORE-003B2F
 CORE-003B2F + CORE-003B3 -> CORE-003B4
 CORE-003B1–B4 -> CORE-003B; CORE-004A -> CORE-005A -> CORE-005B
+CORE-005A -> CORE-005A2 -> CORE-005
 CORE-001A -> each host 001A; CORE-006A + own 001A -> own 001B -> ... -> 001I
-CORE-005A -> own 001F; CORE-003B -> own 001I
+CORE-005A + CORE-005A2 -> own 001F; CORE-003B -> own 001I
 LNX-001D -> LNX-001D1 (early accessibility proof) -> LNX-001E + LNX-001F
 all CORE + WIN/MAC/LNX-001 aggregate acceptance -> DESK-001
 DESK-001 -> each host 002A -> ... -> 002F -> platform 002 aggregate

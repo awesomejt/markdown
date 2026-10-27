@@ -23,8 +23,9 @@ design belong in `docs/` or `agents/`; runtime transcripts do not belong here.
   no NFC/NFD normalization, approximate cluster/whole-word boundaries, bounded
   and cancellable), simplified-UAX #29 word count (one word per CJK
   ideograph) and intro/heading section timing at 160 wpm (markdown-viewer
-  D-32 parity). Core semantics only; FFI exposure is a proposed follow-up
-  needing an owner call on ABI v1 additive growth (md_abi_info/md_live_handles).
+  D-32 parity). Core semantics only; the owner split FFI exposure into
+  CORE-005A2 (required by each 001F) under D-022: ABI v1 grows only by new
+  functions filling caller-owned arrays. D-023 freezes the PR #7 flat view.
 - CORE-006A (merged, PR #7 `a751f48`): crate `markdown-ffi` and the
   hand-written `core/include/markdown_core.h` (specs/ffi/README.md) expose
   registry handles, exact struct-size/ABI/model negotiation, typed status
