@@ -780,9 +780,19 @@ fn edited_block_in_context_beats_duplicate_elsewhere() {
         (same.quality, same.source_offset),
         (AnchorMatch::Exact, at as u64 + 4)
     );
-    // Same-heading context alone does not outrank identical content.
-    let moved = publish(&s, "# S1\n\nSee above.\n\nfiller\n\n# S2\n\nnew\n\nother\n");
-    assert_eq!(resolve(&moved, &anchor).quality, AnchorMatch::Exact);
+    // Anchored block deleted while its old neighbours survive: the surviving
+    // neighbour pins the position, not the unrelated identical copy in S1.
+    let deleted = publish(&s, "# S1\n\nSee above.\n\nfiller\n\n# S2\n\nintro\n\noutro");
+    let r = resolve(&deleted, &anchor);
+    assert_eq!(r.quality, AnchorMatch::Nearest);
+    assert_eq!(
+        r.source_offset as usize,
+        deleted.source().find("outro").unwrap()
+    );
+    // Full rewrite around it: with no surviving neighbour the identical copy
+    // is still trusted (same-heading context alone is not required).
+    let rewritten = publish(&s, "# S1\n\nSee above.\n\nfiller\n\n# S2\n\nnew\n\nother\n");
+    assert_eq!(resolve(&rewritten, &anchor).quality, AnchorMatch::Exact);
 }
 
 #[test]
@@ -854,4 +864,48 @@ fn repeated_availability_notices_do_not_consume_generations() {
         Ok(ChangeDisposition::Recorded(generation(5)))
     );
     assert!(matches!(job.run(), Outcome::Superseded { .. }));
+}
+
+#[test]
+fn deleted_block_with_duplicate_elsewhere_stays_near_its_neighbours() {
+    let s = session();
+    let old = publish(
+        &s,
+        "# T\n\nalpha\n\n---\n\nbeta\n\ngamma\n\ndelta\n\neps\n\n---\n\nzeta",
+    );
+    let anchor = old
+        .anchor_at(old.source().find("---").unwrap() as u64)
+        .unwrap();
+    assert_eq!(anchor.kind, BlockKind::ThematicBreak);
+    let new = publish(
+        &s,
+        "# T\n\nalpha\n\nbeta\n\ngamma\n\ndelta\n\neps\n\n---\n\nzeta",
+    );
+    let r = resolve(&new, &anchor);
+    assert_eq!(r.quality, AnchorMatch::Nearest);
+    assert_eq!(r.source_offset, 12);
+    assert_eq!(text_at(&new, &r), "beta\n\nga");
+}
+
+#[test]
+fn reverted_content_with_newer_submission_in_flight_requires_read() {
+    let s = session();
+    match s.submit(b"A".to_vec(), token("tA")).unwrap().run() {
+        Outcome::Published(_) => {}
+        other => panic!("{other:?}"),
+    }
+    let b = s.submit(b"B".to_vec(), token("tB")).unwrap();
+    // Disk reverted to A while B is in flight: A is not the newest known content.
+    assert_eq!(
+        s.external_change(ExternalChange::Modified { token: token("tA") }),
+        Ok(ChangeDisposition::ReadRequired)
+    );
+    assert!(matches!(b.run(), Outcome::Published(_)));
+    // The adapter re-reads A; it supersedes nothing and republishes A.
+    match s.submit(b"A".to_vec(), token("tA")).unwrap().run() {
+        Outcome::Published(snapshot) => assert_eq!(snapshot.source(), "A"),
+        other => panic!("{other:?}"),
+    }
+    assert!(s.status().is_current());
+    assert_eq!(s.current().unwrap().source(), "A");
 }

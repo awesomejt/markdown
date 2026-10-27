@@ -79,7 +79,7 @@ here and belongs to the CORE-003B4 performance and native A-phase timing work.
 
 | Change | Effect |
 | --- | --- |
-| `Modified { token }` | `Pending(generation)` when `token` equals the newest uncancelled in-flight submission's token (that job is not superseded); else `Unchanged` when available and `token` equals the newest accepted submission's token; otherwise `ReadRequired`. No generation is consumed |
+| `Modified { token }` | With a live (uncancelled) in-flight submission: `Pending(generation)` when `token` equals its token (that job is not superseded), otherwise `ReadRequired`; older accepted tokens are never consulted, so an A→B→A revert is re-read. With nothing in flight: `Unchanged` when available and `token` equals the newest accepted submission's token, otherwise `ReadRequired`. A missing token is always `ReadRequired`. No generation is consumed |
 | `Deleted` / `Unreadable(reason)` | New generation, in-flight job superseded, availability recorded, token forgotten; returns `Recorded(generation)`. Repeating the already-recorded state with nothing in flight returns the existing generation and consumes none |
 
 `RevisionToken` is 1–256 opaque adapter bytes (for example size/mtime/file ID
@@ -121,6 +121,15 @@ both sides (first/last block) earns nothing.
    paragraph). The offset is clamped to the new block. A relocated candidate
    wins over the best exact one only with a strictly higher context score, so
    an edited block in its original place beats an identical duplicate elsewhere.
+
+An exact candidate with no shared neighbour (a same heading alone does not
+count) is accepted only when neither old neighbour survives. If one does, it
+pins the position and resolution falls through to step 3: a deleted block
+with an identical copy elsewhere (for example a second `---`) lands next to
+its former neighbours, not on the copy. Before PR #6 review the copy won as
+`Exact`; this was changed deliberately. The tradeoff: a block that survives
+unchanged while an old neighbour survives but is no longer adjacent to it (for
+example the neighbour moved away) resolves `Nearest` rather than `Exact`.
 3. `Nearest`: block after the old predecessor, else the old successor, else
    the preceding heading, else the proportional source position; offset zero.
 4. `Ok(None)` (lost): no anchorable block, such as an empty document.
