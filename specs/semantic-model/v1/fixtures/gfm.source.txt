@@ -1,0 +1,10 @@
+- [x] Done
+- Pending
+
+| A | B |
+| :- | -: |
+| x | y |
+
+See [^n].
+
+[^n]: Note

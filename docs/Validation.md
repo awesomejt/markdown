@@ -1,8 +1,8 @@
 # Validation Strategy
 
 Common and core entry points are documented in [Development.md](Development.md).
-CORE-001A adds portable CI and policy checks; native app acceptance remains
-separate and is not established by the empty core crate's test harness.
+CORE-001A established portable CI/policy checks; CORE-002A adds v1 model,
+schema and golden validation. Native app and parser acceptance remain separate.
 
 ## Evidence levels
 

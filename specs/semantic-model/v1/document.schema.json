@@ -1,0 +1,1072 @@
+{
+  "$id": "urn:markdown:semantic-document:1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DocumentInput",
+  "type": "object",
+  "properties": {
+    "capabilities": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Capability"
+      },
+      "uniqueItems": true
+    },
+    "diagnostics": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Diagnostic"
+      }
+    },
+    "document_id": {
+      "$ref": "#/$defs/DocumentId"
+    },
+    "links": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/LinkIntent"
+      }
+    },
+    "metadata": {
+      "$ref": "#/$defs/Metadata"
+    },
+    "model_version": {
+      "type": "integer",
+      "format": "uint32",
+      "maximum": 1,
+      "minimum": 1
+    },
+    "nodes": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Node"
+      }
+    },
+    "outline": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/OutlineEntry"
+      }
+    },
+    "resources": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/ResourceIntent"
+      }
+    },
+    "revision_id": {
+      "$ref": "#/$defs/RevisionId"
+    },
+    "roots": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/NodeId"
+      }
+    },
+    "source": {
+      "$ref": "#/$defs/SourceInfo"
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "model_version",
+    "document_id",
+    "revision_id",
+    "source",
+    "capabilities",
+    "roots",
+    "nodes",
+    "outline",
+    "metadata",
+    "links",
+    "resources",
+    "diagnostics"
+  ],
+  "$defs": {
+    "AlertKind": {
+      "type": "string",
+      "enum": [
+        "note",
+        "tip",
+        "important",
+        "warning",
+        "caution"
+      ]
+    },
+    "Alignment": {
+      "type": "string",
+      "enum": [
+        "none",
+        "left",
+        "center",
+        "right"
+      ]
+    },
+    "Capability": {
+      "type": "string",
+      "enum": [
+        "tables",
+        "task_lists",
+        "footnotes",
+        "strikethrough",
+        "front_matter",
+        "alerts"
+      ]
+    },
+    "Diagnostic": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        },
+        "node": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/NodeId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "severity": {
+          "$ref": "#/$defs/Severity"
+        },
+        "span": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SourceSpan"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "severity",
+        "message"
+      ]
+    },
+    "DocumentId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_.:-]{1,128}$"
+    },
+    "LinkDisposition": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "anchor": {
+              "type": "string"
+            },
+            "kind": {
+              "type": "string",
+              "const": "fragment"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "anchor"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "requires_capability"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "external"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "denied"
+            },
+            "reason": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "reason"
+          ]
+        }
+      ]
+    },
+    "LinkId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_.:-]{1,128}$"
+    },
+    "LinkIntent": {
+      "type": "object",
+      "properties": {
+        "destination": {
+          "type": "string"
+        },
+        "disposition": {
+          "$ref": "#/$defs/LinkDisposition"
+        },
+        "id": {
+          "$ref": "#/$defs/LinkId"
+        },
+        "span": {
+          "$ref": "#/$defs/SourceSpan"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "span",
+        "destination",
+        "disposition"
+      ]
+    },
+    "Metadata": {
+      "type": "object",
+      "properties": {
+        "front_matter_span": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SourceSpan"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "properties": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/MetadataValue"
+          }
+        },
+        "title": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "properties"
+      ]
+    },
+    "MetadataValue": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "null"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "boolean"
+            },
+            "value": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "value"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "integer"
+            },
+            "value": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "value"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "string"
+            },
+            "value": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "value"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "strings"
+            },
+            "value": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "value"
+          ]
+        }
+      ]
+    },
+    "Node": {
+      "type": "object",
+      "properties": {
+        "content": {
+          "$ref": "#/$defs/NodeKind"
+        },
+        "id": {
+          "$ref": "#/$defs/NodeId"
+        },
+        "span": {
+          "$ref": "#/$defs/SourceSpan"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "span",
+        "content"
+      ]
+    },
+    "NodeId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_.:-]{1,128}$"
+    },
+    "NodeKind": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "children": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/NodeId"
+              }
+            },
+            "kind": {
+              "type": "string",
+              "const": "paragraph"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "children"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "anchor": {
+              "type": "string"
+            },
+            "children": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/NodeId"
+              }
+            },
+            "kind": {
+              "type": "string",
+              "const": "heading"
+            },
+            "level": {
+              "type": "integer",
+              "format": "uint8",
+              "maximum": 6,
+              "minimum": 1
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "level",
+            "anchor",
+            "children"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "children": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/NodeId"
+              }
+            },
+            "kind": {
+              "type": "string",
+              "const": "block_quote"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "children"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "items": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/NodeId"
+              }
+            },
+            "kind": {
+              "type": "string",
+              "const": "list"
+            },
+            "ordered": {
+              "type": "boolean"
+            },
+            "start": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint64",
+              "minimum": 0
+            },
+            "tight": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "ordered",
+            "tight",
+            "items"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "checked": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "children": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/NodeId"
+              }
+            },
+            "kind": {
+              "type": "string",
+              "const": "list_item"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "children"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "info": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "kind": {
+              "type": "string",
+              "const": "code_block"
+            },
+            "text": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "text"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "thematic_break"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "alignments": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/Alignment"
+              }
+            },
+            "kind": {
+              "type": "string",
+              "const": "table"
+            },
+            "rows": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/NodeId"
+              }
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "alignments",
+            "rows"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "cells": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/NodeId"
+              }
+            },
+            "header": {
+              "type": "boolean"
+            },
+            "kind": {
+              "type": "string",
+              "const": "table_row"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "header",
+            "cells"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "children": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/NodeId"
+              }
+            },
+            "kind": {
+              "type": "string",
+              "const": "table_cell"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "children"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "children": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/NodeId"
+              }
+            },
+            "kind": {
+              "type": "string",
+              "const": "footnote_definition"
+            },
+            "label": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "label",
+            "children"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "category": {
+              "$ref": "#/$defs/AlertKind"
+            },
+            "children": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/NodeId"
+              }
+            },
+            "kind": {
+              "type": "string",
+              "const": "alert"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "category",
+            "children"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "feature": {
+              "type": "string"
+            },
+            "kind": {
+              "type": "string",
+              "const": "unsupported_block"
+            },
+            "reason": {
+              "$ref": "#/$defs/UnsupportedReason"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "feature",
+            "reason"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "text"
+            },
+            "text": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "text"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "children": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/NodeId"
+              }
+            },
+            "kind": {
+              "type": "string",
+              "const": "emphasis"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "children"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "children": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/NodeId"
+              }
+            },
+            "kind": {
+              "type": "string",
+              "const": "strong"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "children"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "children": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/NodeId"
+              }
+            },
+            "kind": {
+              "type": "string",
+              "const": "strikethrough"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "children"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "code_span"
+            },
+            "text": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "text"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "soft_break"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "hard_break"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "children": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/NodeId"
+              }
+            },
+            "kind": {
+              "type": "string",
+              "const": "link"
+            },
+            "target": {
+              "$ref": "#/$defs/LinkId"
+            },
+            "title": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "target",
+            "children"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "alt": {
+              "type": "string"
+            },
+            "kind": {
+              "type": "string",
+              "const": "image"
+            },
+            "resource": {
+              "$ref": "#/$defs/ResourceId"
+            },
+            "title": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "resource",
+            "alt"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "footnote_reference"
+            },
+            "label": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "label"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "feature": {
+              "type": "string"
+            },
+            "kind": {
+              "type": "string",
+              "const": "unsupported_inline"
+            },
+            "reason": {
+              "$ref": "#/$defs/UnsupportedReason"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "feature",
+            "reason"
+          ]
+        }
+      ]
+    },
+    "OutlineEntry": {
+      "type": "object",
+      "properties": {
+        "anchor": {
+          "type": "string"
+        },
+        "level": {
+          "type": "integer",
+          "format": "uint8",
+          "maximum": 6,
+          "minimum": 1
+        },
+        "node": {
+          "$ref": "#/$defs/NodeId"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "node",
+        "level",
+        "title",
+        "anchor"
+      ]
+    },
+    "ResourceAccess": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "requires_capability"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "denied"
+            },
+            "reason": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "reason"
+          ]
+        }
+      ]
+    },
+    "ResourceId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_.:-]{1,128}$"
+    },
+    "ResourceIntent": {
+      "type": "object",
+      "properties": {
+        "access": {
+          "$ref": "#/$defs/ResourceAccess"
+        },
+        "destination": {
+          "type": "string"
+        },
+        "id": {
+          "$ref": "#/$defs/ResourceId"
+        },
+        "span": {
+          "$ref": "#/$defs/SourceSpan"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "span",
+        "destination",
+        "access"
+      ]
+    },
+    "RevisionId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_.:-]{1,128}$"
+    },
+    "Severity": {
+      "type": "string",
+      "enum": [
+        "info",
+        "warning",
+        "error"
+      ]
+    },
+    "SourceInfo": {
+      "type": "object",
+      "properties": {
+        "bytes": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "bytes",
+        "sha256"
+      ]
+    },
+    "SourceSpan": {
+      "type": "object",
+      "properties": {
+        "end": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        },
+        "start": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "start",
+        "end"
+      ]
+    },
+    "UnsupportedReason": {
+      "type": "string",
+      "enum": [
+        "unavailable",
+        "disabled",
+        "invalid_input"
+      ]
+    }
+  }
+}

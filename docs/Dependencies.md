@@ -10,29 +10,64 @@ Choosing a project license does not change third-party licenses.
 
 ## Production Rust graph
 
-| Package | Version | License | Source |
+| Package | Version | License declaration | Source |
 | --- | --- | --- | --- |
+| block-buffer | 0.10.4 | MIT OR Apache-2.0 | [crates.io](https://crates.io/crates/block-buffer/0.10.4) |
+| cfg-if | 1.0.5 | MIT OR Apache-2.0 | [crates.io](https://crates.io/crates/cfg-if/1.0.5) |
+| cpufeatures | 0.2.17 | MIT OR Apache-2.0 | [crates.io](https://crates.io/crates/cpufeatures/0.2.17) |
+| crypto-common | 0.1.7 | MIT OR Apache-2.0 | [crates.io](https://crates.io/crates/crypto-common/0.1.7) |
+| digest | 0.10.7 | MIT OR Apache-2.0 | [crates.io](https://crates.io/crates/digest/0.10.7) |
+| dyn-clone | 1.0.20 | MIT OR Apache-2.0 | [crates.io](https://crates.io/crates/dyn-clone/1.0.20) |
+| generic-array | 0.14.7 | MIT | [crates.io](https://crates.io/crates/generic-array/0.14.7) |
+| itoa | 1.0.18 | MIT OR Apache-2.0 | [crates.io](https://crates.io/crates/itoa/1.0.18) |
+| libc | 0.2.191 | MIT OR Apache-2.0 | [crates.io](https://crates.io/crates/libc/0.2.191) |
 | markdown-core | 0.1.0 | Apache-2.0 | This repository, unpublished |
+| memchr | 2.8.3 | Unlicense OR MIT | [crates.io](https://crates.io/crates/memchr/2.8.3) |
+| proc-macro2 | 1.0.107 | MIT OR Apache-2.0 | [crates.io](https://crates.io/crates/proc-macro2/1.0.107) |
+| quote | 1.0.47 | MIT OR Apache-2.0 | [crates.io](https://crates.io/crates/quote/1.0.47) |
+| ref-cast | 1.0.27 | MIT OR Apache-2.0 | [crates.io](https://crates.io/crates/ref-cast/1.0.27) |
+| ref-cast-impl | 1.0.27 | MIT OR Apache-2.0 | [crates.io](https://crates.io/crates/ref-cast-impl/1.0.27) |
+| ryu | 1.0.23 | Apache-2.0 OR BSL-1.0 | [crates.io](https://crates.io/crates/ryu/1.0.23) |
+| schemars | 1.0.4 | MIT | [crates.io](https://crates.io/crates/schemars/1.0.4) |
+| schemars_derive | 1.0.4 | MIT | [crates.io](https://crates.io/crates/schemars_derive/1.0.4) |
+| serde | 1.0.228 | MIT OR Apache-2.0 | [crates.io](https://crates.io/crates/serde/1.0.228) |
+| serde_core | 1.0.228 | MIT OR Apache-2.0 | [crates.io](https://crates.io/crates/serde_core/1.0.228) |
+| serde_derive | 1.0.228 | MIT OR Apache-2.0 | [crates.io](https://crates.io/crates/serde_derive/1.0.228) |
+| serde_derive_internals | 0.29.1 | MIT OR Apache-2.0 | [crates.io](https://crates.io/crates/serde_derive_internals/0.29.1) |
+| serde_json | 1.0.145 | MIT OR Apache-2.0 | [crates.io](https://crates.io/crates/serde_json/1.0.145) |
+| sha2 | 0.10.9 | MIT OR Apache-2.0 | [crates.io](https://crates.io/crates/sha2/0.10.9) |
+| syn | 2.0.119 | MIT OR Apache-2.0 | [crates.io](https://crates.io/crates/syn/2.0.119) |
+| syn | 3.0.9 | MIT OR Apache-2.0 | [crates.io](https://crates.io/crates/syn/3.0.9) |
+| typenum | 1.20.1 | MIT OR Apache-2.0 | [crates.io](https://crates.io/crates/typenum/1.20.1) |
+| unicode-ident | 1.0.27 | (MIT OR Apache-2.0) AND Unicode-3.0 | [crates.io](https://crates.io/crates/unicode-ident/1.0.27) |
+| version_check | 0.9.5 | MIT/Apache-2.0 | [crates.io](https://crates.io/crates/version_check/0.9.5) |
 
-There are **no third-party production dependencies** in CORE-001A. Cargo.lock
-pins the resolved graph; `python tools/check_dependencies.py` checks every
-resolved package, including transitive packages. It rejects missing/unapproved
-license expressions, publishable workspace members, portable workspace members
-outside `core/`, and dependencies on `spikes/`. Workspace packages must be
-local; non-workspace packages must come from the canonical crates.io registry.
-Git, alternate-registry and non-workspace path dependencies require a deliberate
-policy change/review, even when they carry an allowed SPDX expression.
-Cargo.lock can pin Git revisions; origin approval is a separate constraint.
-Metadata is resolved with all features so optional dependencies are checked too.
+CORE-002A adds serde/serde_json for the wire contract and sha2 for exact source
+fingerprints. The optional `schema` feature adds schemars for schema export;
+it is disabled in the default library build but included in CI/metadata policy
+checks. The table is the full resolved all-feature graph, not a claim that every
+optional/target-specific package ships in each app.
 
-The initial SPDX allowlist is Apache-2.0, MIT, and their explicit OR combinations.
-An unlisted expression fails and requires deliberate dependency/policy review;
-it is not a judgment that the dependency cannot be used. Future phases must
-update this inventory with purpose, version, source and provenance when adding
-production dependencies. Parser selection does not add a dependency until its
-implementation phase. Consider a dedicated policy tool such as cargo-deny if
-the graph grows; adopting another tool is unnecessary for this dependency-free
-scaffold, and the present checks have targeted regressions.
+The policy checks all resolved/transitive package licenses and origins, rejects
+publishable workspace members, members outside core/, and spike dependencies.
+Workspace packages must be local; non-workspace packages must use canonical
+crates.io. Other sources require deliberate policy review. Cargo.lock pins the
+graph; origin approval is a separate constraint.
+
+CORE-002A reviewed these exact additional declarations: `Unlicense OR MIT`
+(memchr), `Apache-2.0 OR BSL-1.0` (ryu), `MIT/Apache-2.0` (version_check,
+which supplies both license texts), and `(MIT OR Apache-2.0) AND Unicode-3.0`
+(unicode-ident). Exceptions are scoped to each reviewed package and version in the
+inventory above, and regression tests reject other packages, versions and
+expressions. This is not a general SPDX-expression evaluator. The OR alternatives provide an already permitted
+MIT/Apache option; unicode-ident additionally carries Unicode notices. Preserve
+its included LICENSE-UNICODE in eventual distribution inventories. See
+[Cargo license declarations](https://doc.rust-lang.org/cargo/reference/manifest.html#the-license-and-license-file-fields)
+and [Unicode License V3](https://www.unicode.org/license.txt).
+
+Further unlisted declarations fail and need dependency/policy review. No parser
+is added in this phase. A dedicated tool such as cargo-deny can replace the
+small policy once the graph warrants it; source/license tests remain required.
 
 ## Development tooling and feasibility
 

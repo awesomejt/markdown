@@ -1,2 +1,3 @@
 # Frozen corpus hashes refer to exact source bytes on every platform.
 /fixtures/** -text
+/specs/semantic-model/v1/fixtures/*.source.txt -text whitespace=-blank-at-eol,cr-at-eol

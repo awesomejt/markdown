@@ -53,6 +53,20 @@ class GitChecks(unittest.TestCase):
         result = decide({"BASE": base, "HEAD": "HEAD", "EVENT": "push"}, cwd=self.root)
         self.assertTrue(result["windows"])
 
+    def test_source_fixture_whitespace_exception_does_not_cover_code(self):
+        attributes = (Path(__file__).resolve().parents[1] / ".gitattributes").read_text()
+        self.write(".gitattributes", attributes)
+        fixture = self.root / "specs/semantic-model/v1/fixtures/example.source.txt"
+        fixture.parent.mkdir(parents=True)
+        fixture.write_bytes(b"line  \r\n")
+        self.write("core/bad.rs", "bad " + "\n")
+        self.git("add", ".")
+        with self.assertRaises(subprocess.CalledProcessError):
+            check_whitespace(self.base, cwd=self.root)
+        self.write("core/bad.rs", "clean\n")
+        self.git("add", ".")
+        check_whitespace(self.base, cwd=self.root)
+
     def test_clean_range_and_clean_worktree_pass(self):
         self.write("clean.txt", "clean\n")
         self.commit()

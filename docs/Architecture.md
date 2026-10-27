@@ -44,7 +44,13 @@ defines versioned, serialization-tested values for:
 The contract does not expose parser arenas, raw pointers, UI types, platform
 paths, fonts, colors, or operating-system handles.
 
-## Candidate core responsibilities
+The CORE-002A v1 implementation contract is in
+[the semantic-model spec](../specs/semantic-model/v1/README.md). Its owned Rust
+values, strict wire/schema checks and source-bound goldens are under phase-PR
+review. The model is separate from parsing, ID reconciliation, C ABI functions
+and native presentation; selecting its types does not prove those behaviors.
+
+## Core responsibilities
 
 - Validate bounded UTF-8 input and parse the accepted Markdown dialect.
 - Produce immutable semantic snapshots and diagnostics.

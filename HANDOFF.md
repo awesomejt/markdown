@@ -1,55 +1,60 @@
 # Agent Session and Platform Handoff
 
-Updated: 2026-10-26, GATE-001 approved and CORE-001A started.
-Source baseline: `b95351f` plus approved gate closeout and CORE-001A changes.
-Preserve intended source, locks, docs and project state together. Do not copy
-environments, caches, binaries, signing identities or private runtime state.
+Updated: 2026-10-27, CORE-002A PR #2 review fixes and authorized merge preparation.
+Source baseline: `8a164ad` on main plus CORE-002A changes.
+Preserve intended source, locks, specs/goldens, docs and state together. Do not
+copy environments, build products, private runtime state or user documents.
 
-## Resume here — CORE-001A branch and PR
+## Resume here — CORE-002A semantic model
 
-The owner explicitly approved the assembled baseline and advancement in D-018.
-GATE-001 is complete and portable-core active. All 36 initial child tasks and
-92 edges are materialized. Do not rerun graph expansion or reopen gate choices.
-D-019 selects Apache-2.0 for implementation; fixtures keep their original
-license/provenance. The early LNX-001D1 proof remains required before
-LNX-001E/001F. Advanced engine work stays in ADV-005 after DESK-002.
+CORE-001A is completed via owner merge of [PR #1](https://github.com/awesomejt/markdown/pull/1)
+as `8a164ad`, containing corrected head `24994fc`. Six known Grok findings were
+addressed and all checks passed; no fresh bot approval is inferred from its
+review-request comment. The merged operational closeout travels in this phase.
+Aggregate CORE-001 still waits for the native shell CI milestones.
 
-Selected task: **CORE-001A**, branch `feat/core-001a-workspace-ci`.
-PR: [PR #1](https://github.com/awesomejt/markdown/pull/1) (created draft; inspect live status).
-Scope: Rust workspace/common checks/dependency-license policy and host-isolated
-CI definitions. No product parser/model, native shell, signing or publishing.
-Gate documentation/state closeout travels in this feature PR per workflow.
+Selected task: **CORE-002A**, branch `feat/core-002a-semantic-model`.
+Scope: owned model v1, strict source/graph/intent validation, schema and goldens.
+No Markdown parser, identity matching, sessions, FFI or native UI implementation.
+Read [the contract](specs/semantic-model/v1/README.md),
+[development checks](docs/Development.md) and [dependency inventory](docs/Dependencies.md).
 
-See [development checks](docs/Development.md),
-[dependency policy](docs/Dependencies.md),
-[accepted baseline](docs/Implementation-Baseline.md) and
-[delivery workflow](docs/Delivery-Workflow.md).
+The immutable Document boundary requires matching exact UTF-8 source length/
+SHA-256 and caller limits. DTOs remain unchecked until validation. Golden
+fixtures cover all 24 node kinds, NFC/NFD and CRLF, tables/tasks/footnotes,
+metadata/intents/diagnostics and unsupported source fallbacks. Source bytes are
+pinned with `.gitattributes`. Identity stability is a lineage contract; its
+algorithm remains CORE-004A. Source hashes are not signatures, and resource
+intents are not grants or complete sanitization.
 
-Mac local common/core checks pass with the verified isolated Rust 1.99.1 toolchain;
-see the documented environment override. The crate has no behavior tests yet;
-empty Cargo harnesses are not product validation. Fixture/capability/path checks,
-host-selection regressions, license-policy regressions and workflow lint passed.
-The first Grok review reported three concerns and three smaller issues. All
-six have verified fixes: conservative host selection/event tests, both sides
-of renames, committed/staged whitespace checks, inline-link handling, dependency
-source approval and non-cancelling main/manual CI. Tests include real temporary
-Git repositories. The optional cargo-deny suggestion is deferred until needed;
-Git pinning by Cargo.lock is distinct from source approval. See PR discussion
-for disposition and actual latest-head CI/review receipts. A new source head
-requires a fresh `/grok review` after its checks pass.
+The default build uses serde/serde_json and sha2; optional feature `schema`
+adds schemars. Four exact transitive license declarations were reviewed and
+added to the policy, including unicode-ident's additional Unicode notice.
+All resolved packages and pins are in Cargo.lock and the inventory; no new
+implementation language or parser dependency is introduced.
 
-The connected GitHub integration could not create a PR (403); authenticated
-`gh` created PR #1 successfully. Use that authorized fallback for write actions.
+[PR #2](https://github.com/awesomejt/markdown/pull/2) carries the model.
+Grok's first review found one concern and three nits; all four are addressed:
+strict empty-struct link/resource variants reject extra fields without changing
+wire shape/schema; model JSON reads explicitly use UTF-8; validation error
+paths are built lazily; additional license declarations are scoped to reviewed
+package versions. Regressions cover strict `invalid_json` failures, lazy paths
+and rejection of unreviewed packages/versions/expressions. The owner authorized
+pushing fixes, merging PR #2, syncing main and deleting the feature branch.
 
-Closeout snapshot: revision **279**, partial with no active/stale passes
-or warnings. CORE-001A intentionally remains working without a lease.
-Inspect live state, Git and the PR before resuming. Use
-`gh pr view feat/core-001a-workspace-ci --json url,state,headRefOid`.
-Before review, keep the PR draft until required checks pass, then post a new
-conversation comment exactly `/grok review`. Record receipts/review discussion
-in the PR to avoid changing the source head solely to log a review. Leave a
-partial pass without a live lease during long waits; task completion requires
-an owner-authorized merge. No dependent work starts merely because code is ready.
+Mac full checks and an EncodingWarning-as-error model validation pass. Required
+hosted checks and a fresh `/grok review` still must be inspected for the final
+fix head. Review request receipts and disposition belong in PR discussion.
+The GitHub connector lacks write permission; authenticated `gh` is the fallback.
+After the authorized merge, reconcile live state through the helper and carry
+post-merge state/documentation closeout in the next feature PR or housekeeping
+PR, never a direct main push. CORE-003A is the next shared parser phase only
+after verified merge. Native foundation phases are also independently ready.
+
+The review-fix pass finishes partial before push/review; inspect live state and
+Git before resuming. No runtime/private artifacts, user source, transcripts or
+credentials belong in commits. Preserve early Linux LNX-001D1 and post-MVP
+ADV-005 conditions.
 
 ## Feasibility evidence retained for implementation
 

@@ -11,11 +11,16 @@ design belong in `docs/` or `agents/`; runtime transcripts do not belong here.
 - Later platforms: iOS and iPadOS after the desktop contracts are stable.
 - Organization: one native monorepo with independent native UIs,
   shared specifications/fixtures/benchmarks, and a candidate portable core.
-- Status: GATE-001 is completed; CORE-001A is the selected delivery task on
-  `feat/core-001a-workspace-ci`. Workspace/common checks/CI definitions are the
-  scope, with no parser/model implementation or native app shell yet. PR #1:
-  [PR #1](https://github.com/awesomejt/markdown/pull/1) (inspect checks/review/merge status). Follow
-  `docs/Development.md`; task remains partial until owner-authorized PR merge.
+- Status: CORE-001A is completed via owner-merged PR #1 (`8a164ad`, corrected
+  head `24994fc`). Known Grok findings were fixed and checks passed; no fresh
+  bot approval is inferred. CORE-002A is active on
+  `feat/core-002a-semantic-model`, defining owned model v1, strict validation,
+  schema and goldens. PR #2 review fixes address strict link/resource decoding,
+  UTF-8 tool reads, lazy validation error paths and package/version-scoped
+  license exceptions. Owner authorized its merge and branch cleanup on
+  2026-10-27; verify final CI/review/head and actual merge before closeout.
+  Parsing/FFI/native UI are later phases. Inspect live
+  state and PR before continuing; no dependent implementation before merge.
 - License: owner selected Apache-2.0 for implementation source (D-019).
 - The required real Windows, macOS, and Linux renderer and shared-core
   integration evidence is recorded, and the capability matrix reconciles it.
@@ -52,7 +57,7 @@ wait for owner merge approval. Scoped phase pushes/PR/review actions are already
 authorized. See `docs/Delivery-Workflow.md` and `docs/Implementation-Plan.md`.
 Materialize child tasks at prerequisite gates through the helper; early native
 foundation tasks belong in the portable-core bucket. FEAS-006 is evaluated;
-FEAS-007 capability reconciliation is complete; resume GATE-001's remaining decisions. D-014 moves FEAS-009's unrun work to
+FEAS-007 and GATE-001 are complete; D-014 moves FEAS-009's unrun work to
 ADV-005 after the desktop MVP.
 
 ## Durable context
@@ -216,16 +221,19 @@ Rust passes and initial 400/700/150 ms targets remain subject to real native
 MVP evidence, including the unresolved Mac memory risk. ADV-005 retains
 post-MVP engine validation. See `docs/Implementation-Baseline.md`.
 
-CORE-001A: the root Rust workspace is independent from all feasibility crates;
-production third-party dependency count is zero. Common/core checks and host
-selection are in `tools/check.py` and `.github/workflows/ci.yml`. First Grok feedback (six findings) is addressed
-with conservative path/event selection, rename-aware diffs, real committed
-whitespace validation, inline-link fixes, crates.io source approval and unique
-non-PR CI groups. Regression tests cover the failing boundaries. Latest-head
-CI/re-review still must be verified on PR #1. See
-`docs/Development.md` and `docs/Dependencies.md`. Review/merge workflow is in
-`docs/Delivery-Workflow.md`. Do not start CORE-002A until CORE-001A is reviewed
-and owner-authorized merged; do not complete the aggregate CORE-001 prematurely.
+CORE-001A merged in PR #1; its operational closeout travels on CORE-002A's
+branch. CORE-002A defines safe owned values, opaque IDs, source length/hash and
+UTF-8 byte spans, strict graph/intent validation and explicit unsupported
+fallbacks. See `specs/semantic-model/v1/README.md`. V1 is under PR review and
+freezes at owner-authorized merge. Identity matching is CORE-004A, not done by
+these types. Resource intents grant no filesystem access and are not full URI
+sanitization. Parser accuracy, native UI and C ABI remain unproven here.
+
+The core now uses serde/serde_json and sha2. Optional `schema` adds schemars;
+source/license review and all-feature inventory are in `docs/Dependencies.md`.
+Default/all-feature tests, generated schema snapshot and five source-bound
+24-kind goldens run through common/core checks. New crates.io dependencies
+remain locked; no spike crate is linked into the production workspace.
 
 Items below that these supersede are kept for history.
 
