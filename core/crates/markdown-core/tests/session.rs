@@ -681,10 +681,11 @@ fn empty_documents_and_lost_anchors() {
     assert_eq!(empty.resolve(&anchor), Ok(None));
     let whitespace = publish(&s, "\n\n   \n");
     assert_eq!(whitespace.resolve(&anchor), Ok(None));
-    // Back to content: the only block is found by position.
+    // Back to content: a full rewrite shares no real neighbour, so absent ==
+    // absent context earns no relocation; the block is found by position.
     let back = publish(&s, "Different.\n");
     let r = resolve(&back, &anchor);
-    assert_eq!(r.quality, AnchorMatch::Relocated);
+    assert_eq!(r.quality, AnchorMatch::Nearest);
     assert_eq!(r.source_offset, 0);
 }
 
@@ -752,4 +753,105 @@ fn v2_sessions_publish_v2_snapshots() {
     let anchor = anchor_on(&snapshot, "Tail", 2);
     let next = publish(&s, "New.\n\n[a]\n\n[a]: /x\n\nTail.\n");
     assert_eq!(resolve(&next, &anchor).quality, AnchorMatch::Exact);
+}
+
+#[test]
+fn edited_block_in_context_beats_duplicate_elsewhere() {
+    let s = session();
+    let old = publish(
+        &s,
+        "# S1\n\nSee above.\n\nfiller\n\n# S2\n\nintro\n\nSee above.\n\noutro",
+    );
+    let at = old.source().rfind("See above.").unwrap();
+    let anchor = old.anchor_at(at as u64 + 4).unwrap();
+    let new = publish(
+        &s,
+        "# S1\n\nSee above.\n\nfiller\n\n# S2\n\nintro\n\nSee above, edited.\n\noutro",
+    );
+    let r = resolve(&new, &anchor);
+    assert_eq!(r.quality, AnchorMatch::Relocated);
+    assert_eq!(
+        r.source_offset as usize,
+        new.source().find("See above, edited").unwrap() + 4
+    );
+    // Unedited, the in-context duplicate is still chosen exactly.
+    let same = resolve(&old, &anchor);
+    assert_eq!(
+        (same.quality, same.source_offset),
+        (AnchorMatch::Exact, at as u64 + 4)
+    );
+    // Same-heading context alone does not outrank identical content.
+    let moved = publish(&s, "# S1\n\nSee above.\n\nfiller\n\n# S2\n\nnew\n\nother\n");
+    assert_eq!(resolve(&moved, &anchor).quality, AnchorMatch::Exact);
+}
+
+#[test]
+fn modified_notice_for_pending_submission_does_not_force_reread() {
+    let s = session();
+    let job = s.submit(b"v9".to_vec(), token("t9")).unwrap();
+    for _ in 0..3 {
+        assert_eq!(
+            s.external_change(ExternalChange::Modified { token: token("t9") }),
+            Ok(ChangeDisposition::Pending(job.generation()))
+        );
+    }
+    assert_eq!(
+        s.external_change(ExternalChange::Modified {
+            token: token("t10")
+        }),
+        Ok(ChangeDisposition::ReadRequired)
+    );
+    // The pending job was not superseded and still publishes.
+    assert!(matches!(job.run(), Outcome::Published(_)));
+    assert_eq!(
+        s.external_change(ExternalChange::Modified { token: token("t9") }),
+        Ok(ChangeDisposition::Unchanged)
+    );
+    // A cancelled pending job is neither reported as pending nor deduplicated.
+    let job = s.submit(b"v10".to_vec(), token("t10")).unwrap();
+    job.cancellation_token().cancel();
+    assert_eq!(s.status().pending, None);
+    assert_eq!(
+        s.external_change(ExternalChange::Modified {
+            token: token("t10")
+        }),
+        Ok(ChangeDisposition::ReadRequired)
+    );
+    assert!(!s.cancel());
+    assert!(matches!(job.run(), Outcome::Cancelled { .. }));
+}
+
+#[test]
+fn job_run_after_session_drop_is_closed() {
+    let s = session();
+    let job = s.submit(b"late".to_vec(), None).unwrap();
+    let g = job.generation();
+    drop(s);
+    assert!(job.cancellation_token().is_cancelled());
+    match job.run() {
+        Outcome::Closed { generation: x } => assert_eq!(x, g),
+        other => panic!("{other:?}"),
+    }
+}
+
+#[test]
+fn repeated_availability_notices_do_not_consume_generations() {
+    let s = session();
+    publish(&s, "body");
+    let first = s.external_change(ExternalChange::Deleted).unwrap();
+    assert_eq!(first, ChangeDisposition::Recorded(generation(2)));
+    assert_eq!(s.external_change(ExternalChange::Deleted), Ok(first));
+    assert_eq!(s.status().latest, Some(generation(2)));
+    // A different state, or a state with work in flight, still advances.
+    let unreadable = ExternalChange::Unreadable(UnreadableReason::Busy);
+    assert_eq!(
+        s.external_change(unreadable.clone()),
+        Ok(ChangeDisposition::Recorded(generation(3)))
+    );
+    let job = s.submit(b"newer".to_vec(), None).unwrap();
+    assert_eq!(
+        s.external_change(unreadable),
+        Ok(ChangeDisposition::Recorded(generation(5)))
+    );
+    assert!(matches!(job.run(), Outcome::Superseded { .. }));
 }
