@@ -7,10 +7,12 @@ changed. [Parsing.md](Parsing.md) defines the surrounding Markdown/safety policy
 
 ## Detection and source preservation
 
-Detection still requires a first-byte `---` line and a later exact `---` or `...`
+Detection requires a `---` line at the beginning, optionally after one UTF-8 BOM and a later exact `---` or `...`
 closing line, with LF or CRLF. The full delimiter-inclusive UTF-8 source span
-is retained, without newline/Unicode normalization. Unterminated, BOM-prefixed
-or mid-document delimiters follow ordinary Markdown. No pulldown-cmark YAML
+is retained, including any BOM, without newline/Unicode normalization.
+Unterminated or mid-document delimiters follow ordinary Markdown. An opening
+rule immediately followed by a blank/whitespace-only line is ordinary Markdown,
+so a later setext underline cannot swallow the introductory prose. No pulldown-cmark YAML
 metadata option is enabled (D-015).
 
 Delimiter precedence is independent of property validity: a Markdown-looking
@@ -26,7 +28,11 @@ A key starts with an ASCII letter or underscore and then contains only ASCII
 letters, digits, underscore, dot or hyphen. No quoted keys or key trimming is
 performed. A nonempty value must be separated from the colon by a space.
 Blank lines and comment lines are ignored. Literal control characters, including
-tabs, are unsupported. Escaped controls in double-quoted strings remain data.
+tabs, are unsupported. Decoded or literal control characters and Unicode 16.0
+General_Category=Cf format characters are rejected in all string values, including
+list items. This blocks bidi/zero-width spoofing while keeping ordinary Unicode
+letters/marks/emoji. It also excludes legitimate format-dependent text such as
+joiner sequences; unsupported values retain the source rather than being stripped.
 
 | Value | Semantic type | Examples |
 | --- | --- | --- |
@@ -35,13 +41,17 @@ tabs, are unsupported. Escaped controls in double-quoted strings remain data.
 | Signed decimal within i64 | Integer | `count: 0`, `offset: -2` |
 | Plain or quoted scalar | String | `author: Native reader`, `label: "42"` |
 | Flat flow list of strings | Strings | `tags: [gfm, 'demo']` |
-| Block list of strings | Strings | A key with no value followed by exactly two spaces, a hyphen, a space and a string per line |
+| Block list of strings | Strings | A key with no value followed by zero or a consistent positive number of spaces, a hyphen, a space and a string per line |
 
 Null/true/false accept lowercase, title-case or uppercase forms, not arbitrary
 mixed case. Integers allow an optional minus. A plus, leading zeros (except zero itself),
-separators, fractions, exponents, timestamps and alternate bases are rejected.
+separators, fractions, exponents and alternate bases are rejected. Valid ISO
+calendar dates `YYYY-MM-DD` and datetimes with `[T ]hh:mm[:ss][Z|±hh:mm]` are
+accepted as literal strings (calendar/leap-day and time/zone fields checked),
+without locale, date conversion, fractional seconds or timezone arithmetic.
 Numeric-looking unsupported values must be quoted to become strings. A scalar
-`title` of type String also sets the display title; another type remains a typed
+`title` of type nonblank String also sets the display title; an empty/whitespace
+string is retained as a property without promotion. Another type remains a typed
 property without a display title. No title is inferred from a body heading.
 
 Single-quoted strings escape an apostrophe by doubling it. Double-quoted strings
@@ -58,8 +68,8 @@ Lists contain only strings: implicit numbers, booleans or nulls are rejected
 rather than coerced. Quote them deliberately when intended as strings. Empty
 flow lists are allowed; nested lists/maps, trailing/empty comma entries and
 multiline flow/quoted scalars are unsupported. Unquoted hashes inside flow
-lists are unsupported; quote those items. Block items use exactly two
-spaces of indentation. An omitted scalar with no block items is null, not an
+lists are unsupported; quote those items. Block items use one consistent
+indentation level (including zero); changing indentation within one list is rejected. An omitted scalar with no block items is null, not an
 empty string or list. Quote an empty string or use `[]` explicitly.
 
 ```yaml
@@ -71,6 +81,19 @@ authors:
   - Ada
   - 'Grace'
 ```
+
+YAML 1.1 spellings `yes/no/on/off/y/n` (any case) are intentionally plain
+strings, not booleans. Use `true/false` for a typed boolean. This is an explicit
+restricted-grammar difference from YAML 1.1 loaders; no spelling is silently
+coerced. A leading comma is a reserved indicator and must be quoted.
+
+The pinned format-character facts come from
+[Unicode 16.0 DerivedGeneralCategory](https://www.unicode.org/Public/16.0.0/ucd/extracted/DerivedGeneralCategory.txt),
+checked against Python's Unicode 16.0 category data. The small static predicate
+requires no runtime download or new dependency. The data notice is retained in
+source and [Unicode License V3](../licenses/Unicode-3.0.txt); updating Unicode
+categories requires deliberate review. This is a Cf/control guard, not a full
+Unicode confusable or grapheme validator. URI policy is unchanged.
 
 ## Atomic failure and diagnostics
 

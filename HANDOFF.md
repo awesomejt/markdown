@@ -28,7 +28,13 @@ Read [Front-Matter.md](docs/Front-Matter.md), [Parsing.md](docs/Parsing.md),
 [development checks](docs/Development.md), the frozen semantic model and task
 state. This phase adds no dependency or wire/model field. It parses a restricted
 flat metadata grammar, not general YAML: null/bool/i64/string/string-list values,
-quoted escapes, comments, plain properties and an optional string display title.
+quoted escapes, comments, plain properties and an optional nonblank string title.
+PR #4 review fixes reject decoded/literal controls and Unicode 16.0 Cf format
+characters; accept literal ISO dates/datetimes, consistent zero/positive-indent
+lists, and BOM-prefixed headers while retaining exact source. A blank line after
+the opening rule selects ordinary Markdown. YAML 1.1 legacy boolean spellings
+remain documented strings; comma-leading scalars are unsupported. All unsupported
+metadata still rejects atomically; no schema/dependency/URI policy changes.
 First-position delimiter precedence and original UTF-8/LF/CRLF source spans stay
 unchanged. The pulldown-cmark YAML metadata option remains disabled (D-015).
 
@@ -55,9 +61,10 @@ Keep receipts/disposition in PR discussion, not another source-only receipt
 commit. The GitHub connector lacks write access; authenticated `gh` is fallback.
 
 Keep the pass partial with no lease while waiting for review/merge. Inspect
-actual phase PR and supported state before resuming. Earlier merge/review
-exceptions applied to PR #2/#3 only; this phase still requires owner-authorized
-merge after actual review disposition. No dependent implementation before merge.
+actual phase PR and supported state before resuming. The owner now authorized PR #4 review fixes, pushing, waiting for automatic
+checks, merging and branch cleanup, using the same sequence as before. Post a
+fresh review trigger for the fixed ready head but do not wait for another bot
+response or infer approval. Inspect actual comments before merging.  No dependent implementation before merge.
 After merge, carry state closeout in the next feature PR, never directly to main.
 
 ## Feasibility evidence retained for implementation

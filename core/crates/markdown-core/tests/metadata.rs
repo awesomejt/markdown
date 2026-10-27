@@ -89,9 +89,15 @@ fn supported_values_have_exact_model_types_and_title() {
 #[test]
 fn quotes_comments_escapes_and_unicode_are_unambiguous() {
     let doc = parse(&wrapped(
-        "# comment\ntitle: \"Hello \\u00e9 \\ud83d\\ude42\" # comment\nsingle: 'it''s # literal'\nlist: ['a,b', \"c \\\"quote\\\"\", 'x # y', 'it''s']\nurl: https://example.com/#anchor # comment\nescaped: \"line\\nnext\\tend\"\n# comment",
+        "# comment\ntitle: \"Hello \\u00e9 \\ud83d\\ude42\" # comment\nsingle: 'it''s # literal'\nlist: ['a,b', \"c \\\"quote\\\"\", 'x # y', 'it''s']\nurl: https://example.com/#anchor # comment\nescaped: \"literal\\\\n\"\n# comment",
     ));
     let p = &doc.input().metadata.properties;
+    assert_eq!(
+        p["escaped"],
+        MetadataValue::String {
+            value: r"literal\n".into()
+        }
+    );
     assert_eq!(doc.input().metadata.title.as_deref(), Some("Hello é 🙂"));
     assert_eq!(
         p["single"],
@@ -116,12 +122,7 @@ fn quotes_comments_escapes_and_unicode_are_unambiguous() {
             value: "https://example.com/#anchor".into()
         }
     );
-    assert_eq!(
-        p["escaped"],
-        MetadataValue::String {
-            value: "line\nnext\tend".into()
-        }
-    );
+
     assert!(doc.input().diagnostics.is_empty());
 }
 #[test]
@@ -144,7 +145,6 @@ fn unsupported_or_hostile_metadata_never_publishes_partial_properties() {
         "x: .5",
         "x: -.5",
         "x: .NaN",
-        "x: 2026-10-27",
         "x: 01",
         "x: +2",
         "x: 9223372036854775808",
@@ -295,7 +295,6 @@ fn original_source_boundaries_and_body_offsets_are_preserved() {
     for source in [
         "# Body\n\n---\ntitle: body\n---\n",
         "---\ntitle: unclosed\n",
-        "\u{feff}---\ntitle: bom\n---\n",
     ] {
         let doc = parse(source);
         assert!(doc.input().metadata.front_matter_span.is_none());
@@ -391,4 +390,203 @@ fn bounded_generated_metadata_returns_valid_snapshots_or_copy_limits() {
         let doc = parse(&source);
         Document::new(doc.into_input(), &source, ModelLimits::default()).unwrap();
     }
+}
+
+#[test]
+fn grok_review_reproductions() {
+    let doc = parse(&wrapped("title: \"\\u0000x\""));
+    assert!(doc.input().metadata.properties.is_empty());
+    for title in ["\"\"", "\"   \""] {
+        assert!(
+            parse(&wrapped(&format!("title: {title}")))
+                .input()
+                .metadata
+                .title
+                .is_none()
+        );
+    }
+    let doc = parse(&wrapped("title: Hello\ndate: 2024-01-01\ntags:\n- a\n- b"));
+    assert_eq!(doc.input().metadata.title.as_deref(), Some("Hello"));
+    assert_eq!(
+        doc.input().metadata.properties["date"],
+        MetadataValue::String {
+            value: "2024-01-01".into()
+        }
+    );
+    let doc = parse("\u{feff}---\ntitle: Hello\n---\nBody");
+    assert_eq!(doc.input().metadata.title.as_deref(), Some("Hello"));
+}
+
+#[test]
+fn decoded_and_literal_control_format_values_are_rejected_atomically() {
+    for code in [
+        0, 9, 10, 13, 0x7f, 0x85, 0xad, 0x600, 0x61c, 0x200b, 0x200c, 0x200d, 0x200e, 0x200f,
+        0x202a, 0x202e, 0x2060, 0x2066, 0x2069, 0xfeff, 0xe0001,
+    ] {
+        let c = char::from_u32(code).unwrap();
+        let encoded = serde_json::to_string(&format!("before{c}after")).unwrap();
+        for value in [encoded.clone(), format!("[{encoded}]")] {
+            rejected(
+                &format!("title: legitimate\nunsafe: {value}"),
+                "front_matter_unsupported",
+            );
+        }
+        if !c.is_control() {
+            rejected(
+                &format!("title: before{c}after"),
+                "front_matter_unsupported",
+            );
+            rejected(
+                &format!("title: 'before{c}after'"),
+                "front_matter_unsupported",
+            );
+        }
+    }
+    for title in ["", "   ", "\u{a0}"] {
+        let doc = parse(&wrapped(&format!(
+            "title: {}",
+            serde_json::to_string(title).unwrap()
+        )));
+        assert!(doc.input().metadata.title.is_none());
+        assert_eq!(
+            doc.input().metadata.properties["title"],
+            MetadataValue::String {
+                value: title.into()
+            }
+        );
+    }
+}
+
+#[test]
+fn iso_dates_and_datetimes_remain_literal_strings() {
+    for value in [
+        "2024-01-01",
+        "2024-02-29",
+        "2000-02-29",
+        "2024-01-01T12:34",
+        "2024-01-01 12:34:56",
+        "2024-01-01T12:34Z",
+        "2024-01-01T12:34:56+05:30",
+        "2024-01-01T00:00-07:00",
+    ] {
+        let doc = parse(&wrapped(&format!("title: Hello\ndate: {value} # comment")));
+        assert_eq!(doc.input().metadata.title.as_deref(), Some("Hello"));
+        assert_eq!(
+            doc.input().metadata.properties["date"],
+            MetadataValue::String {
+                value: value.into()
+            }
+        );
+    }
+    for value in [
+        "2023-02-29",
+        "1900-02-29",
+        "2024-00-01",
+        "2024-13-01",
+        "2024-01-00",
+        "2024-04-31",
+        "0000-01-01",
+        "2024-01-01T24:00",
+        "2024-01-01T00:60",
+        "2024-01-01T00:00:60",
+        "2024-01-01T00:00+24:00",
+        "2024-01-01T00:00+00:60",
+        "2024-01-01junk",
+        "2024-01-01T00:00:",
+        "2024-01-01T00:00.5",
+        "2024-01-01T00:00+05",
+    ] {
+        rejected(&format!("date: {value}"), "front_matter_unsupported");
+    }
+}
+
+#[test]
+fn block_lists_allow_indentless_or_consistent_positive_indentation() {
+    for indent in [0, 1, 2, 4, 8] {
+        let pad = " ".repeat(indent);
+        let source = wrapped(&format!(
+            "title: Hello\ntags:\n{pad}- a\n# comment\n{pad}- b\ndraft: false"
+        ));
+        let doc = parse(&source);
+        assert_eq!(
+            doc.input().metadata.properties["tags"],
+            MetadataValue::Strings {
+                value: vec!["a".into(), "b".into()]
+            }
+        );
+        assert_eq!(doc.input().metadata.title.as_deref(), Some("Hello"));
+    }
+    for body in [
+        "tags:\n- a\n  - b",
+        "tags:\n    - a\n- b",
+        "tags: scalar\n- a",
+        "- orphan",
+        "tags:\n  - a\n  - - nested",
+    ] {
+        rejected(body, "front_matter_unsupported");
+    }
+}
+
+#[test]
+fn bom_and_blank_line_detection_preserve_exact_offsets() {
+    for nl in ["\n", "\r\n"] {
+        let front = format!("\u{feff}---{nl}title: Hello{nl}---{nl}");
+        let source = format!("{front}Body{nl}");
+        let doc = parse(&source);
+        assert_eq!(doc.input().metadata.title.as_deref(), Some("Hello"));
+        assert_eq!(
+            doc.input()
+                .metadata
+                .front_matter_span
+                .unwrap()
+                .slice(&source),
+            Some(front.as_str())
+        );
+        assert_eq!(doc.input().nodes[0].span.start, front.len() as u64);
+        let source = format!("\u{feff}---{nl}{nl}Intro paragraph{nl}{nl}Section{nl}---{nl}more");
+        let doc = parse(&source);
+        assert!(doc.input().metadata.front_matter_span.is_none());
+        assert_eq!(doc.input().outline[0].title, "Section");
+        assert!(
+            doc.input()
+                .nodes
+                .iter()
+                .any(|n| matches!(&n.content,NodeKind::Text{text} if text=="Intro paragraph"))
+        );
+    }
+}
+
+#[test]
+fn legacy_yaml_booleans_are_documented_literal_strings_and_comma_is_reserved() {
+    for value in ["yes", "NO", "on", "Off", "y", "N"] {
+        assert_eq!(
+            parse(&wrapped(&format!("draft: {value}")))
+                .input()
+                .metadata
+                .properties["draft"],
+            MetadataValue::String {
+                value: value.into()
+            }
+        );
+    }
+    rejected("x: ,indicator", "front_matter_unsupported");
+}
+
+#[test]
+fn static_site_style_header_matches_typed_metadata_golden() {
+    let source = "\u{feff}---\ntitle: Hello\ndate: 2024-02-29T12:34:56+05:30\ntags:\n- rust\n- 'offline'\nauthors:\n    - Ada\n    - Grace\ndraft: false\n---\n# Article\n";
+    let doc = parse(source);
+    assert_eq!(
+        serde_json::to_value(&doc.input().metadata.properties).unwrap(),
+        serde_json::json!({
+            "title":{"kind":"string","value":"Hello"},
+            "date":{"kind":"string","value":"2024-02-29T12:34:56+05:30"},
+            "tags":{"kind":"strings","value":["rust","offline"]},
+            "authors":{"kind":"strings","value":["Ada","Grace"]},
+            "draft":{"kind":"boolean","value":false}
+        })
+    );
+    assert_eq!(doc.input().metadata.title.as_deref(), Some("Hello"));
+    assert_eq!(doc.input().outline[0].title, "Article");
+    assert!(doc.input().diagnostics.is_empty());
 }

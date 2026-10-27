@@ -120,7 +120,9 @@ pub fn parse_markdown(
         b.doc.capabilities.insert(Capability::FrontMatter);
         match crate::metadata::parse(&source[..offset], &mut b.copied, limits.max_text_bytes) {
             Ok(properties) => {
-                if let Some(MetadataValue::String { value }) = properties.get("title") {
+                if let Some(MetadataValue::String { value }) = properties.get("title")
+                    && !value.trim().is_empty()
+                {
                     b.doc.metadata.title = Some(b.text(value)?);
                 }
                 b.doc.metadata.properties = properties;
@@ -218,8 +220,21 @@ fn span(range: Range<usize>) -> SourceSpan {
     }
 }
 fn front_matter_end(source: &str) -> Option<usize> {
-    let mut lines = source.split_inclusive('\n');
+    let mut lines = source
+        .strip_prefix('\u{feff}')
+        .unwrap_or(source)
+        .split_inclusive('\n');
     if lines.next()?.trim_end_matches(['\r', '\n']) != "---" {
+        return None;
+    }
+    // A blank line immediately after the opening rule means ordinary Markdown.
+    if lines
+        .clone()
+        .next()?
+        .trim_end_matches(['\r', '\n'])
+        .trim()
+        .is_empty()
+    {
         return None;
     }
     let mut offset = source.find('\n')? + 1;

@@ -75,15 +75,17 @@ retained as untrusted values, never copied into shell commands or HTML.
 
 ## Explicit phase boundaries
 
-Only a first-byte `---` line, terminated by a later exact `---` or `...` line,
+Only an initial `---` line (optionally preceded by a UTF-8 BOM), terminated
+by a later exact `---` or `...` line,
 is recognized as front matter (LF/CRLF). CORE-003B1 adds the
 [bounded typed metadata grammar](Front-Matter.md): flat null/bool/i64/string/
 string-list properties and an optional string display title. Unsupported,
 duplicate or oversized metadata atomically omits properties with a structural
 warning, preserving the exact source span and front-matter capability. Presenters
 must keep that source readable. Empty/comment-only mappings are valid.
-Delimiter precedence still follows D-015, even for Markdown-looking bodies.
-Unterminated, BOM-prefixed or mid-document delimiters follow CommonMark. No YAML
+An immediately blank line after the opening rule selects ordinary Markdown;
+otherwise delimiter precedence follows D-015, even for Markdown-looking bodies.
+Unterminated or mid-document delimiters follow CommonMark. No YAML
 metadata parser option is enabled. Body offsets and source fingerprints are
 unchanged; source-offset fallback also preserves metadata warnings/properties.
 

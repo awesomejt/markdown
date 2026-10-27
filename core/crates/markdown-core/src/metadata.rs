@@ -22,6 +22,9 @@ struct Context<'a> {
 }
 impl Context<'_> {
     fn own(&mut self, value: &str) -> Result<String, Error> {
+        if value.chars().any(unsafe_character) {
+            return Err(Error::Unsupported);
+        }
         *self.copied = self
             .copied
             .checked_add(value.len())
@@ -89,6 +92,11 @@ impl Context<'_> {
         if matches!(raw, "false" | "False" | "FALSE") {
             return Ok(MetadataValue::Boolean { value: false });
         }
+        if iso_date(raw) {
+            return Ok(MetadataValue::String {
+                value: self.own(raw)?,
+            });
+        }
         let digits = raw.strip_prefix('-').unwrap_or(raw);
         if !digits.is_empty() && digits.bytes().all(|c| c.is_ascii_digit()) {
             if digits.len() > 1 && digits.starts_with('0') {
@@ -109,7 +117,7 @@ impl Context<'_> {
                 raw.to_ascii_lowercase().as_str(),
                 ".nan" | ".inf" | "+.inf" | "-.inf"
             )
-            || raw.starts_with(['&', '*', '!', '{', '[', '>', '|', '@', '%', '`'])
+            || raw.starts_with(['&', '*', '!', '{', '[', '>', '|', '@', '%', '`', ','])
             || raw.starts_with("- ")
             || raw.starts_with("? ")
             || raw.contains(['[', ']', '{', '}'])
@@ -195,6 +203,7 @@ struct Pending {
     key: String,
     value: MetadataValue,
     block_list: bool,
+    list_indent: Option<usize>,
 }
 
 /// Input includes the already-detected delimiter lines. All failures discard the
@@ -224,12 +233,20 @@ pub(crate) fn parse(
         if line.trim_matches(' ').is_empty() || line.trim_start_matches(' ').starts_with('#') {
             continue;
         }
-        if line.starts_with(' ') {
+        let trimmed = line.trim_start_matches(' ');
+        if let Some(raw) = trimmed.strip_prefix("- ") {
+            let indent = line.len() - trimmed.len();
             let current = pending
                 .as_mut()
                 .filter(|p| p.block_list)
                 .ok_or(Error::Unsupported)?;
-            let raw = line.strip_prefix("  - ").ok_or(Error::Unsupported)?;
+            if current
+                .list_indent
+                .is_some_and(|expected| expected != indent)
+            {
+                return Err(Error::Unsupported);
+            }
+            current.list_indent = Some(indent);
             let value = context.item(raw)?;
             if matches!(current.value, MetadataValue::Null {}) {
                 current.value = MetadataValue::Strings { value: Vec::new() };
@@ -240,6 +257,9 @@ pub(crate) fn parse(
                 return Err(Error::Unsupported);
             }
             continue;
+        }
+        if line.starts_with(' ') {
+            return Err(Error::Unsupported);
         }
         if let Some(current) = pending.take() {
             properties.insert(current.key, current.value);
@@ -270,6 +290,7 @@ pub(crate) fn parse(
             key,
             value,
             block_list,
+            list_indent: None,
         });
     }
     if let Some(current) = pending {
@@ -283,4 +304,97 @@ fn comment_if_plain(raw: &str) -> Result<&str, Error> {
     } else {
         comment(raw)
     }
+}
+
+// Unicode 16.0 General_Category=Cf ranges. Copyright (c) 2024 Unicode, Inc.
+// Source/provenance and Unicode-3.0
+// notice: docs/Front-Matter.md and licenses/Unicode-3.0.txt. No runtime data load.
+fn unsafe_character(c: char) -> bool {
+    c.is_control()
+        || matches!(c as u32,
+            0xAD |
+            0x600..=0x605 |
+            0x61C |
+            0x6DD |
+            0x70F |
+            0x890..=0x891 |
+            0x8E2 |
+            0x180E |
+            0x200B..=0x200F |
+            0x202A..=0x202E |
+            0x2060..=0x2064 |
+            0x2066..=0x206F |
+            0xFEFF |
+            0xFFF9..=0xFFFB |
+            0x110BD |
+            0x110CD |
+            0x13430..=0x1343F |
+            0x1BCA0..=0x1BCA3 |
+            0x1D173..=0x1D17A |
+            0xE0001 |
+            0xE0020..=0xE007F
+        )
+}
+
+// Deliberate literal ISO subset: calendar date, optionally time and zone.
+// No locale, timestamp conversion or timezone arithmetic is involved.
+fn iso_date(raw: &str) -> bool {
+    if !raw.is_ascii() || raw.len() < 10 {
+        return false;
+    }
+    let number = |s: &str| -> Option<u32> {
+        if s.bytes().all(|c| c.is_ascii_digit()) {
+            s.parse().ok()
+        } else {
+            None
+        }
+    };
+    let (Some(year), Some(month), Some(day)) =
+        (number(&raw[..4]), number(&raw[5..7]), number(&raw[8..10]))
+    else {
+        return false;
+    };
+    if &raw[4..5] != "-" || &raw[7..8] != "-" || year == 0 || !(1..=12).contains(&month) {
+        return false;
+    }
+    let leap = year % 4 == 0 && (year % 100 != 0 || year % 400 == 0);
+    let days = match month {
+        2 => {
+            if leap {
+                29
+            } else {
+                28
+            }
+        }
+        4 | 6 | 9 | 11 => 30,
+        _ => 31,
+    };
+    if day == 0 || day > days {
+        return false;
+    }
+    if raw.len() == 10 {
+        return true;
+    }
+    if raw.len() < 16 || !matches!(raw.as_bytes()[10], b'T' | b' ') || &raw[13..14] != ":" {
+        return false;
+    }
+    if !number(&raw[11..13]).is_some_and(|n| n <= 23)
+        || !number(&raw[14..16]).is_some_and(|n| n <= 59)
+    {
+        return false;
+    }
+    let mut tail = &raw[16..];
+    if tail.starts_with(':') {
+        if tail.len() < 3 || !number(&tail[1..3]).is_some_and(|n| n <= 59) {
+            return false;
+        }
+        tail = &tail[3..];
+    }
+    tail.is_empty()
+        || tail == "Z"
+        || (tail.len() == 6
+            && tail.starts_with(['+', '-'])
+            && &tail[3..4] == ":"
+            && number(&tail[1..3]).is_some_and(|n| n <= 23)
+            && number(&tail[4..6]).is_some_and(|n| n <= 59))
 }

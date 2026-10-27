@@ -26,7 +26,11 @@ design belong in `docs/` or `agents/`; runtime transcripts do not belong here.
   dependency/schema, URI/reference, engine, session, FFI or UI change. Unicode
   destinations are still denied by the conservative URI policy until B2.
   Inspect actual current-head phase checks/review before continuing. Earlier
-  PR #2/#3 merge/review exceptions do not authorize this phase's merge. IDs and
+  Owner authorized PR #4 review fixes/checks/merge/cleanup on 2026-10-27, as before.
+  Fixes cover control/Cf string safety and nonblank titles, literal ISO date/time,
+  consistent block lists, exact BOM offsets and blank-rule ambiguity; legacy YAML
+  booleans remain documented strings. Verify final head/CI/merge; no new bot
+  approval is inferred. IDs and
   cancellation remain CORE-004A; Linux LNX-001D1/ADV-005 conditions remain intact.
 - License: owner selected Apache-2.0 for implementation source (D-019).
 - The required real Windows, macOS, and Linux renderer and shared-core
