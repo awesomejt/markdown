@@ -861,8 +861,9 @@ fn indented_code_that_looks_fenced_maps_to_its_own_lines() {
 #[test]
 fn whitespace_from_derived_text_is_not_exact() {
     // Review regression: the code span's line ending became a space (atomic).
+    // Edge whitespace is trimmed from queries, so the space is matched inside.
     let source = "`b\n`a\n";
-    let r = ci(source, " a");
+    let r = ci(source, "b a");
     assert_eq!(r.matches.len(), 1);
     let m = &r.matches[0];
     assert!(!m.exact);
@@ -1030,4 +1031,27 @@ fn generated_inputs_keep_range_invariants() {
             .and_then(|v| v.parse().ok())
             .unwrap_or(4096),
     );
+}
+
+#[test]
+fn query_edge_whitespace_is_trimmed() {
+    // PR #8 review: a block edge is not whitespace, so edge spaces in the
+    // query must not be required.
+    let source = "foo bar\n\nbaz foo\n";
+    for query in [" foo", "foo ", "\tfoo\n", "\u{AD} foo \u{2060}"] {
+        assert_eq!(
+            slices(source, &ci(source, query)),
+            ["foo", "foo"],
+            "{query:?}"
+        );
+    }
+    assert_eq!(slices(source, &ci(source, " foo bar ")), ["foo bar"]);
+    let doc = parse(source);
+    let view = SearchDocument::from_v1(&doc, source).unwrap();
+    for query in [" ", "\u{AD} \u{AD}", "\n\t"] {
+        assert_eq!(
+            find(&view, query, &FindOptions::default()).unwrap(),
+            FindResults::default()
+        );
+    }
 }

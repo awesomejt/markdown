@@ -192,6 +192,19 @@ impl Piece<'_> {
     }
 }
 
+/// Receives a unit's pieces in reading order, one at a time, so callers can
+/// stream them without retaining the whole unit.
+pub(crate) trait PieceSink<'a> {
+    fn piece(&mut self, piece: Piece<'a>);
+}
+/// Adapts a closure to [`PieceSink`].
+pub(crate) struct Each<F>(pub F);
+impl<'a, F: FnMut(Piece<'a>)> PieceSink<'a> for Each<F> {
+    fn piece(&mut self, piece: Piece<'a>) {
+        (self.0)(piece)
+    }
+}
+
 pub(crate) struct Walker<'a> {
     doc: SearchDocument<'a>,
     index: HashMap<&'a str, usize>,
@@ -238,8 +251,7 @@ impl<'a> Walker<'a> {
         out
     }
     /// Append the visible-text pieces of one unit in reading order.
-    pub fn pieces(&self, unit: usize, out: &mut Vec<Piece<'a>>) {
-        out.clear();
+    pub fn pieces(&self, unit: usize, out: &mut impl PieceSink<'a>) {
         let source = self.doc.source;
         let node = &self.doc.nodes[unit];
         match &node.content {
@@ -253,7 +265,7 @@ impl<'a> Walker<'a> {
                     let Some(i) = self.lookup(id) else { continue };
                     let child = &self.doc.nodes[i];
                     match &child.content {
-                        NodeKind::Text { text } => out.push(Piece {
+                        NodeKind::Text { text } => out.piece(Piece {
                             node: i,
                             kind: PieceKind::Text,
                             text,
@@ -264,7 +276,7 @@ impl<'a> Walker<'a> {
                                 Mapping::Atomic(child.span)
                             },
                         }),
-                        NodeKind::CodeSpan { text } => out.push(Piece {
+                        NodeKind::CodeSpan { text } => out.piece(Piece {
                             node: i,
                             kind: PieceKind::CodeSpan,
                             text,
@@ -272,12 +284,12 @@ impl<'a> Walker<'a> {
                             mapping: code_span_mapping(source, child.span, text),
                         }),
                         NodeKind::SoftBreak {} | NodeKind::HardBreak {} => {
-                            out.push(empty(i, PieceKind::Break, child.span))
+                            out.piece(empty(i, PieceKind::Break, child.span))
                         }
                         NodeKind::FootnoteReference { .. } => {
-                            out.push(empty(i, PieceKind::Separator, child.span))
+                            out.piece(empty(i, PieceKind::Separator, child.span))
                         }
-                        NodeKind::Image { alt, .. } => out.push(Piece {
+                        NodeKind::Image { alt, .. } => out.piece(Piece {
                             node: i,
                             kind: PieceKind::Alt,
                             text: alt,
@@ -302,16 +314,16 @@ fn empty(node: usize, kind: PieceKind, span: SourceSpan) -> Piece<'static> {
         mapping: Mapping::Atomic(span),
     }
 }
-fn raw_piece<'a>(source: &'a str, node: usize, span: SourceSpan, out: &mut Vec<Piece<'a>>) {
+fn raw_piece<'a>(source: &'a str, node: usize, span: SourceSpan, out: &mut impl PieceSink<'a>) {
     match span.slice(source) {
-        Some(text) => out.push(Piece {
+        Some(text) => out.piece(Piece {
             node,
             kind: PieceKind::Raw,
             text,
             text_offset: 0,
             mapping: Mapping::Exact(span.start as usize),
         }),
-        None => out.push(empty(node, PieceKind::Separator, span)),
+        None => out.piece(empty(node, PieceKind::Separator, span)),
     }
 }
 /// Code span text is the content between equal backtick runs, minus one
@@ -358,14 +370,14 @@ fn code_block_pieces<'a>(
     span: SourceSpan,
     fenced: bool,
     text: &'a str,
-    out: &mut Vec<Piece<'a>>,
+    out: &mut impl PieceSink<'a>,
 ) {
     let (Some(block), Ok(base), Ok(end)) = (
         span.slice(source),
         usize::try_from(span.start),
         usize::try_from(span.end),
     ) else {
-        out.push(Piece {
+        out.piece(Piece {
             node,
             kind: PieceKind::CodeBlock,
             text,
@@ -396,7 +408,7 @@ fn code_block_pieces<'a>(
         } else {
             Mapping::Atomic(span)
         };
-        out.push(Piece {
+        out.piece(Piece {
             node,
             kind: PieceKind::CodeBlock,
             text: content,
@@ -405,7 +417,7 @@ fn code_block_pieces<'a>(
         });
         if content.len() < line.len() {
             let eol_end = if line_end < end { line_end + 1 } else { end };
-            out.push(Piece {
+            out.piece(Piece {
                 node,
                 kind: PieceKind::CodeBlock,
                 text: &line[content.len()..],

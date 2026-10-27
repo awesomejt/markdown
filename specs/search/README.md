@@ -114,7 +114,11 @@ lie on UTF-8 boundaries, inside their unit and node spans.
   joiner U+2060, BOM U+FEFF, bidi marks and controls and similar Cf
   characters) are skipped in both, so `foobar` matches `foo\u{AD}bar` and the
   match span still covers the skipped bytes. ZWSP, ZWNJ and ZWJ are not
-  skipped. An empty or whitespace-only query returns no matches without error.
+  skipped. Leading and trailing query whitespace (and edge format
+  characters) is trimmed: a block edge is not whitespace in the text, so
+  `" foo"` still matches a block that starts with `foo`. A query that is
+  empty after trimming (empty, whitespace-only or format-only) returns no
+  matches without error.
   Queries over 4,096 UTF-8 bytes fail with `QueryTooLong`.
 - **Case:** `case_sensitive` compares scalars exactly. Otherwise each scalar
   passes through `fold_case`. This is Unicode simple case folding (status C+S):
@@ -216,10 +220,22 @@ counted, and advanced fences never counted.
 Work is linear in the snapshot's visible text plus query length. The search
 uses Knuth-Morris-Pratt over normalized scalars, so long queries cannot cause
 quadratic scans. Results are capped by `max_matches`: when one more match
-exists, `truncated` is set and the search stops. Each unit's text is
-flattened into a transient buffer of about 24 bytes per scalar, which is about
-24 MiB for a 1 MiB single-line paragraph, and dropped after the unit. Word
-counting streams without that buffer. The cancellation token is polled before
+exists, `truncated` is set and the search stops. Both find and word counting
+stream each unit's pieces; neither copies or flattens unit text. Find keeps a
+ring of the last `m + 5` normalized characters (m is the normalized query
+length: the match plus two characters of context on each side and one of
+slack, enough for the mid-letter/number and regional-indicator checks, which
+use a running indicator parity). About 48 bytes per ring character, so at most
+about 200 KiB for a 4,096-scalar query, plus the query's key and KMP tables
+and at most three pending candidates. Total working memory is O(query length +
+node count + results): the node-ID index and the unit list are proportional
+to the model, results to `max_matches`. Unit text length does not matter.
+The `search_memory` test binary measures this with a counting allocator. For a
+no-match find over one 8 MB paragraph (`"abc ".repeat(2_000_000)`), peak heap
+growth is 656 bytes. The previous per-unit flattening (32 bytes per scalar)
+peaked at about 384 MiB. Each call must stay under 1 MiB, including a
+4,096-byte query (about 240 KiB), a truncated 100-match search and
+`read_stats`. The cancellation token is polled before
 work, per unit and every 16,384 scalars. Cancellation returns only
 `Err(Cancelled)`, never partial results. These are defensive bounds, not
 accepted search budgets; R4 throughput measurements belong to the native and
@@ -240,6 +256,8 @@ all-feature builds:
   edges, format characters and shared coarse sources inside atomic nodes.
 - 4,096 deterministic generated markup-heavy inputs (300,000 run locally)
   against the strict exactness and range invariants.
+- Query edge-whitespace trimming, and the `search_memory` working-memory
+  bound for an 8 MB single paragraph.
 - Images, raw HTML and unsupported fences. Front matter is excluded.
 - The repository's NFC/NFD Unicode fixture, emoji ZWJ, skin-tone and flag
   sequences, Hebrew/Arabic and CJK.

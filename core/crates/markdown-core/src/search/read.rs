@@ -1,6 +1,8 @@
 //! Word count, estimated reading time and per-section timing.
 use super::unicode::WordCounter;
-use super::{CANCEL_CHECK_CHARS, PieceKind, SearchDocument, SearchError, UnitKind, Walker};
+use super::{
+    CANCEL_CHECK_CHARS, Each, Piece, PieceKind, SearchDocument, SearchError, UnitKind, Walker,
+};
 use crate::{CancellationToken, NodeKind};
 
 /// markdown-viewer parity (its D-32: the owner's measured reading speed).
@@ -88,7 +90,6 @@ pub fn read_stats_cancellable(
     let nodes = doc.nodes();
     let mut sections = vec![section(None, None, 0)];
     let mut headings = 0usize;
-    let mut pieces = Vec::new();
     let mut budget = 0usize;
     for (unit, kind) in walker.units() {
         token.check()?;
@@ -109,30 +110,40 @@ pub fn read_stats_cancellable(
         if !counted {
             continue;
         }
-        walker.pieces(unit, &mut pieces);
         let mut counter = WordCounter::default();
-        for piece in &pieces {
-            let include = match piece.kind {
-                PieceKind::Text | PieceKind::CodeBlock => true,
-                PieceKind::CodeSpan => options.include_code,
-                PieceKind::Break => {
+        let mut cancelled = false;
+        walker.pieces(
+            unit,
+            &mut Each(|piece: Piece<'_>| {
+                if cancelled {
+                    return;
+                }
+                let include = match piece.kind {
+                    PieceKind::Text | PieceKind::CodeBlock => true,
+                    PieceKind::CodeSpan => options.include_code,
+                    PieceKind::Break | PieceKind::Alt | PieceKind::Raw | PieceKind::Separator => {
+                        false
+                    }
+                };
+                if !include {
                     counter.separate();
-                    continue;
+                    return;
                 }
-                PieceKind::Alt | PieceKind::Raw | PieceKind::Separator => false,
-            };
-            if !include {
-                counter.separate();
-                continue;
-            }
-            for c in piece.text.chars() {
-                budget += 1;
-                if budget >= CANCEL_CHECK_CHARS {
-                    budget = 0;
-                    token.check()?;
+                for c in piece.text.chars() {
+                    budget += 1;
+                    if budget >= CANCEL_CHECK_CHARS {
+                        budget = 0;
+                        if token.is_cancelled() {
+                            cancelled = true;
+                            return;
+                        }
+                    }
+                    counter.push(c);
                 }
-                counter.push(c);
-            }
+            }),
+        );
+        if cancelled {
+            return Err(SearchError::Cancelled);
         }
         if let Some(current) = sections.last_mut() {
             current.words += counter.words;

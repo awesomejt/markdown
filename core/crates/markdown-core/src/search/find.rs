@@ -2,8 +2,9 @@
 use super::unicode::{
     ZWJ, fold_case, is_extend, is_format, is_regional_indicator, joins_word, mid_joins,
 };
-use super::{CANCEL_CHECK_CHARS, Piece, PieceKind, SearchDocument, SearchError, Walker};
+use super::{CANCEL_CHECK_CHARS, Each, Piece, PieceKind, SearchDocument, SearchError, Walker};
 use crate::{CancellationToken, SourceSpan};
+use std::collections::VecDeque;
 
 /// Raw query ceiling (UTF-8 bytes, before normalization).
 pub const MAX_QUERY_BYTES: usize = 4096;
@@ -107,35 +108,24 @@ pub fn find_cancellable(
     }
     let pattern = normalize_query(query, options.case_sensitive);
     let mut results = FindResults::default();
-    if pattern.iter().all(|&c| c == SPACE) {
+    if pattern.is_empty() {
         return Ok(results);
     }
     let failure = kmp_table(&pattern);
     let walker = Walker::new(*doc);
-    let mut pieces = Vec::new();
-    let mut chars = Vec::new();
-    let mut budget = 0usize;
+    let mut scanner = Scanner::new(&pattern, &failure, options, token);
     for (unit, _) in walker.units() {
         token.check()?;
-        walker.pieces(unit, &mut pieces);
-        build(
-            &pieces,
-            options.case_sensitive,
-            &mut chars,
-            &mut budget,
-            token,
-        )?;
-        if search_unit(
+        scanner.start_unit(unit);
+        walker.pieces(
             unit,
-            &pieces,
-            &chars,
-            &pattern,
-            &failure,
-            options,
-            &mut results,
-            &mut budget,
-            token,
-        )? {
+            &mut Each(|piece: Piece<'_>| scanner.piece(&piece, &mut results)),
+        );
+        scanner.finish_unit(&mut results);
+        if scanner.cancelled {
+            return Err(SearchError::Cancelled);
+        }
+        if scanner.stopped {
             break;
         }
     }
@@ -145,23 +135,29 @@ pub fn find_cancellable(
 const SPACE: u32 = ' ' as u32;
 /// Never equal to a pattern scalar: separators break matches.
 const SEPARATOR: u32 = 0x11_0000;
+/// Characters kept before a candidate start (two-character mid context).
+const BEFORE: usize = 2;
+/// Characters needed after a candidate end before it can be decided.
+const AFTER: usize = 2;
 
+/// One normalized character with everything a match needs, so the scanner
+/// keeps no reference to its piece.
 #[derive(Clone, Copy)]
 struct Char {
     /// Comparison key (folded scalar, space or separator).
     key: u32,
     /// Original scalar for boundary checks; `None` for separators.
     ch: Option<char>,
-    piece: u32,
-    start: usize,
+    /// A regional indicator at an odd position in its run: it pairs with a
+    /// following indicator into one flag.
+    ri_odd: bool,
+    /// Maps to its own source bytes (exact piece or a break).
+    exact: bool,
     len: u8,
-    /// Consecutive regional indicators ending here (0 if not one).
-    ri: u32,
-}
-impl Char {
-    fn scalar(&self) -> Option<char> {
-        self.ch
-    }
+    node: usize,
+    /// Byte offset in the node's display text.
+    text_start: usize,
+    source: SourceSpan,
 }
 
 fn key(c: char, case_sensitive: bool) -> u32 {
@@ -172,9 +168,11 @@ fn key(c: char, case_sensitive: bool) -> u32 {
     }
 }
 
+/// Collapse whitespace runs to one space, skip format characters, fold case
+/// and trim edge whitespace (a block edge is not whitespace in the text).
 fn normalize_query(query: &str, case_sensitive: bool) -> Vec<u32> {
     let mut out: Vec<u32> = Vec::with_capacity(query.len());
-    for c in query.chars() {
+    for c in query.trim().chars() {
         if c.is_whitespace() {
             if out.last() != Some(&SPACE) {
                 out.push(SPACE);
@@ -183,74 +181,13 @@ fn normalize_query(query: &str, case_sensitive: bool) -> Vec<u32> {
             out.push(key(c, case_sensitive));
         }
     }
+    while out.last() == Some(&SPACE) {
+        out.pop();
+    }
+    if out.first() == Some(&SPACE) {
+        out.remove(0);
+    }
     out
-}
-
-fn poll(budget: &mut usize, token: &CancellationToken) -> Result<(), SearchError> {
-    *budget += 1;
-    if *budget >= CANCEL_CHECK_CHARS {
-        *budget = 0;
-        token.check()?;
-    }
-    Ok(())
-}
-
-/// Flatten pieces into comparison keys, collapsing whitespace runs (spaces,
-/// line endings, breaks) to one space mapped to the run's first character.
-fn build(
-    pieces: &[Piece<'_>],
-    case_sensitive: bool,
-    out: &mut Vec<Char>,
-    budget: &mut usize,
-    token: &CancellationToken,
-) -> Result<(), SearchError> {
-    out.clear();
-    let push = |out: &mut Vec<Char>,
-                key: u32,
-                ch: Option<char>,
-                piece: usize,
-                start: usize,
-                len: usize| {
-        let ri = match (ch, out.last()) {
-            (Some(c), Some(prev)) if is_regional_indicator(c) => prev.ri + 1,
-            (Some(c), None) if is_regional_indicator(c) => 1,
-            _ => 0,
-        };
-        out.push(Char {
-            key,
-            ch,
-            piece: piece as u32,
-            start,
-            len: len as u8,
-            ri,
-        });
-    };
-    for (p, piece) in pieces.iter().enumerate() {
-        match piece.kind {
-            PieceKind::Separator => push(out, SEPARATOR, None, p, 0, 0),
-            PieceKind::Break => {
-                if out.last().is_none_or(|c| c.key != SPACE) {
-                    push(out, SPACE, Some(' '), p, 0, 0);
-                }
-            }
-            _ => {
-                for (start, c) in piece.text.char_indices() {
-                    poll(budget, token)?;
-                    if c.is_whitespace() {
-                        if out.last().is_none_or(|c| c.key != SPACE) {
-                            push(out, SPACE, Some(c), p, start, c.len_utf8());
-                        }
-                    } else if !is_format(c) {
-                        // Invisible format characters (soft hyphen, word
-                        // joiner, BOM, bidi marks) are skipped, so `foobar`
-                        // matches `foo\u{AD}bar`; the span still covers them.
-                        push(out, key(c, case_sensitive), Some(c), p, start, c.len_utf8());
-                    }
-                }
-            }
-        }
-    }
-    Ok(())
 }
 
 fn kmp_table(pattern: &[u32]) -> Vec<usize> {
@@ -268,94 +205,232 @@ fn kmp_table(pattern: &[u32]) -> Vec<usize> {
     table
 }
 
+/// Streaming KMP over one unit at a time. Working memory is a ring of the
+/// last `m + BEFORE + AFTER + 1` characters plus at most `AFTER + 1` pending
+/// candidates: O(query length), independent of the unit's text length.
+struct Scanner<'a> {
+    pattern: &'a [u32],
+    failure: &'a [usize],
+    options: &'a FindOptions,
+    token: &'a CancellationToken,
+    case_sensitive: bool,
+    ring: VecDeque<Char>,
+    capacity: usize,
+    /// Unit-local index of `ring[0]`, and of the next character.
+    base: usize,
+    count: usize,
+    k: usize,
+    /// First index a new match may start at (non-overlapping).
+    free: usize,
+    /// End indices of complete pattern hits awaiting lookahead.
+    pending: VecDeque<usize>,
+    ri_run: u32,
+    unit: usize,
+    budget: usize,
+    cancelled: bool,
+    /// The result budget is exhausted; the search stops.
+    stopped: bool,
+}
+impl<'a> Scanner<'a> {
+    fn new(
+        pattern: &'a [u32],
+        failure: &'a [usize],
+        options: &'a FindOptions,
+        token: &'a CancellationToken,
+    ) -> Self {
+        let capacity = pattern.len() + BEFORE + AFTER + 1;
+        Self {
+            pattern,
+            failure,
+            options,
+            token,
+            case_sensitive: options.case_sensitive,
+            ring: VecDeque::with_capacity(capacity),
+            capacity,
+            base: 0,
+            count: 0,
+            k: 0,
+            free: 0,
+            pending: VecDeque::with_capacity(AFTER + 2),
+            ri_run: 0,
+            unit: 0,
+            budget: 0,
+            cancelled: false,
+            stopped: false,
+        }
+    }
+    fn start_unit(&mut self, unit: usize) {
+        self.ring.clear();
+        self.pending.clear();
+        (self.base, self.count, self.k, self.free, self.ri_run) = (0, 0, 0, 0, 0);
+        self.unit = unit;
+    }
+    fn halted(&self) -> bool {
+        self.cancelled || self.stopped
+    }
+    fn last_is_space(&self) -> bool {
+        self.ring.back().is_some_and(|c| c.key == SPACE)
+    }
+    fn piece(&mut self, piece: &Piece<'_>, results: &mut FindResults) {
+        if self.halted() {
+            return;
+        }
+        let exact_piece = matches!(piece.mapping, super::Mapping::Exact(_));
+        let make = |key, ch, start: usize, len: usize, exact| Char {
+            key,
+            ch,
+            ri_odd: false,
+            exact,
+            len: len as u8,
+            node: piece.node,
+            text_start: piece.text_offset + start,
+            source: piece.source(start, len),
+        };
+        match piece.kind {
+            PieceKind::Separator => self.push(make(SEPARATOR, None, 0, 0, false), results),
+            PieceKind::Break => {
+                if !self.last_is_space() {
+                    self.push(make(SPACE, Some(' '), 0, 0, true), results);
+                }
+            }
+            _ => {
+                for (start, c) in piece.text.char_indices() {
+                    self.budget += 1;
+                    if self.budget >= CANCEL_CHECK_CHARS {
+                        self.budget = 0;
+                        if self.token.is_cancelled() {
+                            self.cancelled = true;
+                        }
+                    }
+                    if self.halted() {
+                        return;
+                    }
+                    if c.is_whitespace() {
+                        if !self.last_is_space() {
+                            let ch = make(SPACE, Some(c), start, c.len_utf8(), exact_piece);
+                            self.push(ch, results);
+                        }
+                    } else if !is_format(c) {
+                        // Invisible format characters (soft hyphen, word
+                        // joiner, BOM, bidi marks) are skipped, so `foobar`
+                        // matches `foo\u{AD}bar`; the span still covers them.
+                        let k = key(c, self.case_sensitive);
+                        self.push(make(k, Some(c), start, c.len_utf8(), exact_piece), results);
+                    }
+                }
+            }
+        }
+    }
+    fn push(&mut self, mut c: Char, results: &mut FindResults) {
+        if c.ch.is_some_and(is_regional_indicator) {
+            self.ri_run += 1;
+            c.ri_odd = self.ri_run % 2 == 1;
+        } else {
+            self.ri_run = 0;
+        }
+        if self.ring.len() == self.capacity {
+            self.ring.pop_front();
+            self.base += 1;
+        }
+        self.ring.push_back(c);
+        self.count += 1;
+        let (pattern, m) = (self.pattern, self.pattern.len());
+        while self.k > 0 && c.key != pattern[self.k] {
+            self.k = self.failure[self.k - 1];
+        }
+        if c.key == pattern[self.k] {
+            self.k += 1;
+        }
+        if self.k == m {
+            self.k = self.failure[m - 1];
+            self.pending.push_back(self.count - 1);
+        }
+        while let Some(&j) = self.pending.front() {
+            if self.count <= j + AFTER || self.stopped {
+                break;
+            }
+            self.pending.pop_front();
+            self.decide(j, results);
+        }
+    }
+    fn finish_unit(&mut self, results: &mut FindResults) {
+        while let Some(j) = self.pending.pop_front() {
+            if self.halted() {
+                break;
+            }
+            self.decide(j, results);
+        }
+    }
+    fn at(&self, index: usize) -> Option<&Char> {
+        index
+            .checked_sub(self.base)
+            .and_then(|i| self.ring.get(i))
+            .filter(|_| index < self.count)
+    }
+    fn decide(&mut self, j: usize, results: &mut FindResults) {
+        let i = j + 1 - self.pattern.len();
+        if i < self.free {
+            return;
+        }
+        let (Some(&first), Some(&last)) = (self.at(i), self.at(j)) else {
+            return;
+        };
+        let before = i.checked_sub(1).and_then(|b| self.at(b));
+        let after = self.at(j + 1);
+        if before.is_some_and(|b| continues_cluster(b, &first))
+            || after.is_some_and(|a| continues_cluster(&last, a))
+        {
+            return;
+        }
+        if self.options.whole_word {
+            let before2 = i.checked_sub(2).and_then(|b| self.at(b));
+            let after2 = self.at(j + 2);
+            let joined_before = before.is_some_and(|b| {
+                joins(b, &first) || before2.is_some_and(|b2| joins_across(b2, b, &first))
+            });
+            let joined_after = after.is_some_and(|a| {
+                joins(&last, a) || after2.is_some_and(|a2| joins_across(&last, a, a2))
+            });
+            if joined_before || joined_after {
+                return;
+            }
+        }
+        if results.matches.len() == self.options.max_matches {
+            results.truncated = true;
+            self.stopped = true;
+            return;
+        }
+        let chars = self.ring.range(i - self.base..=j - self.base);
+        results.matches.push(to_match(self.unit, chars));
+        self.free = j + 1;
+    }
+}
+
 /// True when `b` continues the grapheme cluster ending with `a`.
 fn continues_cluster(a: &Char, b: &Char) -> bool {
-    let (Some(x), Some(y)) = (a.scalar(), b.scalar()) else {
+    let (Some(x), Some(y)) = (a.ch, b.ch) else {
         return false;
     };
     if y.is_whitespace() || x.is_whitespace() {
         return false;
     }
-    is_extend(y) || x == ZWJ || (b.ri > 0 && a.ri % 2 == 1)
+    is_extend(y) || x == ZWJ || (is_regional_indicator(y) && a.ri_odd)
 }
 fn joins(a: &Char, b: &Char) -> bool {
-    match (a.scalar(), b.scalar()) {
+    match (a.ch, b.ch) {
         (Some(x), Some(y)) => joins_word(x, y),
         _ => false,
     }
 }
 /// `a mid c` joins one word as in the word counter (`cat's`, `3.14`).
 fn joins_across(a: &Char, mid: &Char, c: &Char) -> bool {
-    match (a.scalar(), mid.scalar(), c.scalar()) {
+    match (a.ch, mid.ch, c.ch) {
         (Some(x), Some(y), Some(z)) => mid_joins(x, y, z),
         _ => false,
     }
 }
 
-/// Returns true when the result budget is exhausted (search stops).
-#[allow(clippy::too_many_arguments)]
-fn search_unit(
-    unit: usize,
-    pieces: &[Piece<'_>],
-    chars: &[Char],
-    pattern: &[u32],
-    failure: &[usize],
-    options: &FindOptions,
-    results: &mut FindResults,
-    budget: &mut usize,
-    token: &CancellationToken,
-) -> Result<bool, SearchError> {
-    let m = pattern.len();
-    let mut k = 0;
-    let mut free = 0;
-    for (j, c) in chars.iter().enumerate() {
-        poll(budget, token)?;
-        while k > 0 && c.key != pattern[k] {
-            k = failure[k - 1];
-        }
-        if c.key == pattern[k] {
-            k += 1;
-        }
-        if k < m {
-            continue;
-        }
-        k = failure[k - 1];
-        let i = j + 1 - m;
-        if i < free {
-            continue;
-        }
-        let (first, last) = (&chars[i], &chars[j]);
-        let before = i.checked_sub(1).map(|b| &chars[b]);
-        let after = chars.get(j + 1);
-        if before.is_some_and(|b| continues_cluster(b, first))
-            || after.is_some_and(|a| continues_cluster(last, a))
-        {
-            continue;
-        }
-        if options.whole_word {
-            let before2 = i.checked_sub(2).map(|b| &chars[b]);
-            let after2 = chars.get(j + 2);
-            let joined_before = before.is_some_and(|b| {
-                joins(b, first) || before2.is_some_and(|b2| joins_across(b2, b, first))
-            });
-            let joined_after = after.is_some_and(|a| {
-                joins(last, a) || after2.is_some_and(|a2| joins_across(last, a, a2))
-            });
-            if joined_before || joined_after {
-                continue;
-            }
-        }
-        if results.matches.len() == options.max_matches {
-            results.truncated = true;
-            return Ok(true);
-        }
-        results.matches.push(to_match(unit, pieces, &chars[i..=j]));
-        free = j + 1;
-    }
-    Ok(false)
-}
-
-fn to_match(unit: usize, pieces: &[Piece<'_>], chars: &[Char]) -> FindMatch {
+fn to_match<'c>(unit: usize, chars: impl Iterator<Item = &'c Char>) -> FindMatch {
     let mut segments: Vec<MatchSegment> = Vec::new();
     let mut source = SourceSpan {
         start: u64::MAX,
@@ -363,15 +438,10 @@ fn to_match(unit: usize, pieces: &[Piece<'_>], chars: &[Char]) -> FindMatch {
     };
     let mut exact = true;
     for c in chars {
-        let piece = &pieces[c.piece as usize];
-        let len = usize::from(c.len);
-        let span = piece.source(c.start, len);
-        // A character is exact when it maps to its own source bytes; a break
-        // maps to the break itself. Whitespace from an atomic piece is not.
-        let is_exact =
-            matches!(piece.mapping, super::Mapping::Exact(_)) || piece.kind == PieceKind::Break;
-        let text_start = (piece.text_offset + c.start) as u64;
-        let text_end = text_start + len as u64;
+        let span = c.source;
+        let is_exact = c.exact;
+        let text_start = c.text_start as u64;
+        let text_end = text_start + u64::from(c.len);
         exact &= is_exact;
         source.start = source.start.min(span.start);
         source.end = source.end.max(span.end);
@@ -381,7 +451,7 @@ fn to_match(unit: usize, pieces: &[Piece<'_>], chars: &[Char]) -> FindMatch {
             // `>` prefix between code lines). Skipped whitespace or format
             // characters inside one exact piece have equal text/source gaps.
             Some(s)
-                if s.node == piece.node
+                if s.node == c.node
                     && (!(s.exact && is_exact)
                         || text_start.checked_sub(s.text_end)
                             == span.start.checked_sub(s.source.end)) =>
@@ -392,7 +462,7 @@ fn to_match(unit: usize, pieces: &[Piece<'_>], chars: &[Char]) -> FindMatch {
                 s.exact &= is_exact;
             }
             _ => segments.push(MatchSegment {
-                node: piece.node,
+                node: c.node,
                 text_start,
                 text_end,
                 source: span,
