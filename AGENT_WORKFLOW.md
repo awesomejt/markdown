@@ -141,5 +141,7 @@ unowned `working` task.
 - The owner has authorized scoped implementation phase commits, branch pushes,
   PR creation/updates and the Grok review comments under Delivery-Workflow.md.
   Merge, tag, sign, publish and unrelated external actions still require owner
-  authorization. Carry post-merge state closeout in the next feature PR or a
-  housekeeping PR; never push closeout directly to `main`.
+  authorization. Once a PR is approved, record the closeout on its branch,
+  push, merge, delete the branch and return to `main`, as described in
+  Delivery-Workflow.md "Closing out an approved PR"; never push closeout
+  directly to `main`.

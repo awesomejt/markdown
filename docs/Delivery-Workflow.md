@@ -79,8 +79,8 @@ an explicit migration plan and affected-host validation.
    on an older head does not establish review of new changes.
 8. Report readiness to the owner with the PR, checks, review disposition and
    remaining risks. Merge only when explicitly authorized or performed by the
-   owner. Verify that the expected reviewed head was merged before releasing
-   dependent phases. A cloud review is not an automatic merge authorization.
+   owner, then follow [Closing out an approved PR](#closing-out-an-approved-pr).
+   A cloud review is not an automatic merge authorization.
 
 The owner has authorized the scoped commits, phase-branch pushes, PR creation/
 updates and `/grok review` comments needed for this workflow. Do not ask again
@@ -103,12 +103,36 @@ require checks and a new trigger. If Grok does not respond or the integration
 is unavailable, retain the pending-review handoff and report it; never invent
 an approval or silently waive the review.
 
-After merge, resume/reconcile the task through the state helper, record the
-merged PR/review evidence, and finish it `completed`. Include state/documentation
-closeout in the next feature branch/PR, or a small housekeeping branch/PR if
-there is no next phase. Do not push closeout commits directly to `main` or
-reset project history. On another boot, reconcile the linked PR's actual state
-before selecting work; a merged PR can legitimately precede its state closeout.
+On another boot, reconcile the linked PR's actual state before selecting
+work. A PR merged without its closeout commit, for example one merged before
+this rule, is closed out in a small housekeeping branch and PR.
+
+## Closing out an approved PR
+
+Once the owner approves a PR for merge, the closeout travels in that PR, so
+`main` is never edited directly and never needs a follow-up state commit:
+
+1. **Record the approval on the PR branch.** Resume the task through the state
+   helper and finish its pass `completed`. The evidence names the PR, the
+   reviewed head, the review and the owner's approval; the merge commit is not
+   known yet and is not invented. If the task is the last child of an
+   aggregate, close the aggregate the same way. Mark decisions the owner
+   accepted with the approval, and update `TODO.md`, `MEMORY.md` and
+   `HANDOFF.md` so they describe the merged state and the next step. Re-inspect
+   state: no live lease and no `working` task may remain.
+2. **Push the closeout.** Commit only these state and documentation files as
+   one `chore(state)` commit and push it to the PR branch. Run the common
+   checks first. This commit needs no new `/grok review`; any source change
+   does, and then the owner's approval must be renewed.
+3. **Merge and delete the remote branch.** Wait for the required CI on the new
+   head, then merge with a merge commit and delete the remote branch. Verify
+   that the PR head that merged is the approved head plus the closeout commit.
+   If CI fails or the merge conflicts, stop and report instead of forcing it.
+4. **Return the local repository to `main`.** Switch to `main`, pull the latest
+   from GitHub with a fast-forward, and delete the old local branch. Confirm a
+   clean working tree before selecting new work.
+
+The owner's approval of a PR authorizes these steps for that PR only.
 
 Before switching OS, update `HANDOFF.md` with the phase/task, branch, PR URL,
 review status, last validated code/head reference, completed checks, unrun
