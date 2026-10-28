@@ -99,6 +99,11 @@ parser HTML output/CLI and optional SIMD/serde features are excluded. All three
 new packages use existing MIT/Apache policy; no license exception is added.
 The reviewed local package manifests and LICENSE files agree with the table.
 
+CORE-003B3 makes the already-resolved unicase 2.10.0 a direct, exactly pinned
+dependency of `markdown-core`. Footnote labels then match with pulldown-cmark's
+own case folding. No package, feature or license changes; `Cargo.lock` gains
+only that edge.
+
 CORE-002A adds serde/serde_json for the wire contract and sha2 for exact source
 fingerprints. The optional `schema` feature adds schemars for schema export;
 it is disabled in the default library build but included in CI/metadata policy
