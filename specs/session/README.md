@@ -70,8 +70,11 @@ Results are `CancellableParseError::{Cancelled, Parse}`.
 
 Limits: pulldown-cmark's initial block scan and final model validation are not
 interruptible; both are linear and bounded by `max_source_bytes`. The poll
-interval is a granularity, not a deadline. Worst-case latency is unmeasured
-here and belongs to the CORE-003B4 performance and native A-phase timing work.
+interval is a granularity, not a deadline. CORE-003B4 measured latency from
+`cancel()` to return for 5 MiB prose on the named Mac: median 5–9 ms, maximum
+15–50 ms across sweeps, bounded by final validation
+([Parser-Budgets.md](../../docs/Parser-Budgets.md)). Native A-phase timing
+remains platform work.
 
 ## External changes
 

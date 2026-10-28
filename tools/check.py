@@ -36,6 +36,7 @@ def main() -> None:
                        "test_path_fixtures.py", "test_validate_capabilities.py", "test_ci_paths.py",
                        "test_check_tools.py"):
             run(sys.executable, "tools/" + script)
+        run(sys.executable, "tools/generate_conformance.py", "--check")
         links()
         npm = shutil.which("npm")
         if not npm:

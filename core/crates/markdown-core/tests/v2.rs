@@ -250,11 +250,17 @@ fn references_handle_multiline_definitions_duplicates_escaped_labels_and_crlf() 
     assert!(d.input().links.is_empty());
 }
 #[test]
-fn fallback_keeps_metadata_discards_targets_and_budgets_still_apply() {
-    let s = "---\ntitle: Example\n---\n[ref][id]\n\n1. >\t- a\n\n[id]: a.md\n";
+fn fallback_keeps_metadata_and_outside_targets_and_budgets_still_apply() {
+    let s = "---\ntitle: Example\n---\n[ref][id]\n\n1. >\t- a [in](b.md)\n\n[id]: a.md\n";
     let d = parse(s);
     assert_eq!(d.input().metadata.title.as_deref(), Some("Example"));
-    assert!(d.input().links.is_empty());
+    // Only the conflicting block falls back; the reference outside it survives.
+    assert_eq!(d.input().links.len(), 1);
+    assert_eq!(d.input().links[0].destination, "a.md");
+    assert!(matches!(
+        d.input().links[0].source,
+        IntentSource::Reference { .. }
+    ));
     assert!(
         d.input()
             .diagnostics

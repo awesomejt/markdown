@@ -122,5 +122,6 @@ python tools/validate_model.py
 Only deliberately supplied authored input belongs in artifacts. Never commit or
 log private user snapshots. Required hosted Linux/macOS/Windows checks establish
 portable Rust behavior, not native file permissions, accessibility, packaging
-or performance acceptance. CORE-003B4 retains full conformance/fuzz/performance
-and residual source-offset work.
+or performance acceptance. CORE-003B4's conformance, hostile-input and
+budget evidence, including v2 parity and URI classification cost, is in
+[Parser-Budgets.md](../../../docs/Parser-Budgets.md).

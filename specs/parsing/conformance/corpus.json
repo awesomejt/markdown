@@ -1,0 +1,637 @@
+{
+  "version": 1,
+  "generated_by": "tools/generate_conformance.py",
+  "sources": [
+    "fixtures/manifest.yaml",
+    "fixtures/expected/*.yaml",
+    "fixtures/performance/profiles.yaml"
+  ],
+  "cases": [
+    {
+      "id": "gfm-tour",
+      "input": "fixtures/markdown/foundation/gfm-tour.md",
+      "front_matter": {
+        "present": true,
+        "properties": {
+          "description": "A tour of GFM features",
+          "author": "mdv examples",
+          "tags": [
+            "gfm",
+            "demo"
+          ],
+          "draft": false
+        }
+      },
+      "outline": [
+        {
+          "level": 1,
+          "text": "GFM feature tour",
+          "slug": "gfm-feature-tour"
+        },
+        {
+          "level": 2,
+          "text": "Emphasis",
+          "slug": "emphasis"
+        },
+        {
+          "level": 2,
+          "text": "Lists",
+          "slug": "lists"
+        },
+        {
+          "level": 3,
+          "text": "Task list",
+          "slug": "task-list"
+        },
+        {
+          "level": 2,
+          "text": "Tables",
+          "slug": "tables"
+        },
+        {
+          "level": 2,
+          "text": "Blockquotes",
+          "slug": "blockquotes"
+        },
+        {
+          "level": 2,
+          "text": "Alerts",
+          "slug": "alerts"
+        },
+        {
+          "level": 2,
+          "text": "Math",
+          "slug": "math"
+        },
+        {
+          "level": 2,
+          "text": "Fenced code",
+          "slug": "fenced-code"
+        },
+        {
+          "level": 2,
+          "text": "Links",
+          "slug": "links"
+        },
+        {
+          "level": 2,
+          "text": "Footnotes",
+          "slug": "footnotes"
+        },
+        {
+          "level": 2,
+          "text": "Horizontal rule",
+          "slug": "horizontal-rule"
+        },
+        {
+          "level": 2,
+          "text": "Collapsible HTML",
+          "slug": "collapsible-html"
+        }
+      ],
+      "counts": {
+        "headings": 13,
+        "tables": 1,
+        "task_items": 3,
+        "alerts": 5,
+        "code_fences": 7,
+        "footnote_definitions": 2
+      },
+      "code_fences": [
+        {
+          "language": "math",
+          "semantic": "math"
+        },
+        {
+          "language": "go",
+          "semantic": "code"
+        },
+        {
+          "language": "python",
+          "semantic": "code"
+        },
+        {
+          "language": "typescript",
+          "semantic": "code"
+        },
+        {
+          "language": "bash",
+          "semantic": "code"
+        },
+        {
+          "language": "json",
+          "semantic": "code"
+        },
+        {
+          "language": "yaml",
+          "semantic": "code"
+        }
+      ],
+      "links": [
+        {
+          "target": "#tables",
+          "kind": "fragment"
+        },
+        {
+          "target": "#fenced-code",
+          "kind": "fragment"
+        },
+        {
+          "target": "https://example.com",
+          "kind": "external"
+        },
+        {
+          "target": "README.md",
+          "kind": "relative"
+        },
+        {
+          "target": "mermaid.md#sequence-diagram",
+          "kind": "relative"
+        },
+        {
+          "target": "#gfm-feature-tour",
+          "kind": "fragment"
+        }
+      ],
+      "blocked_url_schemes": [
+        "javascript",
+        "vbscript",
+        "data"
+      ],
+      "alerts": [
+        "NOTE",
+        "TIP",
+        "IMPORTANT",
+        "WARNING",
+        "CAUTION"
+      ],
+      "math": {
+        "inline": 1,
+        "display": 1,
+        "fences": 1
+      },
+      "checks": [
+        "alerts",
+        "blocked_links",
+        "code_fences",
+        "counts",
+        "front_matter",
+        "html_inert",
+        "links",
+        "math",
+        "outline"
+      ],
+      "deferred": [
+        {
+          "path": "expectations.security.raw_html_policy",
+          "reason": "safe-subset: The core keeps every raw HTML construct as inert source text, which is stricter than this policy; no safe subset or sanitizer output exists."
+        }
+      ]
+    },
+    {
+      "id": "unsafe-html",
+      "input": "fixtures/markdown/foundation/unsafe-html.md",
+      "front_matter": {
+        "present": false,
+        "properties": {}
+      },
+      "outline": [
+        {
+          "level": 1,
+          "text": "Unsafe",
+          "slug": "unsafe"
+        }
+      ],
+      "counts": {
+        "headings": 1,
+        "raw_html_constructs": 6,
+        "links": 1
+      },
+      "links": [
+        {
+          "target": "javascript:alert(1)",
+          "kind": "blocked"
+        }
+      ],
+      "blocked_url_schemes": [
+        "javascript",
+        "vbscript",
+        "data"
+      ],
+      "checks": [
+        "blocked_links",
+        "counts",
+        "front_matter",
+        "html_inert",
+        "links",
+        "outline"
+      ],
+      "deferred": [
+        {
+          "path": "expectations.security.raw_html_policy",
+          "reason": "sanitize: The core keeps every raw HTML construct as inert source text, which is stricter than this policy; no safe subset or sanitizer output exists."
+        }
+      ]
+    },
+    {
+      "id": "code-fences",
+      "input": "fixtures/markdown/foundation/code-fences.md",
+      "front_matter": {
+        "present": false,
+        "properties": {}
+      },
+      "outline": [
+        {
+          "level": 1,
+          "text": "Code",
+          "slug": "code"
+        }
+      ],
+      "counts": {
+        "headings": 1,
+        "code_fences": 4
+      },
+      "code_fences": [
+        {
+          "language": "ts",
+          "semantic": "code"
+        },
+        {
+          "language": "go",
+          "semantic": "code"
+        },
+        {
+          "language": "notalang",
+          "semantic": "code"
+        },
+        {
+          "language": null,
+          "semantic": "code"
+        }
+      ],
+      "blocked_url_schemes": [
+        "javascript",
+        "vbscript",
+        "data"
+      ],
+      "checks": [
+        "blocked_links",
+        "code_fences",
+        "counts",
+        "front_matter",
+        "html_inert",
+        "outline"
+      ],
+      "deferred": [
+        {
+          "path": "expectations.security.invariants: Highlighting failure never hides or changes source text.",
+          "reason": "Syntax highlighting is lazy native presentation work; the core stores literal code text only."
+        }
+      ]
+    },
+    {
+      "id": "math-alerts",
+      "input": "fixtures/markdown/advanced/math-alerts.md",
+      "front_matter": {
+        "present": false,
+        "properties": {}
+      },
+      "outline": [
+        {
+          "level": 1,
+          "text": "Math $E=mc^2$",
+          "slug": "math-emc2"
+        },
+        {
+          "level": 2,
+          "text": "Alerts",
+          "slug": "alerts"
+        }
+      ],
+      "counts": {
+        "headings": 2,
+        "alerts": 2,
+        "blockquotes": 1,
+        "math_inline": 2,
+        "math_display": 1,
+        "math_fences": 1
+      },
+      "code_fences": [
+        {
+          "language": "math",
+          "semantic": "math"
+        }
+      ],
+      "blocked_url_schemes": [
+        "javascript",
+        "vbscript",
+        "data"
+      ],
+      "alerts": [
+        "NOTE",
+        "WARNING"
+      ],
+      "non_alert_marker": "[!NOTE] not an alert",
+      "checks": [
+        "alerts",
+        "blocked_links",
+        "code_fences",
+        "counts",
+        "fallback_diagnostics",
+        "front_matter",
+        "html_inert",
+        "non_alert_marker",
+        "outline"
+      ],
+      "deferred": []
+    },
+    {
+      "id": "inline-diagrams",
+      "input": "fixtures/markdown/advanced/inline-diagrams.md",
+      "front_matter": {
+        "present": false,
+        "properties": {}
+      },
+      "outline": [
+        {
+          "level": 1,
+          "text": "Inline Diagrams",
+          "slug": "inline-diagrams"
+        },
+        {
+          "level": 2,
+          "text": "Slug look-alikes",
+          "slug": "slug-look-alikes"
+        },
+        {
+          "level": 3,
+          "text": "mdv-mermaid-1",
+          "slug": "mdv-mermaid-1"
+        },
+        {
+          "level": 3,
+          "text": "dmdv-mermaid-2",
+          "slug": "dmdv-mermaid-2"
+        },
+        {
+          "level": 3,
+          "text": "mdvMermaid-1",
+          "slug": "mdvmermaid-1"
+        },
+        {
+          "level": 3,
+          "text": "dmdvMermaid-2",
+          "slug": "dmdvmermaid-2"
+        }
+      ],
+      "counts": {
+        "headings": 6,
+        "diagram_fences": 4
+      },
+      "code_fences": [
+        {
+          "language": "mermaid",
+          "semantic": "diagram"
+        },
+        {
+          "language": "mermaid",
+          "semantic": "diagram"
+        },
+        {
+          "language": "d2",
+          "semantic": "diagram"
+        },
+        {
+          "language": "d2",
+          "semantic": "diagram"
+        }
+      ],
+      "blocked_url_schemes": [
+        "javascript",
+        "vbscript",
+        "data"
+      ],
+      "checks": [
+        "blocked_links",
+        "code_fences",
+        "counts",
+        "fallback_diagnostics",
+        "front_matter",
+        "html_inert",
+        "outline"
+      ],
+      "deferred": [
+        {
+          "path": "expectations.code_fences[].valid",
+          "reason": "Diagram engines are advanced work (ADV); diagram fences are inert source fallbacks with a diagnostic."
+        },
+        {
+          "path": "expectations.security.invariants: Diagram compilation is offline and cannot access arbitrary files or URLs.",
+          "reason": "Diagram engines are advanced work (ADV); diagram fences are inert source fallbacks with a diagnostic."
+        },
+        {
+          "path": "expectations.security.invariants: Generated SVG cannot execute scripts or load external resources.",
+          "reason": "Diagram engines are advanced work (ADV); diagram fences are inert source fallbacks with a diagnostic."
+        },
+        {
+          "path": "expectations.extensions.diagram_engines",
+          "reason": "Diagram engines are advanced work (ADV); diagram fences are inert source fallbacks with a diagnostic."
+        }
+      ]
+    },
+    {
+      "id": "voice-parity",
+      "input": "fixtures/markdown/advanced/voice-parity.md",
+      "front_matter": {
+        "present": true,
+        "properties": {
+          "mdv": "script",
+          "title": "Parity script"
+        }
+      },
+      "outline": [
+        {
+          "level": 1,
+          "text": "Parity script",
+          "slug": "parity-script"
+        },
+        {
+          "level": 2,
+          "text": "Closing",
+          "slug": "closing"
+        }
+      ],
+      "counts": {
+        "headings": 2,
+        "tables": 2
+      },
+      "blocked_url_schemes": [
+        "javascript",
+        "vbscript",
+        "data"
+      ],
+      "voice_mode": "script",
+      "checks": [
+        "blocked_links",
+        "counts",
+        "front_matter",
+        "html_inert",
+        "no_links",
+        "outline",
+        "voice_mode"
+      ],
+      "deferred": [
+        {
+          "path": "document.feature_counts.notes",
+          "reason": "Voice-over interpretation is not implemented; script opt-in is checked as an info diagnostic and the syntax reads as ordinary Markdown (CORE-003B3)."
+        },
+        {
+          "path": "document.feature_counts.pronunciation_guides",
+          "reason": "Voice-over interpretation is not implemented; script opt-in is checked as an info diagnostic and the syntax reads as ordinary Markdown (CORE-003B3)."
+        },
+        {
+          "path": "expectations.extensions.speakers",
+          "reason": "Voice-over interpretation is not implemented; script opt-in is checked as an info diagnostic and the syntax reads as ordinary Markdown (CORE-003B3)."
+        },
+        {
+          "path": "expectations.extensions.speaker_carry_over",
+          "reason": "Voice-over interpretation is not implemented; script opt-in is checked as an info diagnostic and the syntax reads as ordinary Markdown (CORE-003B3)."
+        },
+        {
+          "path": "expectations.extensions.heading_resets_speaker",
+          "reason": "Voice-over interpretation is not implemented; script opt-in is checked as an info diagnostic and the syntax reads as ordinary Markdown (CORE-003B3)."
+        },
+        {
+          "path": "expectations.extensions.direction_forms",
+          "reason": "Voice-over interpretation is not implemented; script opt-in is checked as an info diagnostic and the syntax reads as ordinary Markdown (CORE-003B3)."
+        },
+        {
+          "path": "expectations.extensions.note_form",
+          "reason": "Voice-over interpretation is not implemented; script opt-in is checked as an info diagnostic and the syntax reads as ordinary Markdown (CORE-003B3)."
+        },
+        {
+          "path": "expectations.extensions.pronunciation_form",
+          "reason": "Voice-over interpretation is not implemented; script opt-in is checked as an info diagnostic and the syntax reads as ordinary Markdown (CORE-003B3)."
+        },
+        {
+          "path": "expectations.extensions.av_table",
+          "reason": "Voice-over interpretation is not implemented; script opt-in is checked as an info diagnostic and the syntax reads as ordinary Markdown (CORE-003B3)."
+        },
+        {
+          "path": "expectations.extensions.source_line_numbers",
+          "reason": "Voice-over interpretation is not implemented; script opt-in is checked as an info diagnostic and the syntax reads as ordinary Markdown (CORE-003B3)."
+        }
+      ]
+    },
+    {
+      "id": "unicode-filename",
+      "input": "fixtures/markdown/paths/unicode-filename.md",
+      "front_matter": {
+        "present": false,
+        "properties": {}
+      },
+      "outline": [
+        {
+          "level": 1,
+          "text": "Unicode",
+          "slug": "unicode"
+        }
+      ],
+      "counts": {
+        "headings": 1
+      },
+      "blocked_url_schemes": [
+        "javascript",
+        "vbscript",
+        "data"
+      ],
+      "checks": [
+        "blocked_links",
+        "counts",
+        "front_matter",
+        "html_inert",
+        "outline"
+      ],
+      "deferred": [
+        {
+          "path": "expectations.security.invariants: The displayed filename round-trips without replacement characters.",
+          "reason": "Filesystem lookup, normalization and display names are platform-adapter behavior, outside the parser."
+        },
+        {
+          "path": "expectations.extensions.path_semantics",
+          "reason": "Filesystem lookup, normalization and display names are platform-adapter behavior, outside the parser."
+        }
+      ]
+    },
+    {
+      "id": "nfd-filename",
+      "input": "fixtures/markdown/paths/nfd-filename.md",
+      "front_matter": {
+        "present": false,
+        "properties": {}
+      },
+      "outline": [
+        {
+          "level": 1,
+          "text": "NFD fixture",
+          "slug": "nfd-fixture"
+        }
+      ],
+      "counts": {
+        "headings": 1
+      },
+      "blocked_url_schemes": [
+        "javascript",
+        "vbscript",
+        "data"
+      ],
+      "checks": [
+        "blocked_links",
+        "counts",
+        "front_matter",
+        "html_inert",
+        "outline"
+      ],
+      "deferred": [
+        {
+          "path": "expectations.security.invariants: Normalization fallback cannot escape the approved workspace.",
+          "reason": "Filesystem lookup, normalization and display names are platform-adapter behavior, outside the parser."
+        },
+        {
+          "path": "expectations.extensions.path_semantics",
+          "reason": "Filesystem lookup, normalization and display names are platform-adapter behavior, outside the parser."
+        }
+      ]
+    }
+  ],
+  "profiles": [
+    {
+      "id": "prose-1mib",
+      "generator": "prose-sections-v1",
+      "target_bytes": 1048576,
+      "sha256": "2f28d767468ec3980c286fbf983c732a00601717b9f7343a92ff0e4f4056581e",
+      "line_bytes": 0
+    },
+    {
+      "id": "prose-5mib",
+      "generator": "prose-sections-v1",
+      "target_bytes": 5242880,
+      "sha256": "43086da373aa098b0a03817236f52c82d7b5383d7564ee41098e75c58246c715",
+      "line_bytes": 0
+    },
+    {
+      "id": "delimiter-storm-1mib",
+      "generator": "delimiter-storm-v1",
+      "target_bytes": 1048576,
+      "sha256": "d0100b5e90ac68662cff1f76741bc619dbecee78c8174096aa93695f3520a757",
+      "line_bytes": 0
+    },
+    {
+      "id": "long-lines-1mib",
+      "generator": "long-lines-v1",
+      "target_bytes": 1048576,
+      "sha256": "457e4d3a4cc3e1c5afb07d2bc36afae173bb19839a7047450536459318b6cf77",
+      "line_bytes": 131072
+    }
+  ]
+}

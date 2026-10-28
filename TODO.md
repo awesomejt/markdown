@@ -11,9 +11,10 @@ batching ready work on the current OS. Each delivery phase uses one feature
 branch and PR. Once ready, post a separate PR comment exactly `/grok review`,
 address the feedback, and obtain owner merge approval. Follow
 [Delivery-Workflow.md](docs/Delivery-Workflow.md) for branch, review and handoff
-rules. GATE-001 is approved (D-018). CORE-001A through CORE-003A, CORE-003B1 and
-CORE-003B2/B2F, CORE-004A, CORE-006A, CORE-005A and CORE-005A2 are merged;
-CORE-005B is selected; ADV-005 carries deferred engine work after DESK-002.
+rules. GATE-001 is approved (D-018). CORE-001A through CORE-003A, CORE-003B1
+through CORE-003B3 (with B2F), CORE-004A, CORE-005A/A2, CORE-005B/B2 and
+CORE-006A are merged; CORE-003B4 is in review; ADV-005 carries deferred engine
+work after DESK-002.
 
 ## Current phase: portable core and early native foundations
 
@@ -40,8 +41,14 @@ merged in PR #10 as `0bf8eb7`. Its C ABI exposure, the owner-approved split
 `28e33bc`. **CORE-003B3** maps GFM alerts and footnotes to existing v1/v2
 nodes. Math becomes explicit source fallbacks, and voice-script opt-in gets
 a diagnostic ([extension semantics](docs/Parsing.md#extension-semantics-core-003b3)).
-It is on `feat/core-003b3-extension-semantics` and stays partial until review
-disposition and owner-authorized merge. CORE-003B was refined into four
+It merged in PR #12 as `66c2162`. **CORE-003B4** reconciles the corpus through a
+generated [conformance contract](specs/parsing/conformance/README.md), adds
+mutation and pathological-input coverage, and records named-host parser
+time/memory with enforced heap budgets ([Parser-Budgets.md](docs/Parser-Budgets.md)).
+It raises the node/event defaults (D-024) and scopes the source-offset
+fallback to the affected top-level block. It is on
+`feat/core-003b4-parser-hardening` and stays partial until review disposition
+and owner-authorized merge. CORE-003B was refined into four
 tracked children: B1 metadata; B2 reference representation/URI compatibility;
 B3 remaining extension semantics; B4 conformance/fuzz/property and parser
 budgets. See [the catalog](docs/Implementation-Plan.md) for scope/dependencies.

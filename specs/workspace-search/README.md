@@ -297,9 +297,10 @@ An informal measurement (not a budget) on an Apple M5 Max with Rust 1.99.1,
 release, best of five: 1,000 files of about 10 KiB markup-dense prose with no
 match took 330 ms, about 29 MB/s. Parsing was 262 ms of that and find 65 ms.
 Name search over 100,000 paths of about 28 bytes took 13 ms. A 5 MiB file of the
-same dense prose exceeds the reader's 250,000-node parse ceiling and is
-skipped as `ParseFailed`. Throughput budgets belong to the native 002C and
-CORE-003B4 performance phases.
+same dense prose exceeded the then 250,000-node parse ceiling and was skipped
+as `ParseFailed`. CORE-003B4 raised the default to 1,000,000 nodes (D-024) and
+measured the parser in [Parser-Budgets.md](../../docs/Parser-Budgets.md).
+Workspace throughput budgets belong to the native 002C phases.
 
 ## Decided follow-up and open proposals
 

@@ -12,6 +12,12 @@ CORE-003B2 adds opt-in v2 source-backed intents/URI targets, strict version
 separation, explicit-upgrade tests, v2 schema/golden checks and generated input.
 Default v1 behavior/schema compatibility is required throughout.
 
+CORE-003B4 adds the generated [conformance contract](../specs/parsing/conformance/README.md).
+The common suite fails when it is stale, and `tests/conformance.rs` checks every
+supported expectation. It also adds corpus-seeded mutation and pathological-input
+tests, counted heap budgets and release time guards for the performance profiles,
+and named-host measurements ([Parser-Budgets.md](Parser-Budgets.md)).
+
 ## Evidence levels
 
 ### Documentation changes

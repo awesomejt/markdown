@@ -383,3 +383,34 @@ field meanings, constants and index conventions follow the
 [C ABI contract](../specs/ffi/README.md) and change only under D-022's
 additive rule or a new ABI version. The JSON models remain the semantic wire
 contracts; the flat view must keep round-tripping them exactly.
+
+## D-024 — Parser default limits admit representative prose at the source ceiling
+
+**Date:** 2026-10-28
+
+**Status:** proposed in CORE-003B4; owner acceptance pending at phase review
+
+**Context:** CORE-003B4 measured the generated profiles. The accepted 5 MiB
+prose profile, the upper-bound document for D-016, failed with `NodeLimit`
+under the CORE-003A defaults of 250,000 nodes and 1,000,000 events. Prose
+produces about 92,000 nodes and 116,000 events per MiB, so it needs about
+738,000 nodes and 932,000 events at the 8 MiB source ceiling.
+
+**Decision:** `ParseLimits::default()` uses 1,000,000 nodes, equal to the model
+and C ABI node ceiling, and 2,000,000 events. Source (8 MiB), depth (128) and
+copied text (32 MiB) are unchanged. They stay defensive ceilings, and dense
+hostile markup still stops with typed limits. Counted heap budgets per profile
+and coarse release time guards are enforced in CI. Named-host times are
+recorded, not guaranteed ([Parser-Budgets.md](../docs/Parser-Budgets.md)).
+
+**Consequences:** Sessions, workspace content search and the C ABI's
+zero-selects-default limits inherit the new values without an ABI change. A
+5 MiB prose snapshot retains about 102 MiB. Dense delimiter input at the
+8 MiB source ceiling peaks at about 1,152 MiB (about 140 times the source)
+before the node limit stops it, unchanged from the earlier defaults because
+the cost is upstream inline work. A 2 MiB dense storm has a CI heap budget.
+Reducing per-node memory and pre-screening delimiter density are tracked
+residual risks. Hosts that need tighter ceilings pass explicit limits, such as
+a lower source limit or content search file size. Text events the builder
+rejoins across a `$` split are not charged to the event limit, so
+dollar-dense prose at the ceiling also parses.
