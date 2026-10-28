@@ -116,6 +116,14 @@ unowned `working` task.
 
 - Create tasks through `create_task`.
 - Add ordering through `add_dependency`; dependencies must remain acyclic.
+- Remove an edge through `remove_dependency`, and change a task's title,
+  description, validation expectations, priority, role or phase through
+  `update_task`. Both are repository operations in `tools/project_state.py`
+  (D-027). They use the backend's lock, revision and idempotency rules.
+  `update_task` refuses a task with an active pass, and a completed task keeps
+  its phase.
+- Keep each track a single chain: no edge an existing path already implies
+  between open tasks (D-027).
 - Resolve blockers with evidence through `resolve_blocker`.
 - Complete a phase only when all of its tasks are complete, or when the owner
   explicitly authorizes an override recorded in the transition.

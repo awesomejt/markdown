@@ -1,11 +1,38 @@
 # Agent Session and Platform Handoff
 
-Updated: 2026-10-28, CORE-003B closeout on `chore/core-003b-closeout`.
-Source baseline: `29f7334` on main (PR #13 merge) plus this state/docs closeout. Preserve intended
+Updated: 2026-10-28, closeout of the shared-core reviews (PR #16, approved
+by the owner at head `2b06e88`, hosted CI green on macOS, Linux and Windows).
+Source baseline: `main` after the PR #16 merge. Preserve intended
 source, lock/spec/golden files, docs and state together. Never transfer caches,
 environments, build products, private runtime state or user documents.
 
-## Resume here — owner holistic CORE review
+## Resume here — CORE-FIX phase, starting with DOC-001
+
+PR #16 merged after owner approval. It holds three shared-core reviews (Claude, Codex,
+Grok; see [docs/reviews/](docs/reviews/README.md)) and the owner's
+dispositions:
+
+- D-025: native hosts build and request model v2.
+- D-026: the CORE-FIX phase, six tasks in order: DOC-001, CORE-002B,
+  CORE-003C (v2 conformance), CORE-003D (bare GFM autolinks), CORE-005C
+  (content-search memory guard; content search is a model-independent text
+  index) and CORE-005D (wider invisible-filename warnings). HARD-001 (release
+  hardening) is before DESK-002. The scope is in [TODO.md](TODO.md).
+- D-027: the task graph is linear. The shared track runs CORE-FIX, then the
+  CORE-001 to CORE-006 aggregates, in `portable-core`. Each host is one chain
+  from CORE-006 in `desktop-apps`. `tools/project_state.py` gained
+  `remove_dependency` and `update_task`.
+
+State is at revision 498 with no active pass, and only DOC-001 is eligible.
+PR #16 belonged to no state task, so its closeout changed no task status.
+Next: start a DOC-001 pass from `main` on branch
+`docs/doc-001-agent-docs-cleanup`, following AGENT_WORKFLOW.md:
+
+```sh
+python3 tools/project_state.py --file project.yaml inspect
+```
+
+## Previous step — owner holistic CORE review (done)
 
 PR #13 (CORE-003B4) merged as `29f7334` from reviewed head `9b6bd46`; D-024 is
 accepted. CORE-003B4 and the CORE-003B aggregate are completed in

@@ -170,6 +170,8 @@ change for documents that use these extensions; see `specs/search/README.md`.
 Diagnostics are one per fallback node and are bounded by the node limit. No
 engine, renderer, executable node or post-MVP syntax is added. Bare GFM URL
 autolinks, definition lists, super/subscript and wikilinks stay disabled.
+R1.2 still requires bare autolinks: CORE-003D adds them as one bounded shared
+pass (D-026).
 
 The frozen FEAS corpus is unchanged. The tests assert the implemented subset:
 13 GFM headings, tables and tasks, links, code, security invariants, and the

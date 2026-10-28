@@ -156,7 +156,10 @@ During GATE-001 closeout, before implementation selection:
 - Put core work **and the early native foundation tasks** in the forthcoming
   `portable-core` bucket. The backend only selects tasks in its active bucket;
   putting early host tasks in the later desktop bucket would recreate the
-  cross-platform scheduling bottleneck.
+  cross-platform scheduling bottleneck. *Superseded by D-027:* the owner runs
+  the shared track first, so the native foundation tasks now live in
+  `desktop-apps`, which activates when `portable-core` completes. Keep each
+  track a single chain and give it no redundant edges.
 - Make each aggregate milestone depend on its delivery tasks. Delivery tasks
   depend on specific predecessor delivery tasks, not on their own aggregate
   milestone. Aggregate closeout records already-merged PR evidence, not another

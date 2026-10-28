@@ -14,12 +14,21 @@ address the feedback, and obtain owner merge approval. Follow
 rules. GATE-001 is approved (D-018). CORE-001A through CORE-003A, CORE-003B1
 through CORE-003B4 (with B2F), CORE-004A, CORE-005A/A2, CORE-005B/B2 and
 CORE-006A are merged, and the CORE-003B aggregate is closed. The owner's
-holistic CORE review comes before any platform phase. ADV-005 carries deferred engine
+[holistic CORE review](docs/reviews/2026-10-28-core-holistic-review.md)
+(PR #16, merged) accepted D-025 (native hosts use model v2). Reconciled with the
+[Grok](docs/reviews/2026-10-28-grok-shared-core-review.md) and
+[Codex](docs/reviews/2026-10-28-codex-shared-core-review.md) reviews, its
+follow-ups form the [CORE-FIX phase](#core-fix-phase-shared-core-review-follow-ups)
+(D-026), which completes before any platform phase starts. Work runs as one
+linear shared track, then one independent chain per host (D-027; see the
+[dependency summary](#dependency-summary)). ADV-005 carries deferred engine
 work after DESK-002.
 
-## Current phase: portable core and early native foundations
+## Current phase: portable core (shared track)
 
 The gate is complete; the small child tasks are materialized in project state.
+`portable-core` now holds only shared work. It completes when CORE-006 closes,
+which activates `desktop-apps` and the platform chains.
 CORE-001A infrastructure, CORE-002A semantic v1 and CORE-003A basic parsing are
 merged. CORE-003B1 adds [bounded typed front matter](docs/Front-Matter.md).
 CORE-003B2 adds [opt-in v2 provenance/URI targets](specs/semantic-model/v2/README.md)
@@ -28,6 +37,11 @@ Native app shells remain separate; no working reader UI is delivered by the
 core alone.
 
 ## Immediate session handoff
+
+The shared-core review PR #16 is merged. The current handoff is the
+[CORE-FIX phase](#core-fix-phase-shared-core-review-follow-ups), starting with
+DOC-001. The history that follows is kept until DOC-001
+trims it.
 
 PR #7 (CORE-006A C ABI facade, [contract](specs/ffi/README.md)) merged as
 `a751f48`; it unblocks each host's 001B adapter phase, and CORE-006 stays open
@@ -203,9 +217,14 @@ kept as a record; steps 1–3 are done.
 
 ### Portable contract and core
 
-- **CORE-001 — Scaffold monorepo workspaces and CI.** Create only the accepted
-  core and native app shells, path-filtered platform jobs, lint/test commands,
-  dependency inventory, and license checks.
+The CORE aggregates close in order (CORE-001 to CORE-006) at the end of the
+shared track, after CORE-FIX, on shared acceptance only. Native evidence
+belongs to each platform's 001A and 001B (D-027).
+
+- **CORE-001 — Scaffold monorepo workspaces and CI.** The accepted core
+  workspace, platform-isolated CI definitions, lint/test commands, dependency
+  inventory and license checks, passing in hosted CI on all three OSes. Each
+  native shell's CI job is that platform's 001A.
 - **CORE-002 — Define semantic document model v1.** Version blocks, inlines,
   spans, stable identity, diagnostics, outline, properties, link/resource
   intents, capabilities, and unsupported-feature nodes with goldens.
@@ -217,10 +236,139 @@ kept as a record; steps 1–3 are done.
 - **CORE-005 — Implement search and read metadata.** Add source-accurate find,
   workspace search primitives, word count, section timing, and budgets.
 - **CORE-006 — Stabilize desktop facade and packages.** Publish coarse values,
-  typed errors, cancellation/lifetime handles, and model negotiation to all
-  three native desktop test hosts.
+  typed errors, cancellation/lifetime handles and model negotiation through the
+  C ABI. Release-mode Rust/FFI tests pass in hosted CI on all three OSes. Each
+  native package consumer is that platform's 001B. Closing CORE-006 completes
+  `portable-core`.
+
+### CORE-FIX phase: shared-core review follow-ups
+
+Three reviews of the shared core at the same implementation baseline (`39d1a56`):
+[Claude holistic](docs/reviews/2026-10-28-core-holistic-review.md) (F1–F7),
+[Codex](docs/reviews/2026-10-28-codex-shared-core-review.md) (C1–C7) and
+[Grok](docs/reviews/2026-10-28-grok-shared-core-review.md) (G1–G6). None
+found a correctness, memory-safety or file-access defect. The owner
+dispositioned them on 2026-10-28 (D-026). CORE-FIX starts the shared track
+and runs before any platform phase, including the 001A shells. State chains
+the six tasks in the order below, so only the next one is eligible. Each task
+is one feature branch and PR under
+[Delivery-Workflow.md](docs/Delivery-Workflow.md).
+
+1. **DOC-001 — Agent-facing docs cleanup (F5, G5, C6).** Docs only. It goes
+   first because every later session reads these files.
+   - Cut MEMORY.md's posture to a current summary of about 30 lines. Move the
+     run logs and per-phase notes to an archive file, without deleting any
+     durable fact.
+   - Remove the stale CORE-003B2 "Resume here" section from HANDOFF.md.
+   - Fix stale status text: D-020 still says it awaits merge, HANDOFF.md
+     calls D-024 "proposed", and some contract headers still say "under
+     review".
+   - Trim this file's "Immediate session handoff" to pointers.
+   - Qualify the snippet invariant in the
+     [workspace-search spec](specs/workspace-search/README.md#snippets).
+     `normalize(match) == normalize(query)` does not hold for sanitized
+     (U+FFFD) or clipped display text. Source ranges and anchors stay
+     authoritative. The tested display behavior does not change.
+   - Acceptance: Markdown lint and local link checks pass, and the
+     required-reading files agree with `project.yaml` and Decisions.md.
+2. **CORE-002B — Import-policy parity and FFI host guidance (F3, F4, G3, C2).**
+   - V1 validation, including `from_json`, re-runs the parser's own
+     link/resource policy (`classify_link`/`local`) for intents that are not
+     denied, as v2 does.
+   - Shared structural validation (`validate_structure`, which v1 and v2 both
+     use) applies the producer's control/Cf/bidi guards to the metadata title
+     and to scalar and list string properties. It keeps the deliberate
+     allowance for variation selectors and CGJ in display text.
+   - Scope is parity with the producer, not a stricter policy. The v1 parser
+     itself emits `https://user:pw@…` as `External` (Codex's correction to
+     F3), so v1 `from_json` keeps accepting it. Native hosts get credential
+     denial from v2 (D-025).
+   - Add host guidance to the [C ABI spec](specs/ffi/README.md): call the
+     find, read-stats and workspace functions off the UI thread, and size
+     record arrays from `max_matches` so that one call is enough.
+     Cancellable variants are added only if 001F measures a need (D-022
+     additive rule).
+   - Acceptance: regression tests for the review probes on both models.
+     Traversal, encoded dot segments, whitespace and a U+202E destination are
+     rejected; a U+202E title or property is rejected under v1 and v2. No
+     wire, schema or golden change.
+3. **CORE-003C — V2 corpus conformance assertions (C5).** Test-only. After
+   D-025, v2 is the shipped model, but the generated conformance suite
+   compares only the outline and the link count for v2.
+   - Run the supported corpus check tokens on v2 as well, with explicit
+     version-specific expectations for intents rather than identical wire
+     shapes.
+   - Cover resources, metadata, diagnostics, capability flags and denied
+     schemes. Keep the coverage for references that v1 deliberately leaves
+     inert.
+   - It goes before CORE-003D so that the autolink change is checked against
+     the strengthened v2 assertions.
+4. **CORE-003D — Bare GFM autolinks (C3).** R1.2 requires GFM autolinks, and
+   the owner decided on 2026-10-28 to implement them in the shared core.
+   Today only angle autolinks link.
+   - One bounded shared pass detects `http(s)://`, `www.` and email
+     autolinks, following the GFM extended-autolink rules for trailing
+     punctuation, balanced parentheses and entity-like suffixes.
+   - It produces exact source spans across split text events. It never
+     applies inside code spans, code blocks, raw HTML or existing links.
+   - Targets pass through the normal URI policy. Under v2, the provenance
+     re-parse proves them like any other link.
+   - It respects parse limits, cancellation and the counted heap budgets.
+   - Record in Decisions.md whether v1 output also gains autolinks. This is
+     a change to parser output, not to the wire format.
+   - Add conformance fixtures, mutation and pathological cases (long
+     URL-like runs, many `www.` prefixes), and regenerate the goldens on
+     purpose with a reviewed diff.
+   - Update [Parsing.md](docs/Parsing.md).
+5. **CORE-005C — Workspace content-search memory guard (F2, G1, C1, G4).**
+   - Lower the per-file default for content search, for example to 2 MiB,
+     and/or add a delimiter-density admission check that skips with a typed
+     reason.
+   - Any density heuristic gets false-positive tests on legitimate documents
+     (the corpus prose and table profiles).
+   - Prove the bound with a counted heap budget, with Rust/FFI parity. Do not
+     present it as an application memory bound: hosts still cap concurrency,
+     and each 001B measures its own cost.
+   - Document in the [workspace-search spec](specs/workspace-search/README.md)
+     that content search is a text index that does not depend on the model
+     version, so its v1 parse is deliberate (owner decision, 2026-10-28).
+     Richer semantics come from the document session.
+   - Each platform's 002C needs it.
+6. **CORE-005D — Wider invisible-filename warnings (C4).**
+   `WorkspacePath::has_invisible()` flags only Cf characters.
+   - Also flag blank characters that are not Cf: the Hangul fillers U+115F,
+     U+1160, U+3164 and U+FFA0, and U+2800 BRAILLE PATTERN BLANK. Reuse the
+     v2 URI table of invisible characters where it fits.
+   - Keep the ZWJ/ZWNJ exemptions. Never reject or rewrite a name, and keep
+     the exact name and the opaque entry ID.
+   - Add Rust/FFI flag parity tests and update the workspace-search spec.
+     Each platform's 002B needs it.
+
+Not in CORE-FIX, kept where they belong:
+
+- **D-025 enforcement (F1, G2), flat-view/RSS measurement (F2) and the
+  required MSVC C smoke (F6, C7).** These belong to each platform's 001B. It
+  builds the core with `model-v2`, requests v2, measures the flat-view and
+  retained-RSS cost for one document and for repeated documents on its host,
+  and on Windows makes the MSVC C smoke a required CI step. If 001F measures
+  real latency from the search calls that can't be cancelled (F4), add
+  cancellable variants under D-022.
+- **HARD-001 — Release hardening (F7, G6, C7).** Follows DESK-001 and blocks
+  DESK-002. Coverage-guided fuzzing of the parser, the model decoder and the
+  safe FFI inputs (with valid backing buffers), sanitizer runs where
+  supported, and a dependency advisory scan wired into the checks.
+- **Maintenance (F7, C7), when a concrete change touches the code.** Split
+  `parse.rs` by responsibility, replace ordinal parsing of IDs with a side
+  index, and stop charging footnote labels to the copy budget twice. Any
+  upgrade of the `pulldown-cmark` pin is its own gated task that re-runs the
+  conformance, mutation and pathological suites. No broad refactor.
 
 ### Desktop walking skeletons
+
+Each host is one chain in `desktop-apps`, from CORE-006 through 001A–001I to
+its 001 aggregate (D-027). The 001 aggregate also confirms the native CI job
+(001A) and the release-mode core package consumer (001B) that CORE-001 and
+CORE-006 no longer carry. The three host chains are independent.
 
 - **WIN-001 — Windows single-document skeleton.** WinUI 3/C# Native AOT
   (C++/WinRT fallback only for a concrete blocker). Native file open, core call,
@@ -234,8 +382,8 @@ kept as a record; steps 1–3 are done.
 - **LNX-001 — Linux single-document skeleton.** GTK/gtk-rs native virtualized
   blocks, conditional on LNX-001D1 after basic text/navigation: prove AT-SPI
   heading semantics, off-screen heading navigation and owner-confirmed Orca
-  continuous reading on KDE Wayland. LNX-001E/001F depend on this early proof;
-  failure returns to the owner before deeper renderer work.
+  continuous reading on KDE Wayland. LNX-001E and everything after it depend
+  on this early proof; failure returns to the owner before deeper renderer work.
 - **DESK-001 — Cross-desktop skeleton gate.** Compare semantics and performance,
   fix contract bias, document deviations, and choose the MVP deepening order.
   Before closeout, materialize the platform MVP delivery tasks and dependencies.
@@ -250,6 +398,7 @@ kept as a record; steps 1–3 are done.
   Linux filesystems, portals, desktop environments, and packages.
 - **DESK-002 — Desktop MVP conformance and release gate.** Validate all three
   basic products, budgets, capability documentation, privacy, and artifacts.
+  Needs HARD-001 (release hardening) as well as the three 002 aggregates.
 - **DESK-003 — Desktop refinement.** Prioritize R2 features and platform-specific
   polish after the basic MVP gate.
 
@@ -294,23 +443,32 @@ REQ-001 -> FEAS-001 -> FEAS-002 ---------------------------+
                                          +-> FEAS-007 ------+
        \-> FEAS-005 (Linux renderer) -----------------------+
 
+Completed shared foundation (history):
 GATE-001 -> CORE-001A -> CORE-002A -> CORE-003A -> CORE-004A -> CORE-006A
-CORE-003A -> CORE-003B1, CORE-003B2
-CORE-003B1 -> CORE-003B3; CORE-003B2 -> CORE-003B2F
-CORE-003B2F + CORE-003B3 -> CORE-003B4
-CORE-003B1–B4 -> CORE-003B; CORE-004A -> CORE-005A -> CORE-005B
-CORE-005A -> CORE-005A2 -> CORE-005; CORE-005B -> CORE-005B2 -> CORE-005
-CORE-001A -> each host 001A; CORE-006A + own 001A -> own 001B -> ... -> 001I
-CORE-005A + CORE-005A2 -> own 001F; CORE-003B -> own 001I
-LNX-001D -> LNX-001D1 (early accessibility proof) -> LNX-001E + LNX-001F
-all CORE + WIN/MAC/LNX-001 aggregate acceptance -> DESK-001
+CORE-003A -> CORE-003B1..B4 (with B2F) -> CORE-003B
+CORE-004A -> CORE-005A -> CORE-005A2;  CORE-005A -> CORE-005B -> CORE-005B2
+
+Shared track (portable-core, one chain; D-026, D-027):
+DOC-001 -> CORE-002B -> CORE-003C -> CORE-003D -> CORE-005C -> CORE-005D
+  -> CORE-001 -> CORE-002 -> CORE-003 -> CORE-004 -> CORE-005 -> CORE-006
+  -> portable-core complete, desktop-apps active
+
+Each host (desktop-apps; MAC, LNX and WIN chains are independent):
+CORE-006 -> 001A -> 001B -> 001C -> 001D [-> LNX-001D1] -> 001E -> 001F
+  -> 001G -> 001H -> 001I -> MAC-001 / LNX-001 / WIN-001
+
+Joins:
+MAC-001 + LNX-001 + WIN-001 -> DESK-001
+DESK-001 -> HARD-001
 DESK-001 -> each host 002A -> ... -> 002F -> platform 002 aggregate
-CORE-005B + CORE-005B2 -> own 002C; all platform 002 aggregates -> DESK-002 -> DESK-003
+  (002B also needs CORE-005D; 002C also needs CORE-005B, CORE-005B2, CORE-005C)
+HARD-001 + all platform 002 aggregates -> DESK-002 -> DESK-003
 DESK-002 -> IOS-001 -> IOS-002
 DESK-002 -> ADV-001/ADV-003/ADV-004
 DESK-002 -> ADV-005 -> ADV-002
 ```
 
-The abbreviated chains above are orientation only; the catalog defines precise
-child dependencies (including independent branches). The live state still
-represents the pre-GATE-001 queue until supported graph expansion at the gate.
+Live state in `project.yaml` matches these chains: every open task has one
+open predecessor, except the DESK-001 and DESK-002 joins. The catalog in
+[Implementation-Plan.md](docs/Implementation-Plan.md) defines each child's
+scope. The platform 002 children are created in state at DESK-001 closeout.

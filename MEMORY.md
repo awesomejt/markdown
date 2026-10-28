@@ -11,10 +11,28 @@ design belong in `docs/` or `agents/`; runtime transcripts do not belong here.
 - Later platforms: iOS and iPadOS after the desktop contracts are stable.
 - Organization: one native monorepo with independent native UIs,
   shared specifications/fixtures/benchmarks, and a candidate portable core.
-- Status: CORE-001A, CORE-002A, CORE-003A and CORE-003B1 are merged.
-  B1's owner-authorized PR #4 merge is `0ce353f` (fixed head `22146cc`); all
-  four concerns/two nits were addressed and required CI passed. No further bot
-  approval is inferred. Its supported state closeout travels in this branch.
+- Status 2026-10-28 (latest, PR #16): Codex and Grok reviewed the shared
+  core too. The owner accepted D-026 (the CORE-FIX phase: DOC-001, CORE-002B,
+  CORE-003C, CORE-003D bare autolinks, CORE-005C, CORE-005D, plus HARD-001
+  before DESK-002) and D-027. Under D-027 the graph is linear: the shared
+  track ends with the CORE-001 to CORE-006 aggregates in `portable-core`,
+  then each host is an independent chain in `desktop-apps` from CORE-006. The
+  native CI and package-consumer evidence moved to each 001A/001B. The state
+  wrapper has `remove_dependency` and `update_task`. PR #16 merged with
+  owner approval (head `2b06e88`, CI green on all three OSes). Next: DOC-001.
+  See HANDOFF.md.
+- Status 2026-10-28: every shared CORE delivery phase through
+  CORE-006A is merged. The owner's holistic CORE review
+  (docs/reviews/2026-10-28-core-holistic-review.md, PR #16) found no
+  correctness or memory-safety defect. The owner accepted D-025: native 001B
+  packages build `markdown-ffi` with `model-v2` and request v2, because v1
+  denies `../`, non-ASCII and percent-encoded links. Follow-ups in state:
+  CORE-002B (v1 `from_json` re-checks producer intent policy; FFI off-thread,
+  single-call guidance), CORE-005C (content-search memory guard; blocks each
+  002C) and DOC-001 (trim this file and HANDOFF/TODO). Each 001B also measures
+  flat-view and retained RSS, and WIN-001B makes the MSVC C smoke required.
+  Grok and Codex review PR #16; reconcile their reviews before its closeout.
+  Status lines below are older history.
 - CORE-003B retains B1 metadata, B2 references/URI, B3 other extension semantics
   and B4 conformance/fuzz/performance with original aggregate/native gates.
 - Status 2026-10-28: CORE-003B4 merged (PR #13 `29f7334`, reviewed head

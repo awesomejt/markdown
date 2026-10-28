@@ -118,6 +118,46 @@ class StateTests(unittest.TestCase):
         for key in ("active_passes", "stale_passes", "working_tasks_without_active_lease", "warnings"):
             self.assertFalse(view[key])
 
+    def test_remove_dependency_and_update_task(self) -> None:
+        self.run_cli("init", "--project-ref", "test", "--workflow-id", "test",
+                     "--phases", "first,second")
+        for revision, key in ((1, "T-1"), (2, "T-2")):
+            request = self.request(f"create-{key}", revision,
+                                   {"task_key": key, "title": "Test", "phase": "first"})
+            self.run_cli("apply", "create_task", "--request-file", str(request))
+        edge = {"predecessor_task_ref": "T-1", "successor_task_ref": "T-2"}
+        self.run_cli("apply", "add_dependency", "--request-file", str(self.request("add", 3, edge)))
+        self.assertEqual([t["task_key"] for t in self.run_cli("inspect")["eligible_tasks"]], ["T-1"])
+        self.run_cli("apply", "remove_dependency",
+                     "--request-file", str(self.request("remove", 4, edge)))
+        view = self.run_cli("inspect")
+        self.assertEqual(sorted(t["task_key"] for t in view["eligible_tasks"]), ["T-1", "T-2"])
+        missing =self.run_cli("apply", "remove_dependency", "--request-file",
+                               str(self.request("remove-again", 5, edge)), expected=2)
+        self.assertEqual(missing["error"]["code"], "not_found")
+
+        update = {"task_ref": "T-2", "phase": "second", "description": "Moved", "priority": "70"}
+        self.run_cli("apply", "update_task", "--request-file", str(self.request("update", 5, update)))
+        task = next(t for t in yaml.safe_load(self.state.read_text())["tasks"]
+                    if t["task_key"] == "T-2")
+        self.assertEqual((task["phase"], task["description"], task["priority"]),
+                         ("second", "Moved", 70))
+        self.assertEqual([t["task_key"] for t in self.run_cli("inspect")["eligible_tasks"]], ["T-1"])
+        for name, data in (("bad-field", {"task_ref": "T-2", "status": "completed"}),
+                           ("bad-phase", {"task_ref": "T-2", "phase": "nowhere"}),
+                           ("empty", {"task_ref": "T-2"})):
+            with self.subTest(name=name):
+                error = self.run_cli("apply", "update_task", "--request-file",
+                                     str(self.request(name, 6, data)), expected=2)["error"]
+                self.assertIn(error["code"], {"validation_error", "not_found"})
+
+        start = self.request("start", 6, {"task_ref": "T-1", "objective": "Hold a pass"})
+        self.run_cli("apply", "start_pass", "--request-file", str(start))
+        error = self.run_cli("apply", "update_task", "--request-file", str(self.request(
+            "during-pass", 7, {"task_ref": "T-1", "description": "Edited"})), expected=2)["error"]
+        self.assertEqual(error["message"], "Task has an active pass")
+        self.assertEqual(self.run_cli("inspect")["revision"], 7)
+
     def test_failures_before_replace_preserve_original_and_clean_temporary(self) -> None:
         self.state.write_bytes(b"original")
         for operation in ("replace", "fsync"):

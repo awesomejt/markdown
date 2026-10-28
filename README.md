@@ -21,8 +21,10 @@ CORE-003B2 adds opt-in [v2 references and URI targets](specs/semantic-model/v2/R
 while preserving default v1. CORE-004A adds [document sessions](specs/session/README.md)
 with generations, cancellation, external-change state and anchors. CORE-006A
 adds the hand-written [C ABI](specs/ffi/README.md) facade. CORE-005A adds
-[document find and reading metadata](specs/search/README.md). Remaining extension conformance and native application shells remain
-separate phases; no working reader is delivered by the core alone. The accepted
+[document find and reading metadata](specs/search/README.md). Three reviews of
+the shared core ([reviews](docs/reviews/README.md)) led to the CORE-FIX phase
+(D-026) in [TODO.md](TODO.md). It finishes the shared track before the native
+application shells start (D-027). Native shells remain separate phases; no working reader is delivered by the core alone. The accepted
 [implementation baseline](docs/Implementation-Baseline.md) and
 [architecture](docs/Architecture.md) preserve the required native evidence.
 
