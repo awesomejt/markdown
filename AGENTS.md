@@ -58,7 +58,8 @@ resolve it before changing implementation.
   communication, destructive operations, or expanding to another repository.
   The owner has authorized scoped phase commits, branch pushes, PR updates and
   Grok review comments under `docs/Delivery-Workflow.md`; merge requires explicit
-  owner authorization.
+  owner authorization. Approval of a PR also covers its closeout commit, merge
+  and branch deletion.
 
 ## Architecture guardrails
 
@@ -95,7 +96,10 @@ A task is complete only when:
    working state.
 
 For core and later delivery tasks, completion also requires actual review
-disposition and an owner-authorized merge; code-ready review waits are partial.
+disposition and the owner's approval to merge; code-ready review waits are
+partial. On approval, record completion in a closeout commit on the PR branch,
+then merge, delete the branch and return to `main`, following "Closing out an
+approved PR" in `docs/Delivery-Workflow.md`.
 
 Report the concrete outcome, checks run, blocking issues, residual risk, and
 the next dependency-ready task. Push only within the standing delivery-workflow
