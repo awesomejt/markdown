@@ -1,15 +1,16 @@
 # Workspace search primitives
 
-Status: CORE-005B contract under phase-PR review; freeze at owner-authorized
-merge. Rust module `markdown_core::workspace`
+Status: frozen at the owner-authorized CORE-005B PR #10 merge (`0bf8eb7`).
+Rust module `markdown_core::workspace`
 ([source](../../core/crates/markdown-core/src/workspace/mod.rs)) implements it
 on top of [document find](../search/README.md) and
 [session anchors](../session/README.md). It is pure: no I/O, threads, clocks,
-locale data, wire-model change or new dependency. V1/v2 APIs, schemas,
-goldens and the C ABI are unchanged.
+locale data, wire-model change or new dependency. V1/v2 APIs, schemas and
+goldens are unchanged. The C ABI encoding is in
+[the C ABI contract](../ffi/README.md#workspace-search-core-005b2)
+(CORE-005B2).
 
-Out of scope here: the C ABI encoding (CORE-005B2, owner-approved split),
-folder enumeration, watching, indexing and persistence (platform adapters),
+Out of scope here: folder enumeration, watching, indexing and persistence (platform adapters),
 and the workspace search UI with result navigation (each platform's 002C).
 
 ## Capability model
@@ -216,6 +217,10 @@ rather than present the list as exhaustive.
 `ContentProgress` reports `files_read`, `files_matched`, `bytes_read`,
 `matches`, `files_truncated`, per-reason `skipped` counts and `stopped`.
 `files_read` includes the `invalid_utf8` and `parse_failed` skips. These are enough for a progress line and a final summary.
+Progress is caller data, which a C host passes back in. The budget checks
+bound `files_read`, `bytes_read` and `matches`, and the other counts
+(skips, `files_matched`, `files_truncated`) saturate, so an edited value
+cannot overflow (CORE-005B2).
 
 **Retained memory** is bounded by the results the caller keeps: at most
 `max_total_matches` hits, each up to a snippet (≤ 656 characters) plus an
@@ -299,9 +304,10 @@ CORE-003B4 performance phases.
 ## Decided follow-up and open proposals
 
 1. **C ABI exposure** (CORE-005B2, owner-approved 2026-10-28) follows D-022:
-   new functions only, a caller-owned `ContentProgress`-shaped struct and
-   record arrays, header size constants and no handles. Each platform's 002C
-   depends on it.
+   four new functions, a caller-owned `md_content_progress`, record arrays,
+   header size constants and no handles. See
+   [the C ABI contract](../ffi/README.md#workspace-search-core-005b2). Each
+   platform's 002C depends on it.
 2. **Raw-source prefilter:** most no-match cost is parsing. A safe prefilter
    would need to account for entities, escapes and folding, which can make
    visible text differ from the source bytes. Measure on real workspaces

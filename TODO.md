@@ -34,10 +34,11 @@ source-accurate find, word count and section timing;
 [contract](specs/search/README.md)) merged as `237cd88`, and PR #9
 (**CORE-005A2**, `md_snapshot_find`/`md_snapshot_read_stats` under D-022)
 merged as `ec58c84`. **CORE-005B** adds capability-fed
-[workspace search primitives](specs/workspace-search/README.md) in Rust on
-`feat/core-005b-workspace-search`; it stays partial until review disposition
-and owner-authorized merge. Its C ABI exposure is the owner-approved split
-**CORE-005B2**, required by each platform's 002C. CORE-003B was refined into four
+[workspace search primitives](specs/workspace-search/README.md) in Rust,
+merged in PR #10 as `0bf8eb7`. Its C ABI exposure, the owner-approved split
+**CORE-005B2** required by each platform's 002C, adds four D-022 functions on
+`feat/core-005b2-workspace-ffi`. It stays partial until review disposition
+and owner-authorized merge. CORE-003B was refined into four
 tracked children: B1 metadata; B2 reference representation/URI compatibility;
 B3 remaining extension semantics; B4 conformance/fuzz/property and parser
 budgets. See [the catalog](docs/Implementation-Plan.md) for scope/dependencies.

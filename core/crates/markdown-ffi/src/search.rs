@@ -13,7 +13,7 @@ use markdown_core::search::{
 /// A caller-owned record array (null only with zero capacity). Like [`Out`],
 /// it is written only through raw stores, and only after all fallible work,
 /// so failures leave it untouched.
-struct Records<T> {
+pub(crate) struct Records<T> {
     ptr: *mut T,
     capacity: usize,
 }
@@ -21,7 +21,7 @@ impl<T: Copy> Records<T> {
     /// # Safety
     /// A non-null, aligned `ptr` must be valid for writes of `capacity`
     /// values of `T`.
-    unsafe fn new(ptr: *mut T, capacity: usize) -> Result<Self, md_status> {
+    pub(crate) unsafe fn new(ptr: *mut T, capacity: usize) -> Result<Self, md_status> {
         if (capacity != 0 && ptr.is_null())
             || (!ptr.is_null() && !ptr.is_aligned())
             || capacity
@@ -32,23 +32,34 @@ impl<T: Copy> Records<T> {
         }
         Ok(Self { ptr, capacity })
     }
-    fn fits(&self, count: usize) -> bool {
+    pub(crate) fn fits(&self, count: usize) -> bool {
         count <= self.capacity
     }
-    fn set(&self, index: usize, value: T) {
+    pub(crate) fn set(&self, index: usize, value: T) {
         assert!(index < self.capacity, "record index checked by `fits`");
         // SAFETY: `new` validated the pointer for `capacity` writes and the
         // index is in range.
         unsafe { self.ptr.add(index).write(value) };
     }
-    fn write(&self, values: &[T]) {
-        assert!(self.fits(values.len()), "record count checked by `fits`");
+    pub(crate) fn write(&self, values: &[T]) {
+        self.write_at(0, values);
+    }
+    /// Copy `values` to `[offset, offset + values.len())`.
+    pub(crate) fn write_at(&self, offset: usize, values: &[T]) {
+        assert!(
+            offset
+                .checked_add(values.len())
+                .is_some_and(|end| self.fits(end)),
+            "record range checked by `fits`"
+        );
         if values.is_empty() {
             return;
         }
-        // SAFETY: `new` validated the pointer for `capacity` writes;
-        // `values` is core-owned, so the ranges cannot overlap.
-        unsafe { std::ptr::copy_nonoverlapping(values.as_ptr(), self.ptr, values.len()) };
+        // SAFETY: `new` validated the pointer for `capacity` writes and the
+        // range is in bounds; `values` is core-owned, so they cannot overlap.
+        unsafe {
+            std::ptr::copy_nonoverlapping(values.as_ptr(), self.ptr.add(offset), values.len())
+        };
     }
 }
 

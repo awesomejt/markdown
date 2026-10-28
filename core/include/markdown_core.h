@@ -539,6 +539,242 @@ md_status md_snapshot_read_stats(md_snapshot snapshot, const md_read_options *op
                                  md_read_section *sections, size_t section_capacity,
                                  md_read_stats *out_stats);
 
+/*
+ * ABI v1 additions (D-022): workspace search (specs/workspace-search/README.md).
+ * No handle is involved. The adapter keeps folder access and file reads and
+ * passes display paths (relative, '/'-separated UTF-8 labels that grant no
+ * access) and file bytes; the core never opens anything. Size constants,
+ * struct_size and record sizes follow the find rules above, and so do
+ * BUFFER_TOO_SMALL and zeroed results on failure.
+ *
+ * Content search accounting is a caller-owned md_content_progress. Start from
+ * a zeroed struct with struct_size set and pass the same struct to every
+ * admit/search call of one workspace search. It is read on entry and written
+ * back only on MD_OK; every failure (including BUFFER_TOO_SMALL) leaves it
+ * unchanged. A nonzero stopped is permanent: the search may be incomplete.
+ * Calls on one progress struct must not run concurrently.
+ */
+#define MD_WORKSPACE_PATH_INFO_SIZE 16u
+#define MD_WORKSPACE_ENTRY_SIZE 24u
+#define MD_NAME_OPTIONS_SIZE 24u
+#define MD_NAME_RESULT_SIZE 56u
+#define MD_NAME_HIT_SIZE 24u
+#define MD_CONTENT_OPTIONS_SIZE 48u
+#define MD_CONTENT_PROGRESS_SIZE 88u
+#define MD_CONTENT_RESULT_SIZE 112u
+#define MD_CONTENT_HIT_SIZE 48u
+#define MD_WORKSPACE_MAX_PATH_BYTES 4096u
+#define MD_WORKSPACE_MAX_PATH_DEPTH 256u
+#define MD_WORKSPACE_MAX_QUERY_BYTES 4096u
+#define MD_NAMES_DEFAULT_MAX_RESULTS 200u
+#define MD_NAMES_MAX_RESULTS 10000u
+#define MD_NAMES_DEFAULT_MAX_ENTRIES 100000u
+#define MD_NAMES_MAX_ENTRIES 1000000u
+/* Total path_length of the examined entries (ranges may alias); more is
+   MD_ERR_LIMIT before any work. */
+#define MD_NAMES_MAX_PATH_BYTES 67108864u
+#define MD_CONTENT_DEFAULT_MAX_FILES 10000u
+#define MD_CONTENT_MAX_FILES 1000000u
+#define MD_CONTENT_DEFAULT_MAX_TOTAL_BYTES 268435456u
+#define MD_CONTENT_MAX_TOTAL_BYTES 17179869184u
+#define MD_CONTENT_MAX_FILE_BYTES 8388608u
+#define MD_CONTENT_DEFAULT_MAX_MATCHES_PER_FILE 100u
+#define MD_CONTENT_MAX_MATCHES_PER_FILE 10000u
+#define MD_CONTENT_DEFAULT_MAX_TOTAL_MATCHES 2000u
+#define MD_CONTENT_MAX_TOTAL_MATCHES 100000u
+#define MD_CONTENT_DEFAULT_SNIPPET_CONTEXT 40u
+#define MD_CONTENT_MAX_SNIPPET_CONTEXT 200u
+/* Upper bound of one hit's snippet text: (2 * 200 + 256) characters of at
+   most 4 UTF-8 bytes. hit_capacity * this always suffices for text. */
+#define MD_CONTENT_MAX_SNIPPET_BYTES 2624u
+
+/* md_workspace_path_info.error */
+enum {
+    MD_PATH_VALID = 0,
+    MD_PATH_EMPTY = 1,
+    MD_PATH_TOO_LONG = 2,            /* over MD_WORKSPACE_MAX_PATH_BYTES */
+    MD_PATH_TOO_DEEP = 3,            /* over MD_WORKSPACE_MAX_PATH_DEPTH components */
+    MD_PATH_ABSOLUTE = 4,            /* leading '/' */
+    MD_PATH_EMPTY_COMPONENT = 5,     /* "//" or a trailing '/' */
+    MD_PATH_DOT_COMPONENT = 6,       /* "." or ".." */
+    MD_PATH_CONTROL = 7,             /* control or bidi formatting character */
+    MD_PATH_INVALID_UTF8 = 8
+};
+/* md_workspace_path_info.flags (valid paths only) */
+enum { MD_PATH_MARKDOWN = 1, MD_PATH_HIDDEN = 2, MD_PATH_INVISIBLE = 4 };
+/* md_name_options.flags */
+enum { MD_NAMES_CASE_SENSITIVE = 1, MD_NAMES_INCLUDE_HIDDEN = 2, MD_NAMES_ALL_FILES = 4 };
+/* md_name_result.flags */
+enum { MD_NAMES_TRUNCATED = 1, MD_NAMES_ENTRIES_LIMITED = 2 };
+/* md_name_hit.rank, best first */
+enum { MD_NAME_RANK_PREFIX = 1, MD_NAME_RANK_NAME = 2, MD_NAME_RANK_PATH = 3 };
+/* md_content_options.flags */
+enum { MD_CONTENT_CASE_SENSITIVE = 1, MD_CONTENT_WHOLE_WORD = 2, MD_CONTENT_INCLUDE_HIDDEN = 4 };
+/* Admission outcomes (READ, SKIPPED, STOPPED) and search outcomes
+   (SEARCHED, SKIPPED, STOPPED). */
+enum {
+    MD_CONTENT_READ = 1,
+    MD_CONTENT_SEARCHED = 2,
+    MD_CONTENT_SKIPPED = 3,          /* reason is MD_SKIP_*; continue */
+    MD_CONTENT_STOPPED = 4           /* reason is MD_STOP_*; stop reading files */
+};
+enum {
+    MD_SKIP_HIDDEN = 1,
+    MD_SKIP_NOT_MARKDOWN = 2,
+    MD_SKIP_TOO_LARGE = 3,
+    MD_SKIP_INVALID_UTF8 = 4,
+    MD_SKIP_PARSE_FAILED = 5
+};
+/* Also md_content_progress.stopped (0 while running). */
+enum { MD_STOP_FILES = 1, MD_STOP_BYTES = 2, MD_STOP_MATCHES = 3 };
+/* md_content_result.flags */
+enum { MD_CONTENT_TRUNCATED = 1 };
+/* md_content_hit.flags */
+enum { MD_HIT_EXACT = 1, MD_HIT_LEADING_MORE = 2, MD_HIT_TRAILING_MORE = 4, MD_HIT_ANCHOR = 8 };
+
+typedef struct md_workspace_path_info {
+    uint32_t struct_size;            /* MD_WORKSPACE_PATH_INFO_SIZE */
+    uint32_t error;                  /* MD_PATH_*; MD_PATH_VALID is 0 */
+    uint32_t flags;                  /* MD_PATH_MARKDOWN/HIDDEN/INVISIBLE */
+    uint32_t name_start;             /* byte offset of the final component */
+} md_workspace_path_info;
+
+/* One adapter-supplied file. id is opaque to the core and only copied into
+   results; the path is paths[path_offset .. path_offset + path_length). */
+typedef struct md_workspace_entry {
+    uint64_t id;
+    uint64_t path_offset;
+    uint32_t path_length;
+    uint32_t reserved;               /* must be 0 */
+} md_workspace_entry;
+
+typedef struct md_name_options {
+    uint32_t struct_size;            /* MD_NAME_OPTIONS_SIZE */
+    uint32_t flags;                  /* MD_NAMES_*; unknown bits are rejected */
+    uint32_t max_results;            /* 0 selects MD_NAMES_DEFAULT_MAX_RESULTS */
+    uint32_t max_entries;            /* 0 selects MD_NAMES_DEFAULT_MAX_ENTRIES */
+    uint32_t entry_size;             /* sizeof(md_workspace_entry) */
+    uint32_t hit_size;               /* sizeof(md_name_hit) */
+} md_name_options;
+
+typedef struct md_name_result {
+    uint32_t struct_size;            /* MD_NAME_RESULT_SIZE */
+    uint32_t flags;                  /* MD_NAMES_TRUNCATED/ENTRIES_LIMITED */
+    uint64_t hit_count;              /* written, or required on BUFFER_TOO_SMALL */
+    uint64_t total_hits;             /* every matching entry examined */
+    uint64_t entries_examined;       /* at most max_entries, including skipped */
+    uint64_t skipped_hidden;
+    uint64_t skipped_not_markdown;
+    uint64_t skipped_invalid;        /* paths the core rejects; never shown */
+} md_name_result;
+
+/* Sorted by rank, then path bytes, then entry index. */
+typedef struct md_name_hit {
+    uint64_t id;                     /* the entry's id */
+    uint32_t entry;                  /* index into the entries array */
+    uint32_t rank;                   /* MD_NAME_RANK_* */
+    uint32_t start;                  /* byte range of the first match in the path */
+    uint32_t end;
+} md_name_hit;
+
+/* Zero selects the default for every limit except snippet_context, which is
+   used as given (0..200); MD_CONTENT_DEFAULT_SNIPPET_CONTEXT is the default. */
+typedef struct md_content_options {
+    uint32_t struct_size;            /* MD_CONTENT_OPTIONS_SIZE */
+    uint32_t flags;                  /* MD_CONTENT_*; unknown bits are rejected */
+    uint64_t max_files;              /* files read, 1..MD_CONTENT_MAX_FILES */
+    uint64_t max_total_bytes;        /* bytes read, 1..MD_CONTENT_MAX_TOTAL_BYTES */
+    uint32_t max_file_bytes;         /* larger files are skipped; default and max 8 MiB */
+    uint32_t max_matches_per_file;
+    uint32_t max_total_matches;
+    uint32_t snippet_context;        /* characters on each side of a match */
+    uint32_t hit_size;               /* sizeof(md_content_hit) */
+    uint32_t reserved;               /* must be 0 */
+} md_content_options;
+
+typedef struct md_content_progress {
+    uint32_t struct_size;            /* MD_CONTENT_PROGRESS_SIZE */
+    uint32_t stopped;                /* 0, or the permanent MD_STOP_* reason */
+    uint64_t files_read;             /* includes invalid-UTF-8 and parse-failed files */
+    uint64_t files_matched;
+    uint64_t bytes_read;
+    uint64_t matches;
+    uint64_t files_truncated;        /* hits cut by a match budget */
+    uint64_t skipped_hidden;
+    uint64_t skipped_not_markdown;
+    uint64_t skipped_too_large;
+    uint64_t skipped_invalid_utf8;
+    uint64_t skipped_parse_failed;
+} md_content_progress;
+
+typedef struct md_content_result {
+    uint32_t struct_size;            /* MD_CONTENT_RESULT_SIZE */
+    uint32_t outcome;                /* MD_CONTENT_SEARCHED/SKIPPED/STOPPED */
+    uint32_t reason;                 /* MD_SKIP_* or MD_STOP_*; 0 when searched */
+    uint32_t flags;                  /* MD_CONTENT_TRUNCATED: more matches in this file */
+    uint64_t hit_count;              /* written, or required on BUFFER_TOO_SMALL */
+    uint64_t text_length;            /* snippet text bytes, likewise */
+    uint64_t anchor_length;          /* anchor bytes, likewise */
+    /* Searched bytes. If a later snapshot's source length and source_sha256
+       are equal, hit spans and units apply to it directly; otherwise resolve
+       the hit's anchor. */
+    uint64_t source_length;
+    uint8_t source_sha256[64];       /* lowercase hex ASCII, not NUL-terminated */
+} md_content_result;
+
+/* One match, in reading order. */
+typedef struct md_content_hit {
+    uint32_t unit;                   /* leaf block node index in a v1 view of these bytes */
+    uint32_t flags;                  /* MD_HIT_* */
+    uint32_t span_start;             /* source range covering the match */
+    uint32_t span_end;
+    uint64_t line;                   /* 1-based line of span_start (LF) */
+    uint32_t text_offset;            /* snippet: text[text_offset .. + text_length) */
+    uint32_t text_length;
+    uint32_t match_start;            /* match within the snippet text */
+    uint32_t match_end;
+    uint32_t anchor_offset;          /* anchors[anchor_offset .. + anchor_length) */
+    uint32_t anchor_length;          /* 0 without MD_HIT_ANCHOR */
+} md_content_hit;
+
+/* Validate a display path and classify it. Returns MD_OK for any path; the
+   verdict is info->error. Use it to skip entries the core would reject. */
+md_status md_workspace_classify_path(const uint8_t *path, size_t path_length,
+                                     md_workspace_path_info *out_info);
+/* Literal file-name search. An empty or whitespace-only query succeeds with
+   no hits. An entry whose range lies outside paths is INVALID_ARGUMENT; an
+   entry whose path is invalid is skipped and counted in skipped_invalid.
+   Examined paths totalling over MD_NAMES_MAX_PATH_BYTES are MD_ERR_LIMIT. */
+md_status md_workspace_find_names(const uint8_t *paths, size_t paths_length,
+                                  const md_workspace_entry *entries, size_t entry_count,
+                                  const uint8_t *query, size_t query_length,
+                                  const md_name_options *options,
+                                  md_name_hit *hits, size_t hit_capacity,
+                                  md_name_result *out_result);
+/* Before reading a file: *out_outcome is MD_CONTENT_READ, SKIPPED or STOPPED
+   and *out_reason the MD_SKIP_* or MD_STOP_* reason (0 for READ). byte_length is
+   the adapter's size estimate. An empty query or invalid path is
+   INVALID_ARGUMENT. Optional: content_search re-checks admission. */
+md_status md_workspace_content_admit(const uint8_t *query, size_t query_length,
+                                     const md_content_options *options,
+                                     const uint8_t *path, size_t path_length,
+                                     uint64_t byte_length, md_content_progress *progress,
+                                     uint32_t *out_outcome, uint32_t *out_reason);
+/* Search one file's bytes. Size the arrays from the limits to avoid a
+   BUFFER_TOO_SMALL retry, which re-parses the file: max_matches_per_file hits,
+   that many MD_CONTENT_MAX_SNIPPET_BYTES of text and MD_ANCHOR_MAX_BYTES of
+   anchors. Each call is bounded by max_file_bytes; stop between files to
+   cancel. Thread-safe; run off the UI thread. */
+md_status md_workspace_content_search(const uint8_t *query, size_t query_length,
+                                      const md_content_options *options,
+                                      const uint8_t *path, size_t path_length,
+                                      const uint8_t *content, size_t content_length,
+                                      md_content_progress *progress,
+                                      md_content_hit *hits, size_t hit_capacity,
+                                      uint8_t *text, size_t text_capacity,
+                                      uint8_t *anchors, size_t anchor_capacity,
+                                      md_content_result *out_result);
+
 #ifdef __cplusplus
 }
 #endif

@@ -1,11 +1,34 @@
 # Agent Session and Platform Handoff
 
-Updated: 2026-10-28, CORE-005B workspace search on `feat/core-005b-workspace-search`.
-Source baseline: `ec58c84` on main (PR #9 merge) plus this phase's changes. Preserve intended
+Updated: 2026-10-28, CORE-005B2 workspace search C ABI on `feat/core-005b2-workspace-ffi`.
+Source baseline: `0bf8eb7` on main (PR #10 merge) plus this phase's changes. Preserve intended
 source, lock/spec/golden files, docs and state together. Never transfer caches,
 environments, build products, private runtime state or user documents.
 
-## Resume here — CORE-005B workspace search primitives
+## Resume here — CORE-005B2 workspace search C ABI
+
+PR #10 (CORE-005B) merged as `0bf8eb7`; its state closeout travels on this
+branch. CORE-005B2 adds four D-022 functions per
+[the C ABI contract](specs/ffi/README.md#workspace-search-core-005b2).
+`md_workspace_classify_path` reports a `MD_PATH_*` verdict and the
+Markdown/hidden/invisible flags. `md_workspace_find_names` takes
+`md_workspace_entry` records (an opaque ID plus a byte range into one paths
+buffer). It skips and counts paths the core rejects, but an out-of-range
+reference is an argument error. `md_workspace_content_admit` and
+`md_workspace_content_search` share a caller-owned in/out
+`md_content_progress`, which is written back only on `MD_OK`. Search fills
+`md_content_hit` records plus packed snippet text and anchor buffers. Hosts
+size them from the limits (`MD_CONTENT_MAX_SNIPPET_BYTES`,
+`MD_ANCHOR_MAX_BYTES`) to avoid a re-parsing retry. Zero limits select
+defaults, except `snippet_context`, which is used as given. Hit `unit`
+indexes a v1 view only, so v2 hosts navigate by span or anchor. One core
+change: progress counts not bounded by a budget now saturate. Evidence: Rust
+parity in `src/tests/workspace.rs`, layout and constant checks, and the macOS
+C smoke. Next: phase PR, `/grok review`, owner-authorized merge. Then
+CORE-003B3, CORE-003B4 (with the CORE-003B closeout), then the owner's
+holistic review before any platform phase.
+
+## CORE-005B workspace search primitives (merged in PR #10)
 
 PR #9 (CORE-005A2) merged as `ec58c84`; its state closeout travels on this
 branch. CORE-005B adds `markdown_core::workspace` per
@@ -20,10 +43,8 @@ matches and add a visible-text snippet, a line number, an anchor and the
 file's `SourceInfo` for navigation. Cancellation returns nothing and leaves
 progress unchanged. There is no new dependency, model or ABI change. The
 owner approved splitting the C ABI exposure into CORE-005B2 (task created,
-blocks CORE-005; each 002C needs it). Next: phase PR, `/grok review`,
-owner-authorized merge. Then CORE-005B2, CORE-003B3, CORE-003B4 (with the
-CORE-003B closeout), then the owner's holistic review before any platform
-phase.
+blocks CORE-005; each 002C needs it). The owner merged PR #10 as `0bf8eb7`
+from reviewed head `2a47b80`.
 
 ## CORE-005A2 C ABI find and reading statistics (merged in PR #9)
 

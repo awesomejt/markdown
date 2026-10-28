@@ -131,6 +131,31 @@ fn rust_layout() -> BTreeMap<String, usize> {
             heading, outline_index, level, reserved, words, seconds, cumulative_words,
             cumulative_seconds,
         }
+        md_workspace_path_info { struct_size, error, flags, name_start }
+        md_workspace_entry { id, path_offset, path_length, reserved }
+        md_name_options { struct_size, flags, max_results, max_entries, entry_size, hit_size }
+        md_name_result {
+            struct_size, flags, hit_count, total_hits, entries_examined, skipped_hidden,
+            skipped_not_markdown, skipped_invalid,
+        }
+        md_name_hit { id, entry, rank, start, end }
+        md_content_options {
+            struct_size, flags, max_files, max_total_bytes, max_file_bytes, max_matches_per_file,
+            max_total_matches, snippet_context, hit_size, reserved,
+        }
+        md_content_progress {
+            struct_size, stopped, files_read, files_matched, bytes_read, matches, files_truncated,
+            skipped_hidden, skipped_not_markdown, skipped_too_large, skipped_invalid_utf8,
+            skipped_parse_failed,
+        }
+        md_content_result {
+            struct_size, outcome, reason, flags, hit_count, text_length, anchor_length,
+            source_length, source_sha256,
+        }
+        md_content_hit {
+            unit, flags, span_start, span_end, line, text_offset, text_length, match_start,
+            match_end, anchor_offset, anchor_length,
+        }
     }
 }
 

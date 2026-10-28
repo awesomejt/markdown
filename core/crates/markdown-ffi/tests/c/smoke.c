@@ -6,7 +6,7 @@
  *
  *   smoke layout   print sizeof/offsetof for every ABI struct field
  *   smoke run MASK exercise negotiation, sessions, bulk views, find, reading
- *                  statistics, anchors and release;
+ *                  statistics, workspace search, anchors and release;
  *                  MASK is the model_versions bitmask the linked build must report
  *
  * SPDX-License-Identifier: Apache-2.0
@@ -99,14 +99,52 @@
     X(md_read_section, heading) X(md_read_section, outline_index)                      \
     X(md_read_section, level) X(md_read_section, reserved) X(md_read_section, words)   \
     X(md_read_section, seconds) X(md_read_section, cumulative_words)                   \
-    X(md_read_section, cumulative_seconds)
+    X(md_read_section, cumulative_seconds)                                             \
+    X(md_workspace_path_info, struct_size) X(md_workspace_path_info, error)            \
+    X(md_workspace_path_info, flags) X(md_workspace_path_info, name_start)             \
+    X(md_workspace_entry, id) X(md_workspace_entry, path_offset)                       \
+    X(md_workspace_entry, path_length) X(md_workspace_entry, reserved)                 \
+    X(md_name_options, struct_size) X(md_name_options, flags)                          \
+    X(md_name_options, max_results) X(md_name_options, max_entries)                    \
+    X(md_name_options, entry_size) X(md_name_options, hit_size)                        \
+    X(md_name_result, struct_size) X(md_name_result, flags)                            \
+    X(md_name_result, hit_count) X(md_name_result, total_hits)                         \
+    X(md_name_result, entries_examined) X(md_name_result, skipped_hidden)              \
+    X(md_name_result, skipped_not_markdown) X(md_name_result, skipped_invalid)         \
+    X(md_name_hit, id) X(md_name_hit, entry) X(md_name_hit, rank)                      \
+    X(md_name_hit, start) X(md_name_hit, end)                                          \
+    X(md_content_options, struct_size) X(md_content_options, flags)                    \
+    X(md_content_options, max_files) X(md_content_options, max_total_bytes)            \
+    X(md_content_options, max_file_bytes) X(md_content_options, max_matches_per_file)  \
+    X(md_content_options, max_total_matches) X(md_content_options, snippet_context)    \
+    X(md_content_options, hit_size) X(md_content_options, reserved)                    \
+    X(md_content_progress, struct_size) X(md_content_progress, stopped)                \
+    X(md_content_progress, files_read) X(md_content_progress, files_matched)           \
+    X(md_content_progress, bytes_read) X(md_content_progress, matches)                 \
+    X(md_content_progress, files_truncated) X(md_content_progress, skipped_hidden)     \
+    X(md_content_progress, skipped_not_markdown)                                       \
+    X(md_content_progress, skipped_too_large)                                          \
+    X(md_content_progress, skipped_invalid_utf8)                                       \
+    X(md_content_progress, skipped_parse_failed)                                       \
+    X(md_content_result, struct_size) X(md_content_result, outcome)                    \
+    X(md_content_result, reason) X(md_content_result, flags)                           \
+    X(md_content_result, hit_count) X(md_content_result, text_length)                  \
+    X(md_content_result, anchor_length) X(md_content_result, source_length)            \
+    X(md_content_result, source_sha256)                                                \
+    X(md_content_hit, unit) X(md_content_hit, flags) X(md_content_hit, span_start)     \
+    X(md_content_hit, span_end) X(md_content_hit, line) X(md_content_hit, text_offset) \
+    X(md_content_hit, text_length) X(md_content_hit, match_start)                      \
+    X(md_content_hit, match_end) X(md_content_hit, anchor_offset)                      \
+    X(md_content_hit, anchor_length)
 
 #define STRUCTS(X)                                                                     \
     X(md_str) X(md_abi_info) X(md_session_options) X(md_session_status_info)           \
     X(md_job_result) X(md_node) X(md_intent) X(md_outline_entry) X(md_diagnostic)      \
     X(md_property) X(md_snapshot_view) X(md_anchor_resolution) X(md_find_options)      \
     X(md_find_result) X(md_find_match) X(md_match_segment) X(md_read_options)          \
-    X(md_read_stats) X(md_read_section)
+    X(md_read_stats) X(md_read_section) X(md_workspace_path_info) X(md_workspace_entry) \
+    X(md_name_options) X(md_name_result) X(md_name_hit) X(md_content_options)          \
+    X(md_content_progress) X(md_content_result) X(md_content_hit)
 
 /* D-022: each addition's size constant is part of the ABI. */
 _Static_assert(sizeof(md_find_options) == MD_FIND_OPTIONS_SIZE, "md_find_options");
@@ -116,6 +154,15 @@ _Static_assert(sizeof(md_match_segment) == MD_MATCH_SEGMENT_SIZE, "md_match_segm
 _Static_assert(sizeof(md_read_options) == MD_READ_OPTIONS_SIZE, "md_read_options");
 _Static_assert(sizeof(md_read_stats) == MD_READ_STATS_SIZE, "md_read_stats");
 _Static_assert(sizeof(md_read_section) == MD_READ_SECTION_SIZE, "md_read_section");
+_Static_assert(sizeof(md_workspace_path_info) == MD_WORKSPACE_PATH_INFO_SIZE, "md_workspace_path_info");
+_Static_assert(sizeof(md_workspace_entry) == MD_WORKSPACE_ENTRY_SIZE, "md_workspace_entry");
+_Static_assert(sizeof(md_name_options) == MD_NAME_OPTIONS_SIZE, "md_name_options");
+_Static_assert(sizeof(md_name_result) == MD_NAME_RESULT_SIZE, "md_name_result");
+_Static_assert(sizeof(md_name_hit) == MD_NAME_HIT_SIZE, "md_name_hit");
+_Static_assert(sizeof(md_content_options) == MD_CONTENT_OPTIONS_SIZE, "md_content_options");
+_Static_assert(sizeof(md_content_progress) == MD_CONTENT_PROGRESS_SIZE, "md_content_progress");
+_Static_assert(sizeof(md_content_result) == MD_CONTENT_RESULT_SIZE, "md_content_result");
+_Static_assert(sizeof(md_content_hit) == MD_CONTENT_HIT_SIZE, "md_content_hit");
 
 static int layout(void) {
 #define PRINT_SIZE(type) printf("size %s %zu\n", #type, sizeof(type));
@@ -283,6 +330,213 @@ static void check_read_stats(md_snapshot snapshot, const md_snapshot_view *view)
     CHECK(stats.words == 0 && stats.section_count == 0);
 }
 
+/* A host-side workspace. The adapter enumerates files under its own
+   permissions, keeps each file's capability behind an opaque id and passes
+   only display paths and bytes to the core. */
+typedef struct {
+    const char *path;
+    const char *content;
+} workspace_file;
+
+static const workspace_file workspace_files[] = {
+    {"docs/Notes.md", "# Notes\n\nFirst line.\nThe *alpha* plan.\n"},
+    {".git/notes.md", "alpha hidden\n"},
+    {"notes.txt", "alpha text\n"},
+    {"a/b/alpha-notes.md", "No match here.\n"},
+    {"bad//x.md", "alpha\n"},
+    {"zeta.md", "alpha and alpha again\n"},
+};
+#define WORKSPACE_FILES (sizeof workspace_files / sizeof workspace_files[0])
+#define WORKSPACE_HITS 8
+
+static md_workspace_path_info classify(const char *path) {
+    md_workspace_path_info info;
+    memset(&info, 0, sizeof info);
+    info.struct_size = sizeof info;
+    CHECK_STATUS(md_workspace_classify_path((const uint8_t *)path, strlen(path), &info), MD_OK);
+    return info;
+}
+
+static void check_workspace_names(void) {
+    md_workspace_path_info info = classify("docs/Notes.md");
+    CHECK(info.error == MD_PATH_VALID && info.flags == MD_PATH_MARKDOWN && info.name_start == 5);
+    info = classify(".git/notes.md");
+    CHECK(info.error == MD_PATH_VALID && info.flags == (MD_PATH_MARKDOWN | MD_PATH_HIDDEN));
+    info = classify("bad//x.md");
+    CHECK(info.error == MD_PATH_EMPTY_COMPONENT && info.flags == 0);
+
+    uint8_t paths[256];
+    md_workspace_entry entries[WORKSPACE_FILES];
+    size_t used = 0;
+    for (size_t i = 0; i < WORKSPACE_FILES; i++) {
+        size_t n = strlen(workspace_files[i].path);
+        memcpy(paths + used, workspace_files[i].path, n);
+        entries[i].id = 100 + i;
+        entries[i].path_offset = used;
+        entries[i].path_length = (uint32_t)n;
+        entries[i].reserved = 0;
+        used += n;
+    }
+    md_name_options options;
+    memset(&options, 0, sizeof options);
+    options.struct_size = sizeof options;
+    options.entry_size = sizeof(md_workspace_entry);
+    options.hit_size = sizeof(md_name_hit);
+    md_name_result result;
+    memset(&result, 0, sizeof result);
+    result.struct_size = sizeof result;
+    md_name_hit hits[WORKSPACE_FILES];
+    const char *query = "NOTES";
+    CHECK_STATUS(md_workspace_find_names(paths, used, entries, WORKSPACE_FILES,
+                                         (const uint8_t *)query, strlen(query), &options, hits,
+                                         WORKSPACE_FILES, &result),
+                 MD_OK);
+    /* The hidden, non-Markdown and invalid entries are skipped. */
+    CHECK(result.hit_count == 2 && result.total_hits == 2 && result.flags == 0);
+    CHECK(result.entries_examined == WORKSPACE_FILES && result.skipped_hidden == 1 &&
+          result.skipped_not_markdown == 1 && result.skipped_invalid == 1);
+    CHECK(hits[0].id == 100 && hits[0].entry == 0 && hits[0].rank == MD_NAME_RANK_PREFIX);
+    CHECK(hits[0].start == 5 && hits[0].end == 10);
+    CHECK(hits[1].id == 103 && hits[1].entry == 3 && hits[1].rank == MD_NAME_RANK_NAME);
+    CHECK(memcmp(paths + entries[3].path_offset + hits[1].start, "notes", 5) == 0);
+    CHECK_STATUS(md_workspace_find_names(paths, used, entries, WORKSPACE_FILES,
+                                         (const uint8_t *)query, strlen(query), &options, hits, 1,
+                                         &result),
+                 MD_ERR_BUFFER_TOO_SMALL);
+    CHECK(result.hit_count == 2);
+}
+
+/* Admit, read and search file by file with arrays sized from the limits,
+   then open the matched file in a session and navigate to the hit. */
+static void check_workspace_content(void) {
+    const char *query = "alpha";
+    md_content_options options;
+    memset(&options, 0, sizeof options);
+    options.struct_size = sizeof options;
+    options.max_matches_per_file = WORKSPACE_HITS;
+    options.snippet_context = MD_CONTENT_DEFAULT_SNIPPET_CONTEXT;
+    options.hit_size = sizeof(md_content_hit);
+    md_content_progress progress;
+    memset(&progress, 0, sizeof progress);
+    progress.struct_size = sizeof progress;
+    static md_content_hit hits[WORKSPACE_HITS];
+    static uint8_t text[WORKSPACE_HITS * MD_CONTENT_MAX_SNIPPET_BYTES];
+    static uint8_t anchors[WORKSPACE_HITS * MD_ANCHOR_MAX_BYTES];
+    md_content_result notes;
+    memset(&notes, 0, sizeof notes);
+    md_content_hit notes_hit;
+    memset(&notes_hit, 0, sizeof notes_hit);
+    uint8_t notes_anchor[MD_ANCHOR_MAX_BYTES];
+    int searched = 0, skipped = 0;
+    uint64_t bytes = 0;
+    for (size_t i = 0; i < WORKSPACE_FILES; i++) {
+        const workspace_file *file = &workspace_files[i];
+        if (classify(file->path).error != MD_PATH_VALID) continue; /* never shown */
+        size_t length = strlen(file->content);
+        uint32_t outcome = 0, reason = 0;
+        CHECK_STATUS(md_workspace_content_admit((const uint8_t *)query, strlen(query), &options,
+                                                (const uint8_t *)file->path, strlen(file->path),
+                                                length, &progress, &outcome, &reason),
+                     MD_OK);
+        if (outcome == MD_CONTENT_STOPPED) break;
+        if (outcome == MD_CONTENT_SKIPPED) {
+            CHECK(reason == MD_SKIP_HIDDEN || reason == MD_SKIP_NOT_MARKDOWN);
+            skipped++;
+            continue;
+        }
+        CHECK(outcome == MD_CONTENT_READ && reason == 0);
+        md_content_result result;
+        memset(&result, 0, sizeof result);
+        result.struct_size = sizeof result;
+        CHECK_STATUS(md_workspace_content_search(
+                         (const uint8_t *)query, strlen(query), &options,
+                         (const uint8_t *)file->path, strlen(file->path),
+                         (const uint8_t *)file->content, length, &progress, hits, WORKSPACE_HITS,
+                         text, sizeof text, anchors, sizeof anchors, &result),
+                     MD_OK);
+        CHECK(result.outcome == MD_CONTENT_SEARCHED && result.source_length == length);
+        searched++;
+        bytes += length;
+        for (uint64_t h = 0; h < result.hit_count; h++) {
+            const md_content_hit *hit = &hits[h];
+            CHECK(hit->flags == (MD_HIT_EXACT | MD_HIT_ANCHOR));
+            CHECK((uint64_t)hit->text_offset + hit->text_length <= result.text_length);
+            CHECK((uint64_t)hit->anchor_offset + hit->anchor_length <= result.anchor_length);
+            CHECK(hit->match_end - hit->match_start == 5 && hit->match_end <= hit->text_length);
+            CHECK(memcmp(text + hit->text_offset + hit->match_start, "alpha", 5) == 0);
+            CHECK(memcmp(file->content + hit->span_start, "alpha", 5) == 0);
+        }
+        if (i == 0) {
+            /* One line of visible text: the soft break is a space and the
+               emphasis markup is gone. */
+            const char *snippet = "First line. The alpha plan.";
+            CHECK(result.hit_count == 1 && hits[0].line == 4);
+            CHECK(hits[0].text_length == strlen(snippet) && hits[0].match_start == 16);
+            CHECK(memcmp(text + hits[0].text_offset, snippet, strlen(snippet)) == 0);
+            notes = result;
+            notes_hit = hits[0];
+            memcpy(notes_anchor, anchors + hits[0].anchor_offset, hits[0].anchor_length);
+        }
+    }
+    CHECK(searched == 3 && skipped == 2);
+    CHECK(progress.stopped == 0 && progress.files_read == 3 && progress.files_matched == 2);
+    CHECK(progress.matches == 3 && progress.bytes_read == bytes);
+    CHECK(progress.skipped_hidden == 1 && progress.skipped_not_markdown == 1);
+
+    /* Arguments are checked and failures leave progress unchanged. */
+    md_content_progress before = progress;
+    md_content_result result;
+    memset(&result, 0, sizeof result);
+    result.struct_size = sizeof result;
+    const char *zeta = workspace_files[5].content;
+    CHECK_STATUS(md_workspace_content_search((const uint8_t *)" ", 1, &options,
+                                             (const uint8_t *)"zeta.md", 7, (const uint8_t *)zeta,
+                                             strlen(zeta), &progress, hits, WORKSPACE_HITS, text,
+                                             sizeof text, anchors, sizeof anchors, &result),
+                 MD_ERR_INVALID_ARGUMENT);
+    CHECK(memcmp(&before, &progress, sizeof progress) == 0 && result.outcome == 0);
+    CHECK_STATUS(md_workspace_content_search((const uint8_t *)query, strlen(query), &options,
+                                             (const uint8_t *)"zeta.md", 7, (const uint8_t *)zeta,
+                                             strlen(zeta), &progress, hits, 1, text, sizeof text,
+                                             anchors, sizeof anchors, &result),
+                 MD_ERR_BUFFER_TOO_SMALL);
+    CHECK(result.hit_count == 2 && memcmp(&before, &progress, sizeof progress) == 0);
+    /* A spent budget is a permanent stop. */
+    options.max_files = 3;
+    uint32_t outcome = 0, reason = 0;
+    CHECK_STATUS(md_workspace_content_admit((const uint8_t *)query, strlen(query), &options,
+                                            (const uint8_t *)"z.md", 4, 1, &progress, &outcome,
+                                            &reason),
+                 MD_OK);
+    CHECK(outcome == MD_CONTENT_STOPPED && reason == MD_STOP_FILES);
+    CHECK(progress.stopped == MD_STOP_FILES);
+
+    /* Open the unchanged file: equal source hashes mean the span and unit
+       apply directly, and the anchor resolves exactly. */
+    md_session_options session_options;
+    memset(&session_options, 0, sizeof session_options);
+    session_options.struct_size = sizeof session_options;
+    session_options.model_version = MD_MODEL_V1;
+    md_session session = 0;
+    CHECK_STATUS(md_session_create((const uint8_t *)"notes", 5, &session_options, &session),
+                 MD_OK);
+    md_snapshot snapshot = publish(session, workspace_files[0].content, NULL);
+    md_snapshot_view view = get_view(snapshot);
+    CHECK(view.source_length == notes.source_length && view.source_sha256.length == 64);
+    CHECK(memcmp(view.strings + view.source_sha256.offset, notes.source_sha256, 64) == 0);
+    CHECK(view.nodes[notes_hit.unit].kind == MD_NODE_PARAGRAPH);
+    md_anchor_resolution resolution;
+    memset(&resolution, 0, sizeof resolution);
+    resolution.struct_size = sizeof resolution;
+    CHECK_STATUS(md_snapshot_resolve_anchor(snapshot, notes_anchor, notes_hit.anchor_length,
+                                            &resolution),
+                 MD_OK);
+    CHECK(resolution.quality == MD_ANCHOR_EXACT &&
+          resolution.source_offset == notes_hit.span_start);
+    CHECK_STATUS(md_snapshot_release(snapshot), MD_OK);
+    CHECK_STATUS(md_session_release(session), MD_OK);
+}
+
 /* Print the file that provides md_abi_negotiate, so the test can prove the
    staged library (not one from a search path) was loaded. ISO C has no
    function-to-object pointer conversion, so copy the representation. */
@@ -423,6 +677,9 @@ static int run(uint32_t expected_models) {
         check_view(&next_view);
         CHECK_STATUS(md_snapshot_release(next), MD_OK);
     }
+
+    check_workspace_names();
+    check_workspace_content();
 
     /* Repeated lifecycle, then every handle count returns to zero. */
     for (int i = 0; i < 200; i++) {

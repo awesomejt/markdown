@@ -131,7 +131,9 @@ impl ContentProgress {
             SkipReason::InvalidUtf8 => &mut self.skipped.invalid_utf8,
             SkipReason::ParseFailed => &mut self.skipped.parse_failed,
         };
-        *count += 1;
+        // Saturating: progress is caller data (the C ABI passes it back in),
+        // and these counts are not bounded by a budget check.
+        *count = count.saturating_add(1);
     }
 }
 
@@ -348,10 +350,10 @@ impl ContentQuery {
         }
         progress.matches += hits.len() as u64;
         if !hits.is_empty() {
-            progress.files_matched += 1;
+            progress.files_matched = progress.files_matched.saturating_add(1);
         }
         if found.truncated {
-            progress.files_truncated += 1;
+            progress.files_truncated = progress.files_truncated.saturating_add(1);
         }
         if progress.matches >= limits.max_total_matches {
             progress.stopped = Some(StopReason::Matches);

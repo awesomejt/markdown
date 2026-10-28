@@ -2402,3 +2402,5 @@ fn find_and_read_stats_contain_panics_and_leave_arrays_untouched() {
     assert_eq!(md_snapshot_release(snapshot), MD_OK);
     assert_eq!(md_session_release(session), MD_OK);
 }
+
+mod workspace;

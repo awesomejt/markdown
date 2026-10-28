@@ -174,6 +174,75 @@ constants! {
     MD_MATCH_EXACT: u32 = 1;
     MD_READ_INCLUDE_HEADINGS: u32 = 1;
     MD_READ_INCLUDE_CODE: u32 = 2;
+    MD_WORKSPACE_PATH_INFO_SIZE: u32 = 16;
+    MD_WORKSPACE_ENTRY_SIZE: u32 = 24;
+    MD_NAME_OPTIONS_SIZE: u32 = 24;
+    MD_NAME_RESULT_SIZE: u32 = 56;
+    MD_NAME_HIT_SIZE: u32 = 24;
+    MD_CONTENT_OPTIONS_SIZE: u32 = 48;
+    MD_CONTENT_PROGRESS_SIZE: u32 = 88;
+    MD_CONTENT_RESULT_SIZE: u32 = 112;
+    MD_CONTENT_HIT_SIZE: u32 = 48;
+    MD_WORKSPACE_MAX_PATH_BYTES: u32 = 4096;
+    MD_WORKSPACE_MAX_PATH_DEPTH: u32 = 256;
+    MD_WORKSPACE_MAX_QUERY_BYTES: u32 = 4096;
+    MD_NAMES_DEFAULT_MAX_RESULTS: u32 = 200;
+    MD_NAMES_MAX_RESULTS: u32 = 10_000;
+    MD_NAMES_DEFAULT_MAX_ENTRIES: u32 = 100_000;
+    MD_NAMES_MAX_ENTRIES: u32 = 1_000_000;
+    MD_NAMES_MAX_PATH_BYTES: u64 = 64 * 1024 * 1024;
+    MD_CONTENT_DEFAULT_MAX_FILES: u64 = 10_000;
+    MD_CONTENT_MAX_FILES: u64 = 1_000_000;
+    MD_CONTENT_DEFAULT_MAX_TOTAL_BYTES: u64 = 256 * 1024 * 1024;
+    MD_CONTENT_MAX_TOTAL_BYTES: u64 = 16 * 1024 * 1024 * 1024;
+    MD_CONTENT_MAX_FILE_BYTES: u32 = 8 * 1024 * 1024;
+    MD_CONTENT_DEFAULT_MAX_MATCHES_PER_FILE: u32 = 100;
+    MD_CONTENT_MAX_MATCHES_PER_FILE: u32 = 10_000;
+    MD_CONTENT_DEFAULT_MAX_TOTAL_MATCHES: u32 = 2_000;
+    MD_CONTENT_MAX_TOTAL_MATCHES: u32 = 100_000;
+    MD_CONTENT_DEFAULT_SNIPPET_CONTEXT: u32 = 40;
+    MD_CONTENT_MAX_SNIPPET_CONTEXT: u32 = 200;
+    MD_CONTENT_MAX_SNIPPET_BYTES: u32 = 2624;
+    MD_PATH_VALID: u32 = 0;
+    MD_PATH_EMPTY: u32 = 1;
+    MD_PATH_TOO_LONG: u32 = 2;
+    MD_PATH_TOO_DEEP: u32 = 3;
+    MD_PATH_ABSOLUTE: u32 = 4;
+    MD_PATH_EMPTY_COMPONENT: u32 = 5;
+    MD_PATH_DOT_COMPONENT: u32 = 6;
+    MD_PATH_CONTROL: u32 = 7;
+    MD_PATH_INVALID_UTF8: u32 = 8;
+    MD_PATH_MARKDOWN: u32 = 1;
+    MD_PATH_HIDDEN: u32 = 2;
+    MD_PATH_INVISIBLE: u32 = 4;
+    MD_NAMES_CASE_SENSITIVE: u32 = 1;
+    MD_NAMES_INCLUDE_HIDDEN: u32 = 2;
+    MD_NAMES_ALL_FILES: u32 = 4;
+    MD_NAMES_TRUNCATED: u32 = 1;
+    MD_NAMES_ENTRIES_LIMITED: u32 = 2;
+    MD_NAME_RANK_PREFIX: u32 = 1;
+    MD_NAME_RANK_NAME: u32 = 2;
+    MD_NAME_RANK_PATH: u32 = 3;
+    MD_CONTENT_CASE_SENSITIVE: u32 = 1;
+    MD_CONTENT_WHOLE_WORD: u32 = 2;
+    MD_CONTENT_INCLUDE_HIDDEN: u32 = 4;
+    MD_CONTENT_READ: u32 = 1;
+    MD_CONTENT_SEARCHED: u32 = 2;
+    MD_CONTENT_SKIPPED: u32 = 3;
+    MD_CONTENT_STOPPED: u32 = 4;
+    MD_SKIP_HIDDEN: u32 = 1;
+    MD_SKIP_NOT_MARKDOWN: u32 = 2;
+    MD_SKIP_TOO_LARGE: u32 = 3;
+    MD_SKIP_INVALID_UTF8: u32 = 4;
+    MD_SKIP_PARSE_FAILED: u32 = 5;
+    MD_STOP_FILES: u32 = 1;
+    MD_STOP_BYTES: u32 = 2;
+    MD_STOP_MATCHES: u32 = 3;
+    MD_CONTENT_TRUNCATED: u32 = 1;
+    MD_HIT_EXACT: u32 = 1;
+    MD_HIT_LEADING_MORE: u32 = 2;
+    MD_HIT_TRAILING_MORE: u32 = 4;
+    MD_HIT_ANCHOR: u32 = 8;
 }
 
 #[repr(C)]
@@ -483,6 +552,137 @@ pub struct md_read_section {
     pub cumulative_seconds: u64,
 }
 
+// ABI v1 additions (D-022): workspace search (CORE-005B2).
+
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct md_workspace_path_info {
+    pub struct_size: u32,
+    pub error: u32,
+    pub flags: u32,
+    pub name_start: u32,
+}
+
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct md_workspace_entry {
+    pub id: u64,
+    pub path_offset: u64,
+    pub path_length: u32,
+    pub reserved: u32,
+}
+
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Default)]
+pub struct md_name_options {
+    pub struct_size: u32,
+    pub flags: u32,
+    pub max_results: u32,
+    pub max_entries: u32,
+    pub entry_size: u32,
+    pub hit_size: u32,
+}
+
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct md_name_result {
+    pub struct_size: u32,
+    pub flags: u32,
+    pub hit_count: u64,
+    pub total_hits: u64,
+    pub entries_examined: u64,
+    pub skipped_hidden: u64,
+    pub skipped_not_markdown: u64,
+    pub skipped_invalid: u64,
+}
+
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct md_name_hit {
+    pub id: u64,
+    pub entry: u32,
+    pub rank: u32,
+    pub start: u32,
+    pub end: u32,
+}
+
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Default)]
+pub struct md_content_options {
+    pub struct_size: u32,
+    pub flags: u32,
+    pub max_files: u64,
+    pub max_total_bytes: u64,
+    pub max_file_bytes: u32,
+    pub max_matches_per_file: u32,
+    pub max_total_matches: u32,
+    pub snippet_context: u32,
+    pub hit_size: u32,
+    pub reserved: u32,
+}
+
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct md_content_progress {
+    pub struct_size: u32,
+    pub stopped: u32,
+    pub files_read: u64,
+    pub files_matched: u64,
+    pub bytes_read: u64,
+    pub matches: u64,
+    pub files_truncated: u64,
+    pub skipped_hidden: u64,
+    pub skipped_not_markdown: u64,
+    pub skipped_too_large: u64,
+    pub skipped_invalid_utf8: u64,
+    pub skipped_parse_failed: u64,
+}
+
+#[repr(C)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct md_content_result {
+    pub struct_size: u32,
+    pub outcome: u32,
+    pub reason: u32,
+    pub flags: u32,
+    pub hit_count: u64,
+    pub text_length: u64,
+    pub anchor_length: u64,
+    pub source_length: u64,
+    pub source_sha256: [u8; 64],
+}
+impl Default for md_content_result {
+    fn default() -> Self {
+        Self {
+            struct_size: 0,
+            outcome: 0,
+            reason: 0,
+            flags: 0,
+            hit_count: 0,
+            text_length: 0,
+            anchor_length: 0,
+            source_length: 0,
+            source_sha256: [0; 64],
+        }
+    }
+}
+
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct md_content_hit {
+    pub unit: u32,
+    pub flags: u32,
+    pub span_start: u32,
+    pub span_end: u32,
+    pub line: u64,
+    pub text_offset: u32,
+    pub text_length: u32,
+    pub match_start: u32,
+    pub match_end: u32,
+    pub anchor_offset: u32,
+    pub anchor_length: u32,
+}
+
 // The header's size constants are part of the ABI; they must equal the
 // `repr(C)` sizes on every target (all fields are fixed-width).
 const _: () = {
@@ -493,6 +693,15 @@ const _: () = {
     assert!(size::<md_read_options>() == MD_READ_OPTIONS_SIZE);
     assert!(size::<md_read_stats>() == MD_READ_STATS_SIZE);
     assert!(size::<md_read_section>() == MD_READ_SECTION_SIZE);
+    assert!(size::<md_workspace_path_info>() == MD_WORKSPACE_PATH_INFO_SIZE);
+    assert!(size::<md_workspace_entry>() == MD_WORKSPACE_ENTRY_SIZE);
+    assert!(size::<md_name_options>() == MD_NAME_OPTIONS_SIZE);
+    assert!(size::<md_name_result>() == MD_NAME_RESULT_SIZE);
+    assert!(size::<md_name_hit>() == MD_NAME_HIT_SIZE);
+    assert!(size::<md_content_options>() == MD_CONTENT_OPTIONS_SIZE);
+    assert!(size::<md_content_progress>() == MD_CONTENT_PROGRESS_SIZE);
+    assert!(size::<md_content_result>() == MD_CONTENT_RESULT_SIZE);
+    assert!(size::<md_content_hit>() == MD_CONTENT_HIT_SIZE);
 };
 
 /// Size of an ABI struct as the `u32` the header's `struct_size` carries.
