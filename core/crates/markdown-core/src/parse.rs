@@ -1,15 +1,16 @@
 //! Bounded parser with the MVP extensions (alerts, footnotes) and explicit
-//! math/diagram/voice source fallbacks. Conformance/fuzz budgets are CORE-003B4;
-//! sessions, generations and anchors live in `session`.
+//! math/diagram/voice source fallbacks. Conformance, hostile-input coverage and
+//! budgets are in docs/Parser-Budgets.md; sessions and anchors live in `session`.
 use crate::*;
 use pulldown_cmark::{
     BlockQuoteKind, CodeBlockKind, Event, LinkType, Options, Parser, Tag, TagEnd,
 };
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::ops::Range;
 use unicase::UniCase;
 
 /// Output ceilings do not interrupt the underlying parser's initial source scan.
+/// Defaults admit representative prose at the source ceiling (CORE-003B4).
 #[derive(Clone, Copy, Debug)]
 pub struct ParseLimits {
     pub model: ModelLimits,
@@ -22,11 +23,11 @@ impl Default for ParseLimits {
         Self {
             model: ModelLimits {
                 max_source_bytes: 8 * 1024 * 1024,
-                max_nodes: 250_000,
+                max_nodes: 1_000_000,
                 max_depth: 128,
                 ..ModelLimits::default()
             },
-            max_events: 1_000_000,
+            max_events: 2_000_000,
             max_text_bytes: 32 * 1024 * 1024,
         }
     }
@@ -64,6 +65,8 @@ impl std::error::Error for ParseError {}
 struct Frame {
     node: usize,
     end: Option<TagEnd>, // None is an explicit paragraph synthesized for a tight item.
+    /// End offset of the last child added, for the source-order conflict check.
+    last_end: u64,
 }
 enum Capture {
     Code,
@@ -87,6 +90,10 @@ struct Builder<'a> {
     footnote_labels: BTreeMap<UniCase<String>, String>,
     /// Reference node indexes with the label as written, resolved after parsing.
     footnote_references: Vec<usize>,
+    /// End offset of the last root added, for the source-order conflict check.
+    root_end: u64,
+    /// An upstream offset escaped its parent or preceded a sibling.
+    offset_conflict: bool,
 }
 
 /// Produce a validated immutable snapshot from exact UTF-8 bytes, with no I/O.
@@ -242,6 +249,8 @@ fn build<'a, C: Checkpoint>(
         resource_definitions: BTreeMap::new(),
         footnote_labels: BTreeMap::new(),
         footnote_references: Vec::new(),
+        root_end: 0,
+        offset_conflict: false,
         doc: DocumentInput {
             model_version: MODEL_VERSION,
             document_id,
@@ -349,6 +358,7 @@ fn build<'a, C: Checkpoint>(
         return Err(ParseError::SourceMapping.into());
     }
     b.resolve_footnotes()?;
+    b.localize_source_mapping();
     if references {
         checkpoint.poll().map_err(Stop::Interrupted)?;
         let body = &source[offset..];
@@ -529,8 +539,9 @@ fn finish_v1(
     limits: ParseLimits,
 ) -> Result<Document, ParseError> {
     let offset = doc.metadata.front_matter_span.map_or(0, |s| s.end as usize);
-    // Some upstream tab-expanded container offsets cannot satisfy the frozen
-    // containment/order contract. Keep the original body readable without
+    // Safety net: `localize_source_mapping` already replaced each top-level
+    // block with conflicting upstream offsets. If validation still finds a
+    // containment/order error, keep the original body readable without
     // inventing offsets or publishing any of the invalid graph's intents.
     let identity = (doc.document_id.clone(), doc.revision_id.clone());
     let source_info = doc.source.clone();
@@ -674,7 +685,13 @@ impl Builder<'_> {
         }
         let i = self.doc.nodes.len();
         let id = NodeId(format!("n{i}"));
-        if let Some(parent) = self.stack.last() {
+        let (start, end) = (range.start as u64, range.end as u64);
+        if let Some(parent) = self.stack.last_mut() {
+            let bound = self.doc.nodes[parent.node].span;
+            if start < parent.last_end || start < bound.start || end > bound.end {
+                self.offset_conflict = true;
+            }
+            parent.last_end = end;
             let children = match &mut self.doc.nodes[parent.node].content {
                 NodeKind::Paragraph { children }
                 | NodeKind::Heading { children, .. }
@@ -694,6 +711,8 @@ impl Builder<'_> {
             };
             children.push(id.clone());
         } else {
+            self.offset_conflict |= start < self.root_end;
+            self.root_end = end;
             self.doc.roots.push(id.clone());
         }
         self.doc.nodes.push(Node {
@@ -758,7 +777,11 @@ impl Builder<'_> {
                     children: Vec::new(),
                 },
             )?;
-            self.stack.push(Frame { node, end: None });
+            self.stack.push(Frame {
+                node,
+                end: None,
+                last_end: 0,
+            });
         }
         if let Some(f) = self.stack.iter().rev().find(|f| f.end.is_none()) {
             self.doc.nodes[f.node].span.end = self.doc.nodes[f.node].span.end.max(range.end as u64);
@@ -1203,6 +1226,7 @@ impl Builder<'_> {
             self.stack.push(Frame {
                 node,
                 end: Some(end),
+                last_end: 0,
             });
         }
         Ok(())
@@ -1236,6 +1260,169 @@ impl Builder<'_> {
             }
         }
         Ok(())
+    }
+    /// Some upstream tab-expanded container offsets violate child containment
+    /// or sibling order. Replace each top-level block whose subtree has such an
+    /// offset with one inert source block over that block's own exact span, and
+    /// drop the subtree's intents, outline entries and diagnostics. Other blocks
+    /// keep full semantics. Unordered roots are left to the whole-body fallback.
+    fn localize_source_mapping(&mut self) {
+        if !self.offset_conflict {
+            return;
+        }
+        let nodes = &self.doc.nodes;
+        let index: HashMap<&str, usize> = nodes
+            .iter()
+            .enumerate()
+            .map(|(i, n)| (n.id.0.as_str(), i))
+            .collect();
+        let ordered = |ids: &[NodeId]| {
+            let mut end = 0;
+            ids.iter().all(|id| {
+                let s = nodes[index[id.0.as_str()]].span;
+                let ok = s.start >= end;
+                end = s.end;
+                ok
+            })
+        };
+        if !ordered(&self.doc.roots) {
+            return;
+        }
+        let consistent = |root: usize| {
+            let mut todo = vec![root];
+            while let Some(i) = todo.pop() {
+                let (span, children) = (nodes[i].span, nodes[i].content.children());
+                if !ordered(children) {
+                    return false;
+                }
+                for id in children {
+                    let child = index[id.0.as_str()];
+                    let c = nodes[child].span;
+                    if c.start < span.start || c.end > span.end {
+                        return false;
+                    }
+                    todo.push(child);
+                }
+            }
+            true
+        };
+        let bad: Vec<usize> = self
+            .doc
+            .roots
+            .iter()
+            .map(|id| index[id.0.as_str()])
+            .filter(|&i| !consistent(i))
+            .collect();
+        if bad.is_empty() {
+            return;
+        }
+        let mut removed = vec![false; nodes.len()];
+        let (mut links, mut resources, mut labels) =
+            (BTreeSet::new(), BTreeSet::new(), BTreeSet::new());
+        for &root in &bad {
+            let mut todo: Vec<usize> = nodes[root]
+                .content
+                .children()
+                .iter()
+                .map(|id| index[id.0.as_str()])
+                .collect();
+            while let Some(i) = todo.pop() {
+                removed[i] = true;
+                match &nodes[i].content {
+                    NodeKind::Link { target, .. } => {
+                        links.insert(target.clone());
+                    }
+                    NodeKind::Image { resource, .. } => {
+                        resources.insert(resource.clone());
+                    }
+                    NodeKind::FootnoteDefinition { label, .. } => {
+                        labels.insert(label.clone());
+                    }
+                    _ => {}
+                }
+                todo.extend(
+                    nodes[i]
+                        .content
+                        .children()
+                        .iter()
+                        .map(|id| index[id.0.as_str()]),
+                );
+            }
+            if let NodeKind::FootnoteDefinition { label, .. } = &nodes[root].content {
+                labels.insert(label.clone());
+            }
+        }
+        let fallbacks: Vec<(NodeId, SourceSpan)> = bad
+            .iter()
+            .map(|&i| (nodes[i].id.clone(), nodes[i].span))
+            .collect();
+        let replaced: BTreeSet<NodeId> = fallbacks.iter().map(|(id, _)| id.clone()).collect();
+        let dropped: BTreeSet<NodeId> = (0..nodes.len())
+            .filter(|&i| removed[i])
+            .map(|i| nodes[i].id.clone())
+            .collect();
+        for &root in &bad {
+            self.doc.nodes[root].content = NodeKind::UnsupportedBlock {
+                feature: "unrepresentable_source_mapping".into(),
+                reason: UnsupportedReason::InvalidInput,
+            };
+        }
+        let mut keep = removed.iter().map(|r| !r);
+        self.doc.nodes.retain(|_| keep.next().unwrap_or(true));
+        self.doc.links.retain(|l| !links.contains(&l.id));
+        self.doc.resources.retain(|r| !resources.contains(&r.id));
+        self.doc
+            .outline
+            .retain(|e| !replaced.contains(&e.node) && !dropped.contains(&e.node));
+        self.doc.diagnostics.retain(|d| {
+            d.node
+                .as_ref()
+                .is_none_or(|n| !replaced.contains(n) && !dropped.contains(n))
+        });
+        for (id, span) in fallbacks {
+            self.doc.diagnostics.push(Diagnostic {
+                code: "source_mapping_fallback".into(),
+                severity: Severity::Warning,
+                message: "Container source offsets cannot be represented; this block is preserved as inert source.".into(),
+                span: Some(span),
+                node: Some(id),
+            });
+        }
+        // A surviving reference whose definition was removed reads as source.
+        for i in 0..self.doc.nodes.len() {
+            if let NodeKind::FootnoteReference { label } = &self.doc.nodes[i].content
+                && labels.contains(label)
+            {
+                self.doc.nodes[i].content = NodeKind::UnsupportedInline {
+                    feature: "footnote_reference".into(),
+                    reason: UnsupportedReason::InvalidInput,
+                };
+                let (span, id) = (self.doc.nodes[i].span, self.doc.nodes[i].id.clone());
+                self.diagnostic("footnote_reference_unresolved", span, Some(id));
+            }
+        }
+        let mut capabilities: BTreeSet<Capability> = self
+            .doc
+            .capabilities
+            .iter()
+            .copied()
+            .filter(|c| *c == Capability::FrontMatter)
+            .collect();
+        for n in &self.doc.nodes {
+            capabilities.extend(match &n.content {
+                NodeKind::ListItem {
+                    checked: Some(_), ..
+                } => Some(Capability::TaskLists),
+                NodeKind::Table { .. } => Some(Capability::Tables),
+                NodeKind::FootnoteDefinition { .. } | NodeKind::FootnoteReference { .. } => {
+                    Some(Capability::Footnotes)
+                }
+                NodeKind::Strikethrough { .. } => Some(Capability::Strikethrough),
+                NodeKind::Alert { .. } => Some(Capability::Alerts),
+                _ => None,
+            });
+        }
+        self.doc.capabilities = capabilities;
     }
     fn finish(&mut self, node: usize) -> Result<(), ParseError> {
         let n = &self.doc.nodes[node];

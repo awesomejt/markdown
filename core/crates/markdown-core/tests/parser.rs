@@ -549,14 +549,54 @@ fn incompatible_tab_container_offsets_fall_back_to_exact_inert_body() {
             }
         }
     }
-    // Semantic data/activation outside the conflicting container is discarded too.
-    let source = "# Heading\n\n[link](a.md) ![image](i.png)\n\n1. >\t- a";
-    let d = parse(source);
-    assert_eq!(d.input().nodes[0].span.slice(source), Some(source));
-    assert!(
-        d.input().links.is_empty()
-            && d.input().resources.is_empty()
-            && d.input().outline.is_empty()
+    // Only the conflicting top-level block falls back (CORE-003B4). Semantics and
+    // activation outside it survive; intents, notes and headings inside it do not.
+    let bad = "1. >\t- a [in](b.md) ![in](j.png)\n   # Inner\n\n   [^n]: note";
+    let source = format!("# Heading\n\n[link](a.md) ![image](i.png)[^n]\n\n{bad}\n\n> after\n");
+    let d = parse(&source);
+    let fallback: Vec<_> = d
+        .input()
+        .nodes
+        .iter()
+        .filter(|n| matches!(&n.content, NodeKind::UnsupportedBlock { feature, .. } if feature == "unrepresentable_source_mapping"))
+        .collect();
+    assert_eq!(fallback.len(), 1);
+    // Upstream list spans include their trailing blank lines.
+    let exact = format!("{bad}\n\n");
+    assert_eq!(fallback[0].span.slice(&source), Some(&exact[..]));
+    assert!(d.input().roots.contains(&fallback[0].id));
+    let destinations = |v: Vec<&String>| v.into_iter().cloned().collect::<Vec<_>>();
+    assert_eq!(
+        destinations(d.input().links.iter().map(|l| &l.destination).collect()),
+        ["a.md"]
+    );
+    assert_eq!(
+        destinations(d.input().resources.iter().map(|r| &r.destination).collect()),
+        ["i.png"]
+    );
+    assert_eq!(d.input().outline.len(), 1);
+    assert_eq!(d.input().outline[0].title, "Heading");
+    assert_eq!(kinds(&d, |k| matches!(k, NodeKind::BlockQuote { .. })), 1);
+    assert_eq!(
+        kinds(&d, |k| matches!(k, NodeKind::FootnoteDefinition { .. })),
+        0
+    );
+    // The reference outside lost its definition, so it reads as source.
+    assert!(d.input().nodes.iter().any(|n| matches!(&n.content, NodeKind::UnsupportedInline { feature, .. } if feature == "footnote_reference")));
+    assert!(!d.input().capabilities.contains(&Capability::Footnotes));
+    let codes: Vec<_> = d
+        .input()
+        .diagnostics
+        .iter()
+        .map(|d| d.code.as_str())
+        .collect();
+    assert_eq!(
+        codes,
+        ["source_mapping_fallback", "footnote_reference_unresolved"]
+    );
+    assert_eq!(
+        d.input().diagnostics[0].span.and_then(|s| s.slice(&source)),
+        Some(&exact[..])
     );
 }
 
