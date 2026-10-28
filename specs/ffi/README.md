@@ -129,7 +129,7 @@ No status, name or field carries document contents, paths or tokens.
 | `MD_ERR_INVALID_STATE` | Job already run |
 | `MD_ERR_INVALID_DOCUMENT_ID` / `MD_ERR_INVALID_REVISION_TOKEN` / `MD_ERR_GENERATION_EXHAUSTED` | Session contract failures |
 | `MD_ERR_ANCHOR_INVALID` / `MD_ERR_ANCHOR_VERSION` / `MD_ERR_NO_BLOCKS` / `MD_ERR_UNKNOWN_NODE` | Anchor failures |
-| `MD_ERR_LIMIT` | Handle counter, or a table/span exceeding `u32` |
+| `MD_ERR_LIMIT` | Handle counter, a table/span exceeding `u32`, or name-search paths over `MD_NAMES_MAX_PATH_BYTES` |
 | `MD_ERR_PANIC` / `MD_ERR_INTERNAL` | Contained core bug |
 
 Job outcomes (`MD_OUTCOME_*`) are results, not errors: the call returns
@@ -300,7 +300,10 @@ validates arguments, maps zero limits to defaults and flattens results.
   entries are examined. Among them, a range outside `paths` or a nonzero
   `reserved` is `MD_ERR_INVALID_ARGUMENT`. A path the core rejects is skipped
   and counted in `skipped_invalid` (included in `entries_examined`), so one
-  bad name cannot fail a search, and it is never shown. `md_name_options`
+  bad name cannot fail a search, and it is never shown. Ranges may alias, so
+  the examined entries' `path_length` total is capped at
+  `MD_NAMES_MAX_PATH_BYTES` (64 MiB, like the session source ceiling); more
+  is `MD_ERR_LIMIT` before any work (PR #11 review). `md_name_options`
   carries `MD_NAMES_CASE_SENSITIVE`, `MD_NAMES_INCLUDE_HIDDEN` and
   `MD_NAMES_ALL_FILES` (Markdown-only is the default) and `max_results`/
   `max_entries` (0 selects 200/100,000; at most 10,000/1,000,000). An empty or
@@ -380,8 +383,8 @@ nearest). Anchors and snippets are document-derived private state; never
 log them.
 
 **Cost and cancellation.** Name search is O(examined path bytes + query)
-plus O(hits × log max_results) and copies each examined valid path once (at
-most 4 KiB each). A content call holds the file's parse, its hits (at most
+plus O(hits × log max_results) and copies each examined valid path once, so
+time and memory are bounded by the 64 MiB path total. A content call holds the file's parse, its hits (at most
 `max_matches_per_file` records) and their serialized anchors (up to 1 KiB
 each) before writing, about 10 MiB at the 10,000-match ceiling. There is no
 cancel handle. Each content call is bounded by `max_file_bytes`, and hosts
@@ -414,7 +417,8 @@ cancel by not making the next call.
   other, hidden, invalid and duplicate names; Unicode folding) for 16
   queries, five flag sets and five result/entry limits, with entry indices
   mapped through skipped invalid paths. It is also checked over 100,001
-  entries. Content search matches `ContentQuery` file by file over the corpus
+  entries, and with aliased 4 KiB ranges just under and over the path-byte
+  cap. Content search matches `ContentQuery` file by file over the corpus
   for four flag sets and three snippet/per-file settings, comparing every
   hit field, snippet byte, anchor byte and the progress after each file.
   Admit-then-search and search-only runs match the Rust sequence through

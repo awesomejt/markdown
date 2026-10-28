@@ -570,6 +570,9 @@ md_status md_snapshot_read_stats(md_snapshot snapshot, const md_read_options *op
 #define MD_NAMES_MAX_RESULTS 10000u
 #define MD_NAMES_DEFAULT_MAX_ENTRIES 100000u
 #define MD_NAMES_MAX_ENTRIES 1000000u
+/* Total path_length of the examined entries (ranges may alias); more is
+   MD_ERR_LIMIT before any work. */
+#define MD_NAMES_MAX_PATH_BYTES 67108864u
 #define MD_CONTENT_DEFAULT_MAX_FILES 10000u
 #define MD_CONTENT_MAX_FILES 1000000u
 #define MD_CONTENT_DEFAULT_MAX_TOTAL_BYTES 268435456u
@@ -740,7 +743,8 @@ md_status md_workspace_classify_path(const uint8_t *path, size_t path_length,
                                      md_workspace_path_info *out_info);
 /* Literal file-name search. An empty or whitespace-only query succeeds with
    no hits. An entry whose range lies outside paths is INVALID_ARGUMENT; an
-   entry whose path is invalid is skipped and counted in skipped_invalid. */
+   entry whose path is invalid is skipped and counted in skipped_invalid.
+   Examined paths totalling over MD_NAMES_MAX_PATH_BYTES are MD_ERR_LIMIT. */
 md_status md_workspace_find_names(const uint8_t *paths, size_t paths_length,
                                   const md_workspace_entry *entries, size_t entry_count,
                                   const uint8_t *query, size_t query_length,

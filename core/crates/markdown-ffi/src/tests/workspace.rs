@@ -895,6 +895,29 @@ fn name_search_validates_arguments_and_zeroes_outputs() {
     };
     assert_eq!(status, MD_ERR_INVALID_ARGUMENT);
 
+    // Aliased ranges cannot multiply work: the examined path total is
+    // capped before any copy (PR #11 review).
+    let path = vec![b'p'; MD_WORKSPACE_MAX_PATH_BYTES as usize];
+    let at_cap = (MD_NAMES_MAX_PATH_BYTES / u64::from(MD_WORKSPACE_MAX_PATH_BYTES)) as usize;
+    let aliased = vec![
+        md_workspace_entry {
+            id: 1,
+            path_offset: 0,
+            path_length: MD_WORKSPACE_MAX_PATH_BYTES,
+            reserved: 0,
+        };
+        at_cap + 1
+    ];
+    check(&path, &aliased, b"q", &base, MD_ERR_LIMIT);
+    let (out, _) = names_all(
+        &path,
+        &aliased,
+        b"q",
+        &name_opts(MD_NAMES_ALL_FILES, 0, at_cap as u32),
+    )
+    .unwrap();
+    assert_eq!((out.entries_examined, out.total_hits), (at_cap as u64, 0));
+
     // Too small: counts are reported, records are not written.
     let mut out = name_result();
     let mut hits = [sentinel; 1];

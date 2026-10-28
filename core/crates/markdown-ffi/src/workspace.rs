@@ -186,6 +186,8 @@ fn rank_code(rank: NameRank) -> u32 {
 /// examined; an out-of-range reference among them is
 /// `MD_ERR_INVALID_ARGUMENT`, while a path the core rejects is skipped and
 /// counted in `skipped_invalid`, so one bad name cannot fail the search.
+/// Examined paths totalling more than `MD_NAMES_MAX_PATH_BYTES` are
+/// `MD_ERR_LIMIT`, checked before any copy.
 ///
 /// # Safety
 /// `paths` and `query` must be readable for their lengths (null only with
@@ -233,6 +235,12 @@ pub unsafe extern "C" fn md_workspace_find_names(
         };
         let mut result = md_name_result::sized();
         let examined = &entries[..entries.len().min(options.max_entries)];
+        // Ranges may alias, so the copies below are bounded by the total
+        // length, not by the paths buffer (PR #11 review).
+        let total: u64 = examined.iter().map(|e| u64::from(e.path_length)).sum();
+        if total > MD_NAMES_MAX_PATH_BYTES {
+            return Err(MD_ERR_LIMIT);
+        }
         let mut valid = Vec::with_capacity(examined.len());
         let mut index = Vec::with_capacity(examined.len());
         for (i, entry) in examined.iter().enumerate() {
