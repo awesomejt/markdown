@@ -1,6 +1,6 @@
 # Agent Session and Platform Handoff
 
-Updated: 2026-10-28, DOC-001 in progress. Source baseline: `main` at
+Updated: 2026-10-28, DOC-001 awaiting owner merge approval (PR #17). Source baseline: `main` at
 `1aa2b57`, the PR #16 merge. Preserve intended source, lock/spec/golden
 files, docs and state together. Never transfer caches, environments, build
 products, private runtime state or user documents.
@@ -16,8 +16,15 @@ and D-027 ([Decisions](agents/Decisions.md)). CORE-FIX runs six shared tasks
 in order before any platform phase. Their scope is in
 [TODO.md](TODO.md#core-fix-phase-shared-core-review-follow-ups).
 
-- **Current:** DOC-001, the agent-facing docs cleanup, is in progress on
-  branch `docs/doc-001-agent-docs-cleanup`. It is docs only.
+- **Current:** DOC-001, the agent-facing docs cleanup (docs only), on
+  branch `docs/doc-001-agent-docs-cleanup`. Its pass finished `partial`;
+  [PR #17](https://github.com/awesomejt/markdown/pull/17) has its Grok
+  review addressed and awaits owner merge approval. In state, DOC-001 is
+  `working` with no lease, which is expected during a review wait.
+- **Next action:** on approval, resume DOC-001 and finish it `completed` in
+  a `chore(state)` closeout commit on that branch, which also moves
+  MEMORY.md and this file to CORE-002B current. Then merge, delete the
+  branch and return to `main`.
 - **Next:** CORE-002B (import-policy parity and FFI host guidance). Then
   CORE-003C, CORE-003D, CORE-005C and CORE-005D, then the CORE-001 to
   CORE-006 aggregates. Each host's chain in `desktop-apps` starts after

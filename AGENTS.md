@@ -18,7 +18,9 @@ are authoritative for this project.
 
 `agents/Memory-Archive.md` holds older run logs and phase handoffs. It is
 history, not a required read; consult it only when a task needs that
-background.
+background. Per-pass detail belongs in the `project.yaml` pass record and the
+PR. Keep `MEMORY.md` to current posture and durable context, and move
+superseded posture lines into the archive when they go stale.
 
 Also inspect `git status` before editing. Preserve user changes and keep
 unrelated changes out of the task.
