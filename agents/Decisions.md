@@ -546,7 +546,7 @@ where it made CORE-001 and CORE-006 wait for native hosts.
 
 **Date:** 2026-10-28
 
-**Status:** proposed in TOOL-002; accepted on owner-authorized merge
+**Status:** accepted 2026-10-28 (owner merged TOOL-002, PR #19)
 
 **Context:** The hosted core job compiled the workspace from scratch four
 times per OS (default, model-v2, all-features and all-features release). The
