@@ -38,8 +38,9 @@ Normally rustup uses the committed toolchain file automatically.
 | Command | Scope |
 | --- | --- |
 | `python tools/check.py common` | Fixture/provenance and capability validation, conformance-contract drift, path/capability/host-filter regressions, local link paths, Markdown lint and whitespace |
-| `python tools/check.py core` | Workspace formatting, Clippy with warnings denied, debug/release test harnesses, resolved dependency/license policy and policy regressions |
-| `python tools/check.py all` | Both suites |
+| `python tools/check.py core` | PR tier: workspace formatting, Clippy with warnings denied, default and all-features debug tests, resolved dependency/license policy and policy regressions |
+| `python tools/check.py core-extended` | Model-v2-only debug tests and all-features release tests, which enable the release-only time guards |
+| `python tools/check.py all` | All three; run it locally before every review request (D-028) |
 
 CORE-002A tests the owned v1 model in debug/release, with default and optional
 schema builds. Checked-in goldens cover all node kinds; Rust verifies typed
@@ -106,7 +107,13 @@ prose/operational paths skip host steps. Shared core/spec/fixture/tool/workflow
 changes select Linux, macOS and Windows. Known platform-only app paths select
 their matching host; iOS selects macOS, and unknown app roots select every host.
 Renames count both source and destination. Manual, missing-base and initial-push
-events select all hosts. Only PR runs share a cancellable group; main/manual
+events select all hosts. A PR push skips the host steps when the previous head is
+an ancestor, its `Checks / complete` run by GitHub Actions succeeded, and the
+commits since then touch only those prose/operational paths, such as a
+`chore(state)` closeout. Force pushes, missing commits and red or cancelled
+previous runs fall back to the full rule. Host jobs cache Rust builds with
+`Swatinem/rust-cache`. PRs run `core`; main and manual runs also run
+`core-extended` (D-028). Only PR runs share a cancellable group; main/manual
 runs have unique groups so newer pushes cannot cancel their pending checks. `Checks / complete` fails if a required job
 fails or is cancelled. Host-selection/event logic, real Git rename/whitespace behavior and inline
 link cases have regression tests.

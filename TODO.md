@@ -309,6 +309,14 @@ is one feature branch and PR under
      goldens unchanged or regenerated with a reviewed diff, and
      docs/Front-Matter.md and the model specs updated.
 
+**TOOL-002 — CI speed-up (owner request after PR #18, before CORE-003C).**
+Cache Rust builds in the core job, split `tools/check.py` into a PR tier and a
+`core-extended` tier that runs on `main` and manual runs, and skip the host
+matrix for PR pushes that add only state or docs after a green head (D-028).
+Acceptance: regression tests for the skip rules, `tools/check.py all` passes,
+green hosted CI with a measured warm-cache time and a state-only push that
+skips the host steps.
+
 Not in CORE-FIX, kept where they belong:
 
 - **D-025 enforcement (F1, G2), flat-view/RSS measurement (F2) and the
@@ -414,7 +422,7 @@ CORE-003A -> CORE-003B1..B4 (with B2F) -> CORE-003B
 CORE-004A -> CORE-005A -> CORE-005A2;  CORE-005A -> CORE-005B -> CORE-005B2
 
 Shared track (portable-core, one chain; D-026, D-027):
-DOC-001 -> CORE-002B -> CORE-003C -> CORE-003D -> CORE-005C -> CORE-005D
+DOC-001 -> CORE-002B -> TOOL-002 -> CORE-003C -> CORE-003D -> CORE-005C -> CORE-005D
   -> CORE-003E -> CORE-001 -> CORE-002 -> CORE-003 -> CORE-004 -> CORE-005 -> CORE-006
   -> portable-core complete, desktop-apps active
 

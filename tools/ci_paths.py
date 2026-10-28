@@ -2,7 +2,8 @@
 import json
 import os
 import subprocess
-from collections.abc import Mapping
+import urllib.request
+from collections.abc import Callable, Mapping
 
 
 HOST_PATHS = {"linux": ("apps/linux/",), "windows": ("apps/windows/",),
@@ -24,15 +25,57 @@ def classify(paths: list[str], full: bool = False) -> dict[str, bool]:
             for host, roots in HOST_PATHS.items()}
 
 
-def decide(env: Mapping[str, str], *, cwd=None) -> dict[str, bool]:
+def changed(base: str, head: str, cwd=None) -> list[str]:
+    # Treat renames as a deletion plus addition, preserving source-host impact.
+    out = subprocess.check_output(
+        ["git", "diff", "--name-only", "--no-renames", "-z", base, head], cwd=cwd)
+    return [p for p in out.decode().split("\0") if p]
+
+
+def checks_green(sha: str, env: Mapping[str, str]) -> bool:
+    """True only when GitHub Actions' latest `complete` check on sha succeeded."""
+    repo, token = env.get("REPO", ""), env.get("GH_TOKEN", "")
+    if not repo or not token:
+        return False
+    request = urllib.request.Request(
+        f"https://api.github.com/repos/{repo}/commits/{sha}/check-runs"
+        "?check_name=complete&filter=latest",
+        headers={"Authorization": f"Bearer {token}",
+                 "Accept": "application/vnd.github+json"})
+    try:
+        with urllib.request.urlopen(request, timeout=30) as response:
+            runs = json.load(response).get("check_runs", [])
+    except (OSError, ValueError):
+        return False
+    runs = [r for r in runs if (r.get("app") or {}).get("slug") == "github-actions"]
+    return bool(runs) and all(r.get("conclusion") == "success" for r in runs)
+
+
+def unchanged_since_green(env: Mapping[str, str], green: Callable[[str], bool], cwd=None) -> bool:
+    # A PR push that adds only state/docs to an already-green head needs no new host
+    # run (TOOL-002). Force pushes, missing commits and red or cancelled previous
+    # runs fall back to the full PR rule.
+    prev, head = env.get("PREV", ""), env.get("PR_HEAD", "")
+    if env.get("EVENT") != "pull_request" or not prev or set(prev) == {"0"} or not head:
+        return False
+    try:
+        subprocess.run(["git", "merge-base", "--is-ancestor", prev, head],
+                       cwd=cwd, check=True, capture_output=True)
+        paths = changed(prev, head, cwd)
+    except subprocess.CalledProcessError:
+        return False
+    return all(non_build(p) for p in paths) and green(prev)
+
+
+def decide(env: Mapping[str, str], *, cwd=None,
+           green: Callable[[str], bool] | None = None) -> dict[str, bool]:
     base = env.get("BASE", "")
     full = not base or set(base) == {"0"} or env.get("EVENT") == "workflow_dispatch"
     if full:
         return classify([], full=True)
-    # Treat renames as a deletion plus addition, preserving source-host impact.
-    changed = subprocess.check_output(
-        ["git", "diff", "--name-only", "--no-renames", "-z", base, env["HEAD"]], cwd=cwd)
-    return classify([p for p in changed.decode().split("\0") if p])
+    if unchanged_since_green(env, green or (lambda sha: checks_green(sha, env)), cwd):
+        return classify([])
+    return classify(changed(base, env["HEAD"], cwd))
 
 
 if __name__ == "__main__":

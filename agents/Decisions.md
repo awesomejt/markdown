@@ -541,3 +541,34 @@ activates `desktop-apps`. The graph went from 181 to 131 edges. The
 eligible queue shows one shared task at a time, then one task per host. The
 aggregate acceptance in Implementation-Baseline.md (GATE-001) is superseded
 where it made CORE-001 and CORE-006 wait for native hosts.
+
+## D-028 — Tiered core CI and incremental PR checks
+
+**Date:** 2026-10-28
+
+**Status:** proposed in TOOL-002; accepted on owner-authorized merge
+
+**Context:** The hosted core job compiled the workspace from scratch four
+times per OS (default, model-v2, all-features and all-features release). The
+macOS job took about 20 minutes cold. A `chore(state)` closeout commit reran
+the whole matrix, because host selection compared the PR head with `main`.
+
+**Decision:**
+
+- Host jobs cache Rust builds with a SHA-pinned `Swatinem/rust-cache`.
+- `tools/check.py core` is the PR tier: fmt, Clippy with warnings denied,
+  default and all-features debug tests, and dependency policy.
+  `core-extended` holds the model-v2-only build and the all-features release
+  build with its release-only time guards. Hosted CI runs it on `main` pushes
+  and manual runs. `tools/check.py all` runs every tier, and the pass runner
+  runs it locally before each review request.
+- A PR push skips the host steps when the previous head is an ancestor of the
+  new head, its GitHub Actions `Checks / complete` run succeeded, and the
+  commits in between touch only known prose/operational paths.
+
+**Consequences:** Release time guards and the model-v2-only build gate a PR
+on the runner's host, not on all three hosted OSes. A regression in those
+tiers that only one other OS shows surfaces on the `main` run after merge and
+is fixed forward. The skip adds no risk beyond merging an older green head
+after `main` moved, which the repository already allows. Branch and PR sizing
+(one task per PR) is unchanged.
