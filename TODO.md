@@ -14,7 +14,10 @@ address the feedback, and obtain owner merge approval. Follow
 rules. GATE-001 is approved (D-018). CORE-001A through CORE-003A, CORE-003B1
 through CORE-003B4 (with B2F), CORE-004A, CORE-005A/A2, CORE-005B/B2 and
 CORE-006A are merged, and the CORE-003B aggregate is closed. The owner's
-holistic CORE review comes before any platform phase. ADV-005 carries deferred engine
+[holistic CORE review](docs/reviews/2026-10-28-core-holistic-review.md)
+(PR #16) accepted D-025 (native hosts use model v2) and added three follow-ups:
+CORE-002B, CORE-005C and DOC-001. Grok and Codex review that PR before it
+closes. ADV-005 carries deferred engine
 work after DESK-002.
 
 ## Current phase: portable core and early native foundations
@@ -28,6 +31,10 @@ Native app shells remain separate; no working reader UI is delivered by the
 core alone.
 
 ## Immediate session handoff
+
+The current handoff is the holistic CORE review on PR #16 and its follow-ups
+CORE-002B, CORE-005C and DOC-001 (below). The history that follows is kept
+until DOC-001 trims it.
 
 PR #7 (CORE-006A C ABI facade, [contract](specs/ffi/README.md)) merged as
 `a751f48`; it unblocks each host's 001B adapter phase, and CORE-006 stays open
@@ -220,6 +227,29 @@ kept as a record; steps 1–3 are done.
   typed errors, cancellation/lifetime handles, and model negotiation to all
   three native desktop test hosts.
 
+Follow-ups from the [holistic CORE review](docs/reviews/2026-10-28-core-holistic-review.md),
+owner-accepted on 2026-10-28:
+
+- **CORE-002B — V1 intent validation and FFI host guidance (F3, F4).** V1
+  validation, including `from_json`, re-runs the parser's link/resource policy
+  for intents that are not denied, as v2 does, and applies the front-matter
+  Cf/bidi guards to metadata strings. No wire, schema or golden change. Add
+  host guidance to the C ABI spec: call search functions off the UI thread
+  and size record arrays from `max_matches` so one call suffices. Blocks
+  CORE-002.
+- **CORE-005C — Workspace content-search memory guard (F2).** Lower the
+  content-search per-file default and/or add a delimiter-density pre-check
+  with a typed skip, so one hostile file cannot cost over 1 GiB. Prove it with
+  a counted heap budget and Rust/FFI parity. Blocks CORE-005 and each
+  platform's 002C.
+- **DOC-001 — Agent-facing docs cleanup (F5).** Cut MEMORY.md's posture to a
+  current summary and archive the run logs, remove the stale HANDOFF.md
+  section and trim this file's handoff history. Docs only.
+
+Each platform's 001B builds the core with `model-v2` and requests v2 (D-025),
+measures the flat-view and retained-RSS cost on its host, and on Windows makes
+the MSVC C smoke a required CI step (review F2 and F6).
+
 ### Desktop walking skeletons
 
 - **WIN-001 — Windows single-document skeleton.** WinUI 3/C# Native AOT
@@ -305,7 +335,8 @@ CORE-005A + CORE-005A2 -> own 001F; CORE-003B -> own 001I
 LNX-001D -> LNX-001D1 (early accessibility proof) -> LNX-001E + LNX-001F
 all CORE + WIN/MAC/LNX-001 aggregate acceptance -> DESK-001
 DESK-001 -> each host 002A -> ... -> 002F -> platform 002 aggregate
-CORE-005B + CORE-005B2 -> own 002C; all platform 002 aggregates -> DESK-002 -> DESK-003
+CORE-002B -> CORE-002; CORE-005B2 -> CORE-005C -> CORE-005
+CORE-005B + CORE-005B2 + CORE-005C -> own 002C; all platform 002 aggregates -> DESK-002 -> DESK-003
 DESK-002 -> IOS-001 -> IOS-002
 DESK-002 -> ADV-001/ADV-003/ADV-004
 DESK-002 -> ADV-005 -> ADV-002

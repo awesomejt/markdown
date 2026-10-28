@@ -66,6 +66,9 @@ Refine an oversized row before coding, preserving its parent acceptance criteria
 | CORE-005B | Capability-fed workspace search primitives, cancellation and resource budgets; bounded-search checks pass | CORE-005A |
 | CORE-005B2 | C ABI exposure of the workspace search primitives under D-022 (new functions only, caller-owned progress struct and record arrays, header size constants); header constant/layout checks and C smoke pass | CORE-005B |
 | CORE-006A | Bulk facade, value ownership, typed errors and version negotiation; ABI/lifetime tests and current-host package smoke pass | CORE-004A |
+| CORE-002B | V1 validation (including `from_json`) re-runs the producer link/resource policy and metadata guards; FFI host guidance for off-thread, single-call search sizing; regression and golden checks pass | CORE-002A |
+| CORE-005C | Workspace content-search memory guard: lower per-file default and/or delimiter-density pre-check with a typed skip; counted heap budget and Rust/FFI parity pass | CORE-005B2 |
+| DOC-001 | Agent-facing docs cleanup: concise MEMORY.md posture with an archive, stale HANDOFF.md/TODO.md handoff text removed; lint and link checks pass | none |
 
 CORE-003B was refined after CORE-003A review because metadata, reference/model
 compatibility, extension semantics and fuzz/performance acceptance were too
@@ -84,6 +87,12 @@ delivers the Rust [workspace search primitives](../specs/workspace-search/README
 and CORE-005B2 exposes them under D-022. Each platform's 002C needs both, and
 CORE-005 depends on CORE-005B2.
 
+CORE-002B, CORE-005C and DOC-001 come from the
+[holistic CORE review](reviews/2026-10-28-core-holistic-review.md) (F3/F4,
+F2 and F5), owner-accepted on 2026-10-28. CORE-002 depends on CORE-002B and
+CORE-005 on CORE-005C; each platform's 002C needs CORE-005C when it is
+materialized.
+
 CORE-006A enables native adapters without waiting for all workspace-search work.
 It does not close CORE-006: all three native package consumers must pass in their
 platform B phases below. Shared changes require affected-host CI according to
@@ -100,7 +109,7 @@ live alongside shared foundation work in the `portable-core` state bucket.
 | Suffix | Scope and acceptance evidence | Merged prerequisites |
 | --- | --- | --- |
 | 001A | Native launch/window/commands, build instructions and native CI smoke | CORE-001A |
-| 001B | Native facade adapter and local core package; ownership/errors/cancellation and release-build smoke | own 001A, CORE-006A |
+| 001B | Native facade adapter and local core package built with `model-v2`, sessions requesting v2 (D-025); ownership/errors/cancellation and release-build smoke; flat-view encode cost and single/repeated-document retained RSS measured on this host; on Windows the MSVC C smoke becomes a required CI step | own 001A, CORE-006A |
 | 001C | File open/association, permission capability and errors; generation-safe off-thread load and revoked/unavailable-file checks | own 001B |
 | 001D | Headings/prose/lists/links/code, outline and basic selection; semantic corpus/navigation checks | own 001C |
 | 001E | Tables/task lists/images and resource policy; rich-block and denied/unsafe-resource checks | own 001D |
@@ -142,7 +151,7 @@ requires native validation; the counterparts on other hosts are independent.
 | --- | --- | --- |
 | 002A | Folder capability/access recovery and recents; denied/revoked/moved-folder checks | DESK-001 |
 | 002B | Native workspace browser and navigation; large-folder and keyboard checks | own 002A |
-| 002C | Workspace search UI; bounded indexing, cancellation and result navigation checks | own 002B, CORE-005B, CORE-005B2 |
+| 002C | Workspace search UI; bounded indexing, cancellation and result navigation checks | own 002B, CORE-005B, CORE-005B2, CORE-005C |
 | 002D | Persistent preferences/native settings; migration and relaunch checks | own 002A |
 | 002E | Workspace watching/restoration and performance; change storms, access loss and session recovery | own 002C, own 002D |
 | 002F | Development packaging and complete R1 conformance; install/run evidence and host budgets | own 002E |

@@ -246,10 +246,17 @@ These need no action before the platform phases:
 
 ### Owner disposition (2026-10-28)
 
-The owner accepted all four recommendations. Each decision is recorded where
-it belongs when this review closes or when its follow-up is created: D-025
-for the host model, and project-state tasks for F2, F3 and F5. Grok and
-Codex review passes on this PR come before closeout.
+The owner accepted all four recommendations, and this PR records them:
+
+- F1: D-025 in [Decisions.md](../../agents/Decisions.md). The 001B catalog row
+  in [Implementation-Plan.md](../Implementation-Plan.md) now requires a
+  `model-v2` build, flat-view and RSS measurements, and on Windows a required
+  MSVC C smoke (F2 and F6).
+- F2: task CORE-005C, which blocks CORE-005 and each platform's 002C.
+- F3 and F4: task CORE-002B, which blocks CORE-002.
+- F5: task DOC-001.
+
+Grok and Codex review passes on this PR come before closeout.
 
 ## Suggested order
 

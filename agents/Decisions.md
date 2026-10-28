@@ -414,3 +414,32 @@ residual risks. Hosts that need tighter ceilings pass explicit limits, such as
 a lower source limit or content search file size. Text events the builder
 rejoins across a `$` split are not charged to the event limit, so
 dollar-dense prose at the ceiling also parses.
+
+## D-025 — Native hosts build and request semantic model v2
+
+**Date:** 2026-10-28
+
+**Status:** accepted by the owner in the holistic CORE review
+([PR #16](https://github.com/awesomejt/markdown/pull/16))
+
+**Context:** The holistic CORE review
+([F1](../docs/reviews/2026-10-28-core-holistic-review.md#f1--high-the-default-model-denies-most-real-relative-links))
+found that model v1, the Rust default and the only model in the default
+`markdown-ffi` build, denies parent-relative paths, non-ASCII file names and
+any percent-encoding. That covers most relative links and images in real
+documentation folders. V2 classifies them under the reviewed URI policy
+(docs/URI-Policy.md). D-020 made v2 opt-in, but no decision said which model
+the native packages use.
+
+**Decision:** Each native 001B package builds `markdown-ffi` with the
+`model-v2` feature and creates sessions with `MD_MODEL_V2`. V1 stays the Rust
+default and remains supported for compatibility, goldens, tests and the
+default library build. This changes no API, ABI, schema or default.
+
+**Consequences:** All three desktop hosts consume one model and one URI
+policy. Documents with link or image intents pay a second bounded parse for
+source provenance (about 78 ms against 43 ms on the synthetic 40,960-link
+input; prose is unchanged). Hosts navigate find and workspace hits by span or
+anchor, because a v1 `unit` index does not apply to a v2 view
+(specs/ffi/README.md). The v2 URL/IDNA dependencies ship in native packages,
+so each 001I license inventory includes them.

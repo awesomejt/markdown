@@ -1,11 +1,22 @@
 # Agent Session and Platform Handoff
 
-Updated: 2026-10-28, CORE-003B closeout on `chore/core-003b-closeout`.
-Source baseline: `29f7334` on main (PR #13 merge) plus this state/docs closeout. Preserve intended
+Updated: 2026-10-28, holistic CORE review on `review/shared-core` (PR #16).
+Source baseline: `39d1a56` on main plus this review, D-025 and follow-up tasks. Preserve intended
 source, lock/spec/golden files, docs and state together. Never transfer caches,
 environments, build products, private runtime state or user documents.
 
-## Resume here — owner holistic CORE review
+## Resume here — holistic CORE review follow-up
+
+The review is [docs/reviews/2026-10-28-core-holistic-review.md](docs/reviews/2026-10-28-core-holistic-review.md)
+on PR #16 (`review/shared-core`). The owner accepted all four recommendations:
+D-025 (native hosts build and request model v2) is recorded, and CORE-002B,
+CORE-005C and DOC-001 were created through the state helper (revision 376,
+no active pass). The owner will run Grok and Codex reviews on PR #16. Next:
+reconcile those reviews on the branch, then owner merge approval and closeout.
+After that, take the follow-ups (CORE-002B, CORE-005C, DOC-001) before
+MAC-001A, as the review's suggested order recommends.
+
+## Previous step — owner holistic CORE review (done)
 
 PR #13 (CORE-003B4) merged as `29f7334` from reviewed head `9b6bd46`; D-024 is
 accepted. CORE-003B4 and the CORE-003B aggregate are completed in
