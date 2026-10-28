@@ -661,3 +661,385 @@ fn v1_quote_continuation_destination_spans_point_at_the_lexeme() {
     assert_eq!(d.input().resources[0].span.slice(source), Some("c.png"));
     assert_eq!(d.input().resources[0].destination, "c.png");
 }
+
+fn nodes(d: &Document, predicate: impl Fn(&NodeKind) -> bool) -> Vec<&Node> {
+    d.input()
+        .nodes
+        .iter()
+        .filter(|n| predicate(&n.content))
+        .collect()
+}
+fn diagnostics<'a>(d: &'a Document, code: &str) -> Vec<&'a Diagnostic> {
+    d.input()
+        .diagnostics
+        .iter()
+        .filter(|x| x.code == code)
+        .collect()
+}
+fn child<'a>(d: &'a Document, id: &NodeId) -> &'a Node {
+    d.input().nodes.iter().find(|n| &n.id == id).unwrap()
+}
+
+#[test]
+fn b3_alerts_are_semantic_and_look_alikes_stay_quotes() {
+    let source = corpus("advanced/math-alerts.md");
+    let d = parse(&source);
+    let alerts = nodes(&d, |k| matches!(k, NodeKind::Alert { .. }));
+    let categories: Vec<_> = alerts
+        .iter()
+        .map(|n| match n.content {
+            NodeKind::Alert { category, .. } => category,
+            _ => unreachable!(),
+        })
+        .collect();
+    assert_eq!(categories, [AlertKind::Note, AlertKind::Warning]);
+    assert_eq!(
+        alerts[0].span.slice(&source),
+        Some("> [!NOTE]\n> Useful information.\n")
+    );
+    let body = child(&d, &alerts[0].content.children()[0]);
+    assert_eq!(body.span.slice(&source), Some("Useful information.\n"));
+    let quote = nodes(&d, |k| matches!(k, NodeKind::BlockQuote { .. }));
+    assert_eq!(quote.len(), 1);
+    assert_eq!(
+        quote[0].span.slice(&source),
+        Some("> [!NOTE] not an alert\n")
+    );
+    assert!(d.input().capabilities.contains(&Capability::Alerts));
+
+    // Case-insensitive markers, empty, nested, list-contained and unknown kinds.
+    let source = "> [!note]\n> lower\n\n> [!TIP]\n\n> [!CAUTION]\n> > [!IMPORTANT]\n> > [x](\n> > a.md)\n\n- > [!WARNING]\n  > in list\n\n> [!UNKNOWN]\n> x\n";
+    let d = parse(source);
+    let alerts = nodes(&d, |k| matches!(k, NodeKind::Alert { .. }));
+    assert_eq!(alerts.len(), 5);
+    assert!(
+        alerts
+            .iter()
+            .any(|n| matches!(&n.content, NodeKind::Alert { category: AlertKind::Tip, children } if children.is_empty()))
+    );
+    assert_eq!(
+        nodes(&d, |k| matches!(k, NodeKind::BlockQuote { .. })).len(),
+        1
+    );
+    // Destinations continued inside nested alert markers still map to the lexeme.
+    assert_eq!(d.input().links[0].span.slice(source), Some("a.md"));
+}
+
+#[test]
+fn b3_footnotes_resolve_case_insensitively_and_fail_closed() {
+    let source = "A[^a] B[^A] C[^missing] D[^b] E[^c].\n\n[^a]: First.\n[^A]: Duplicate [x](dup.md).\n\n> [^b]: In quote\n\n- [^c]: In list\n";
+    let d = parse(source);
+    let definitions = nodes(&d, |k| matches!(k, NodeKind::FootnoteDefinition { .. }));
+    let labels: Vec<_> = definitions
+        .iter()
+        .map(|n| match &n.content {
+            NodeKind::FootnoteDefinition { label, .. } => label.as_str(),
+            _ => unreachable!(),
+        })
+        .collect();
+    assert_eq!(labels, ["a", "b", "c"]);
+    assert_eq!(definitions[0].span.slice(source), Some("[^a]: First.\n"));
+    // Both references to `a` name the first definition's exact label.
+    let references: Vec<_> = nodes(&d, |k| matches!(k, NodeKind::FootnoteReference { .. }))
+        .iter()
+        .map(|n| match &n.content {
+            NodeKind::FootnoteReference { label } => (label.as_str(), n.span.slice(source)),
+            _ => unreachable!(),
+        })
+        .collect();
+    assert_eq!(
+        references,
+        [
+            ("a", Some("[^a]")),
+            ("a", Some("[^A]")),
+            ("b", Some("[^b]")),
+            ("c", Some("[^c]"))
+        ]
+    );
+    // Undefined references stay ordinary text (GFM), never a dangling node.
+    assert!(
+        nodes(
+            &d,
+            |k| matches!(k, NodeKind::Text { text } if text == "^missing")
+        )
+        .len()
+            == 1
+    );
+    // Later case-folded duplicates are inert source; their links are discarded.
+    let duplicate = nodes(
+        &d,
+        |k| matches!(k, NodeKind::UnsupportedBlock { feature, reason: UnsupportedReason::InvalidInput } if feature == "footnote_definition"),
+    );
+    assert_eq!(duplicate.len(), 1);
+    assert_eq!(
+        duplicate[0].span.slice(source),
+        Some("[^A]: Duplicate [x](dup.md).\n\n")
+    );
+    assert_eq!(diagnostics(&d, "footnote_definition_duplicate").len(), 1);
+    assert!(d.input().links.is_empty());
+    assert!(d.input().capabilities.contains(&Capability::Footnotes));
+
+    // Only undefined references: no footnote capability or node.
+    let d = parse("Text[^x] and [^y].\n");
+    assert!(!d.input().capabilities.contains(&Capability::Footnotes));
+    assert!(nodes(&d, |k| matches!(k, NodeKind::FootnoteReference { .. })).is_empty());
+
+    // Headings drop the marker from titles; image alt keeps math readable. A
+    // reference inside image brackets prevents the image upstream (like a link).
+    let source = "# Title[^n]\n\n![alt $x$](i.png) ![b [^n]](j.png)\n\n[^n]: Note\n";
+    let d = parse(source);
+    assert_eq!(d.input().outline[0].title, "Title");
+    assert_eq!(d.input().outline[0].anchor, "title");
+    let images: Vec<_> = nodes(&d, |k| matches!(k, NodeKind::Image { .. }))
+        .iter()
+        .map(|n| match &n.content {
+            NodeKind::Image { alt, .. } => alt.as_str(),
+            _ => unreachable!(),
+        })
+        .collect();
+    assert_eq!(images, ["alt $x$"]);
+    assert_eq!(d.input().resources.len(), 1);
+    assert_eq!(
+        nodes(&d, |k| matches!(k, NodeKind::FootnoteReference { .. })).len(),
+        2
+    );
+}
+
+#[test]
+fn b3_math_is_explicit_source_fallback_with_exact_spans() {
+    let source = corpus("advanced/math-alerts.md");
+    let d = parse(&source);
+    let math = |feature: &str| {
+        nodes(&d, |k| matches!(k, NodeKind::UnsupportedInline { feature: f, reason: UnsupportedReason::Unavailable } if f == feature))
+            .iter()
+            .map(|n| n.span.slice(&source).unwrap())
+            .collect::<Vec<_>>()
+    };
+    assert_eq!(math("inline_math"), ["$E=mc^2$", "$a^2 + b^2 = c^2$"]);
+    assert_eq!(
+        math("display_math"),
+        ["$$\n\\sum_{i=1}^{n} i = \\frac{n(n+1)}{2}\n$$"]
+    );
+    assert_eq!(diagnostics(&d, "math_unavailable").len(), 3);
+    // The frozen case: headings keep math source; unbalanced braces stay text.
+    assert_eq!(d.input().outline[0].title, "Math $E=mc^2$");
+    assert_eq!(d.input().outline[0].anchor, "math-emc2");
+    assert!(
+        nodes(
+            &d,
+            |k| matches!(k, NodeKind::Text { text } if text == " and an error $\\frac{1}{$ in one paragraph.")
+        )
+        .len()
+            == 1
+    );
+    assert_eq!(
+        nodes(
+            &d,
+            |k| matches!(k, NodeKind::UnsupportedBlock { feature, .. } if feature == "math")
+        )
+        .len(),
+        1
+    );
+
+    // Prices, spaced and escaped dollars and code spans are not math; math is
+    // opaque, so a link inside it is no activation intent.
+    let source = "Costs $5 and $10. $ x $ \\$y$ `$c$` $[a](b.md)$ and $$d$$.\n\n| a | b |\n| - | - |\n| $p$ | q |\n";
+    let d = parse(source);
+    let spans: Vec<_> = nodes(&d, |k| matches!(k, NodeKind::UnsupportedInline { .. }))
+        .iter()
+        .map(|n| n.span.slice(source).unwrap())
+        .collect();
+    assert_eq!(spans, ["$[a](b.md)$", "$$d$$", "$p$"]);
+    assert!(d.input().links.is_empty());
+}
+
+#[test]
+fn b3_non_math_dollars_cost_no_extra_nodes() {
+    // ENABLE_MATH splits text at each `$`; contiguous pieces are rejoined.
+    let d = parse("Costs $5 and $10, or $7.50.\n");
+    let text = nodes(&d, |k| matches!(k, NodeKind::Text { .. }));
+    assert_eq!(text.len(), 1);
+    assert!(
+        matches!(&text[0].content, NodeKind::Text { text } if text == "Costs $5 and $10, or $7.50.")
+    );
+    assert_eq!(text[0].span, SourceSpan { start: 0, end: 27 });
+    // An escaped dollar is not contiguous with its neighbour and keeps its split.
+    let escaped = parse("a \\$x$ b\n");
+    assert_eq!(
+        kinds(&escaped, |k| matches!(
+            k,
+            NodeKind::UnsupportedInline { .. }
+        )),
+        0
+    );
+    // ~1.3 MiB of prices or shell variables stays at base node counts.
+    for (line, lines, expected) in [
+        ("Costs $5 and $10, or $7.50.\n", 50_000, 100_000),
+        ("Run `x` with $HOME and $PATH set.\n", 40_000, 160_000),
+    ] {
+        assert_eq!(
+            parse(&line.repeat(lines)).input().nodes.len(),
+            expected,
+            "{line:?}"
+        );
+    }
+    // `$$$$` is empty display math, real syntax that spends nodes like any span.
+    let runs = parse(&"$".repeat(11));
+    assert_eq!(
+        kinds(&runs, |k| matches!(k, NodeKind::UnsupportedInline { .. })),
+        2
+    );
+    assert!(matches!(&runs.input().nodes[3].content, NodeKind::Text { text } if text == "$$$"));
+}
+
+#[test]
+fn b3_diagram_fences_are_source_fallbacks_and_slugs_survive() {
+    let source = corpus("advanced/inline-diagrams.md");
+    let d = parse(&source);
+    let fences: Vec<_> = nodes(&d, |k| matches!(k, NodeKind::UnsupportedBlock { .. }))
+        .iter()
+        .map(|n| match &n.content {
+            NodeKind::UnsupportedBlock { feature, reason } => {
+                assert_eq!(*reason, UnsupportedReason::Unavailable);
+                assert!(n.span.slice(&source).unwrap().starts_with("```"));
+                assert!(n.span.slice(&source).unwrap().ends_with("```"));
+                feature.as_str()
+            }
+            _ => unreachable!(),
+        })
+        .collect();
+    assert_eq!(fences, ["mermaid", "mermaid", "d2", "d2"]);
+    assert_eq!(diagnostics(&d, "advanced_fence_disabled").len(), 4);
+    let anchors: Vec<_> = d
+        .input()
+        .outline
+        .iter()
+        .map(|o| o.anchor.as_str())
+        .collect();
+    assert_eq!(
+        anchors,
+        [
+            "inline-diagrams",
+            "slug-look-alikes",
+            "mdv-mermaid-1",
+            "dmdv-mermaid-2",
+            "mdvmermaid-1",
+            "dmdvmermaid-2"
+        ]
+    );
+    // Fence names are exact, as in markdown-viewer; other spellings are code.
+    let d = parse("```Mermaid\nx\n```\n\n~~~d2 extra\ny\n~~~\n");
+    assert_eq!(kinds(&d, |k| matches!(k, NodeKind::CodeBlock { .. })), 1);
+    assert_eq!(
+        kinds(
+            &d,
+            |k| matches!(k, NodeKind::UnsupportedBlock { feature, .. } if feature == "d2")
+        ),
+        1
+    );
+}
+
+#[test]
+fn b3_voice_script_opt_in_is_diagnosed_and_syntax_stays_text() {
+    let source = corpus("advanced/voice-parity.md");
+    let d = parse(&source);
+    let voice = diagnostics(&d, "voice_script_unavailable");
+    assert_eq!(voice.len(), 1);
+    assert_eq!(voice[0].severity, Severity::Info);
+    assert_eq!(voice[0].node, None);
+    assert_eq!(voice[0].span, d.input().metadata.front_matter_span);
+    assert!(
+        voice[0]
+            .span
+            .unwrap()
+            .slice(&source)
+            .unwrap()
+            .contains("mdv: script")
+    );
+    // Directions, notes and pronunciation guides remain readable text.
+    assert!(
+        nodes(
+            &d,
+            |k| matches!(k, NodeKind::Text { text } if text.contains("pecan|PEE-can"))
+        )
+        .len()
+            == 1
+    );
+    assert!(d.input().links.is_empty());
+
+    for (source, expected) in [
+        ("---\nmdv: notes\n---\n\n**ANNA:** Hi [beat].\n", 0),
+        ("**ANNA:** Hi [beat].\n\nmdv: script\n", 0),
+        // Typed properties omitted: the opt-in line scan still applies.
+        (
+            "---\nmdv: script\nnested:\n  key: value\n---\n\nText [beat].\n",
+            1,
+        ),
+        ("---\nmdv: script\nmdv: script\n---\n\nText.\n", 1),
+        // The diagnostic survives the inert-body source-mapping fallback.
+        ("---\nmdv: script\n---\n1. >\t- a", 1),
+    ] {
+        let d = parse(source);
+        assert_eq!(
+            diagnostics(&d, "voice_script_unavailable").len(),
+            expected,
+            "{source:?}"
+        );
+    }
+}
+
+#[test]
+fn b3_bounded_generated_extension_markup_never_publishes_an_invalid_model() {
+    let tokens = [
+        "$",
+        "$$",
+        "[^a]",
+        "[^A]",
+        "[^a]: ",
+        "> [!NOTE]\n",
+        "> ",
+        "[!TIP]",
+        "\n",
+        "\n\n",
+        "- ",
+        "    ",
+        "\t",
+        "x",
+        "{",
+        "}",
+        "\\",
+        "`",
+        "[l](u.md)",
+        "|",
+        "| - |\n",
+        "*",
+        "é",
+        "```math\n",
+        "```\n",
+    ];
+    let mut seed = 0x2545f4914f6cdd1du64;
+    for case in 0..20_000 {
+        let mut source = String::new();
+        for _ in 0..(case % 24 + 1) {
+            seed = seed
+                .wrapping_mul(6364136223846793005)
+                .wrapping_add(1442695040888963407);
+            source.push_str(tokens[(seed >> 32) as usize % tokens.len()]);
+        }
+        let ids = || (DocumentId("d".into()), RevisionId("r".into()));
+        let (doc, rev) = ids();
+        match parse_markdown(&source, doc, rev, ParseLimits::default()) {
+            Ok(d) => {
+                Document::new(d.into_input(), &source, ModelLimits::default()).unwrap();
+            }
+            Err(error) => panic!("case {case}: {source:?}: {error:?}"),
+        }
+        #[cfg(feature = "model-v2")]
+        {
+            let (doc, rev) = ids();
+            if let Err(error) = parse_markdown_v2(&source, doc, rev, ParseLimits::default()) {
+                panic!("v2 case {case}: {source:?}: {error:?}");
+            }
+        }
+    }
+}

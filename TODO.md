@@ -36,9 +36,12 @@ source-accurate find, word count and section timing;
 merged as `ec58c84`. **CORE-005B** adds capability-fed
 [workspace search primitives](specs/workspace-search/README.md) in Rust,
 merged in PR #10 as `0bf8eb7`. Its C ABI exposure, the owner-approved split
-**CORE-005B2** required by each platform's 002C, adds four D-022 functions on
-`feat/core-005b2-workspace-ffi`. It stays partial until review disposition
-and owner-authorized merge. CORE-003B was refined into four
+**CORE-005B2** required by each platform's 002C, merged in PR #11 as
+`28e33bc`. **CORE-003B3** maps GFM alerts and footnotes to existing v1/v2
+nodes. Math becomes explicit source fallbacks, and voice-script opt-in gets
+a diagnostic ([extension semantics](docs/Parsing.md#extension-semantics-core-003b3)).
+It is on `feat/core-003b3-extension-semantics` and stays partial until review
+disposition and owner-authorized merge. CORE-003B was refined into four
 tracked children: B1 metadata; B2 reference representation/URI compatibility;
 B3 remaining extension semantics; B4 conformance/fuzz/property and parser
 budgets. See [the catalog](docs/Implementation-Plan.md) for scope/dependencies.

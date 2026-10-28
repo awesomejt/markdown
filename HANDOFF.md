@@ -1,32 +1,47 @@
 # Agent Session and Platform Handoff
 
-Updated: 2026-10-28, CORE-005B2 workspace search C ABI on `feat/core-005b2-workspace-ffi`.
-Source baseline: `0bf8eb7` on main (PR #10 merge) plus this phase's changes. Preserve intended
+Updated: 2026-10-28, CORE-003B3 extension semantics on `feat/core-003b3-extension-semantics`.
+Source baseline: `28e33bc` on main (PR #11 merge) plus this phase's changes. Preserve intended
 source, lock/spec/golden files, docs and state together. Never transfer caches,
 environments, build products, private runtime state or user documents.
 
-## Resume here — CORE-005B2 workspace search C ABI
+## Resume here — CORE-003B3 extension semantics
 
-PR #10 (CORE-005B) merged as `0bf8eb7`; its state closeout travels on this
-branch. CORE-005B2 adds four D-022 functions per
-[the C ABI contract](specs/ffi/README.md#workspace-search-core-005b2).
-`md_workspace_classify_path` reports a `MD_PATH_*` verdict and the
-Markdown/hidden/invisible flags. `md_workspace_find_names` takes
-`md_workspace_entry` records (an opaque ID plus a byte range into one paths
-buffer). It skips and counts paths the core rejects, but an out-of-range
-reference is an argument error. `md_workspace_content_admit` and
-`md_workspace_content_search` share a caller-owned in/out
-`md_content_progress`, which is written back only on `MD_OK`. Search fills
-`md_content_hit` records plus packed snippet text and anchor buffers. Hosts
-size them from the limits (`MD_CONTENT_MAX_SNIPPET_BYTES`,
-`MD_ANCHOR_MAX_BYTES`) to avoid a re-parsing retry. Zero limits select
-defaults, except `snippet_context`, which is used as given. Hit `unit`
-indexes a v1 view only, so v2 hosts navigate by span or anchor. One core
-change: progress counts not bounded by a budget now saturate. Evidence: Rust
-parity in `src/tests/workspace.rs`, layout and constant checks, and the macOS
-C smoke. Next: phase PR, `/grok review`, owner-authorized merge. Then
-CORE-003B3, CORE-003B4 (with the CORE-003B closeout), then the owner's
-holistic review before any platform phase.
+PR #11 (CORE-005B2) merged as `28e33bc`; its state closeout is commit
+`a1e3688` on this branch. CORE-003B3 enables pulldown-cmark GFM footnotes,
+math and `ENABLE_GFM` (alert tags only) through one shared `PARSER_OPTIONS`.
+V2 provenance reparsing uses the same set. See
+[the extension semantics](docs/Parsing.md#extension-semantics-core-003b3).
+
+- Alerts become `alert` nodes; look-alikes stay quotes.
+- Footnotes become definition and reference nodes. References name the first
+  definition's exact label, matched with the parser's own `unicase` folding.
+  Later folded duplicates are inert `unsupported_block` fallbacks, and
+  undefined references stay text.
+- Inline and display math are `unsupported_inline` fallbacks over the exact
+  lexeme, each with `math_unavailable`.
+- Diagram fences are unchanged.
+- Front-matter `mdv: script` adds an info `voice_script_unavailable`; voice
+  syntax reads as ordinary Markdown.
+
+The model, schemas, goldens and ABI do not change. unicase 2.10.0 becomes a
+direct dependency, with no new package. Reading-stat goldens moved towards
+markdown-viewer parity (gfm-tour 215→192 words), as the search contract
+predicted. The FFI corpus now produces all 24 node kinds. Evidence:
+`tools/check.py all` passed on macOS (`.build/core003b3-all.log`). It covered
+six B3 parser regressions, a v2 provenance regression, and a 20,000-case
+extension-token generator run on v1 and v2. Next: phase PR, `/grok review`,
+owner-authorized merge. Then CORE-003B4 with the CORE-003B closeout, then the
+owner's holistic review before any platform phase.
+
+## CORE-005B2 workspace search C ABI (merged in PR #11)
+
+CORE-005B2 adds four D-022 functions per
+[the C ABI contract](specs/ffi/README.md#workspace-search-core-005b2):
+classify path, find names over an entry array, and content admit/search with
+a caller-owned in/out progress record written back only on `MD_OK`. Hit
+`unit` indexes a v1 view only; v2 hosts navigate by span or anchor. The owner
+merged PR #11 as `28e33bc`.
 
 ## CORE-005B workspace search primitives (merged in PR #10)
 

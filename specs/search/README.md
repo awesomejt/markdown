@@ -53,7 +53,7 @@ transparent, so `foo **bar**` contains `foo bar`.
 | Table cells, list items, block quotes, alerts, footnote definitions | Yes | Yes |
 | Code spans, code blocks | Yes | Only `include_code` |
 | Image alt text | Yes (alt is the accessible and fallback text) | No |
-| Unsupported block/inline (raw HTML, math/diagram fences) | Yes, as literal source | No |
+| Unsupported block/inline (raw HTML, inline/display math, math/diagram fences) | Yes, as literal source | No |
 | Soft/hard breaks, whitespace | One space | Separator |
 | Footnote reference labels | No (separator) | No (separator) |
 | Front matter, link destinations, titles, intents | No | No |
@@ -184,12 +184,13 @@ The deliberate deviations are:
 | Chinese/Japanese | ICU dictionary words (`中文字符` is 2) | One per ideograph/Hiragana scalar (4), the common per-character CJK convention |
 | Thai, Lao, Khmer, Myanmar | ICU dictionary words | One per space-separated run (undercounts) |
 | Markup inside a word | Counts each mdast text node separately | Counts the unit's joined text |
-| Alerts and math | Alert titles and math are skipped | The current basic parser has no alert/math nodes (CORE-003B3), so `[!NOTE]` and `$...$` count as text until B3 |
-| Footnotes | GFM footnote references are not counted (`[^1]` plus definition `x y` is 2 words) | The basic parser does not enable footnotes yet, so `[^1]` and the definition label are literal text (4 words) until CORE-003B3; footnote nodes already follow the rules above |
 
 markdown-viewer's options, defaults and exclusions match: 160 wpm, headings
 and code excluded by default, front matter, HTML, images and math never
-counted, and advanced fences never counted.
+counted, and advanced fences never counted. Since CORE-003B3, alert markers,
+inline/display math and footnote references are also not counted, and
+footnote definitions are, as in markdown-viewer (`[^1]` plus definition
+`x y` is 2 words). Brace-unbalanced `$...$` stays text and is counted.
 
 ## Reading time and sections
 

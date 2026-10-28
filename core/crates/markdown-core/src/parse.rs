@@ -1,9 +1,13 @@
-//! Bounded basic parser. Extension conformance is a separate phase; sessions,
-//! generations and anchors live in `session`.
+//! Bounded parser with the MVP extensions (alerts, footnotes) and explicit
+//! math/diagram/voice source fallbacks. Conformance/fuzz budgets are CORE-003B4;
+//! sessions, generations and anchors live in `session`.
 use crate::*;
-use pulldown_cmark::{CodeBlockKind, Event, LinkType, Options, Parser, Tag, TagEnd};
+use pulldown_cmark::{
+    BlockQuoteKind, CodeBlockKind, Event, LinkType, Options, Parser, Tag, TagEnd,
+};
 use std::collections::{BTreeMap, BTreeSet};
 use std::ops::Range;
+use unicase::UniCase;
 
 /// Output ceilings do not interrupt the underlying parser's initial source scan.
 #[derive(Clone, Copy, Debug)]
@@ -79,6 +83,10 @@ struct Builder<'a> {
     references: bool,
     link_definitions: BTreeMap<LinkId, SourceSpan>,
     resource_definitions: BTreeMap<ResourceId, SourceSpan>,
+    /// First definition label per upstream case-folded key; later ones are fallbacks.
+    footnote_labels: BTreeMap<UniCase<String>, String>,
+    /// Reference node indexes with the label as written, resolved after parsing.
+    footnote_references: Vec<usize>,
 }
 
 /// Produce a validated immutable snapshot from exact UTF-8 bytes, with no I/O.
@@ -153,6 +161,17 @@ pub fn parse_markdown_v2_cancellable(
 /// Parser events between cancellation polls; a bounded constant, not a budget.
 pub const CANCEL_CHECK_EVENTS: usize = 256;
 
+/// The one upstream option set; v2 provenance reparsing must see identical events.
+/// Deliberately no YAML metadata mode (D-015), HTML renderer, smart punctuation,
+/// heading attributes, old footnotes, definition lists, super/subscript,
+/// wikilinks or broken-link callback. `ENABLE_GFM` adds only alert tags.
+const PARSER_OPTIONS: Options = Options::ENABLE_TABLES
+    .union(Options::ENABLE_TASKLISTS)
+    .union(Options::ENABLE_STRIKETHROUGH)
+    .union(Options::ENABLE_FOOTNOTES)
+    .union(Options::ENABLE_MATH)
+    .union(Options::ENABLE_GFM);
+
 /// Interruption source polled by the builder. The uninterrupted form has an
 /// uninhabited error so the default entry points cannot observe cancellation.
 trait Checkpoint {
@@ -221,6 +240,8 @@ fn build<'a, C: Checkpoint>(
         references,
         link_definitions: BTreeMap::new(),
         resource_definitions: BTreeMap::new(),
+        footnote_labels: BTreeMap::new(),
+        footnote_references: Vec::new(),
         doc: DocumentInput {
             model_version: MODEL_VERSION,
             document_id,
@@ -249,6 +270,10 @@ fn build<'a, C: Checkpoint>(
                 {
                     b.doc.metadata.title = Some(b.text(value)?);
                 }
+                if matches!(properties.get("mdv"), Some(MetadataValue::String { value }) if value == "script")
+                {
+                    b.diagnostic("voice_script_unavailable", span(0..offset), None);
+                }
                 b.doc.metadata.properties = properties;
             }
             Err(crate::metadata::Error::TextLimit) => return Err(ParseError::TextLimit.into()),
@@ -259,14 +284,18 @@ fn build<'a, C: Checkpoint>(
                     _ => "front_matter_unsupported",
                 };
                 b.diagnostic(code, span(0..offset), None);
+                // Opt-in line scan when typed properties are omitted (FEAS-010 E1).
+                if source[..offset]
+                    .lines()
+                    .any(|l| l.trim_end() == "mdv: script" || l.starts_with("mdv: script "))
+                {
+                    b.diagnostic("voice_script_unavailable", span(0..offset), None);
+                }
             }
         }
     }
     checkpoint.poll().map_err(Stop::Interrupted)?;
-    let options =
-        Options::ENABLE_TABLES | Options::ENABLE_TASKLISTS | Options::ENABLE_STRIKETHROUGH;
-    // Deliberately no YAML metadata mode (D-015), HTML renderer, smart punctuation,
-    // heading attributes, math, footnotes, alerts or broken-link callback.
+    let options = PARSER_OPTIONS;
     let mut events = Parser::new_ext(&source[offset..], options).into_offset_iter();
     let mut count = 0usize;
     // V2 only: source ranges that produced events, for shadowed-definition notes.
@@ -282,7 +311,10 @@ fn build<'a, C: Checkpoint>(
         if references
             && !matches!(
                 event,
-                Event::End(_) | Event::Start(Tag::BlockQuote(_) | Tag::List(_) | Tag::Item)
+                Event::End(_)
+                    | Event::Start(
+                        Tag::BlockQuote(_) | Tag::List(_) | Tag::Item | Tag::FootnoteDefinition(_)
+                    )
             )
         {
             match covered.last_mut() {
@@ -316,6 +348,7 @@ fn build<'a, C: Checkpoint>(
     if !b.stack.is_empty() || b.capture.is_some() {
         return Err(ParseError::SourceMapping.into());
     }
+    b.resolve_footnotes()?;
     if references {
         checkpoint.poll().map_err(Stop::Interrupted)?;
         let body = &source[offset..];
@@ -611,6 +644,19 @@ impl Builder<'_> {
                 "reference_definition_shadowed" => {
                     "Duplicate reference definition is ignored; the first definition is used."
                 }
+                "math_unavailable" => "Math is preserved as source; no math engine is available.",
+                "footnote_definition_duplicate" => {
+                    "Duplicate footnote definition is preserved as source; the first definition is used."
+                }
+                "footnote_definition_invalid" => {
+                    "Footnote definition label is not usable; it is preserved as source."
+                }
+                "footnote_reference_unresolved" => {
+                    "Footnote reference has no usable definition and is preserved as source."
+                }
+                "voice_script_unavailable" => {
+                    "Voice-over script syntax is not interpreted; it reads as ordinary Markdown."
+                }
                 _ => "Unsupported content is preserved as source and cannot execute.",
             }
             .into(),
@@ -635,6 +681,8 @@ impl Builder<'_> {
                 | NodeKind::BlockQuote { children }
                 | NodeKind::ListItem { children, .. }
                 | NodeKind::TableCell { children }
+                | NodeKind::FootnoteDefinition { children, .. }
+                | NodeKind::Alert { children, .. }
                 | NodeKind::Emphasis { children }
                 | NodeKind::Strong { children }
                 | NodeKind::Strikethrough { children }
@@ -655,12 +703,55 @@ impl Builder<'_> {
         });
         Ok(i)
     }
-    fn inline_parent(&mut self, range: &Range<usize>) -> Result<(), ParseError> {
-        if self
-            .stack
-            .last()
-            .is_some_and(|f| matches!(self.doc.nodes[f.node].content, NodeKind::ListItem { .. }))
+    /// `ENABLE_MATH` splits text at every non-math `$`; rejoin a contiguous split
+    /// so prices and shell variables cost no extra nodes. Limited to `$` source
+    /// boundaries so trees without dollars keep their frozen shape.
+    fn merge_dollar_text(&mut self, range: &Range<usize>, text: &str) -> bool {
+        let Some(parent) = self.stack.last() else {
+            return false;
+        };
+        let last = self.doc.nodes.len().saturating_sub(1);
+        let sibling = match &self.doc.nodes[parent.node].content {
+            NodeKind::Paragraph { children }
+            | NodeKind::Heading { children, .. }
+            | NodeKind::TableCell { children }
+            | NodeKind::Emphasis { children }
+            | NodeKind::Strong { children }
+            | NodeKind::Strikethrough { children }
+            | NodeKind::Link { children, .. } => children.last().cloned(),
+            _ => None,
+        };
+        let bytes = self.source.as_bytes();
+        let Some(Node {
+            id,
+            span: prev,
+            content: NodeKind::Text { text: joined },
+        }) = self.doc.nodes.get_mut(last)
+        else {
+            return false;
+        };
+        let start = range.start as u64;
+        let dollar = |i: Option<usize>| i.and_then(|i| bytes.get(i)) == Some(&b'$');
+        if sibling.as_ref() != Some(id)
+            || prev.end != start
+            || !(dollar(Some(range.start)) || dollar(range.start.checked_sub(1)))
         {
+            return false;
+        }
+        joined.push_str(text);
+        prev.end = range.end as u64;
+        true
+    }
+    fn inline_parent(&mut self, range: &Range<usize>) -> Result<(), ParseError> {
+        // Block containers never hold inlines directly; wrap them as tight items do.
+        if self.stack.last().is_some_and(|f| {
+            matches!(
+                self.doc.nodes[f.node].content,
+                NodeKind::ListItem { .. }
+                    | NodeKind::FootnoteDefinition { .. }
+                    | NodeKind::Alert { .. }
+            )
+        }) {
             let node = self.add(
                 range.clone(),
                 NodeKind::Paragraph {
@@ -692,6 +783,8 @@ impl Builder<'_> {
                 let piece = match &event {
                     Event::Text(t) | Event::Code(t) => Some(t.as_ref()),
                     Event::SoftBreak | Event::HardBreak => Some("\n"),
+                    // Image alt keeps unrendered math lexemes readable.
+                    Event::InlineMath(_) | Event::DisplayMath(_) => self.source.get(range.clone()),
                     _ => None,
                 };
                 if let Some(piece) = piece {
@@ -767,6 +860,18 @@ impl Builder<'_> {
                         feature: "raw_html".into(),
                         reason: UnsupportedReason::Disabled,
                     },
+                    Event::InlineMath(_) => NodeKind::UnsupportedInline {
+                        feature: "inline_math".into(),
+                        reason: UnsupportedReason::Unavailable,
+                    },
+                    Event::DisplayMath(_) => NodeKind::UnsupportedInline {
+                        feature: "display_math".into(),
+                        reason: UnsupportedReason::Unavailable,
+                    },
+                    // Canonicalized against the first definition after parsing.
+                    Event::FootnoteReference(label) => NodeKind::FootnoteReference {
+                        label: self.text(&label)?,
+                    },
                     _ => return Err(ParseError::SourceMapping),
                 };
                 if content.is_inline() {
@@ -774,11 +879,26 @@ impl Builder<'_> {
                 } else if self.stack.last().is_some_and(|f| f.end.is_none()) {
                     self.stack.pop();
                 }
-                let fallback = matches!(content, NodeKind::UnsupportedInline { .. });
+                if let NodeKind::Text { text } = &content
+                    && self.merge_dollar_text(&range, text)
+                {
+                    return Ok(());
+                }
+                let diagnostic = match &content {
+                    NodeKind::UnsupportedInline { feature, .. } if feature == "raw_html" => {
+                        Some("raw_html_disabled")
+                    }
+                    NodeKind::UnsupportedInline { .. } => Some("math_unavailable"),
+                    _ => None,
+                };
+                let reference = matches!(content, NodeKind::FootnoteReference { .. });
                 let i = self.add(range, content)?;
-                if fallback {
+                if reference {
+                    self.footnote_references.push(i);
+                }
+                if let Some(code) = diagnostic {
                     self.diagnostic(
-                        "raw_html_disabled",
+                        code,
                         self.doc.nodes[i].span,
                         Some(self.doc.nodes[i].id.clone()),
                     );
@@ -828,9 +948,46 @@ impl Builder<'_> {
                 anchor: String::new(),
                 children: Vec::new(),
             },
-            Tag::BlockQuote(_) => NodeKind::BlockQuote {
+            Tag::BlockQuote(None) => NodeKind::BlockQuote {
                 children: Vec::new(),
             },
+            Tag::BlockQuote(Some(kind)) => {
+                self.doc.capabilities.insert(Capability::Alerts);
+                NodeKind::Alert {
+                    category: match kind {
+                        BlockQuoteKind::Note => AlertKind::Note,
+                        BlockQuoteKind::Tip => AlertKind::Tip,
+                        BlockQuoteKind::Important => AlertKind::Important,
+                        BlockQuoteKind::Warning => AlertKind::Warning,
+                        BlockQuoteKind::Caution => AlertKind::Caution,
+                    },
+                    children: Vec::new(),
+                }
+            }
+            Tag::FootnoteDefinition(label) => {
+                let key = UniCase::new(self.text(&label)?);
+                let duplicate = self.footnote_labels.contains_key(&key);
+                if duplicate || label.trim().is_empty() {
+                    capture = Some(Capture::Fallback);
+                    diagnostic = Some(if duplicate {
+                        "footnote_definition_duplicate"
+                    } else {
+                        "footnote_definition_invalid"
+                    });
+                    NodeKind::UnsupportedBlock {
+                        feature: "footnote_definition".into(),
+                        reason: UnsupportedReason::InvalidInput,
+                    }
+                } else {
+                    let label = self.text(&label)?;
+                    self.footnote_labels.insert(key, label.clone());
+                    self.doc.capabilities.insert(Capability::Footnotes);
+                    NodeKind::FootnoteDefinition {
+                        label,
+                        children: Vec::new(),
+                    }
+                }
+            }
             Tag::List(start) => NodeKind::List {
                 ordered: start.is_some(),
                 start,
@@ -1047,6 +1204,36 @@ impl Builder<'_> {
                 node,
                 end: Some(end),
             });
+        }
+        Ok(())
+    }
+    /// Point each reference at its first definition's exact label, using the
+    /// parser's own case folding. A reference the parser accepted but whose
+    /// definition became a fallback stays visible as inert source.
+    fn resolve_footnotes(&mut self) -> Result<(), ParseError> {
+        for i in std::mem::take(&mut self.footnote_references) {
+            let NodeKind::FootnoteReference { label } = &self.doc.nodes[i].content else {
+                return Err(ParseError::SourceMapping);
+            };
+            match self.footnote_labels.get(&UniCase::new(label.clone())) {
+                Some(canonical) if canonical == label => {}
+                Some(canonical) => {
+                    let canonical = canonical.clone();
+                    let canonical = self.text(&canonical)?;
+                    self.doc.nodes[i].content = NodeKind::FootnoteReference { label: canonical };
+                }
+                None => {
+                    self.doc.nodes[i].content = NodeKind::UnsupportedInline {
+                        feature: "footnote_reference".into(),
+                        reason: UnsupportedReason::InvalidInput,
+                    };
+                    self.diagnostic(
+                        "footnote_reference_unresolved",
+                        self.doc.nodes[i].span,
+                        Some(self.doc.nodes[i].id.clone()),
+                    );
+                }
+            }
         }
         Ok(())
     }
@@ -1488,9 +1675,7 @@ pub(crate) fn intent_facts(
         path: "document".into(),
     };
     let offset = front_matter_end(source).unwrap_or(0);
-    let options =
-        Options::ENABLE_TABLES | Options::ENABLE_TASKLISTS | Options::ENABLE_STRIKETHROUGH;
-    let mut events = Parser::new_ext(&source[offset..], options).into_offset_iter();
+    let mut events = Parser::new_ext(&source[offset..], PARSER_OPTIONS).into_offset_iter();
     let mut facts = BTreeMap::new();
     let mut active: Vec<Active> = Vec::new();
     let mut depth = 0usize;

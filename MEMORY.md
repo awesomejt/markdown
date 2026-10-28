@@ -17,15 +17,20 @@ design belong in `docs/` or `agents/`; runtime transcripts do not belong here.
   approval is inferred. Its supported state closeout travels in this branch.
 - CORE-003B retains B1 metadata, B2 references/URI, B3 other extension semantics
   and B4 conformance/fuzz/performance with original aggregate/native gates.
-- Status 2026-10-28: CORE-005B2 is in progress on
-  `feat/core-005b2-workspace-ffi`. Four D-022 functions (24 exports):
-  `md_workspace_classify_path`, `md_workspace_find_names` (an entry array
-  referencing one paths buffer; invalid names are skipped and counted),
-  `md_workspace_content_admit` and `md_workspace_content_search`. The search
-  fills hit records plus packed snippet text and anchor buffers. A
-  caller-owned in/out `md_content_progress` is written back only on success,
-  and its counts not bounded by a budget saturate in the core. Hit `unit`
-  indexes a v1 view only; v2 hosts navigate by span or anchor.
+- Status 2026-10-28: CORE-003B3 is in progress on
+  `feat/core-003b3-extension-semantics`. One shared `PARSER_OPTIONS` (also
+  used by v2 provenance reparsing) enables GFM footnotes, math and alert tags.
+  Alerts and footnotes map to existing v1/v2 nodes. Footnote references
+  carry the first definition's exact label (direct `unicase` 2.10.0, the
+  parser's own folding), and later folded duplicates are inert fallbacks.
+  Math is an `unsupported_inline` source fallback, and `mdv: script` front
+  matter adds an info `voice_script_unavailable`. There is no model, schema,
+  golden or ABI change. Reading stats now match markdown-viewer for
+  alerts, math and footnotes.
+- CORE-005B2 (merged, PR #11 `28e33bc`): four D-022 workspace search
+  functions (24 exports). Classify path, find names over an entry array, and
+  content admit/search with packed snippets/anchors and a caller-owned in/out
+  progress written back only on success. Hit `unit` indexes a v1 view only.
 - CORE-005B (merged, PR #10 `0bf8eb7`): `markdown_core::workspace`
   (specs/workspace-search/README.md) takes adapter entries (opaque `u64` ID
   plus validated `/`-relative display path; the core never resolves paths)

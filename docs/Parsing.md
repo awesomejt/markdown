@@ -22,9 +22,11 @@ spans without changing v1 wire meaning. No default format or facade is switched.
 
 ## Implemented surface
 
-Pinned pulldown-cmark 0.13.5 runs with default features disabled and only tables,
-task lists and strikethrough options enabled. Its HTML output module and CLI
-are excluded. The adapter consumes offset events into an owned flat tree:
+Pinned pulldown-cmark 0.13.5 runs with default features disabled. One shared
+option set enables tables, task lists, strikethrough, GFM footnotes, math and
+`ENABLE_GFM` (alert tags only). V2 provenance reparsing uses the same set. Its
+HTML output module and CLI are excluded. The adapter consumes offset events
+into an owned flat tree:
 
 - Headings, paragraphs, quotes, ordered/unordered lists and list items.
 - Emphasis, strong, strike, code spans, text, soft/hard breaks and rules.
@@ -65,8 +67,9 @@ a regression with 10,000 occurrences; that is not a timing benchmark.
 Raw HTML blocks/tags are unsupported source nodes with diagnostics. Native
 presenters must display fallback source as plain text. No executable HTML model
 node or sanitizer output exists, including for otherwise harmless details/br.
-Advanced `mermaid`, `d2`, `math` and `latex` fences are source fallbacks. Other
-code fences are always literal code; language info is untrusted text.
+Advanced `mermaid`, `d2`, `math` and `latex` fences, and inline/display math,
+are source fallbacks (see the extension semantics section). Other code fences
+are always literal code; language info is untrusted text.
 
 Link classification uses the parser's entity/escape-decoded destination.
 Non-ASCII destinations (including Unicode format/bidi characters), controls,
@@ -113,11 +116,62 @@ unchanged. Detection reparses only event-free body gaps, flattened, capped at
 twice the body and 1,024 notes; it fails closed, so exotic layouts and long
 same-label runs without blank lines can be under-reported, never misreported.
 
-Bare GFM URL autolinks, math, alerts, footnotes, voice syntax and other extensions do not have their
-options enabled; they retain basic Markdown/source behavior until CORE-003B.
-The frozen FEAS corpus is unchanged. The tests assert the implemented foundation
-subset (13 GFM headings, table/tasks, links, code and security invariants), not
-full success against its deferred extension expectations.
+## Extension semantics (CORE-003B3)
+
+CORE-003B3 maps the MVP extensions onto existing v1/v2 node kinds. The frozen
+model schemas and model goldens do not change. v1/v2 trees and reading stats do
+change for documents that use these extensions; see `specs/search/README.md`.
+
+- **Alerts.** `> [!NOTE]`, `[!TIP]`, `[!IMPORTANT]`, `[!WARNING]` and
+  `[!CAUTION]` on their own first quote line become `alert` nodes. Markers are
+  case-insensitive. The span covers the marker line, and children are the
+  remaining blocks. An empty `> [!TIP]` is an alert with no children.
+  Alerts nest and may sit in lists. Unknown kinds, and a marker followed by
+  text on the same line, stay ordinary block quotes.
+- **Footnotes.** GFM syntax is used, not the old syntax. Definitions are
+  `footnote_definition` blocks at their source position, including inside
+  quotes and list items. Labels match case-insensitively with the parser's own
+  folding (`unicase`). Each reference names the first definition's exact label,
+  so the model's exact-label rule holds. A later duplicate under the same
+  folding is an `unsupported_block` (`footnote_definition`, `invalid_input`)
+  covering its whole source, with an info `footnote_definition_duplicate`. Its
+  contents, including links, are inert. Undefined references stay ordinary
+  text, as in GFM, and the capability is absent without a definition. A
+  reference inside image brackets prevents the image upstream, as a link does.
+  Heading titles and anchors omit footnote markers.
+- **Math.** `$…$` and `$$…$$` become `unsupported_inline` (`inline_math` or
+  `display_math`, `unavailable`) over the exact delimited lexeme, each with an
+  info `math_unavailable`. Display math is an inline inside its paragraph, as
+  pulldown-cmark emits it. Math content is opaque, so a link inside math
+  creates no intent. Heading titles keep the math source (`# Math $E=mc^2$`
+  anchors as `math-emc2`), and image alt keeps it as text. Brace-unbalanced
+  math (`$\frac{1}{$`), prices (`$5 and $10`), spaced or escaped dollars and
+  code spans stay ordinary text, so invalid math remains readable without an
+  error node (FEAS-010). Upstream splits text at every non-math `$`; the
+  builder rejoins contiguous text pieces at a `$` source boundary, so dollar
+  prose costs the same nodes as without math. `math`/`latex` fences stay
+  `unsupported_block`.
+- **Diagrams.** Fences whose first info word is exactly `mermaid` or `d2`
+  (case-sensitive, as in markdown-viewer) are `unsupported_block` over the
+  whole fence, with `advanced_fence_disabled`. Other spellings are literal
+  code. No engine validates or compiles diagram source.
+- **Voice-over scripts.** Script mode is selected by front-matter
+  `mdv: script`. When typed properties are omitted, an exact `mdv: script`
+  front-matter line still opts in (FEAS-010 E1). In script mode the
+  front-matter span gets one info `voice_script_unavailable`, with no node.
+  It survives the inert-body source-mapping fallback. Speakers, directions,
+  notes, pronunciation guides and A/V tables are not interpreted. They read
+  as ordinary Markdown, and `[direction]` never becomes a link without a
+  definition. Body lines are never an opt-in.
+
+Diagnostics are one per fallback node and are bounded by the node limit. No
+engine, renderer, executable node or post-MVP syntax is added. Bare GFM URL
+autolinks, definition lists, super/subscript and wikilinks stay disabled.
+
+The frozen FEAS corpus is unchanged. The tests assert the implemented subset:
+13 GFM headings, tables and tasks, links, code, security invariants, and the
+B3 alert, footnote, math, diagram and voice expectations above. Diagram
+validity and rendering stay engine work and are not asserted.
 
 ## Limits and failure behavior
 
@@ -152,8 +206,9 @@ Run `python tools/check.py all` with the toolchain in
 [Development.md](Development.md). Parser regressions run in default and schema
 builds, debug and release, through the existing three-host CI matrix. They cover
 basic and malformed syntax, exact spans, unsafe/obfuscated destinations, HTML,
-limits, duplicates, Grok's email/nested-link/tab/Unicode reproductions, a bounded
-20,000-case deterministic generated-markup parse/revalidation check, all eight
+limits, duplicates, Grok's email/nested-link/tab/Unicode reproductions, two bounded
+20,000-case deterministic generated-markup parse/revalidation checks (the
+second mixes B3 extension tokens and also runs v2), all eight
 frozen corpus inputs and an original serialized
 [golden](../specs/parsing/basic/expected.json) from
 [its source](../specs/parsing/basic/input.source.txt), authored here under Apache-2.0.
