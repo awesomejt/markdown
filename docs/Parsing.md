@@ -44,14 +44,17 @@ includes `mailto:`. Autolinks nested in another link become inert inline source
 fallbacks, with no inner activation intent. The outer link retains its destination.
 
 Upstream tab-expanded container offsets can violate v1 child containment or
-sibling ordering. For those two validation errors only, the parser discards the
-partial graph and all its intents/outline and returns a fresh validated inert
-source block covering the exact body, with `source_mapping_fallback` diagnostic.
-Document/revision IDs, source fingerprint and first-position front matter are
-preserved. This deliberately sacrifices rich semantics for the entire body while
-keeping the file readable; it never widens, clips or invents source offsets.
-Other source-mapping/model errors remain errors rather than publishing an
-unchecked model.
+sibling ordering. Since CORE-003B4, only each affected top-level block becomes
+an inert `unrepresentable_source_mapping` block over its exact upstream span,
+with a `source_mapping_fallback` warning. Its intents, outline entries and
+diagnostics are dropped, and footnote references elsewhere to a definition
+inside it become unresolved-reference fallbacks. Other blocks keep full
+semantics ([details](Parser-Budgets.md#source-offset-fallback)). If validation
+still reports one of those two errors, a safety net discards the partial graph
+and returns a single inert block covering the exact body. Document/revision
+IDs, source fingerprint and first-position front matter are preserved. Offsets
+are never widened, clipped or invented. Other source-mapping/model errors remain
+errors rather than publishing an unchecked model.
 
 Heading titles flatten plain text, code, image alt and source fallbacks, omitting
 raw HTML tag fallbacks from outline labels while preserving those source nodes.
@@ -178,8 +181,8 @@ validity and rendering stay engine work and are not asserted.
 | Limit | Default | Enforcement |
 | --- | --- | --- |
 | Source | 8 MiB | Before hashing, initial model validation or parser construction |
-| Events | 1,000,000 | Before adapting each emitted event |
-| Nodes | 250,000 | Before adding a model node |
+| Events | 2,000,000 | Before adapting each emitted event |
+| Nodes | 1,000,000 | Before adding a model node |
 | Depth | 128 | Parser events and model/synthetic-paragraph ancestry |
 | Copied text | 32 MiB | Cumulative copied source-derived strings, including repeated destinations/titles and metadata |
 
@@ -196,9 +199,11 @@ incremental update is promised. CORE-004A adds `parse_markdown_cancellable` and
 `parse_markdown_v2_cancellable`, which poll a cooperative token every 256 events
 and between phases with otherwise identical output; the upstream block scan and
 final validation are not interruptible ([session contract](../specs/session/README.md)).
-Host applications must schedule parsing away from the UI thread. CORE-003B owns hostile-input fuzz/property
-coverage and measured parser time/memory budgets; native launch/scroll/memory
-acceptance remains in platform phases.
+Host applications must schedule parsing away from the UI thread. CORE-003B4 raised
+the node/event defaults from 250,000/1,000,000 so representative prose at the
+source ceiling parses (D-024), and added hostile-input/property coverage,
+measured time/memory and heap budgets in [Parser-Budgets.md](Parser-Budgets.md);
+native launch/scroll/memory acceptance remains in platform phases.
 
 ## Reproduction and evidence
 
@@ -216,9 +221,10 @@ The frozen model goldens/schema must remain unchanged. An independent read-only
 safety/source-mapping review found and verified the heading HTML-label fix;
 its initial final pass found no remaining actionable issue. Grok's subsequent
 review identified email classification, Unicode URI obfuscation and nested-link/
-tab-container robustness gaps, now fixed with the regressions above. The bounded
-generated test does not establish exhaustive fuzz coverage. This does not replace
-hosted checks, phase review or CORE-003B fuzz/performance acceptance.
+tab-container robustness gaps, now fixed with the regressions above. CORE-003B4
+adds the [conformance contract](../specs/parsing/conformance/README.md),
+corpus-seeded mutation, a pathological-construct catalog and heap budgets
+([Parser-Budgets.md](Parser-Budgets.md)). None of this is coverage-guided fuzzing.
 
 The bounded stdin example can reproduce the new golden:
 

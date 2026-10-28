@@ -82,8 +82,11 @@ CORE-003B2 adds url 2.5.8 only through opt-in feature `model-v2`. Its WHATWG
 parser/IDNA backend handles canonical external URLs without network access.
 The v1 plus schema-tooling graph remains 32 packages; the full optional graph
 has 60, including ICU4X Unicode data. This compile/data footprint is an explicit
-tradeoff against writing an incomplete URL/IDN parser; package/time/memory costs
-remain CORE-003B4 acceptance, not a performance claim here.
+tradeoff against writing an incomplete URL/IDN parser. CORE-003B4 measured the
+runtime cost: on a link-dense synthetic input, v2 takes about 1.8 times as long
+as v1 (78.5 ms versus 43.3 ms for about 1.1 MB on the named Mac) with the same
+peak heap, and documents without links cost the same. See
+[Parser-Budgets.md](Parser-Budgets.md). Compile time and binary size are not measured.
 
 Eighteen exact package/version Unicode-3.0 declarations in this graph were
 reviewed from local Cargo manifests and LICENSE files (all share SHA-256 prefix

@@ -239,8 +239,10 @@ peaked at about 384 MiB. Each call must stay under 1 MiB, including a
 `read_stats`. The cancellation token is polled before
 work, per unit and every 16,384 scalars. Cancellation returns only
 `Err(Cancelled)`, never partial results. These are defensive bounds, not
-accepted search budgets; R4 throughput measurements belong to the native and
-CORE-003B4 performance phases.
+accepted search budgets. CORE-003B4 records named-host find and `read_stats`
+times over the performance profiles in
+[Parser-Budgets.md](../../docs/Parser-Budgets.md); R4 throughput acceptance
+belongs to the native phases.
 
 ## Evidence
 

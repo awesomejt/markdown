@@ -458,4 +458,6 @@ cancel by not making the next call.
 Not covered here: Swift/AppKit, C# Native AOT and gtk-rs consumers, install
 names/rpaths for relocated packages, symbol visibility audits on Windows/Linux,
 performance budgets for encode/copy cost and the macOS repeated-session RSS
-risk. Those are platform B-phase and CORE-003B4 work.
+risk. Those are platform B-phase work. CORE-003B4 raised the core node and
+event defaults selected by zero limits to 1,000,000 and 2,000,000 (D-024),
+within the unchanged ABI ceilings.

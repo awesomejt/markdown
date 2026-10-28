@@ -95,7 +95,8 @@ mailto prefix while their source span remains the address lexeme.
 Platform adapters must revalidate the scheme/target and require explicit user
 activation under native policy; never concatenate document text into shell
 commands or HTML. No core target triggers automatic network activity. CORE-003B4
-retains deeper conformance/hostile tests and measured costs; production launch,
+adds blocked-scheme spelling, mutation and hostile tests and measures v2 URI
+classification cost ([Parser-Budgets.md](Parser-Budgets.md)). Production launch,
 permissions, sandbox and native URL-handler behavior still need named-platform
 implementation evidence.
 

@@ -37,7 +37,7 @@ Normally rustup uses the committed toolchain file automatically.
 
 | Command | Scope |
 | --- | --- |
-| `python tools/check.py common` | Fixture/provenance and capability validation, path/capability/host-filter regressions, local link paths, Markdown lint and whitespace |
+| `python tools/check.py common` | Fixture/provenance and capability validation, conformance-contract drift, path/capability/host-filter regressions, local link paths, Markdown lint and whitespace |
 | `python tools/check.py core` | Workspace formatting, Clippy with warnings denied, debug/release test harnesses, resolved dependency/license policy and policy regressions |
 | `python tools/check.py all` | Both suites |
 
@@ -66,7 +66,16 @@ a header constant drift check and a C smoke compiled with the host `cc`
 against `core/include`, linked to the built library, comparing struct
 layouts and exercising the [C ABI](../specs/ffi/README.md). `check.py` sets
 `MD_REQUIRE_C_SMOKE=1` on macOS/Linux so a missing compiler fails; Windows
-skips the C smoke until WIN-001B wires MSVC. These suites do not prove native UI conformance. Regenerate the schema deliberately with:
+skips the C smoke until WIN-001B wires MSVC.
+CORE-003B4 adds `tests/conformance.rs` against the generated
+[conformance contract](../specs/parsing/conformance/README.md). Regenerate the
+contract with `python tools/generate_conformance.py` after changing fixture
+expectations. It also adds `tests/hostile.rs` (corpus-seeded mutation;
+`MD_FUZZ_CASES` raises the default of 4,000) and `tests/budgets.rs` (counted
+heap budgets, plus time guards in release). Re-measure named-host numbers with
+`cargo run --release --locked --features model-v2 --example parse_budget 11`
+(add `-- --cancel` for cancellation latency); see [Parser-Budgets.md](Parser-Budgets.md).
+These suites do not prove native UI conformance. Regenerate the schema deliberately with:
 
 ```sh
 cargo run --locked --example export_schema --features schema > build/document.schema.json

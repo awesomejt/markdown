@@ -1,11 +1,42 @@
 # Agent Session and Platform Handoff
 
-Updated: 2026-10-28, CORE-003B3 extension semantics on `feat/core-003b3-extension-semantics`.
-Source baseline: `28e33bc` on main (PR #11 merge) plus this phase's changes. Preserve intended
+Updated: 2026-10-28, CORE-003B4 parser hardening on `feat/core-003b4-parser-hardening`.
+Source baseline: `66c2162` on main (PR #12 merge) plus this phase's changes. Preserve intended
 source, lock/spec/golden files, docs and state together. Never transfer caches,
 environments, build products, private runtime state or user documents.
 
-## Resume here — CORE-003B3 extension semantics
+## Resume here — CORE-003B4 parser conformance hardening and budgets
+
+PR #12 (CORE-003B3) merged as `66c2162`; its state closeout is commit `3f73eb7`
+on this branch. CORE-003B4 adds the following
+([Parser-Budgets.md](docs/Parser-Budgets.md)):
+
+- **Conformance.** `tools/generate_conformance.py` turns the fixture
+  expectations into `specs/parsing/conformance/corpus.json`. Each expectation
+  becomes a check token or a reasoned deferral; unknown ones fail. The common
+  suite runs `--check`, and `tests/conformance.rs` runs the tokens. The Rust
+  profile replica (`tests/support/profiles.rs`) is pinned to the profile
+  SHA-256 values.
+- **Hostile input.** `tests/hostile.rs` covers corpus-seeded mutation (4,000
+  cases per configuration; `MD_FUZZ_CASES`), 33 pathological constructs on v1
+  and v2 with a five-second release guard, all profiles under default limits,
+  and source-ceiling stops.
+- **Budgets.** `tests/budgets.rs` enforces counted heap budgets per profile,
+  release time guards and a retained-snapshot ceiling. The
+  `examples/parse_budget.rs` example produced the named-host table.
+- **Limits (D-024, proposed).** The 5 MiB prose profile hit `NodeLimit`, so
+  the defaults are now 1,000,000 nodes and 2,000,000 events. No ABI change.
+- **Speed.** Validation uses a hash ID index and a visit bitmap. Output is
+  unchanged, and parse time halved.
+- **Fallback.** A source-offset conflict replaces only the affected
+  top-level block. The whole-body path remains as a safety net, and mutation
+  tests assert it never fires.
+
+Next: run `tools/check.py all`, open the phase PR, post `/grok review` and get
+an owner-authorized merge. Then close CORE-003B, followed by the owner's
+holistic review before any platform phase.
+
+## CORE-003B3 extension semantics (merged in PR #12)
 
 PR #11 (CORE-005B2) merged as `28e33bc`; its state closeout is commit
 `a1e3688` on this branch. CORE-003B3 enables pulldown-cmark GFM footnotes,
