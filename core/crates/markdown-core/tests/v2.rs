@@ -611,3 +611,29 @@ fn shadowed_definition_scan_is_bounded() {
     let n = shadowed(&s).len();
     assert!((1..5000).contains(&n), "{n}");
 }
+
+#[test]
+fn b3_extension_containers_keep_exact_intent_provenance() {
+    let s = "Note[^n] and $[no](x.md)$.\n\n[^n]: See [a][r] and\n    [b](\n    b.md).\n\n> [!TIP]\n> [c](\n> c.md) ![i](i.png)\n\n[^N]: Duplicate [d](d.md).\n\n[r]: a.md\n";
+    let d = parse(s);
+    let spans: Vec<_> = d
+        .input()
+        .links
+        .iter()
+        .map(|l| l.source.span().slice(s).unwrap())
+        .collect();
+    assert_eq!(spans, ["a.md", "b.md", "c.md"]);
+    assert!(matches!(
+        d.input().links[0].source,
+        IntentSource::Reference { .. }
+    ));
+    assert_eq!(d.input().resources.len(), 1);
+    assert!(d.input().capabilities.contains(&Capability::Footnotes));
+    assert!(d.input().capabilities.contains(&Capability::Alerts));
+    assert!(
+        d.input()
+            .diagnostics
+            .iter()
+            .any(|x| x.code == "footnote_definition_duplicate")
+    );
+}

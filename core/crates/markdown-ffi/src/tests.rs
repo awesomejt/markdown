@@ -727,9 +727,8 @@ fn v1_view_round_trips_every_model_value() {
         assert_eq!((again.nodes, again.strings), (v.nodes, v.strings));
         assert_eq!(md_snapshot_release(snapshot), MD_OK);
     }
-    // Every kind the parser emits today; footnotes and alerts are CORE-003B3
-    // (the encoder handles them, and parser output cannot yet contain them).
-    assert_eq!(kinds.len(), 21, "{kinds:?}");
+    // Since CORE-003B3 (footnotes and alerts) parser output covers every kind.
+    assert_eq!(kinds.len(), 24, "{kinds:?}");
     assert!(tables.iter().all(|n| *n > 0), "{tables:?}");
     assert_eq!(md_session_release(session), MD_OK);
 }

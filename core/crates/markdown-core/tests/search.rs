@@ -775,23 +775,18 @@ fn sections_own_and_cumulative() {
 
 #[test]
 fn corpus_reading_goldens() {
-    // Default options: 160 wpm, headings and code excluded. These follow the
-    // current basic parser: until CORE-003B3 adds alerts and math, alert
-    // labels such as `[!NOTE]` and `$...$` math count as ordinary text (the
-    // gfm-tour Alerts and Math sections), so B3 is expected to change them.
+    // Default options: 160 wpm, headings and code excluded. Since CORE-003B3,
+    // alert markers, footnote reference labels and `$...$` math are not words;
+    // unbalanced `$\frac{1}{$` stays ordinary text and is counted.
     let expected: &[(&str, u64, &[u64])] = &[
         (
             "fixtures/markdown/foundation/gfm-tour.md",
-            215,
-            &[0, 20, 12, 10, 12, 12, 9, 52, 37, 0, 16, 25, 0, 10],
+            192,
+            &[0, 20, 12, 10, 12, 12, 9, 47, 23, 0, 16, 21, 0, 10],
         ),
         ("fixtures/markdown/foundation/unsafe-html.md", 8, &[0, 8]),
         ("fixtures/markdown/foundation/code-fences.md", 15, &[0, 15]),
-        (
-            "fixtures/markdown/advanced/math-alerts.md",
-            35,
-            &[0, 25, 10],
-        ),
+        ("fixtures/markdown/advanced/math-alerts.md", 17, &[0, 9, 8]),
         (
             "fixtures/markdown/advanced/inline-diagrams.md",
             20,
@@ -806,15 +801,15 @@ fn corpus_reading_goldens() {
         ("fixtures/markdown/paths/unicode-filename.md", 3, &[0, 3]),
         (
             "specs/semantic-model/v1/fixtures/containers.source.txt",
-            7,
-            &[6, 1],
+            6,
+            &[5, 1],
         ),
         (
             "specs/semantic-model/v1/fixtures/fallback.source.txt",
-            4,
-            &[4],
+            3,
+            &[3],
         ),
-        ("specs/semantic-model/v1/fixtures/gfm.source.txt", 7, &[7]),
+        ("specs/semantic-model/v1/fixtures/gfm.source.txt", 8, &[8]),
         (
             "specs/semantic-model/v1/fixtures/resources.source.txt",
             3,
@@ -837,8 +832,8 @@ fn corpus_reading_goldens() {
             estimated_seconds(*words, DEFAULT_WORDS_PER_MINUTE)
         );
     }
-    // gfm-tour at 160 wpm: 215 words is 81 s (80.625 rounded).
-    assert_eq!(stats(&repo(CORPUS[0]), ReadOptions::default()).seconds, 81);
+    // gfm-tour at 160 wpm: 192 words is 72 s.
+    assert_eq!(stats(&repo(CORPUS[0]), ReadOptions::default()).seconds, 72);
 }
 
 #[test]
