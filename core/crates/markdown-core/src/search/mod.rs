@@ -17,6 +17,7 @@ pub use find::{
     DEFAULT_MAX_MATCHES, FindMatch, FindOptions, FindResults, MAX_MATCHES, MAX_QUERY_BYTES,
     MatchSegment, find, find_cancellable,
 };
+pub(crate) use find::{kmp_table, normalize_query};
 pub use read::{
     DEFAULT_WORDS_PER_MINUTE, MAX_WORDS_PER_MINUTE, MIN_WORDS_PER_MINUTE, ReadOptions, ReadStats,
     SectionStats, estimated_seconds, read_stats, read_stats_cancellable,
