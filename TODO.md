@@ -45,8 +45,8 @@ core alone.
   [the memory archive](agents/Memory-Archive.md#todomd-session-handoff-history).
 
 The shared-core reviews (PR #16) are merged. The current work is the
-[CORE-FIX phase](#core-fix-phase-shared-core-review-follow-ups): DOC-001
-and CORE-002B merged in PRs #17 and #18, and CORE-003C is next. Inspect state and `HANDOFF.md` before any pass. Scoped
+[CORE-FIX phase](#core-fix-phase-shared-core-review-follow-ups): DOC-001,
+CORE-002B and TOOL-002 merged in PRs #17 to #19, and CORE-003C is next. Inspect state and `HANDOFF.md` before any pass. Scoped
 commits, pushes, PR updates and review comments are authorized; merge
 requires owner authorization; concurrency remains one.
 

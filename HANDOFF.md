@@ -1,7 +1,7 @@
 # Agent Session and Platform Handoff
 
-Updated: 2026-10-28, CORE-002B closeout (PR #18, approved by the owner).
-Source baseline: `main` after the PR #18 merge. Preserve intended source, lock/spec/golden
+Updated: 2026-10-28, TOOL-002 closeout (PR #19, merged by the owner).
+Source baseline: `main` after the PR #19 merge. Preserve intended source, lock/spec/golden
 files, docs and state together. Never transfer caches, environments, build
 products, private runtime state or user documents.
 
@@ -24,6 +24,10 @@ in order before any platform phase. Their scope is in
   [PR #18](https://github.com/awesomejt/markdown/pull/18). V1 and v2 imports
   now re-check intents and metadata text against the producer's policy. One
   hand-written v1 golden intent became denied, with owner approval.
+- **Done:** TOOL-002, CI speed-up,
+  [PR #19](https://github.com/awesomejt/markdown/pull/19) (D-028). PRs run
+  `tools/check.py core`; `main` and manual runs add `core-extended`. Run
+  `tools/check.py all` locally before each review request.
 - **Current:** CORE-003C (v2 corpus conformance assertions), the only
   eligible task. Start its pass from `main`.
 - **Then:** CORE-003D, CORE-005C, CORE-005D and CORE-003E, then
