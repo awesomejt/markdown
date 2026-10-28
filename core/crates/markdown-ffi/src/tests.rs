@@ -1505,3 +1505,900 @@ fn panics_are_contained_at_every_entry_point() {
     assert_eq!(md_session_release(session), MD_ERR_PANIC);
     assert_eq!(md_session_release(session), MD_OK);
 }
+
+// ---------------------------------------------------------------------------
+// Find and reading statistics (D-022 additions)
+
+use crate::search::{md_snapshot_find, md_snapshot_read_stats};
+use markdown_core::search::{self as core_search, SearchDocument};
+
+fn find_opts(flags: u32, max_matches: u32) -> md_find_options {
+    md_find_options {
+        struct_size: size::<md_find_options>(),
+        flags,
+        max_matches,
+        match_size: size::<md_find_match>(),
+        segment_size: size::<md_match_segment>(),
+        reserved: 0,
+    }
+}
+fn find_result() -> md_find_result {
+    md_find_result {
+        struct_size: size::<md_find_result>(),
+        ..md_find_result::default()
+    }
+}
+/// A host passes null for an empty array.
+fn array<T>(values: &mut [T]) -> *mut T {
+    if values.is_empty() {
+        null_mut()
+    } else {
+        values.as_mut_ptr()
+    }
+}
+fn find_into(
+    snapshot: md_snapshot,
+    query: &[u8],
+    options: &md_find_options,
+    matches: &mut [md_find_match],
+    segments: &mut [md_match_segment],
+    out: &mut md_find_result,
+) -> md_status {
+    // SAFETY: slices are valid for their lengths; empty ones pass null.
+    unsafe {
+        md_snapshot_find(
+            snapshot,
+            query.as_ptr(),
+            query.len(),
+            options,
+            array(matches),
+            matches.len(),
+            array(segments),
+            segments.len(),
+            out,
+        )
+    }
+}
+/// The two-call protocol a host uses: size with empty arrays, then fill.
+fn find_all(
+    snapshot: md_snapshot,
+    query: &[u8],
+    options: &md_find_options,
+) -> Result<(md_find_result, Vec<md_find_match>, Vec<md_match_segment>), md_status> {
+    let mut out = find_result();
+    match find_into(snapshot, query, options, &mut [], &mut [], &mut out) {
+        MD_OK => {
+            assert_eq!((out.match_count, out.segment_count), (0, 0));
+            return Ok((out, Vec::new(), Vec::new()));
+        }
+        MD_ERR_BUFFER_TOO_SMALL => {}
+        status => return Err(status),
+    }
+    let mut matches = vec![md_find_match::default(); out.match_count as usize];
+    let mut segments = vec![md_match_segment::default(); out.segment_count as usize];
+    let sized = out;
+    let mut out = find_result();
+    let status = find_into(
+        snapshot,
+        query,
+        options,
+        &mut matches,
+        &mut segments,
+        &mut out,
+    );
+    assert_eq!(status, MD_OK);
+    assert_eq!(
+        (out.flags, out.match_count, out.segment_count),
+        (sized.flags, sized.match_count, sized.segment_count),
+        "a recomputed search is deterministic"
+    );
+    Ok((out, matches, segments))
+}
+
+fn read_opts(flags: u32, words_per_minute: u32) -> md_read_options {
+    md_read_options {
+        struct_size: size::<md_read_options>(),
+        flags,
+        words_per_minute,
+        section_size: size::<md_read_section>(),
+    }
+}
+fn read_result() -> md_read_stats {
+    md_read_stats {
+        struct_size: size::<md_read_stats>(),
+        ..md_read_stats::default()
+    }
+}
+fn read_into(
+    snapshot: md_snapshot,
+    options: &md_read_options,
+    sections: &mut [md_read_section],
+    out: &mut md_read_stats,
+) -> md_status {
+    // SAFETY: the slice is valid for its length; empty passes null.
+    unsafe { md_snapshot_read_stats(snapshot, options, array(sections), sections.len(), out) }
+}
+fn read_all(
+    snapshot: md_snapshot,
+    options: &md_read_options,
+) -> Result<(md_read_stats, Vec<md_read_section>), md_status> {
+    let mut out = read_result();
+    match read_into(snapshot, options, &mut [], &mut out) {
+        MD_ERR_BUFFER_TOO_SMALL => {}
+        status => return Err(status),
+    }
+    let mut sections = vec![md_read_section::default(); out.section_count as usize];
+    let mut out = read_result();
+    assert_eq!(read_into(snapshot, options, &mut sections, &mut out), MD_OK);
+    Ok((out, sections))
+}
+
+/// Check FFI find records against the Rust API, and check every exact
+/// segment against the bulk view as a native presenter would read it.
+fn assert_find_parity(snapshot: md_snapshot, query: &str, flags: u32, max_matches: u32) {
+    let (out, matches, segments) =
+        find_all(snapshot, query.as_bytes(), &find_opts(flags, max_matches)).unwrap();
+    let snap = model(snapshot);
+    let options = core_search::FindOptions {
+        case_sensitive: flags & MD_FIND_CASE_SENSITIVE != 0,
+        whole_word: flags & MD_FIND_WHOLE_WORD != 0,
+        max_matches: if max_matches == 0 {
+            core_search::DEFAULT_MAX_MATCHES
+        } else {
+            max_matches as usize
+        },
+    };
+    let expected =
+        core_search::find(&SearchDocument::from_snapshot(&snap), query, &options).unwrap();
+    assert_eq!(out.flags & MD_FIND_TRUNCATED != 0, expected.truncated);
+    assert_eq!(matches.len(), expected.matches.len(), "{query:?}");
+
+    let v = view(snapshot);
+    let t = Tables { v: &v };
+    let source = Tables::bytes(v.source, v.source_length);
+    let nodes = t.nodes();
+    let mut next = 0usize;
+    for (m, e) in matches.iter().zip(&expected.matches) {
+        assert_eq!(
+            (
+                m.unit as usize,
+                u64::from(m.span_start),
+                u64::from(m.span_end),
+                m.flags
+            ),
+            (
+                e.unit,
+                e.source.start,
+                e.source.end,
+                if e.exact { MD_MATCH_EXACT } else { 0 }
+            )
+        );
+        assert_eq!(m.first_segment as usize, next, "segments are contiguous");
+        next += m.segment_count as usize;
+        let own = &segments[m.first_segment as usize..next];
+        assert_eq!(own.len(), e.segments.len());
+        for (s, e) in own.iter().zip(&e.segments) {
+            assert_eq!(
+                (
+                    s.node as usize,
+                    u64::from(s.text_start),
+                    u64::from(s.text_end),
+                    u64::from(s.span_start),
+                    u64::from(s.span_end),
+                    s.flags
+                ),
+                (
+                    e.node,
+                    e.text_start,
+                    e.text_end,
+                    e.source.start,
+                    e.source.end,
+                    if e.exact { MD_MATCH_EXACT } else { 0 }
+                )
+            );
+            let node = &nodes[s.node as usize];
+            let display = match node.kind {
+                MD_NODE_SOFT_BREAK | MD_NODE_HARD_BREAK => {
+                    assert_eq!((s.text_start, s.text_end), (0, 0));
+                    continue;
+                }
+                MD_NODE_UNSUPPORTED_BLOCK | MD_NODE_UNSUPPORTED_INLINE => {
+                    source[node.span_start as usize..node.span_end as usize].to_vec()
+                }
+                _ => t.str(node.text).into_bytes(),
+            };
+            let text = &display[s.text_start as usize..s.text_end as usize];
+            assert!(std::str::from_utf8(text).is_ok());
+            assert!(node.span_start <= s.span_start && s.span_end <= node.span_end);
+            if s.flags & MD_MATCH_EXACT != 0 {
+                assert_eq!(&source[s.span_start as usize..s.span_end as usize], text);
+            }
+        }
+    }
+    assert_eq!(next, segments.len());
+}
+
+fn assert_read_parity(snapshot: md_snapshot, flags: u32, words_per_minute: u32) {
+    let (out, sections) = read_all(snapshot, &read_opts(flags, words_per_minute)).unwrap();
+    let snap = model(snapshot);
+    let options = core_search::ReadOptions {
+        words_per_minute: if words_per_minute == 0 {
+            core_search::DEFAULT_WORDS_PER_MINUTE
+        } else {
+            words_per_minute
+        },
+        include_headings: flags & MD_READ_INCLUDE_HEADINGS != 0,
+        include_code: flags & MD_READ_INCLUDE_CODE != 0,
+    };
+    let expected =
+        core_search::read_stats(&SearchDocument::from_snapshot(&snap), &options).unwrap();
+    assert_eq!(
+        (
+            out.words,
+            out.seconds,
+            out.words_per_minute,
+            out.section_count
+        ),
+        (
+            expected.words,
+            expected.seconds,
+            expected.words_per_minute,
+            expected.sections.len() as u64
+        )
+    );
+    let v = view(snapshot);
+    assert_eq!(sections.len(), v.outline_count as usize + 1);
+    let outline = Tables::slice(v.outline, v.outline_count);
+    let none = |value: Option<usize>| value.map_or(MD_NONE, |i| i as u32);
+    for (i, (s, e)) in sections.iter().zip(&expected.sections).enumerate() {
+        assert_eq!(
+            *s,
+            md_read_section {
+                heading: none(e.heading),
+                outline_index: none(e.outline_index),
+                level: e.level.into(),
+                reserved: 0,
+                words: e.words,
+                seconds: e.seconds,
+                cumulative_words: e.cumulative_words,
+                cumulative_seconds: e.cumulative_seconds,
+            }
+        );
+        if i > 0 {
+            let entry = outline[s.outline_index as usize];
+            assert_eq!((entry.node, entry.level), (s.heading, s.level));
+        }
+    }
+}
+
+fn models() -> Vec<u32> {
+    let mut models = vec![MD_MODEL_V1];
+    if cfg!(feature = "model-v2") {
+        models.push(MD_MODEL_V2);
+    }
+    models
+}
+
+#[test]
+fn find_and_read_stats_match_the_rust_api_over_the_corpus() {
+    let _s = serial();
+    let fixed = [
+        "a", "e", "the", "é", "e\u{301}", "Caf", "ß", "SS", "ẞ", "#", "*", "`", "|", "-", "[!",
+        "&", "👍", "中", " ", "", "x y", "foo bar",
+    ];
+    for model in models() {
+        let session = create(model);
+        for source in corpus() {
+            let snapshot = publish(session, &source);
+            let mut queries: Vec<&str> = fixed.to_vec();
+            let mut seen = BTreeSet::new();
+            queries.extend(
+                source
+                    .split_whitespace()
+                    .filter(|w| seen.insert(*w))
+                    .take(60),
+            );
+            let lines: Vec<&str> = source.lines().filter(|l| !l.trim().is_empty()).collect();
+            queries.extend(lines.iter().take(10).map(|l| l.trim()));
+            for query in queries {
+                for flags in 0..4 {
+                    assert_find_parity(snapshot, query, flags, 0);
+                }
+            }
+            assert_find_parity(snapshot, "e", 0, 3);
+            for flags in 0..4 {
+                for wpm in [0, 60, 160, 173, 600] {
+                    assert_read_parity(snapshot, flags, wpm);
+                }
+            }
+            assert_eq!(md_snapshot_release(snapshot), MD_OK);
+        }
+        assert_eq!(md_session_release(session), MD_OK);
+    }
+}
+
+#[test]
+fn find_maps_unicode_atomic_and_cross_inline_matches() {
+    let _s = serial();
+    for model in models() {
+        let session = create(model);
+        let source = "# Caf\u{e9} cafe\u{301}\n\nSome *text* and [a link](#x) &amp; `co de`.\n\n\
+                      Stra\u{df}e STRASSE \u{1e9e} \u{1f468}\u{200d}\u{1f469}\u{200d}\u{1f467} \u{1f468}\n";
+        let snapshot = publish(session, source);
+        let find = |query: &str, flags| find_all(snapshot, query.as_bytes(), &find_opts(flags, 0));
+
+        // Across emphasis and link text: three exact segments in one unit.
+        let (_, m, s) = find("TEXT AND A", 0).unwrap();
+        assert_eq!(m.len(), 1);
+        assert_eq!(m[0].flags, MD_MATCH_EXACT);
+        assert_eq!(
+            &source[m[0].span_start as usize..m[0].span_end as usize],
+            "text* and [a"
+        );
+        assert_eq!(s.len(), 3);
+        assert!(s.iter().all(|s| s.flags == MD_MATCH_EXACT));
+        assert_eq!(
+            find("TEXT AND A", MD_FIND_CASE_SENSITIVE).unwrap().1.len(),
+            0
+        );
+
+        // An entity reference is atomic: the match covers the whole `&amp;`.
+        let (_, m, s) = find("&", 0).unwrap();
+        assert_eq!(m.len(), 1);
+        assert_eq!(m[0].flags, 0);
+        assert_eq!(
+            &source[m[0].span_start as usize..m[0].span_end as usize],
+            "&amp;"
+        );
+        assert_eq!((s[0].text_start, s[0].text_end, s[0].flags), (0, 1, 0));
+
+        // No normalization; simple case folding only; cluster boundaries.
+        assert_eq!(find("caf\u{e9}", 0).unwrap().1.len(), 1);
+        assert_eq!(find("cafe\u{301}", 0).unwrap().1.len(), 1);
+        assert_eq!(find("cafe", 0).unwrap().1.len(), 0, "inside NFD é");
+        assert_eq!(find("\u{df}", 0).unwrap().1.len(), 2, "ß and ẞ");
+        assert_eq!(find("ss", 0).unwrap().1.len(), 1, "STRASSE only");
+        assert_eq!(
+            find("\u{1f468}", 0).unwrap().1.len(),
+            1,
+            "not inside the ZWJ family"
+        );
+
+        // Spans are UTF-8 byte offsets.
+        let (_, m, _) = find("\u{1f468}", MD_FIND_WHOLE_WORD).unwrap();
+        assert_eq!(
+            &source[m[0].span_start as usize..m[0].span_end as usize],
+            "\u{1f468}"
+        );
+        for query in ["code", "co de", "Caf", "stra\u{df}e"] {
+            for flags in 0..4 {
+                assert_find_parity(snapshot, query, flags, 0);
+            }
+        }
+        assert_eq!(md_snapshot_release(snapshot), MD_OK);
+        assert_eq!(md_session_release(session), MD_OK);
+    }
+}
+
+#[test]
+fn find_two_call_sizing_truncation_and_untouched_arrays() {
+    let _s = serial();
+    let session = create(MD_MODEL_V1);
+    let snapshot = publish(session, "a *a* a\n\na a\n");
+    let options = find_opts(0, 0);
+    let sentinel_match = md_find_match {
+        unit: 0xAAAA,
+        ..Default::default()
+    };
+    let sentinel_segment = md_match_segment {
+        node: 0xBBBB,
+        ..Default::default()
+    };
+
+    // Sizing call: required counts, nothing written.
+    let mut out = find_result();
+    assert_eq!(
+        find_into(snapshot, b"a", &options, &mut [], &mut [], &mut out),
+        MD_ERR_BUFFER_TOO_SMALL
+    );
+    assert_eq!((out.flags, out.match_count, out.segment_count), (0, 5, 5));
+
+    // Enough matches but too few segments: nothing written either.
+    let mut matches = [sentinel_match; 8];
+    let mut segments = [sentinel_segment; 4];
+    let mut out = find_result();
+    assert_eq!(
+        find_into(
+            snapshot,
+            b"a",
+            &options,
+            &mut matches,
+            &mut segments,
+            &mut out
+        ),
+        MD_ERR_BUFFER_TOO_SMALL
+    );
+    assert_eq!((out.match_count, out.segment_count), (5, 5));
+    assert!(matches.iter().all(|m| *m == sentinel_match));
+    assert!(segments.iter().all(|s| *s == sentinel_segment));
+
+    // Larger arrays: only the reported prefix is written.
+    let mut segments = [sentinel_segment; 8];
+    let mut out = find_result();
+    assert_eq!(
+        find_into(
+            snapshot,
+            b"a",
+            &options,
+            &mut matches,
+            &mut segments,
+            &mut out
+        ),
+        MD_OK
+    );
+    assert_eq!((out.match_count, out.segment_count), (5, 5));
+    assert!(matches[..5].iter().all(|m| m.segment_count == 1));
+    assert!(matches[5..].iter().all(|m| *m == sentinel_match));
+    assert!(segments[5..].iter().all(|s| *s == sentinel_segment));
+    let starts: Vec<u32> = matches[..5].iter().map(|m| m.span_start).collect();
+    assert_eq!(starts, [0, 3, 6, 9, 11]);
+
+    // Truncation is reported with the capped count.
+    let (out, m, _) = find_all(snapshot, b"a", &find_opts(0, 2)).unwrap();
+    assert_eq!((out.flags, m.len()), (MD_FIND_TRUNCATED, 2));
+    let (out, m, _) = find_all(snapshot, b"a", &find_opts(0, 5)).unwrap();
+    assert_eq!((out.flags, m.len()), (0, 5));
+
+    // Empty, whitespace-only and no-match queries succeed with null arrays.
+    for query in [&b""[..], b"  \t", b"zzz"] {
+        let mut out = find_result();
+        out.flags = 9;
+        assert_eq!(
+            find_into(snapshot, query, &options, &mut [], &mut [], &mut out),
+            MD_OK
+        );
+        assert_eq!((out.flags, out.match_count, out.segment_count), (0, 0, 0));
+    }
+    let mut out = find_result();
+    // SAFETY: null query with zero length is allowed.
+    let status = unsafe {
+        md_snapshot_find(
+            snapshot,
+            null(),
+            0,
+            &options,
+            null_mut(),
+            0,
+            null_mut(),
+            0,
+            &mut out,
+        )
+    };
+    assert_eq!(status, MD_OK);
+
+    // Read stats: two-call sizing and an untouched short array.
+    let sentinel_section = md_read_section {
+        heading: 0xCCCC,
+        ..Default::default()
+    };
+    let doc = publish(session, "intro words\n\n# A\n\none\n\n## B\n\ntwo three\n");
+    let mut out = read_result();
+    assert_eq!(
+        read_into(doc, &read_opts(0, 0), &mut [], &mut out),
+        MD_ERR_BUFFER_TOO_SMALL
+    );
+    assert_eq!(
+        (
+            out.section_count,
+            out.words,
+            out.seconds,
+            out.words_per_minute
+        ),
+        (3, 5, 2, 160)
+    );
+    let mut short = [sentinel_section; 2];
+    assert_eq!(
+        read_into(doc, &read_opts(0, 0), &mut short, &mut read_result()),
+        MD_ERR_BUFFER_TOO_SMALL
+    );
+    assert!(short.iter().all(|s| *s == sentinel_section));
+    let (out, sections) = read_all(doc, &read_opts(MD_READ_INCLUDE_HEADINGS, 60)).unwrap();
+    assert_eq!((out.words, out.seconds, out.words_per_minute), (7, 7, 60));
+    let summary: Vec<_> = sections
+        .iter()
+        .map(|s| (s.heading != MD_NONE, s.level, s.words, s.cumulative_words))
+        .collect();
+    assert_eq!(
+        summary,
+        [(false, 0, 2, 2), (true, 1, 2, 5), (true, 2, 3, 3)]
+    );
+    for snapshot in [snapshot, doc] {
+        assert_eq!(md_snapshot_release(snapshot), MD_OK);
+    }
+    assert_eq!(md_session_release(session), MD_OK);
+}
+
+#[test]
+fn find_and_read_stats_validate_arguments_and_zero_outputs() {
+    let _s = serial();
+    let session = create(MD_MODEL_V1);
+    let snapshot = publish(session, "find me\n");
+    let dirty_find = || md_find_result {
+        struct_size: size::<md_find_result>(),
+        flags: 7,
+        match_count: 7,
+        segment_count: 7,
+    };
+    let check_find = |query: &[u8], options: &md_find_options, expected: md_status| {
+        let mut out = dirty_find();
+        let mut matches = [md_find_match::default(); 2];
+        let mut segments = [md_match_segment::default(); 2];
+        let status = find_into(
+            snapshot,
+            query,
+            options,
+            &mut matches,
+            &mut segments,
+            &mut out,
+        );
+        assert_eq!(status, expected, "{options:?}");
+        assert_eq!(
+            (
+                out.struct_size,
+                out.flags,
+                out.match_count,
+                out.segment_count
+            ),
+            (size::<md_find_result>(), 0, 0, 0),
+            "zeroed on failure"
+        );
+    };
+    let base = find_opts(0, 0);
+    for (options, expected) in [
+        (
+            md_find_options {
+                struct_size: 0,
+                ..base
+            },
+            MD_ERR_STRUCT_SIZE,
+        ),
+        (
+            md_find_options {
+                struct_size: 28,
+                ..base
+            },
+            MD_ERR_STRUCT_SIZE,
+        ),
+        (
+            md_find_options {
+                match_size: 20,
+                ..base
+            },
+            MD_ERR_STRUCT_SIZE,
+        ),
+        (
+            md_find_options {
+                segment_size: 0,
+                ..base
+            },
+            MD_ERR_STRUCT_SIZE,
+        ),
+        (
+            md_find_options { flags: 4, ..base },
+            MD_ERR_INVALID_ARGUMENT,
+        ),
+        (
+            md_find_options {
+                reserved: 1,
+                ..base
+            },
+            MD_ERR_INVALID_ARGUMENT,
+        ),
+        (
+            md_find_options {
+                max_matches: MD_FIND_MAX_MATCHES + 1,
+                ..base
+            },
+            MD_ERR_INVALID_ARGUMENT,
+        ),
+    ] {
+        check_find(b"me", &options, expected);
+    }
+    check_find(b"\xff", &base, MD_ERR_INVALID_ARGUMENT);
+    check_find(
+        &vec![b'a'; MD_FIND_MAX_QUERY_BYTES as usize + 1],
+        &base,
+        MD_ERR_INVALID_ARGUMENT,
+    );
+    let longest = vec![b'a'; MD_FIND_MAX_QUERY_BYTES as usize];
+    assert!(find_all(snapshot, &longest, &base).unwrap().1.is_empty());
+    assert_eq!(
+        find_all(snapshot, b"me", &find_opts(0, MD_FIND_MAX_MATCHES))
+            .unwrap()
+            .1
+            .len(),
+        1
+    );
+
+    // SAFETY: every non-null pointer is valid for its use; null, misaligned
+    // and oversized arguments are rejected before access.
+    unsafe {
+        let mut out;
+        let mut matches = [md_find_match::default(); 2];
+        let mut segments = [md_match_segment::default(); 2];
+        let (m, s) = (matches.as_mut_ptr(), segments.as_mut_ptr());
+        let q = b"me".as_ptr();
+        let status = |snapshot, query, len, options, m, mc, s, sc, out| {
+            md_snapshot_find(snapshot, query, len, options, m, mc, s, sc, out)
+        };
+        assert_eq!(
+            status(snapshot, q, 2, &base, m, 2, s, 2, null_mut()),
+            MD_ERR_INVALID_ARGUMENT
+        );
+        let mut wrong = find_result();
+        wrong.struct_size = 16;
+        wrong.flags = 3;
+        assert_eq!(
+            status(snapshot, q, 2, &base, m, 2, s, 2, &mut wrong),
+            MD_ERR_STRUCT_SIZE
+        );
+        assert_eq!(wrong.flags, 3, "a rejected struct is not written");
+        for (snapshot, query, len, options, mc, sc, expected) in [
+            (snapshot, q, 2, null(), 2, 2, MD_ERR_INVALID_ARGUMENT),
+            (
+                snapshot,
+                null(),
+                2,
+                &base as *const _,
+                2,
+                2,
+                MD_ERR_INVALID_ARGUMENT,
+            ),
+            (0, q, 2, &base, 2, 2, MD_ERR_INVALID_HANDLE),
+            (u64::MAX, q, 2, &base, 2, 2, MD_ERR_INVALID_HANDLE),
+            (
+                snapshot,
+                q,
+                2,
+                &base,
+                usize::MAX,
+                2,
+                MD_ERR_INVALID_ARGUMENT,
+            ),
+            (
+                snapshot,
+                q,
+                2,
+                &base,
+                2,
+                usize::MAX / 8,
+                MD_ERR_INVALID_ARGUMENT,
+            ),
+        ] {
+            out = dirty_find();
+            assert_eq!(
+                status(snapshot, query, len, options, m, mc, s, sc, &mut out),
+                expected
+            );
+            assert_eq!((out.flags, out.match_count), (0, 0));
+        }
+        // Null arrays with a nonzero capacity, and misaligned arrays.
+        out = dirty_find();
+        assert_eq!(
+            status(snapshot, q, 2, &base, null_mut(), 1, s, 2, &mut out),
+            MD_ERR_INVALID_ARGUMENT
+        );
+        assert_eq!(
+            status(snapshot, q, 2, &base, m, 2, null_mut(), 1, &mut out),
+            MD_ERR_INVALID_ARGUMENT
+        );
+        let odd = (m as *mut u8).wrapping_add(2) as *mut md_find_match;
+        assert_eq!(
+            status(snapshot, q, 2, &base, odd, 1, s, 2, &mut out),
+            MD_ERR_INVALID_ARGUMENT
+        );
+        let odd = (s as *mut u8).wrapping_add(2) as *mut md_match_segment;
+        assert_eq!(
+            status(snapshot, q, 2, &base, m, 2, odd, 0, &mut out),
+            MD_ERR_INVALID_ARGUMENT
+        );
+        let odd = (&mut out as *mut md_find_result as *mut u8).wrapping_add(1);
+        assert_eq!(
+            status(
+                snapshot,
+                q,
+                2,
+                &base,
+                m,
+                2,
+                s,
+                2,
+                odd as *mut md_find_result
+            ),
+            MD_ERR_INVALID_ARGUMENT
+        );
+        let mut storage = [0u64; 4];
+        let odd_options =
+            (storage.as_mut_ptr() as *mut u8).wrapping_add(2) as *const md_find_options;
+        assert_eq!(
+            status(snapshot, q, 2, odd_options, m, 2, s, 2, &mut out),
+            MD_ERR_INVALID_ARGUMENT
+        );
+    }
+
+    // Read stats.
+    let check_read = |options: &md_read_options, expected: md_status| {
+        let mut out = md_read_stats {
+            struct_size: size::<md_read_stats>(),
+            words_per_minute: 7,
+            words: 7,
+            seconds: 7,
+            section_count: 7,
+        };
+        let mut sections = [md_read_section::default(); 2];
+        assert_eq!(
+            read_into(snapshot, options, &mut sections, &mut out),
+            expected
+        );
+        assert_eq!(
+            (
+                out.struct_size,
+                out.words_per_minute,
+                out.words,
+                out.seconds,
+                out.section_count
+            ),
+            (size::<md_read_stats>(), 0, 0, 0, 0)
+        );
+    };
+    let base = read_opts(0, 0);
+    for (options, expected) in [
+        (
+            md_read_options {
+                struct_size: 12,
+                ..base
+            },
+            MD_ERR_STRUCT_SIZE,
+        ),
+        (
+            md_read_options {
+                section_size: 40,
+                ..base
+            },
+            MD_ERR_STRUCT_SIZE,
+        ),
+        (
+            md_read_options {
+                words_per_minute: 59,
+                ..base
+            },
+            MD_ERR_INVALID_ARGUMENT,
+        ),
+        (
+            md_read_options {
+                words_per_minute: 601,
+                ..base
+            },
+            MD_ERR_INVALID_ARGUMENT,
+        ),
+        (
+            md_read_options { flags: 4, ..base },
+            MD_ERR_INVALID_ARGUMENT,
+        ),
+    ] {
+        check_read(&options, expected);
+    }
+    for wpm in [60, 600] {
+        assert_eq!(
+            read_all(snapshot, &read_opts(0, wpm))
+                .unwrap()
+                .0
+                .words_per_minute,
+            wpm
+        );
+    }
+    // SAFETY: null, misaligned and oversized arguments are rejected before
+    // access; other pointers are valid.
+    unsafe {
+        let mut sections = [md_read_section::default(); 2];
+        let p = sections.as_mut_ptr();
+        let mut out = read_result();
+        assert_eq!(
+            md_snapshot_read_stats(snapshot, null(), p, 2, &mut out),
+            MD_ERR_INVALID_ARGUMENT
+        );
+        assert_eq!(
+            md_snapshot_read_stats(snapshot, &base, p, 2, null_mut()),
+            MD_ERR_INVALID_ARGUMENT
+        );
+        assert_eq!(
+            md_snapshot_read_stats(snapshot, &base, null_mut(), 1, &mut out),
+            MD_ERR_INVALID_ARGUMENT
+        );
+        assert_eq!(
+            md_snapshot_read_stats(snapshot, &base, p, usize::MAX / 16, &mut out),
+            MD_ERR_INVALID_ARGUMENT
+        );
+        let odd = (p as *mut u8).wrapping_add(4) as *mut md_read_section;
+        assert_eq!(
+            md_snapshot_read_stats(snapshot, &base, odd, 1, &mut out),
+            MD_ERR_INVALID_ARGUMENT
+        );
+        assert_eq!(
+            md_snapshot_read_stats(0, &base, p, 2, &mut out),
+            MD_ERR_INVALID_HANDLE
+        );
+    }
+    assert_eq!(md_snapshot_release(snapshot), MD_OK);
+    // A released handle is rejected.
+    check_find(b"me", &find_opts(0, 0), MD_ERR_INVALID_HANDLE);
+    check_read(&read_opts(0, 0), MD_ERR_INVALID_HANDLE);
+    assert_eq!(md_session_release(session), MD_OK);
+}
+
+#[test]
+fn find_and_read_stats_contain_panics_and_leave_arrays_untouched() {
+    let _s = serial();
+    let session = create(MD_MODEL_V1);
+    let snapshot = publish(session, "# a\n\na a\n");
+    let sentinel = md_find_match {
+        unit: 0xAAAA,
+        ..Default::default()
+    };
+    let mut matches = [sentinel; 4];
+    let mut segments = [md_match_segment::default(); 4];
+    let mut out = find_result();
+    out.match_count = 9;
+    inject_panic();
+    assert_eq!(
+        find_into(
+            snapshot,
+            b"a",
+            &find_opts(0, 0),
+            &mut matches,
+            &mut segments,
+            &mut out
+        ),
+        MD_ERR_PANIC
+    );
+    assert_eq!(
+        (out.struct_size, out.match_count),
+        (size::<md_find_result>(), 0)
+    );
+    assert!(matches.iter().all(|m| *m == sentinel));
+
+    let section = md_read_section {
+        heading: 0xCCCC,
+        ..Default::default()
+    };
+    let mut sections = [section; 4];
+    let mut stats = read_result();
+    stats.words = 9;
+    inject_panic();
+    assert_eq!(
+        read_into(snapshot, &read_opts(0, 0), &mut sections, &mut stats),
+        MD_ERR_PANIC
+    );
+    assert_eq!(
+        (stats.struct_size, stats.words),
+        (size::<md_read_stats>(), 0)
+    );
+    assert!(sections.iter().all(|s| *s == section));
+
+    // Still usable afterwards, and from several threads at once.
+    std::thread::scope(|scope| {
+        for _ in 0..4 {
+            scope.spawn(|| {
+                for _ in 0..50 {
+                    assert_eq!(
+                        find_all(snapshot, b"a", &find_opts(0, 0)).unwrap().1.len(),
+                        3
+                    );
+                    assert_eq!(read_all(snapshot, &read_opts(0, 0)).unwrap().0.words, 2);
+                }
+            });
+        }
+    });
+    assert_eq!(md_snapshot_release(snapshot), MD_OK);
+    assert_eq!(md_session_release(session), MD_OK);
+}

@@ -5,7 +5,8 @@
  * host would.
  *
  *   smoke layout   print sizeof/offsetof for every ABI struct field
- *   smoke run MASK exercise negotiation, sessions, bulk views, anchors and release;
+ *   smoke run MASK exercise negotiation, sessions, bulk views, find, reading
+ *                  statistics, anchors and release;
  *                  MASK is the model_versions bitmask the linked build must report
  *
  * SPDX-License-Identifier: Apache-2.0
@@ -79,12 +80,42 @@
     X(md_snapshot_view, source_sha256) X(md_snapshot_view, title)                      \
     X(md_anchor_resolution, struct_size) X(md_anchor_resolution, quality)              \
     X(md_anchor_resolution, node) X(md_anchor_resolution, reserved)                    \
-    X(md_anchor_resolution, offset) X(md_anchor_resolution, source_offset)
+    X(md_anchor_resolution, offset) X(md_anchor_resolution, source_offset)             \
+    X(md_find_options, struct_size) X(md_find_options, flags)                          \
+    X(md_find_options, max_matches) X(md_find_options, match_size)                     \
+    X(md_find_options, segment_size) X(md_find_options, reserved)                      \
+    X(md_find_result, struct_size) X(md_find_result, flags)                            \
+    X(md_find_result, match_count) X(md_find_result, segment_count)                    \
+    X(md_find_match, unit) X(md_find_match, flags) X(md_find_match, span_start)        \
+    X(md_find_match, span_end) X(md_find_match, first_segment)                         \
+    X(md_find_match, segment_count)                                                    \
+    X(md_match_segment, node) X(md_match_segment, flags) X(md_match_segment, text_start) \
+    X(md_match_segment, text_end) X(md_match_segment, span_start)                      \
+    X(md_match_segment, span_end)                                                      \
+    X(md_read_options, struct_size) X(md_read_options, flags)                          \
+    X(md_read_options, words_per_minute) X(md_read_options, section_size)              \
+    X(md_read_stats, struct_size) X(md_read_stats, words_per_minute)                   \
+    X(md_read_stats, words) X(md_read_stats, seconds) X(md_read_stats, section_count)  \
+    X(md_read_section, heading) X(md_read_section, outline_index)                      \
+    X(md_read_section, level) X(md_read_section, reserved) X(md_read_section, words)   \
+    X(md_read_section, seconds) X(md_read_section, cumulative_words)                   \
+    X(md_read_section, cumulative_seconds)
 
 #define STRUCTS(X)                                                                     \
     X(md_str) X(md_abi_info) X(md_session_options) X(md_session_status_info)           \
     X(md_job_result) X(md_node) X(md_intent) X(md_outline_entry) X(md_diagnostic)      \
-    X(md_property) X(md_snapshot_view) X(md_anchor_resolution)
+    X(md_property) X(md_snapshot_view) X(md_anchor_resolution) X(md_find_options)      \
+    X(md_find_result) X(md_find_match) X(md_match_segment) X(md_read_options)          \
+    X(md_read_stats) X(md_read_section)
+
+/* D-022: each addition's size constant is part of the ABI. */
+_Static_assert(sizeof(md_find_options) == MD_FIND_OPTIONS_SIZE, "md_find_options");
+_Static_assert(sizeof(md_find_result) == MD_FIND_RESULT_SIZE, "md_find_result");
+_Static_assert(sizeof(md_find_match) == MD_FIND_MATCH_SIZE, "md_find_match");
+_Static_assert(sizeof(md_match_segment) == MD_MATCH_SEGMENT_SIZE, "md_match_segment");
+_Static_assert(sizeof(md_read_options) == MD_READ_OPTIONS_SIZE, "md_read_options");
+_Static_assert(sizeof(md_read_stats) == MD_READ_STATS_SIZE, "md_read_stats");
+_Static_assert(sizeof(md_read_section) == MD_READ_SECTION_SIZE, "md_read_section");
 
 static int layout(void) {
 #define PRINT_SIZE(type) printf("size %s %zu\n", #type, sizeof(type));
@@ -174,6 +205,84 @@ static void check_view(const md_snapshot_view *view) {
     CHECK(view->source_sha256.length == 64);
 }
 
+/* Find "text and a" (across emphasis and link text) with the two-call
+   protocol, then check each exact segment against the view, as a presenter
+   highlighting display text would. */
+static void check_find(md_snapshot snapshot, const md_snapshot_view *view) {
+    const char *query = "TEXT AND A";
+    md_find_options options;
+    memset(&options, 0, sizeof options);
+    options.struct_size = sizeof options;
+    options.match_size = sizeof(md_find_match);
+    options.segment_size = sizeof(md_match_segment);
+    md_find_result result;
+    memset(&result, 0, sizeof result);
+    result.struct_size = sizeof result;
+    CHECK_STATUS(md_snapshot_find(snapshot, (const uint8_t *)query, strlen(query), &options, NULL,
+                                  0, NULL, 0, &result),
+                 MD_ERR_BUFFER_TOO_SMALL);
+    CHECK(result.match_count == 1 && result.segment_count == 3 && result.flags == 0);
+    md_find_match matches[1];
+    md_match_segment segments[3];
+    CHECK_STATUS(md_snapshot_find(snapshot, (const uint8_t *)query, strlen(query), &options,
+                                  matches, 1, segments, 3, &result),
+                 MD_OK);
+    const char *covered = "text* and [a";
+    CHECK(matches[0].flags == MD_MATCH_EXACT && matches[0].first_segment == 0 &&
+          matches[0].segment_count == 3);
+    CHECK(matches[0].span_end - matches[0].span_start == strlen(covered));
+    CHECK(memcmp(view->source + matches[0].span_start, covered, strlen(covered)) == 0);
+    CHECK(view->nodes[matches[0].unit].kind == MD_NODE_PARAGRAPH);
+    for (uint32_t i = 0; i < 3; i++) {
+        const md_match_segment *s = &segments[i];
+        const md_node *node = &view->nodes[s->node];
+        CHECK(node->kind == MD_NODE_TEXT && s->flags == MD_MATCH_EXACT);
+        CHECK(s->text_end <= node->text.length && s->span_end <= node->span_end);
+        CHECK(s->text_end - s->text_start == s->span_end - s->span_start);
+        CHECK(memcmp(view->strings + node->text.offset + s->text_start,
+                     view->source + s->span_start, s->span_end - s->span_start) == 0);
+    }
+    options.flags = MD_FIND_CASE_SENSITIVE;
+    CHECK_STATUS(md_snapshot_find(snapshot, (const uint8_t *)query, strlen(query), &options, NULL,
+                                  0, NULL, 0, &result),
+                 MD_OK);
+    CHECK(result.match_count == 0);
+    options.match_size = sizeof(md_find_match) - 4;
+    CHECK_STATUS(md_snapshot_find(snapshot, (const uint8_t *)query, strlen(query), &options, NULL,
+                                  0, NULL, 0, &result),
+                 MD_ERR_STRUCT_SIZE);
+}
+
+/* Reading time: the intro plus one section per outline entry. */
+static void check_read_stats(md_snapshot snapshot, const md_snapshot_view *view) {
+    md_read_options options;
+    memset(&options, 0, sizeof options);
+    options.struct_size = sizeof options;
+    options.section_size = sizeof(md_read_section);
+    md_read_stats stats;
+    memset(&stats, 0, sizeof stats);
+    stats.struct_size = sizeof stats;
+    md_read_section sections[4];
+    CHECK_STATUS(md_snapshot_read_stats(snapshot, &options, NULL, 0, &stats),
+                 MD_ERR_BUFFER_TOO_SMALL);
+    CHECK(stats.section_count == (uint64_t)view->outline_count + 1);
+    CHECK_STATUS(md_snapshot_read_stats(snapshot, &options, sections, 4, &stats), MD_OK);
+    CHECK(stats.words_per_minute == MD_READ_DEFAULT_WPM && stats.section_count == 3);
+    /* "Some text and a link" plus four table cells; the image alt never counts. */
+    CHECK(stats.words == 9 && stats.seconds == 3);
+    CHECK(sections[0].heading == MD_NONE && sections[0].level == 0 && sections[0].words == 0);
+    CHECK(sections[1].level == 1 && sections[1].words == 5 && sections[1].cumulative_words == 9);
+    CHECK(sections[2].level == 2 && sections[2].words == 4);
+    for (uint32_t i = 1; i < 3; i++) {
+        CHECK(sections[i].outline_index == i - 1);
+        CHECK(view->outline[i - 1].node == sections[i].heading);
+    }
+    options.words_per_minute = MD_READ_MAX_WPM + 1;
+    CHECK_STATUS(md_snapshot_read_stats(snapshot, &options, sections, 4, &stats),
+                 MD_ERR_INVALID_ARGUMENT);
+    CHECK(stats.words == 0 && stats.section_count == 0);
+}
+
 /* Print the file that provides md_abi_negotiate, so the test can prove the
    staged library (not one from a search path) was loaded. ISO C has no
    function-to-object pointer conversion, so copy the representation. */
@@ -241,6 +350,8 @@ static int run(uint32_t expected_models) {
         CHECK(memcmp(view.source, first, view.source_length) == 0);
         CHECK(view.link_count == 1 && view.resource_count == 1 && view.alignment_count == 2);
         check_view(&view);
+        check_find(snapshot, &view);
+        check_read_stats(snapshot, &view);
 
         /* Anchor on "Second" (absolute offset), then copy values and release. */
         const char *second_heading = strstr(first, "Second");

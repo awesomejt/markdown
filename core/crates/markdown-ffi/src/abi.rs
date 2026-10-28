@@ -155,6 +155,25 @@ constants! {
     MD_VALUE_STRING: u32 = 4;
     MD_VALUE_STRINGS: u32 = 5;
     MD_DIAGNOSTIC_HAS_SPAN: u32 = 1;
+    MD_FIND_OPTIONS_SIZE: u32 = 24;
+    MD_FIND_RESULT_SIZE: u32 = 24;
+    MD_FIND_MATCH_SIZE: u32 = 24;
+    MD_MATCH_SEGMENT_SIZE: u32 = 24;
+    MD_READ_OPTIONS_SIZE: u32 = 16;
+    MD_READ_STATS_SIZE: u32 = 32;
+    MD_READ_SECTION_SIZE: u32 = 48;
+    MD_FIND_MAX_QUERY_BYTES: u32 = 4096;
+    MD_FIND_DEFAULT_MAX_MATCHES: u32 = 10_000;
+    MD_FIND_MAX_MATCHES: u32 = 1_000_000;
+    MD_READ_DEFAULT_WPM: u32 = 160;
+    MD_READ_MIN_WPM: u32 = 60;
+    MD_READ_MAX_WPM: u32 = 600;
+    MD_FIND_CASE_SENSITIVE: u32 = 1;
+    MD_FIND_WHOLE_WORD: u32 = 2;
+    MD_FIND_TRUNCATED: u32 = 1;
+    MD_MATCH_EXACT: u32 = 1;
+    MD_READ_INCLUDE_HEADINGS: u32 = 1;
+    MD_READ_INCLUDE_CODE: u32 = 2;
 }
 
 #[repr(C)]
@@ -387,6 +406,94 @@ pub struct md_anchor_resolution {
     pub offset: u64,
     pub source_offset: u64,
 }
+
+// ABI v1 additions (D-022): find and reading statistics.
+
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Default)]
+pub struct md_find_options {
+    pub struct_size: u32,
+    pub flags: u32,
+    pub max_matches: u32,
+    pub match_size: u32,
+    pub segment_size: u32,
+    pub reserved: u32,
+}
+
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Default)]
+pub struct md_find_result {
+    pub struct_size: u32,
+    pub flags: u32,
+    pub match_count: u64,
+    pub segment_count: u64,
+}
+
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct md_find_match {
+    pub unit: u32,
+    pub flags: u32,
+    pub span_start: u32,
+    pub span_end: u32,
+    pub first_segment: u32,
+    pub segment_count: u32,
+}
+
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct md_match_segment {
+    pub node: u32,
+    pub flags: u32,
+    pub text_start: u32,
+    pub text_end: u32,
+    pub span_start: u32,
+    pub span_end: u32,
+}
+
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Default)]
+pub struct md_read_options {
+    pub struct_size: u32,
+    pub flags: u32,
+    pub words_per_minute: u32,
+    pub section_size: u32,
+}
+
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Default)]
+pub struct md_read_stats {
+    pub struct_size: u32,
+    pub words_per_minute: u32,
+    pub words: u64,
+    pub seconds: u64,
+    pub section_count: u64,
+}
+
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct md_read_section {
+    pub heading: u32,
+    pub outline_index: u32,
+    pub level: u32,
+    pub reserved: u32,
+    pub words: u64,
+    pub seconds: u64,
+    pub cumulative_words: u64,
+    pub cumulative_seconds: u64,
+}
+
+// The header's size constants are part of the ABI; they must equal the
+// `repr(C)` sizes on every target (all fields are fixed-width).
+const _: () = {
+    assert!(size::<md_find_options>() == MD_FIND_OPTIONS_SIZE);
+    assert!(size::<md_find_result>() == MD_FIND_RESULT_SIZE);
+    assert!(size::<md_find_match>() == MD_FIND_MATCH_SIZE);
+    assert!(size::<md_match_segment>() == MD_MATCH_SEGMENT_SIZE);
+    assert!(size::<md_read_options>() == MD_READ_OPTIONS_SIZE);
+    assert!(size::<md_read_stats>() == MD_READ_STATS_SIZE);
+    assert!(size::<md_read_section>() == MD_READ_SECTION_SIZE);
+};
 
 /// Size of an ABI struct as the `u32` the header's `struct_size` carries.
 pub(crate) const fn size<T>() -> u32 {

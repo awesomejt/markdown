@@ -420,6 +420,123 @@ md_status md_snapshot_resolve_anchor(md_snapshot snapshot, const uint8_t *anchor
                                      size_t anchor_length, md_anchor_resolution *out_resolution);
 md_status md_snapshot_release(md_snapshot snapshot);
 
+/*
+ * ABI v1 additions (D-022): find, word count and section reading time over a
+ * snapshot (specs/search/README.md). These add functions only. Each new
+ * struct has a size constant below; compare it with sizeof() after
+ * negotiation. struct_size and the record sizes in the options structs are
+ * checked on every call (MD_ERR_STRUCT_SIZE otherwise).
+ *
+ * Results go into caller-owned record arrays. If either array is too small,
+ * the call returns MD_ERR_BUFFER_TOO_SMALL with the required counts (and
+ * flags) in the result struct and writes no records; call again with larger
+ * arrays (the search is recomputed). Records are written only on MD_OK.
+ * Node indices are md_snapshot_view node indices; spans are source byte
+ * ranges [start, end). There is no cancel handle: work is linear in the
+ * snapshot's visible text and bounded by max_matches.
+ */
+#define MD_FIND_OPTIONS_SIZE 24u
+#define MD_FIND_RESULT_SIZE 24u
+#define MD_FIND_MATCH_SIZE 24u
+#define MD_MATCH_SEGMENT_SIZE 24u
+#define MD_READ_OPTIONS_SIZE 16u
+#define MD_READ_STATS_SIZE 32u
+#define MD_READ_SECTION_SIZE 48u
+/* Longer queries (raw UTF-8 bytes) are rejected with MD_ERR_INVALID_ARGUMENT. */
+#define MD_FIND_MAX_QUERY_BYTES 4096u
+#define MD_FIND_DEFAULT_MAX_MATCHES 10000u
+#define MD_FIND_MAX_MATCHES 1000000u
+#define MD_READ_DEFAULT_WPM 160u
+#define MD_READ_MIN_WPM 60u
+#define MD_READ_MAX_WPM 600u
+
+/* md_find_options.flags */
+enum { MD_FIND_CASE_SENSITIVE = 1, MD_FIND_WHOLE_WORD = 2 };
+/* md_find_result.flags */
+enum { MD_FIND_TRUNCATED = 1 };
+/* md_find_match.flags and md_match_segment.flags */
+enum { MD_MATCH_EXACT = 1 };
+/* md_read_options.flags */
+enum { MD_READ_INCLUDE_HEADINGS = 1, MD_READ_INCLUDE_CODE = 2 };
+
+typedef struct md_find_options {
+    uint32_t struct_size;            /* MD_FIND_OPTIONS_SIZE */
+    uint32_t flags;                  /* MD_FIND_*; unknown bits are rejected */
+    uint32_t max_matches;            /* 0 selects MD_FIND_DEFAULT_MAX_MATCHES */
+    uint32_t match_size;             /* sizeof(md_find_match) */
+    uint32_t segment_size;           /* sizeof(md_match_segment) */
+    uint32_t reserved;               /* must be 0 */
+} md_find_options;
+
+typedef struct md_find_result {
+    uint32_t struct_size;            /* MD_FIND_RESULT_SIZE */
+    uint32_t flags;                  /* MD_FIND_TRUNCATED: more than max_matches exist */
+    uint64_t match_count;            /* written, or required on BUFFER_TOO_SMALL */
+    uint64_t segment_count;
+} md_find_result;
+
+/* One match, in reading order. Its segments are
+   segments[first_segment .. first_segment + segment_count). */
+typedef struct md_find_match {
+    uint32_t unit;                   /* leaf block node index */
+    uint32_t flags;                  /* MD_MATCH_EXACT */
+    uint32_t span_start;             /* smallest source range covering the match */
+    uint32_t span_end;
+    uint32_t first_segment;
+    uint32_t segment_count;
+} md_find_match;
+
+/* The part of one match inside one node, for highlighting. */
+typedef struct md_match_segment {
+    uint32_t node;                   /* node index */
+    uint32_t flags;                  /* MD_MATCH_EXACT */
+    uint32_t text_start;             /* byte range in the node's display text */
+    uint32_t text_end;
+    uint32_t span_start;             /* source range (whole node/line when not exact) */
+    uint32_t span_end;
+} md_match_segment;
+
+typedef struct md_read_options {
+    uint32_t struct_size;            /* MD_READ_OPTIONS_SIZE */
+    uint32_t flags;                  /* MD_READ_*; unknown bits are rejected */
+    uint32_t words_per_minute;       /* 0 selects MD_READ_DEFAULT_WPM; else 60..600 */
+    uint32_t section_size;           /* sizeof(md_read_section) */
+} md_read_options;
+
+typedef struct md_read_stats {
+    uint32_t struct_size;            /* MD_READ_STATS_SIZE */
+    uint32_t words_per_minute;       /* the rate used */
+    uint64_t words;
+    uint64_t seconds;                /* estimate for words, not a sum of sections */
+    uint64_t section_count;          /* written, or required on BUFFER_TOO_SMALL */
+} md_read_stats;
+
+/* The intro (always first, level 0), then one section per heading. */
+typedef struct md_read_section {
+    uint32_t heading;                /* heading node index; MD_NONE for the intro */
+    uint32_t outline_index;          /* outline entry; MD_NONE for the intro */
+    uint32_t level;                  /* 1-6; 0 for the intro */
+    uint32_t reserved;
+    uint64_t words;                  /* up to the next heading of any level */
+    uint64_t seconds;
+    uint64_t cumulative_words;       /* including deeper subsections */
+    uint64_t cumulative_seconds;
+} md_read_section;
+
+/* Literal find. query is UTF-8 (not NUL-terminated); an empty or
+   whitespace-only query succeeds with no matches. Arrays may be NULL only
+   with a zero capacity. Thread-safe; run off the UI thread. */
+md_status md_snapshot_find(md_snapshot snapshot, const uint8_t *query, size_t query_length,
+                           const md_find_options *options,
+                           md_find_match *matches, size_t match_capacity,
+                           md_match_segment *segments, size_t segment_capacity,
+                           md_find_result *out_result);
+/* Word count and per-section reading time. The section count is always the
+   view's outline_count + 1. */
+md_status md_snapshot_read_stats(md_snapshot snapshot, const md_read_options *options,
+                                 md_read_section *sections, size_t section_capacity,
+                                 md_read_stats *out_stats);
+
 #ifdef __cplusplus
 }
 #endif

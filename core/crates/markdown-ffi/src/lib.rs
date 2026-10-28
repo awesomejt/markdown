@@ -14,6 +14,7 @@
 
 pub mod abi;
 mod flat;
+mod search;
 #[cfg(test)]
 mod tests;
 
@@ -251,6 +252,24 @@ impl<T: Versioned> Out<T> {
     }
 }
 
+/// Copy a versioned input struct after checking its exact `struct_size`.
+///
+/// # Safety
+/// A non-null, aligned `ptr` must be valid for reads of `T`.
+unsafe fn input<T: Copy>(ptr: *const T) -> Result<T, md_status> {
+    if ptr.is_null() || !ptr.is_aligned() {
+        return Err(MD_ERR_INVALID_ARGUMENT);
+    }
+    // SAFETY: non-null, aligned and readable per the caller contract;
+    // struct_size is the leading u32 of every versioned struct.
+    if unsafe { ptr.cast::<u32>().read() } != size::<T>() {
+        return Err(MD_ERR_STRUCT_SIZE);
+    }
+    // SAFETY: the declared size matches `T` exactly; the value is copied out,
+    // not borrowed.
+    Ok(unsafe { ptr.read() })
+}
+
 /// Header-versioned structs: a zeroed value with `struct_size` filled in.
 trait Versioned: Default {
     fn sized() -> Self;
@@ -268,7 +287,9 @@ sized!(
     md_session_status_info,
     md_job_result,
     md_snapshot_view,
-    md_anchor_resolution
+    md_anchor_resolution,
+    md_find_result,
+    md_read_stats
 );
 
 /// Two-call buffer protocol: `length` always receives the required size;
@@ -508,17 +529,8 @@ pub unsafe extern "C" fn md_session_create(
     guard(|| {
         // SAFETY: forwarded caller contract.
         let out = unsafe { Out::new(out_session) }?;
-        if options.is_null() || !options.is_aligned() {
-            return Err(MD_ERR_INVALID_ARGUMENT);
-        }
-        // SAFETY: non-null, aligned and readable per the caller contract;
-        // struct_size is the leading u32.
-        if unsafe { options.cast::<u32>().read() } != size::<md_session_options>() {
-            return Err(MD_ERR_STRUCT_SIZE);
-        }
-        // SAFETY: the declared size matches md_session_options exactly; the
-        // value is copied out, not borrowed.
-        let options = session_options(&unsafe { options.read() })?;
+        // SAFETY: forwarded caller contract.
+        let options = session_options(&unsafe { input(options) }?)?;
         // SAFETY: forwarded caller contract.
         let id = unsafe { bytes(document_id, document_id_length) }?;
         let id = std::str::from_utf8(id).map_err(|_| MD_ERR_INVALID_DOCUMENT_ID)?;
