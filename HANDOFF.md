@@ -1,14 +1,14 @@
 # Agent Session and Platform Handoff
 
-Updated: 2026-10-28, shared-core reviews on `review/shared-core` (PR #16).
-Source baseline: `39d1a56` on main plus the three reviews, D-025 to D-027,
-the CORE-FIX tasks and the linear task graph. Preserve intended
+Updated: 2026-10-28, closeout of the shared-core reviews (PR #16, approved
+by the owner at head `2b06e88`, hosted CI green on macOS, Linux and Windows).
+Source baseline: `main` after the PR #16 merge. Preserve intended
 source, lock/spec/golden files, docs and state together. Never transfer caches,
 environments, build products, private runtime state or user documents.
 
-## Resume here — CORE-FIX phase
+## Resume here — CORE-FIX phase, starting with DOC-001
 
-PR #16 (`review/shared-core`) holds three shared-core reviews (Claude, Codex,
+PR #16 merged after owner approval. It holds three shared-core reviews (Claude, Codex,
 Grok; see [docs/reviews/](docs/reviews/README.md)) and the owner's
 dispositions:
 
@@ -24,8 +24,13 @@ dispositions:
   `remove_dependency` and `update_task`.
 
 State is at revision 498 with no active pass, and only DOC-001 is eligible.
-Next: owner approval of PR #16, then its closeout (complete no task; record
-the merge in HANDOFF/MEMORY), then DOC-001 on its own branch.
+PR #16 belonged to no state task, so its closeout changed no task status.
+Next: start a DOC-001 pass from `main` on branch
+`docs/doc-001-agent-docs-cleanup`, following AGENT_WORKFLOW.md:
+
+```sh
+python3 tools/project_state.py --file project.yaml inspect
+```
 
 ## Previous step — owner holistic CORE review (done)
 

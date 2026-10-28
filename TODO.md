@@ -15,7 +15,7 @@ rules. GATE-001 is approved (D-018). CORE-001A through CORE-003A, CORE-003B1
 through CORE-003B4 (with B2F), CORE-004A, CORE-005A/A2, CORE-005B/B2 and
 CORE-006A are merged, and the CORE-003B aggregate is closed. The owner's
 [holistic CORE review](docs/reviews/2026-10-28-core-holistic-review.md)
-(PR #16) accepted D-025 (native hosts use model v2). Reconciled with the
+(PR #16, merged) accepted D-025 (native hosts use model v2). Reconciled with the
 [Grok](docs/reviews/2026-10-28-grok-shared-core-review.md) and
 [Codex](docs/reviews/2026-10-28-codex-shared-core-review.md) reviews, its
 follow-ups form the [CORE-FIX phase](#core-fix-phase-shared-core-review-follow-ups)
@@ -38,9 +38,9 @@ core alone.
 
 ## Immediate session handoff
 
-The current handoff is the shared-core review PR #16 and the
-[CORE-FIX phase](#core-fix-phase-shared-core-review-follow-ups) that follows
-it, starting with DOC-001. The history that follows is kept until DOC-001
+The shared-core review PR #16 is merged. The current handoff is the
+[CORE-FIX phase](#core-fix-phase-shared-core-review-follow-ups), starting with
+DOC-001. The history that follows is kept until DOC-001
 trims it.
 
 PR #7 (CORE-006A C ABI facade, [contract](specs/ffi/README.md)) merged as

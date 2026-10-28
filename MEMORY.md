@@ -18,7 +18,8 @@ design belong in `docs/` or `agents/`; runtime transcripts do not belong here.
   track ends with the CORE-001 to CORE-006 aggregates in `portable-core`,
   then each host is an independent chain in `desktop-apps` from CORE-006. The
   native CI and package-consumer evidence moved to each 001A/001B. The state
-  wrapper has `remove_dependency` and `update_task`. Only DOC-001 is eligible.
+  wrapper has `remove_dependency` and `update_task`. PR #16 merged with
+  owner approval (head `2b06e88`, CI green on all three OSes). Next: DOC-001.
   See HANDOFF.md.
 - Status 2026-10-28: every shared CORE delivery phase through
   CORE-006A is merged. The owner's holistic CORE review
