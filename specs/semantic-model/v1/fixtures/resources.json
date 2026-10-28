@@ -224,7 +224,8 @@
       },
       "destination": "../café.md#part",
       "disposition": {
-        "kind": "requires_capability"
+        "kind": "denied",
+        "reason": "unsafe_or_unsupported_destination"
       }
     },
     {

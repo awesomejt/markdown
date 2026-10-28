@@ -185,7 +185,15 @@ fn table_shape_and_footnote_targets_are_checked() {
 #[test]
 fn typed_intents_do_not_grant_filesystem_or_remote_image_access() {
     let (d, s) = input("resources");
-    assert_eq!(d.links[0].destination, "../café.md#part"); // Adapter must enforce containment/capabilities.
+    // The v1 producer denies parent traversal and non-ASCII paths (CORE-002B).
+    assert_eq!(d.links[0].destination, "../café.md#part");
+    assert!(matches!(
+        d.links[0].disposition,
+        LinkDisposition::Denied { .. }
+    ));
+    let mut bad = d.clone();
+    bad.links[0].disposition = LinkDisposition::RequiresCapability {};
+    rejected(bad, &s, "link_policy");
     let mut bad = d.clone();
     bad.links[2].disposition = LinkDisposition::External {};
     rejected(bad, &s, "link_policy");
@@ -446,4 +454,104 @@ fn null_metadata_is_strict_and_errors_keep_untrusted_fields_private() {
         assert_eq!(error.code, "invalid_json");
         assert!(!error.to_string().contains("SECRET"));
     }
+}
+
+fn parsed(source: &str) -> DocumentInput {
+    parse_markdown(
+        source,
+        DocumentId("d".into()),
+        RevisionId("r".into()),
+        ParseLimits::default(),
+    )
+    .unwrap()
+    .into_input()
+}
+fn imported(input: &DocumentInput, source: &str) -> Result<Document, ModelError> {
+    Document::from_json(
+        &serde_json::to_vec(input).unwrap(),
+        source,
+        ModelLimits::default(),
+    )
+}
+
+#[test]
+fn imported_intents_must_match_the_parser_policy() {
+    let s = "[go](safe.md) ![i](img.png)\n";
+    let d = parsed(s);
+    assert!(imported(&d, s).is_ok());
+    for destination in [
+        "../../../etc/passwd",
+        "%2e%2e/%2e%2e/x",
+        "a b.md",
+        "\u{202e}gpj.md",
+        "https://example.invalid/",
+        "#top",
+    ] {
+        let mut bad = d.clone();
+        bad.links[0].destination = destination.into();
+        assert_eq!(
+            imported(&bad, s).unwrap_err().code,
+            "link_policy",
+            "{destination:?}"
+        );
+        let mut bad = d.clone();
+        bad.resources[0].destination = destination.into();
+        assert_eq!(
+            imported(&bad, s).unwrap_err().code,
+            "resource_policy",
+            "{destination:?}"
+        );
+    }
+    let mut bad = d.clone();
+    bad.links[0].destination = "https://example.invalid/".into();
+    bad.links[0].disposition = LinkDisposition::External {};
+    assert!(imported(&bad, s).is_ok());
+    // Narrowing to Denied stays allowed, as in v2.
+    let mut narrowed = d;
+    narrowed.links[0].disposition = LinkDisposition::Denied {
+        reason: "host_policy".into(),
+    };
+    assert!(imported(&narrowed, s).is_ok());
+}
+
+#[test]
+fn v1_userinfo_urls_round_trip_as_the_parser_emits_them() {
+    // The v1 producer classifies credential URLs as External; v2 denies them (D-025).
+    let s = "[x](https://user:pw@evil.example/)\n";
+    let d = parsed(s);
+    assert_eq!(d.links[0].disposition, LinkDisposition::External {});
+    assert_eq!(imported(&d, s).unwrap().into_input(), d);
+}
+
+#[test]
+fn imported_metadata_text_keeps_the_front_matter_display_guard() {
+    let s = "---\ntitle: Safe\ntags:\n  - a\n---\n[go](safe.md)\n";
+    let d = parsed(s);
+    assert!(imported(&d, s).is_ok());
+    let rlo = "abc\u{202e}txt".to_string();
+    let mut bad = d.clone();
+    bad.metadata.title = Some(rlo.clone());
+    assert_eq!(imported(&bad, s).unwrap_err().code, "metadata_text");
+    let mut bad = d.clone();
+    bad.metadata
+        .properties
+        .insert("title".into(), MetadataValue::String { value: rlo.clone() });
+    assert_eq!(imported(&bad, s).unwrap_err().code, "metadata_text");
+    let mut bad = d.clone();
+    bad.metadata.properties.insert(
+        "tags".into(),
+        MetadataValue::Strings {
+            value: vec!["a".into(), rlo],
+        },
+    );
+    assert_eq!(imported(&bad, s).unwrap_err().code, "metadata_text");
+    let mut bad = d.clone();
+    bad.metadata
+        .properties
+        .insert("x\u{200b}".into(), MetadataValue::Null {});
+    assert_eq!(imported(&bad, s).unwrap_err().code, "metadata_key");
+    // Variation selectors and CGJ stay allowed in display text.
+    let mut allowed = d;
+    allowed.metadata.title = Some("\u{2764}\u{fe0f} a\u{34f}b".into());
+    assert!(imported(&allowed, s).is_ok());
 }

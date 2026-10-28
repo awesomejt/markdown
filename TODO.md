@@ -46,7 +46,7 @@ core alone.
 
 The shared-core reviews (PR #16) are merged. The current work is the
 [CORE-FIX phase](#core-fix-phase-shared-core-review-follow-ups): DOC-001
-merged in PR #17, and CORE-002B is next. Inspect state and `HANDOFF.md` before any pass. Scoped
+and CORE-002B merged in PRs #17 and #18, and CORE-003C is next. Inspect state and `HANDOFF.md` before any pass. Scoped
 commits, pushes, PR updates and review comments are authorized; merge
 requires owner authorization; concurrency remains one.
 
@@ -238,7 +238,10 @@ is one feature branch and PR under
    - Acceptance: regression tests for the review probes on both models.
      Traversal, encoded dot segments, whitespace and a U+202E destination are
      rejected; a U+202E title or property is rejected under v1 and v2. No
-     wire, schema or golden change.
+     wire, schema or parser-golden change. One owner-approved exception
+     (2026-10-28): the hand-written v1 model golden `resources.json` claimed
+     `requires_capability` for `../café.md#part`, which the parser denies,
+     so that one intent is now denied, with the source and spans unchanged.
 3. **CORE-003C — V2 corpus conformance assertions (C5).** Test-only. After
    D-025, v2 is the shipped model, but the generated conformance suite
    compares only the outline and the link count for v2.

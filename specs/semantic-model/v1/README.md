@@ -10,7 +10,8 @@ The [JSON Schema](document.schema.json) has ID `urn:markdown:semantic-document:1
 It is generated from the wire types; the schema snapshot test detects drift.
 The default core build has no schema dependency; feature `schema` enables
 export and schema consistency tests. Serialization/validation use serde,
-serde_json and SHA-256; v1 validation does not invoke the parser or access files.
+serde_json and SHA-256; v1 validation does not parse source or access files. It
+does reuse the parser's pure URI classification for intents (CORE-002B).
 
 ## Values, ownership and versions
 
@@ -87,7 +88,12 @@ Metadata carries an optional first-position front-matter span, a display title
 and a deterministic property map. Property values are null, boolean, i64 integer,
 string or string list; nested objects and floats are not v1 metadata. Properties
 require front matter, which cannot overlap body roots. Detection/parsing remains
-CORE-003; no YAML parser or whole-document YAML mode is enabled here.
+CORE-003; no YAML parser or whole-document YAML mode is enabled here. Since
+CORE-002B, validation applies the front-matter producer's display guard to the
+title, property keys and string or list values: controls, General_Category=Cf
+and bidi formatting characters are rejected (`metadata_text`/`metadata_key`).
+Variation selectors and CGJ remain allowed, as in
+[Front-Matter.md](../../../docs/Front-Matter.md). V2 shares this check.
 
 Capabilities are the exact set of semantic extensions present: tables, task
 lists, footnotes, strikethrough, front matter and alerts. They are not permission
@@ -107,13 +113,18 @@ multiply-used intent records and destinations outside the referring node's span
 are rejected. Intent spans cover the destination lexeme. Denied intents remain
 visible with a reason. Fragment links carry a matching `#anchor`; unresolved
 fragments can be diagnosed by later parsing/navigation without invalidating the
-whole document. External link intents allow only http, https or mailto prefixes
-without controls/backslashes. This is not a full URL sanitizer.
+whole document. Non-denied destinations are nonempty ASCII without controls,
+whitespace, backslashes or percent encoding. External link intents also need an
+http, https or mailto prefix with a nonempty remainder. This is not a full URL
+sanitizer.
 
 Local links and image resources use `requires_capability`: relative URI text
-only, without a scheme, absolute prefix, controls or backslashes. `..` and
-percent encoding do not grant access; adapters resolve/decode against an actual
-OS-approved capability and enforce containment before I/O. No model value grants
+without a scheme, absolute prefix or `.`/`..` segments. Since CORE-002B, validation
+re-runs the parser's own classification for every intent that is not denied, so
+a decoded document can narrow an intent to denied but cannot claim one the
+parser would withhold. That policy still classifies `https://user:pw@…` as
+external; v2 denies credentials (D-025). Adapters still resolve against an
+actual OS-approved capability and enforce containment before I/O. No model value grants
 access, fetches resources, opens a URI or launches a process. Remote images,
 file/absolute destinations and other blocked requests must be denied by policy.
 Platform/core safety phases still validate real URI and resource behavior.

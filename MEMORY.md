@@ -29,7 +29,7 @@ read.
 - CORE-FIX order: DOC-001, CORE-002B, CORE-003C, CORE-003D, CORE-005C,
   CORE-005D, then CORE-003E (owner-added from the PR #17 review). The CORE-001 to CORE-006 aggregates follow and close on shared
   acceptance. HARD-001 sits between DESK-001 and DESK-002.
-- DOC-001 merged in PR #17. Now: CORE-002B. See
+- DOC-001 and CORE-002B merged in PRs #17 and #18. Now: CORE-003C. See
   [HANDOFF.md](HANDOFF.md) and [TODO.md](TODO.md).
 - Each 001B also measures flat-view and retained RSS on its host, and WIN-001B
   makes the MSVC C smoke a required CI step.
@@ -65,6 +65,9 @@ read.
   - Use the native UIA3 client (`UiaProbe.exe`), not Windows PowerShell's
     managed UIA, which lacks `HeadingLevel`.
   - Use forward slashes in Git Bash commands given to the owner.
+- On this Mac, `cargo` is not on `PATH` and `~/.rustup` lacks `std`. Use the
+  project toolchain: set `RUSTUP_HOME` and `CARGO_HOME` to
+  `build/feas002-macos/toolchains/{rustup,cargo}` and prepend its `cargo/bin`.
 - On this Mac, Homebrew `python3` lacks PyYAML. Use
   `.build/feas004-venv/bin/python` for `tools/check.py` and
   `tools/project_state.py`.

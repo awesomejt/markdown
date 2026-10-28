@@ -48,6 +48,7 @@ Only `Document::new`/`from_json` publishes a v2 Document. Strict decoding reject
 unknown fields/kinds/versions, duplicate capabilities/keys and malformed enums.
 Validation shares v1's version-independent tree/source/metadata checks using an
 internal unchecked structural DTO; it never publishes a synthetic v1 Document.
+Those checks include the front-matter display guard on metadata text (CORE-002B).
 V2 independently checks intent IDs/uses, span geometry and target policy.
 
 Intent validation reparses bounded source into an expected-intent map, keyed by
