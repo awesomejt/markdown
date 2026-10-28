@@ -15,5 +15,8 @@ newest first.
 | 2026-10-28 | [Codex shared CORE review](2026-10-28-codex-shared-core-review.md) | Shared CORE delivery phases CORE-001A to CORE-006A | `c330090` |
 | 2026-10-28 | [Holistic CORE review](2026-10-28-core-holistic-review.md) | Shared CORE delivery phases CORE-001A to CORE-006A | `39d1a56` |
 
+The owner's reconciliation of the three 2026-10-28 reviews is D-026 and D-027
+in [Decisions.md](../../agents/Decisions.md).
+
 The earlier feasibility review (REV-001) is
 [Feasibility-Review.md](../Feasibility-Review.md).

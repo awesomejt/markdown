@@ -38,7 +38,7 @@ Severity reflects impact on the upcoming platform phases, not code defects.
 
 Parser-Budgets.md and both prior reviews already document this. A 5 MiB prose document peaks at ~145 MiB and retains ~100 MiB. An 8 MiB dense delimiter storm peaks at ~1 152 MiB before `NodeLimit`. Workspace content search defaults `max_file_bytes` to 8 MiB and parses every admitted file. The FFI flat view is a second copy. macOS feasibility work showed retained RSS growth across repeated parses.
 
-**Recommendation (aligns with Claude F2 / Codex C1 / CORE-005C):**  
+**Recommendation (aligns with Claude F2 / Codex C1 / CORE-005C):**
 Before any platform 002C (workspace search UI), lower the content-search file default (e.g. 2 MiB) and/or add a cheap density pre-check that produces a typed skip. Measure flat-view encode cost and retained RSS in each 001B phase. Keep host concurrency under control. Do not treat the current node/event ceilings as a practical memory budget.
 
 ### G2 — High (existing, confirmed): default model is too restrictive for real documents
@@ -58,6 +58,7 @@ v1 validation uses looser `relative`/`external` checks than the parser. Shared m
 `workspace/content.rs` always calls `parse_markdown_cancellable` (v1) regardless of the session’s model version. With D-025 selecting v2 for native hosts, document-level and workspace-level views of the same file can differ in capabilities, link dispositions, and diagnostics. Search results themselves are source-mapped and mostly insensitive to this, but any future feature that surfaces outline, alerts, or link intents from the workspace scan will see the v1 view.
 
 **Recommendation:** Before 002C, either:
+
 - make content search accept the same model version the session uses, or
 - explicitly document that workspace search is a v1 text index and keep any richer semantics on the document session.
 
@@ -93,3 +94,10 @@ No finding requires a redesign of the architecture. The small, already-accepted 
 ## Summary for the owner
 
 The shared CORE phase is in good shape. The code quality, security posture, and test depth support proceeding to platform work. The items that should be settled together in the compare-notes phase are the model version default (D-025), the memory/search defaults (CORE-005C), the import-policy parity (CORE-002B), and the documentation cleanup. Everything else can wait for the relevant platform acceptance gates or a later release hardening pass.
+
+## Owner disposition (2026-10-28)
+
+The owner reconciled this review with the other two shared-core reviews; see
+the [reviews index](README.md). Accepted outcomes are in
+[Decisions.md](../../agents/Decisions.md) D-026 (the CORE-FIX phase) and D-027
+(linear task tracks), with task scope in [TODO.md](../../TODO.md). G4 is resolved by documenting content search as a model-independent text index in CORE-005C. G6 is HARD-001. G1, G3 and G5 are in CORE-005C, CORE-002B and DOC-001.

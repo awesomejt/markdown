@@ -1,20 +1,31 @@
 # Agent Session and Platform Handoff
 
-Updated: 2026-10-28, holistic CORE review on `review/shared-core` (PR #16).
-Source baseline: `39d1a56` on main plus this review, D-025 and follow-up tasks. Preserve intended
+Updated: 2026-10-28, shared-core reviews on `review/shared-core` (PR #16).
+Source baseline: `39d1a56` on main plus the three reviews, D-025 to D-027,
+the CORE-FIX tasks and the linear task graph. Preserve intended
 source, lock/spec/golden files, docs and state together. Never transfer caches,
 environments, build products, private runtime state or user documents.
 
-## Resume here — holistic CORE review follow-up
+## Resume here — CORE-FIX phase
 
-The review is [docs/reviews/2026-10-28-core-holistic-review.md](docs/reviews/2026-10-28-core-holistic-review.md)
-on PR #16 (`review/shared-core`). The owner accepted all four recommendations:
-D-025 (native hosts build and request model v2) is recorded, and CORE-002B,
-CORE-005C and DOC-001 were created through the state helper (revision 376,
-no active pass). The owner will run Grok and Codex reviews on PR #16. Next:
-reconcile those reviews on the branch, then owner merge approval and closeout.
-After that, take the follow-ups (CORE-002B, CORE-005C, DOC-001) before
-MAC-001A, as the review's suggested order recommends.
+PR #16 (`review/shared-core`) holds three shared-core reviews (Claude, Codex,
+Grok; see [docs/reviews/](docs/reviews/README.md)) and the owner's
+dispositions:
+
+- D-025: native hosts build and request model v2.
+- D-026: the CORE-FIX phase, six tasks in order: DOC-001, CORE-002B,
+  CORE-003C (v2 conformance), CORE-003D (bare GFM autolinks), CORE-005C
+  (content-search memory guard; content search is a model-independent text
+  index) and CORE-005D (wider invisible-filename warnings). HARD-001 (release
+  hardening) is before DESK-002. The scope is in [TODO.md](TODO.md).
+- D-027: the task graph is linear. The shared track runs CORE-FIX, then the
+  CORE-001 to CORE-006 aggregates, in `portable-core`. Each host is one chain
+  from CORE-006 in `desktop-apps`. `tools/project_state.py` gained
+  `remove_dependency` and `update_task`.
+
+State is at revision 498 with no active pass, and only DOC-001 is eligible.
+Next: owner approval of PR #16, then its closeout (complete no task; record
+the merge in HANDOFF/MEMORY), then DOC-001 on its own branch.
 
 ## Previous step — owner holistic CORE review (done)
 

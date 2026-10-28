@@ -116,6 +116,55 @@ def install_yaml_io(backend: ModuleType) -> None:
     backend.read_request = read_request
 
 
+TASK_FIELDS = ("title", "description", "validation_expectations", "priority", "phase", "role")
+
+
+def install_operations(backend: ModuleType) -> None:
+    """Add roadmap-maintenance operations under the backend's lock and revision rules."""
+
+    def remove_dependency(state: dict[str, Any], request: dict[str, Any]) -> dict[str, Any]:
+        data = backend.require_input(request)
+        predecessor = backend.task_by_ref(state, str(data.get("predecessor_task_ref", "")))
+        successor = backend.task_by_ref(state, str(data.get("successor_task_ref", "")))
+        relationship = {
+            "predecessor_task_ref": predecessor["id"],
+            "successor_task_ref": successor["id"],
+            "relationship": "blocks",
+        }
+        if relationship not in state["relationships"]:
+            raise backend.StateError("not_found", "Dependency does not exist")
+        state["relationships"].remove(relationship)
+        return {"relationship": relationship}
+
+    def update_task(state: dict[str, Any], request: dict[str, Any]) -> dict[str, Any]:
+        data = backend.require_input(request)
+        task = backend.task_by_ref(state, str(data.get("task_ref", "")))
+        changes = {key: value for key, value in data.items() if key != "task_ref"}
+        unknown = sorted(set(changes) - set(TASK_FIELDS))
+        if unknown or not changes:
+            raise backend.StateError(
+                "validation_error", f"update_task changes only {', '.join(TASK_FIELDS)}",
+                details={"unknown": unknown},
+            )
+        if task["active_pass_ref"] or task["status"] == "working":
+            raise backend.StateError("validation_error", "Task has an active pass")
+        if "phase" in changes:
+            if task["status"] == "completed":
+                raise backend.StateError("validation_error", "Completed tasks keep their phase")
+            changes["phase"] = backend.phase_by_ref(state, str(changes["phase"]))["phase_key"]
+        if "priority" in changes:
+            changes["priority"] = int(changes["priority"])
+        for key in ("title", "phase", "role"):
+            if key in changes and not str(changes[key]).strip():
+                raise backend.StateError("validation_error", f"{key} must not be empty")
+        task.update(changes)
+        task["updated_at"] = backend.timestamp()
+        return {"task": task}
+
+    backend.HANDLERS["remove_dependency"] = remove_dependency
+    backend.HANDLERS["update_task"] = update_task
+
+
 def main() -> int:
     backend = load_backend()
     if sys.argv[1:] == ["--platform-info"]:
@@ -130,6 +179,7 @@ def main() -> int:
         }, indent=2))
         return 0
     install_yaml_io(backend)
+    install_operations(backend)
     return int(backend.main())
 
 

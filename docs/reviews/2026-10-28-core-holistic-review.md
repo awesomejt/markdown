@@ -256,7 +256,14 @@ The owner accepted all four recommendations, and this PR records them:
 - F3 and F4: task CORE-002B, which blocks CORE-002.
 - F5: task DOC-001.
 
-Grok and Codex review passes on this PR come before closeout.
+The owner then reconciled this review with the
+[Codex](2026-10-28-codex-shared-core-review.md) and
+[Grok](2026-10-28-grok-shared-core-review.md) reviews. D-026 widens CORE-002B,
+CORE-005C and DOC-001, adds CORE-003C, CORE-003D, CORE-005D and HARD-001, and
+orders them as the CORE-FIX phase in [TODO.md](../../TODO.md). D-027 makes the
+task graph linear. The "Suggested order" below is superseded by that phase.
+F4's cancellable variants, F6 and the F7 maintenance notes stay where TODO.md
+lists them.
 
 ## Suggested order
 

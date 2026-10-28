@@ -66,9 +66,12 @@ Refine an oversized row before coding, preserving its parent acceptance criteria
 | CORE-005B | Capability-fed workspace search primitives, cancellation and resource budgets; bounded-search checks pass | CORE-005A |
 | CORE-005B2 | C ABI exposure of the workspace search primitives under D-022 (new functions only, caller-owned progress struct and record arrays, header size constants); header constant/layout checks and C smoke pass | CORE-005B |
 | CORE-006A | Bulk facade, value ownership, typed errors and version negotiation; ABI/lifetime tests and current-host package smoke pass | CORE-004A |
-| CORE-002B | V1 validation (including `from_json`) re-runs the producer link/resource policy and metadata guards; FFI host guidance for off-thread, single-call search sizing; regression and golden checks pass | CORE-002A |
-| CORE-005C | Workspace content-search memory guard: lower per-file default and/or delimiter-density pre-check with a typed skip; counted heap budget and Rust/FFI parity pass | CORE-005B2 |
-| DOC-001 | Agent-facing docs cleanup: concise MEMORY.md posture with an archive, stale HANDOFF.md/TODO.md handoff text removed; lint and link checks pass | none |
+| DOC-001 | CORE-FIX 1. Agent-facing docs cleanup: concise MEMORY.md posture with an archive, stale HANDOFF.md/TODO.md handoff and decision-status text removed, snippet invariant qualified; lint and link checks pass | none |
+| CORE-002B | CORE-FIX 2. V1 validation (including `from_json`) re-runs the producer link/resource policy; shared validation applies the producer metadata string guards under v1 and v2; FFI host guidance for off-thread, single-call search sizing; regression and golden checks pass | CORE-002A, DOC-001 |
+| CORE-003C | CORE-FIX 3. Supported corpus check tokens run on v2 with version-specific expectations; test-only, no golden change | CORE-002B |
+| CORE-003D | CORE-FIX 4. Bare GFM `http(s)://`, `www.` and email autolinks in one bounded shared pass with exact spans, URI policy and v2 provenance; conformance, hostile and budget checks pass; goldens regenerated with a reviewed diff | CORE-003C |
+| CORE-005C | CORE-FIX 5. Workspace content-search memory guard: lower per-file default and/or density admission check with a typed skip and false-positive tests; content search documented as a model-independent text index; counted heap budget and Rust/FFI parity pass | CORE-005B2, CORE-003D |
+| CORE-005D | CORE-FIX 6. Invisible-filename flag also covers blank characters that are not Cf (Hangul fillers, Braille blank), never rejecting names; Rust/FFI parity pass | CORE-005C |
 
 CORE-003B was refined after CORE-003A review because metadata, reference/model
 compatibility, extension semantics and fuzz/performance acceptance were too
@@ -87,34 +90,60 @@ delivers the Rust [workspace search primitives](../specs/workspace-search/README
 and CORE-005B2 exposes them under D-022. Each platform's 002C needs both, and
 CORE-005 depends on CORE-005B2.
 
-CORE-002B, CORE-005C and DOC-001 come from the
-[holistic CORE review](reviews/2026-10-28-core-holistic-review.md) (F3/F4,
-F2 and F5), owner-accepted on 2026-10-28. CORE-002 depends on CORE-002B and
-CORE-005 on CORE-005C; each platform's 002C needs CORE-005C when it is
-materialized.
+The CORE-FIX rows come from the three
+[shared-core reviews](reviews/README.md) of 2026-10-28, which the owner
+reconciled in D-026. They run in the numbered order, and state encodes it as
+dependency edges. CORE-005D then leads into the CORE aggregates (below), so
+no platform phase starts before CORE-FIX completes. When the 002 tasks are
+created, each platform's 002B needs CORE-005D and each 002C needs CORE-005C.
 
-CORE-006A enables native adapters without waiting for all workspace-search work.
-It does not close CORE-006: all three native package consumers must pass in their
-platform B phases below. Shared changes require affected-host CI according to
-Repository-Strategy.md; a local pass alone does not establish all-host support.
-CORE-001 closes only after native build jobs have run as the shells are added.
+#### Linear tracks (D-027)
+
+State keeps each track a single chain, so every open task has one open
+predecessor. Only DESK-001 and DESK-002 join tracks:
+
+```text
+Shared (portable-core):  DOC-001 -> CORE-002B -> CORE-003C -> CORE-003D -> CORE-005C
+                         -> CORE-005D -> CORE-001 -> CORE-002 -> CORE-003 -> CORE-004
+                         -> CORE-005 -> CORE-006 -> phase complete
+Each host (desktop-apps): CORE-006 -> 001A -> 001B -> 001C -> 001D [-> LNX-001D1]
+                         -> 001E -> 001F -> 001G -> 001H -> 001I -> 001 aggregate
+Joins:                   MAC-001 + LNX-001 + WIN-001 -> DESK-001 -> HARD-001,
+                         each 002 chain; HARD-001 + all 002 aggregates -> DESK-002
+```
+
+The CORE aggregates close on shared acceptance. The native evidence they
+used to wait for belongs to each platform: CORE-001's native shell CI job is
+part of 001A, and CORE-006's native package consumer is part of 001B. Each
+platform's 001 aggregate checks that evidence. The three host chains stay
+independent, because they run on different machines; the concurrency limit
+of one already serializes the work. The catalog's prerequisite columns below
+list each row's direct predecessor plus the completed shared tasks it uses.
+Transitive and completed prerequisites are not repeated as state edges.
+
+CORE-006A delivered the C ABI facade. CORE-006 closes on its shared
+acceptance: release-mode Rust/FFI tests in hosted CI on all three OSes. Each
+platform's 001B proves its native consumer (D-027). Shared changes require
+affected-host CI according to Repository-Strategy.md; a local pass alone does
+not establish all-host support.
 
 ### Desktop foundation (one independent sequence per host)
 
 Instantiate every row for `MAC`, `LNX`, and `WIN`: for example `MAC-001A`.
 In the prerequisites column, “own” means that same platform. Each row requires
 native build and relevant interaction evidence on its named OS. These children
-live alongside shared foundation work in the `portable-core` state bucket.
+live in the `desktop-apps` state bucket, which becomes active when
+`portable-core` completes (D-027).
 
 | Suffix | Scope and acceptance evidence | Merged prerequisites |
 | --- | --- | --- |
-| 001A | Native launch/window/commands, build instructions and native CI smoke | CORE-001A |
-| 001B | Native facade adapter and local core package built with `model-v2`, sessions requesting v2 (D-025); ownership/errors/cancellation and release-build smoke; flat-view encode cost and single/repeated-document retained RSS measured on this host; on Windows the MSVC C smoke becomes a required CI step | own 001A, CORE-006A |
+| 001A | Native launch/window/commands, build instructions and a native CI job in the path-filtered workflow (from CORE-001) | CORE-001A, CORE-006 (shared track complete) |
+| 001B | Native facade adapter and local core package built with `model-v2`, sessions requesting v2 (D-025); release-mode consumer passes lifecycle/error/cancellation/version tests (from CORE-006); flat-view encode cost and single/repeated-document retained RSS measured on this host; on Windows the MSVC C smoke becomes a required CI step | own 001A, CORE-006A |
 | 001C | File open/association, permission capability and errors; generation-safe off-thread load and revoked/unavailable-file checks | own 001B |
 | 001D | Headings/prose/lists/links/code, outline and basic selection; semantic corpus/navigation checks | own 001C |
 | 001E | Tables/task lists/images and resource policy; rich-block and denied/unsafe-resource checks | own 001D |
-| 001F | Document find, theme and text controls; Unicode find and native command/settings checks | own 001D, CORE-005A, CORE-005A2 |
-| 001G | Large-document layout, global selection and accessibility; native reader/copy, scaling and performance budgets | own 001E, own 001F |
+| 001F | Document find, theme and text controls; Unicode find and native command/settings checks | own 001E, CORE-005A, CORE-005A2 |
+| 001G | Large-document layout, global selection and accessibility; native reader/copy, scaling and performance budgets | own 001F |
 | 001H | External refresh, anchors and reading restoration; replacement/deletion/race and relaunch checks | own 001G |
 | 001I | Local development artifact, license inventory and relocated launch; full skeleton acceptance on this host | own 001H, CORE-003B |
 
@@ -124,7 +153,7 @@ Platform-specific early gate under D-017:
 | --- | --- | --- |
 | LNX-001D1 | Prove native document/heading semantics, off-screen heading navigation and continuous reading beyond visible rows with AT-SPI inspection and owner-confirmed Orca behavior on the KDE Wayland baseline; retain correct focus, reading order and basic selection | LNX-001D |
 
-LNX-001E and LNX-001F additionally depend on LNX-001D1. Do not deepen the
+On Linux the chain is LNX-001D, LNX-001D1, then LNX-001E. Do not deepen the
 Linux renderer before that proof. If it fails, stop those dependent phases,
 record the failing behavior and return to the owner for a native accessibility
 design revision or explicit renderer decision. App-level shortcuts alone do
@@ -150,14 +179,16 @@ requires native validation; the counterparts on other hosts are independent.
 | Suffix | Scope and acceptance evidence | Merged prerequisites |
 | --- | --- | --- |
 | 002A | Folder capability/access recovery and recents; denied/revoked/moved-folder checks | DESK-001 |
-| 002B | Native workspace browser and navigation; large-folder and keyboard checks | own 002A |
+| 002B | Native workspace browser and navigation; large-folder and keyboard checks | own 002A, CORE-005D |
 | 002C | Workspace search UI; bounded indexing, cancellation and result navigation checks | own 002B, CORE-005B, CORE-005B2, CORE-005C |
 | 002D | Persistent preferences/native settings; migration and relaunch checks | own 002A |
 | 002E | Workspace watching/restoration and performance; change storms, access loss and session recovery | own 002C, own 002D |
 | 002F | Development packaging and complete R1 conformance; install/run evidence and host budgets | own 002E |
 
 Close each platform's 002 milestone from these merged phases; DESK-002 still
-requires all three products. Production packaging/signing/publishing requires
+requires all three products and HARD-001 (release hardening: coverage-guided
+fuzzing of the parser, model decoder and safe FFI inputs, sanitizer runs where
+supported and a dependency advisory scan; D-026). HARD-001 follows DESK-001. Production packaging/signing/publishing requires
 separate owner authorization.
 
 ### Later delivery phases
@@ -185,11 +216,11 @@ Record exact dependencies and capability fallbacks when those gates open.
 
 ### Example boot schedule
 
-On the current host, complete ready shared prerequisites and its 001A–001I
-sequence, with one PR/review/owner merge per phase. Then boot another host and
+After the shared track closes with CORE-006, complete the current host's
+001A–001I sequence, with one PR/review/owner merge per phase. Then boot another host and
 complete its ready foundation sequence. Host order is flexible; no host needs
-the counterpart's 001B–001I merely for symmetry. Finish outstanding shared and
-all-host evidence, close DESK-001, then batch each platform's 002 phases in the
+the counterpart's 001B–001I merely for symmetry. Close each host's 001
+aggregate, then DESK-001, then batch each platform's 002 phases in the
 same way. If a review, shared prerequisite or gate blocks work, record the
 handoff rather than bypassing it. The concurrency limit remains one.
 

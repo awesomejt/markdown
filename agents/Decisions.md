@@ -443,3 +443,96 @@ input; prose is unchanged). Hosts navigate find and workspace hits by span or
 anchor, because a v1 `unit` index does not apply to a v2 view
 (specs/ffi/README.md). The v2 URL/IDNA dependencies ship in native packages,
 so each 001I license inventory includes them.
+
+## D-026 — CORE-FIX phase from the shared-core reviews
+
+**Date:** 2026-10-28
+
+**Status:** accepted by the owner on the shared-core review PR
+([PR #16](https://github.com/awesomejt/markdown/pull/16))
+
+**Context:** Three reviews covered the shared core at implementation baseline
+`39d1a56`: the [Claude holistic review](../docs/reviews/2026-10-28-core-holistic-review.md)
+(F1–F7), the [Codex review](../docs/reviews/2026-10-28-codex-shared-core-review.md)
+(C1–C7) and the [Grok review](../docs/reviews/2026-10-28-grok-shared-core-review.md)
+(G1–G6). None found a correctness, memory-safety or file-access defect. The
+owner reconciled them and decided the open questions.
+
+**Decision:**
+
+- The follow-ups form a CORE-FIX phase, run in this order before any platform
+  phase, including the 001A shells: DOC-001, CORE-002B, CORE-003C, CORE-003D,
+  CORE-005C, CORE-005D. State encodes the order as dependency edges, and the
+  shared track then closes the CORE aggregates before any 001A (D-027).
+  [TODO.md](../TODO.md) holds the scope.
+- **Import policy (F3, G3, C2).** CORE-002B makes decoding match the producer,
+  not a stricter policy. V1 `from_json` re-runs the parser's own link and
+  resource policy. The shared structural validation applies the producer's
+  metadata string guards under v1 and v2. V1 keeps accepting the
+  `https://user:pw@…` targets its parser emits; native hosts get credential
+  denial from v2 (D-025).
+- **Bare GFM autolinks (C3).** R1.2 stands. The shared core implements bare
+  `http(s)://`, `www.` and email autolinks in one bounded pass (CORE-003D). No
+  host adds its own detection. CORE-003D records whether v1 output gains them.
+- **v2 conformance (C5).** The supported corpus checks run on v2 with
+  version-specific expectations (CORE-003C), before the autolink change.
+- **Workspace content search (G4).** Content search is a text index that does
+  not depend on the model version. Its v1 parse is deliberate, and richer
+  semantics come from the document session. CORE-005C documents this with
+  the memory guard.
+- **Filename warnings (C4).** The invisible-name flag widens to blank
+  characters that are not Cf (Hangul fillers, Braille blank). Names are never
+  rejected (CORE-005D).
+- **Release hardening (F7, G6, C7).** HARD-001 adds coverage-guided fuzzing,
+  sanitizer runs and a dependency advisory scan before DESK-002.
+- **Not scheduled.** Each 001B keeps its accepted D-025, flat-view/RSS and
+  MSVC requirements (F1, F2, F6). Maintenance items (splitting `parse.rs`,
+  an ID side index, footnote label double charge) wait for a concrete change
+  to that code. A `pulldown-cmark` upgrade is its own gated task.
+
+**Consequences:** Platform 001A work waits for six small shared phases, but
+the three hosts build on one validated import policy, one autolink rule set,
+v2-checked conformance and one workspace memory bound. Each platform's 002B
+needs CORE-005D when the 002 tasks are created at DESK-001.
+
+## D-027 — Linear shared and per-host task tracks
+
+**Date:** 2026-10-28
+
+**Status:** accepted by the owner on the shared-core review PR
+([PR #16](https://github.com/awesomejt/markdown/pull/16))
+
+**Context:** The graph had no cycles, but the shared track and the platform
+tracks waited on each other. CORE-001 waited on every host's 001A, and
+CORE-002 to CORE-006 waited on CORE-001 in turn. CORE-006 waited on every
+host's 001B, while each host's 001 aggregate waited on CORE-006. All 28
+platform 001 children sat in `portable-core`, so the core phase could not
+finish until three desktop skeletons existed. Many edges only repeated what
+another path already enforced.
+
+**Decision:**
+
+- The shared track is one chain in `portable-core`: the CORE-FIX tasks
+  (D-026), then the aggregates CORE-001 to CORE-006 in order. The aggregates
+  close on shared acceptance.
+- Native evidence moves to the platform tasks that produce it. 001A carries
+  the native shell CI job (from CORE-001). 001B carries the release-mode
+  native package consumer (from CORE-006), alongside its D-025 model-v2 and
+  flat-view/RSS acceptance. Each host's 001 aggregate checks both.
+- The platform 001 children move to `desktop-apps`. Each host is one chain
+  from CORE-006: 001A to 001D, LNX-001D1 on Linux, then 001E to 001I and the
+  001 aggregate. 001F now follows 001E, and 001G follows 001F.
+- The host chains stay independent of each other, because they run on
+  different machines; the concurrency limit of one serializes the work.
+  DESK-001 and DESK-002 are the only joins. HARD-001 sits between them.
+- State keeps no redundant edge between open tasks. Edges from completed
+  tasks stay as history. `tools/project_state.py` gains `remove_dependency`
+  and `update_task` (text, priority, role and phase of tasks without an
+  active pass), which use the backend's lock, revision and idempotency rules,
+  so roadmap changes no longer need hand edits.
+
+**Consequences:** `portable-core` completes when CORE-006 closes, and that
+activates `desktop-apps`. The graph went from 181 to 131 edges. The
+eligible queue shows one shared task at a time, then one task per host. The
+aggregate acceptance in Implementation-Baseline.md (GATE-001) is superseded
+where it made CORE-001 and CORE-006 wait for native hosts.

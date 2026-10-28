@@ -11,7 +11,16 @@ design belong in `docs/` or `agents/`; runtime transcripts do not belong here.
 - Later platforms: iOS and iPadOS after the desktop contracts are stable.
 - Organization: one native monorepo with independent native UIs,
   shared specifications/fixtures/benchmarks, and a candidate portable core.
-- Status 2026-10-28 (latest): every shared CORE delivery phase through
+- Status 2026-10-28 (latest, PR #16): Codex and Grok reviewed the shared
+  core too. The owner accepted D-026 (the CORE-FIX phase: DOC-001, CORE-002B,
+  CORE-003C, CORE-003D bare autolinks, CORE-005C, CORE-005D, plus HARD-001
+  before DESK-002) and D-027. Under D-027 the graph is linear: the shared
+  track ends with the CORE-001 to CORE-006 aggregates in `portable-core`,
+  then each host is an independent chain in `desktop-apps` from CORE-006. The
+  native CI and package-consumer evidence moved to each 001A/001B. The state
+  wrapper has `remove_dependency` and `update_task`. Only DOC-001 is eligible.
+  See HANDOFF.md.
+- Status 2026-10-28: every shared CORE delivery phase through
   CORE-006A is merged. The owner's holistic CORE review
   (docs/reviews/2026-10-28-core-holistic-review.md, PR #16) found no
   correctness or memory-safety defect. The owner accepted D-025: native 001B

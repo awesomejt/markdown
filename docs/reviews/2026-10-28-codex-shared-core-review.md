@@ -340,3 +340,10 @@ Proposed order for owner agreement, without changing the live queue:
 
 The sequence is proposed, not a merge or implementation authorization. This
 report is intended for reconciliation with Grok's next review and the owner.
+
+## Owner disposition (2026-10-28)
+
+The owner reconciled this review with the other two shared-core reviews; see
+the [reviews index](README.md). Accepted outcomes are in
+[Decisions.md](../../agents/Decisions.md) D-026 (the CORE-FIX phase) and D-027
+(linear task tracks), with task scope in [TODO.md](../../TODO.md). C2 (including the credential-URL correction) is in CORE-002B, C3 is CORE-003D (implement), C4 is CORE-005D (widen), C5 is CORE-003C, C6 is in DOC-001, C1 is CORE-005C, and C7's release items are HARD-001.
