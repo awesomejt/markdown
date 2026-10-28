@@ -109,9 +109,12 @@ pub struct SkipCounts {
 /// call returns `Ok`, so a cancelled call leaves it unchanged.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct ContentProgress {
-    pub files_searched: u64,
+    /// Files admitted and read, including those then skipped as
+    /// `InvalidUtf8` or `ParseFailed`; the `max_files` budget counts these.
+    pub files_read: u64,
     pub files_matched: u64,
-    pub bytes_searched: u64,
+    /// Bytes of those files; the `max_total_bytes` budget counts these.
+    pub bytes_read: u64,
     pub matches: u64,
     /// Files whose hits were cut by the per-file or total match budget.
     pub files_truncated: u64,
@@ -232,11 +235,11 @@ impl ContentQuery {
             progress.skip(reason);
             return Admission::Skip(reason);
         }
-        let stop = if progress.files_searched >= limits.max_files {
+        let stop = if progress.files_read >= limits.max_files {
             Some(StopReason::Files)
         } else if progress.matches >= limits.max_total_matches {
             Some(StopReason::Matches)
-        } else if progress.bytes_searched.saturating_add(byte_len) > limits.max_total_bytes {
+        } else if progress.bytes_read.saturating_add(byte_len) > limits.max_total_bytes {
             Some(StopReason::Bytes)
         } else {
             None
@@ -286,6 +289,10 @@ impl ContentQuery {
         bytes: &[u8],
         token: &CancellationToken,
     ) -> Result<DocumentOutcome, WorkspaceError> {
+        // Every admitted read is charged, so post-read skips cannot evade the
+        // file and byte budgets (PR #10 review).
+        progress.files_read += 1;
+        progress.bytes_read += bytes.len() as u64;
         let Ok(text) = std::str::from_utf8(bytes) else {
             progress.skip(SkipReason::InvalidUtf8);
             return Ok(DocumentOutcome::Skipped(SkipReason::InvalidUtf8));
@@ -339,8 +346,6 @@ impl ContentQuery {
                 anchor,
             });
         }
-        progress.files_searched += 1;
-        progress.bytes_searched += bytes.len() as u64;
         progress.matches += hits.len() as u64;
         if !hits.is_empty() {
             progress.files_matched += 1;

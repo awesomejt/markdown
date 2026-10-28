@@ -141,6 +141,10 @@ fn paths_validate_without_normalizing() {
         ("a\u{85}.md", PathError::Control),
         ("evil\u{202E}dm.txt", PathError::Control),
         ("x\u{2066}.md", PathError::Control),
+        // PR #10 review: bidi marks reorder display like the embeddings do.
+        ("readme\u{200F}.md", PathError::Control),
+        ("readme\u{200E}.md", PathError::Control),
+        ("x\u{61C}.md", PathError::Control),
     ];
     for (path, error) in cases {
         assert_eq!(WorkspacePath::new(*path), Err(*error), "{path:?}");
@@ -161,6 +165,31 @@ fn paths_validate_without_normalizing() {
     );
     // Errors never echo the path.
     assert_eq!(PathError::Control.to_string(), "control");
+}
+
+#[test]
+fn invisible_format_characters_are_flagged_not_rejected() {
+    for invisible in [
+        "readme\u{200B}.md",
+        "a\u{FEFF}.md",
+        "a\u{2060}b.md",
+        "soft\u{AD}hyphen.md",
+    ] {
+        let path = WorkspacePath::new(invisible).unwrap();
+        assert!(path.has_invisible(), "{invisible:?}");
+    }
+    // ZWJ emoji and ZWNJ (Persian, Indic) names are ordinary.
+    for visible in [
+        "emoji/👩\u{200D}💻.md",
+        "\u{645}\u{6CC}\u{200C}\u{62E}\u{648}\u{627}\u{647}\u{645}.md",
+        "plain.md",
+        "Cafe\u{301}.md",
+    ] {
+        assert!(
+            !WorkspacePath::new(visible).unwrap().has_invisible(),
+            "{visible:?}"
+        );
+    }
 }
 
 #[test]
@@ -647,7 +676,7 @@ fn admission_filters_and_skips() {
             ..SkipCounts::default()
         }
     );
-    assert_eq!(p.files_searched, 0);
+    assert_eq!(p.files_read, 0);
 
     // `search` re-checks with the real bytes, so a wrong estimate is safe.
     let small = with_limits(
@@ -669,7 +698,9 @@ fn admission_filters_and_skips() {
     );
     assert_eq!(p.skipped.too_large, 1);
     assert_eq!(p.skipped.invalid_utf8, 1);
-    assert_eq!((p.files_searched, p.bytes_searched), (0, 0));
+    // The too-large skip happens before the read is charged; the invalid
+    // UTF-8 file was admitted and read, so it counts against the budgets.
+    assert_eq!((p.files_read, p.bytes_read), (1, 4));
 
     let hidden = ContentQuery::new(
         "x",
@@ -694,7 +725,7 @@ fn parse_failures_are_skipped_and_counted() {
         DocumentOutcome::Skipped(SkipReason::ParseFailed)
     );
     assert_eq!(p.skipped.parse_failed, 1);
-    assert_eq!(p.files_searched, 0);
+    assert_eq!((p.files_read, p.bytes_read), (1, deep.len() as u64));
     let found = hits(search(&q, &mut p, &md(2), "x"));
     assert_eq!(found.hits.len(), 1);
 }
@@ -722,12 +753,7 @@ fn file_and_byte_budgets_stop_permanently() {
         Admission::Stop(StopReason::Files)
     );
     assert_eq!(
-        (
-            p.files_searched,
-            p.files_matched,
-            p.bytes_searched,
-            p.matches
-        ),
+        (p.files_read, p.files_matched, p.bytes_read, p.matches),
         (2, 1, 5, 1)
     );
 
@@ -746,8 +772,65 @@ fn file_and_byte_budgets_stop_permanently() {
         search(&q, &mut p, &md(2), "x 345"),
         DocumentOutcome::Stopped(StopReason::Bytes)
     );
-    assert_eq!(p.bytes_searched, 6);
+    assert_eq!(p.bytes_read, 6);
     assert_eq!(p.stopped, Some(StopReason::Bytes));
+}
+
+#[test]
+fn post_read_skips_consume_file_and_byte_budgets() {
+    // PR #10 review: invalid UTF-8 and parse-failing files are read (and
+    // parsed) before they are skipped, so they must exhaust the budgets.
+    let invalid = vec![0xffu8; 512 * 1024];
+    let q = with_limits(
+        "x",
+        ContentLimits {
+            max_total_bytes: 1024 * 1024,
+            ..ContentLimits::default()
+        },
+    );
+    let mut p = ContentProgress::default();
+    let token = CancellationToken::new();
+    let outcomes: Vec<DocumentOutcome> = (0..100)
+        .map(|i| q.search(&mut p, &md(i), &invalid, &token).unwrap())
+        .collect();
+    assert_eq!(
+        outcomes[0],
+        DocumentOutcome::Skipped(SkipReason::InvalidUtf8)
+    );
+    assert_eq!(
+        outcomes[1],
+        DocumentOutcome::Skipped(SkipReason::InvalidUtf8)
+    );
+    assert!(
+        outcomes[2..]
+            .iter()
+            .all(|o| *o == DocumentOutcome::Stopped(StopReason::Bytes))
+    );
+    assert_eq!((p.files_read, p.bytes_read), (2, 1024 * 1024));
+    assert_eq!(p.skipped.invalid_utf8, 2);
+
+    let deep = format!("{}x", "> ".repeat(300));
+    let q = with_limits(
+        "x",
+        ContentLimits {
+            max_files: 10,
+            ..ContentLimits::default()
+        },
+    );
+    let mut p = ContentProgress::default();
+    let outcomes: Vec<DocumentOutcome> =
+        (0..50).map(|i| search(&q, &mut p, &md(i), &deep)).collect();
+    assert!(
+        outcomes[..10]
+            .iter()
+            .all(|o| *o == DocumentOutcome::Skipped(SkipReason::ParseFailed))
+    );
+    assert!(
+        outcomes[10..]
+            .iter()
+            .all(|o| *o == DocumentOutcome::Stopped(StopReason::Files))
+    );
+    assert_eq!((p.files_read, p.skipped.parse_failed), (10, 10));
 }
 
 #[test]
@@ -912,7 +995,7 @@ fn cancellation_returns_nothing_and_keeps_progress() {
             Err(WorkspaceError::Cancelled) => assert_eq!(p, ContentProgress::default()),
             Ok(DocumentOutcome::Searched(found)) => {
                 assert_eq!(found.hits.len(), 1);
-                assert_eq!(p.files_searched, 1);
+                assert_eq!(p.files_read, 1);
             }
             other => panic!("{other:?}"),
         }
@@ -941,7 +1024,7 @@ fn workspace_run_over_corpus_is_deterministic() {
     let (b, pb) = run();
     assert_eq!(a, b);
     assert_eq!(pa, pb);
-    assert_eq!(pa.files_searched, CORPUS.len() as u64);
+    assert_eq!(pa.files_read, CORPUS.len() as u64);
     assert!(pa.matches > 0);
     fn assert_send_sync<T: Send + Sync>() {}
     assert_send_sync::<ContentQuery>();

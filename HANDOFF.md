@@ -12,7 +12,7 @@ branch. CORE-005B adds `markdown_core::workspace` per
 [the workspace search contract](specs/workspace-search/README.md). Adapters
 feed `WorkspaceEntry` values: an opaque `u64` ID plus a validated
 `WorkspacePath`, which is relative and `/`-separated with no dot components,
-controls or bidi overrides. The core never resolves paths. `find_names`
+controls or bidi formatting characters. The core never resolves paths. `find_names`
 ranks name-prefix, name and path hits. `ContentQuery::admit` and `search`
 work file by file, with a caller-held `ContentProgress` holding file, byte,
 per-file and total match budgets and permanent stops. Hits equal find's

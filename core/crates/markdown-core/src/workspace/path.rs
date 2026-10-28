@@ -93,6 +93,15 @@ impl WorkspacePath {
     pub fn kind(&self) -> EntryKind {
         classify_name(self.name())
     }
+    /// True when the path contains an invisible format character (Unicode
+    /// General_Category=Cf, the table shared with front matter) other than
+    /// ZWNJ/ZWJ, which emoji and Indic names need. Such a name can look
+    /// identical to another; the UI should mark it rather than hide it.
+    pub fn has_invisible(&self) -> bool {
+        self.0
+            .chars()
+            .any(|c| !matches!(c, '\u{200C}' | '\u{200D}') && crate::metadata::unsafe_character(c))
+    }
 }
 impl Borrow<str> for WorkspacePath {
     fn borrow(&self) -> &str {
@@ -105,10 +114,15 @@ impl std::fmt::Display for WorkspacePath {
     }
 }
 
-/// C0/C1 controls, DEL, and the bidi embeddings, overrides and isolates that
-/// can make a displayed name read differently from its characters.
+/// C0/C1 controls, DEL, and every bidi formatting character (marks,
+/// embeddings, overrides and isolates) that can make a displayed name read
+/// differently from its characters.
 fn is_rejected_char(c: char) -> bool {
-    c.is_control() || matches!(c, '\u{202A}'..='\u{202E}' | '\u{2066}'..='\u{2069}')
+    c.is_control()
+        || matches!(
+            c,
+            '\u{061C}' | '\u{200E}' | '\u{200F}' | '\u{202A}'..='\u{202E}' | '\u{2066}'..='\u{2069}'
+        )
 }
 
 /// Coarse content class of a file name.

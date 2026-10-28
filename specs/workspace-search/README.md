@@ -45,12 +45,20 @@ path text.
 | Relative: no leading `/` | `Absolute` |
 | No empty component (`//`, trailing `/`) | `EmptyComponent` |
 | No `.` or `..` component | `DotComponent` |
-| No control character (Cc, including DEL and C1) and no bidi embedding, override or isolate (U+202A–202E, U+2066–2069) | `Control` |
+| No control character (Cc, including DEL and C1) and no bidi formatting character: the ALM, LRM and RLM marks (U+061C, U+200E, U+200F), embeddings and overrides (U+202A–202E) and isolates (U+2066–2069) | `Control` |
 
 Backslash, colon and other characters that are legal in POSIX names are
 ordinary characters. Windows adapters convert `\` separators to `/` before
 building a path. An adapter skips entries it cannot represent. A rejected name
 is never shown.
+
+Other invisible format characters are accepted, because rejecting them would
+hide real files, but `WorkspacePath::has_invisible()` reports them. It uses the
+Unicode 16.0 General_Category=Cf table shared with
+[front matter](../../docs/Front-Matter.md), except ZWNJ and ZWJ, which emoji,
+Persian and Indic names need. Examples are U+200B ZWSP, U+FEFF, U+2060 and the
+soft hyphen. Such a name can display exactly like another name, so the UI
+should mark it.
 
 ### Shared entry filter
 
@@ -139,8 +147,12 @@ the shape CORE-005B2 needs under [D-022](../../agents/Decisions.md).
 7. Each match becomes a `ContentHit`, and the file returns
    `Searched(DocumentHits)`. Its `hits` may be empty.
 
-Skips do not consume the file or byte budgets. Each skip is counted once in
-`progress.skipped` per reason.
+Pre-read skips (`Hidden`, `NotMarkdown`, `TooLarge`) do not consume the file
+or byte budgets. Every file that passes admission in `search` is charged to
+`files_read` and `bytes_read` before decoding. That includes files later
+skipped as `InvalidUtf8` or `ParseFailed`, so a workspace of unreadable or
+unparseable files still reaches `Stop(Files)` or `Stop(Bytes)`. Each skip is
+counted once in `progress.skipped` per reason.
 
 ### Results
 
@@ -201,9 +213,9 @@ queries (`EmptyQuery`, after find's normalization) and long queries
 later `admit` or `search` returns the same `Stop`. A stop means the results may be incomplete. The UI should say so
 rather than present the list as exhaustive.
 
-`ContentProgress` reports `files_searched`, `files_matched`,
-`bytes_searched`, `matches`, `files_truncated`, per-reason `skipped` counts
-and `stopped`. These are enough for a progress line and a final summary.
+`ContentProgress` reports `files_read`, `files_matched`, `bytes_read`,
+`matches`, `files_truncated`, per-reason `skipped` counts and `stopped`.
+`files_read` includes the `invalid_utf8` and `parse_failed` skips. These are enough for a progress line and a final summary.
 
 **Retained memory** is bounded by the results the caller keeps: at most
 `max_total_matches` hits, each up to a snippet (≤ 656 characters) plus an
@@ -247,8 +259,10 @@ visible:
 in debug and release with default, `model-v2` and all-feature builds. It
 covers:
 
-- Path validation for every error kind, the size and depth bounds, POSIX
-  characters (backslash, colon) and errors that carry no path text.
+- Path validation for every error kind, including the bidi marks; the size
+  and depth bounds; POSIX characters (backslash, colon); and errors that carry
+  no path text. Invisible format characters are flagged, while ZWJ and ZWNJ
+  names are not.
 - Classification, including case, a leading dot and double extensions, and
   hidden detection.
 - Name ranks, order, highlight ranges, filters, case sensitivity, matches
@@ -258,14 +272,16 @@ covers:
 - Content hits equal to find for up to 40 words in each of the 14 corpus and
   spec sources, with snippet invariants, line numbers and anchor offsets.
 - Snippet text for markup, entities, breaks, code spans and blocks, alt text,
-  format characters and matched control characters. Dense matches with overlapping context, zero
-  context, clipped long matches, and bounded snippets inside an 8 MB
-  paragraph.
+  format characters and matched control characters. Dense matches with
+  overlapping context, zero context, clipped long matches, and bounded
+  snippets inside an 8 MB paragraph.
 - Anchors resolving exactly in an unchanged session snapshot (equal
   `SourceInfo`) and after an edit (different `SourceInfo`).
 - Admission filters and skips, a wrong size estimate, invalid UTF-8, parse
   failure, sticky file, byte and match stops, per-file truncation and
   limit-range validation.
+- Invalid-UTF-8 and parse-failing files exhausting the byte and file budgets:
+  the PR #10 review probe.
 - Pre-cancelled and concurrent cancellation, with progress left unchanged.
 - A deterministic repeated run over the corpus as a workspace.
 - 4,096 deterministic generated markup-heavy inputs (300,000 run locally on
