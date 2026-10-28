@@ -181,7 +181,7 @@ validity and rendering stay engine work and are not asserted.
 | Limit | Default | Enforcement |
 | --- | --- | --- |
 | Source | 8 MiB | Before hashing, initial model validation or parser construction |
-| Events | 2,000,000 | Before adapting each emitted event |
+| Events | 2,000,000 | Before adapting each emitted event; text rejoined across a `$` split is refunded |
 | Nodes | 1,000,000 | Before adding a model node |
 | Depth | 128 | Parser events and model/synthetic-paragraph ancestry |
 | Copied text | 32 MiB | Cumulative copied source-derived strings, including repeated destinations/titles and metadata |
@@ -189,7 +189,9 @@ validity and rendering stay engine work and are not asserted.
 Limits are caller-adjustable defensive ceilings, not release performance
 budgets or allocator quotas. Parser construction can scan/allocate for the
 entire bounded source before it emits an event. The node/event/depth ceilings
-do not interrupt that initial scan. Derived strings and string appends can
+do not interrupt that initial scan, so dense delimiter input can peak at
+over 1 GiB of heap at the source ceiling before the node limit stops it (see
+[Parser-Budgets.md](Parser-Budgets.md)). Derived strings and string appends can
 have temporary/spare capacity; static diagnostics and IDs have additional
 bounded overhead. Model validation independently verifies the result; wire
 limits apply to decoding, not to serialized output size.

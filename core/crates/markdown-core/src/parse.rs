@@ -14,6 +14,7 @@ use unicase::UniCase;
 #[derive(Clone, Copy, Debug)]
 pub struct ParseLimits {
     pub model: ModelLimits,
+    /// Upstream events, excluding `$`-split text the builder rejoins.
     pub max_events: usize,
     /// Total copied source-derived string bytes, including repeated references.
     pub max_text_bytes: usize,
@@ -94,6 +95,8 @@ struct Builder<'a> {
     root_end: u64,
     /// An upstream offset escaped its parent or preceded a sibling.
     offset_conflict: bool,
+    /// Text events rejoined across a `$` split; not charged to `max_events`.
+    merged_events: usize,
 }
 
 /// Produce a validated immutable snapshot from exact UTF-8 bytes, with no I/O.
@@ -251,6 +254,7 @@ fn build<'a, C: Checkpoint>(
         footnote_references: Vec::new(),
         root_end: 0,
         offset_conflict: false,
+        merged_events: 0,
         doc: DocumentInput {
             model_version: MODEL_VERSION,
             document_id,
@@ -310,7 +314,9 @@ fn build<'a, C: Checkpoint>(
     // V2 only: source ranges that produced events, for shadowed-definition notes.
     let mut covered: Vec<Range<usize>> = Vec::new();
     while let Some((event, range)) = events.next() {
-        if count >= limits.max_events {
+        // Rejoined `$` splits are refunded so dollar-dense prose costs what plain
+        // prose does; the source ceiling still bounds the raw event count.
+        if count - b.merged_events >= limits.max_events {
             return Err(ParseError::EventLimit.into());
         }
         if count.is_multiple_of(CANCEL_CHECK_EVENTS) {
@@ -759,6 +765,7 @@ impl Builder<'_> {
         }
         joined.push_str(text);
         prev.end = range.end as u64;
+        self.merged_events += 1;
         true
     }
     fn inline_parent(&mut self, range: &Range<usize>) -> Result<(), ParseError> {

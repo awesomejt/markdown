@@ -26,7 +26,10 @@ design belong in `docs/` or `agents/`; runtime transcripts do not belong here.
   (proposed) raises the defaults to 1,000,000 nodes and 2,000,000 events.
   Faster validation (hash index, visit bitmap) halved parse time: 5 MiB prose
   takes 143 ms with a 145 MiB peak on the M5 Max. The source-offset fallback
-  now replaces only the affected top-level block. After merge, CORE-003B (the
+  now replaces only the affected top-level block. Grok (PR #13) found dense
+  delimiter storms peak at about 1,152 MiB at the 8 MiB ceiling (unchanged
+  from base); now documented and a 2 MiB storm is budgeted. `$` rejoins are
+  refunded from the event limit. After merge, CORE-003B (the
   aggregate) can close, then the owner's holistic review comes before any
   platform phase.
 - CORE-003B3 (merged, PR #12 `66c2162`). One shared `PARSER_OPTIONS` (also

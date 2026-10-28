@@ -405,6 +405,12 @@ recorded, not guaranteed ([Parser-Budgets.md](../docs/Parser-Budgets.md)).
 
 **Consequences:** Sessions, workspace content search and the C ABI's
 zero-selects-default limits inherit the new values without an ABI change. A
-1,000,000-node document can reach about 300 MiB peak heap, and a 5 MiB prose
-snapshot retains about 102 MiB, so reducing per-node memory is a tracked
-residual risk. Hosts that need tighter ceilings pass explicit limits.
+5 MiB prose snapshot retains about 102 MiB. Dense delimiter input at the
+8 MiB source ceiling peaks at about 1,152 MiB (about 140 times the source)
+before the node limit stops it, unchanged from the earlier defaults because
+the cost is upstream inline work. A 2 MiB dense storm has a CI heap budget.
+Reducing per-node memory and pre-screening delimiter density are tracked
+residual risks. Hosts that need tighter ceilings pass explicit limits, such as
+a lower source limit or content search file size. Text events the builder
+rejoins across a `$` split are not charged to the event limit, so
+dollar-dense prose at the ceiling also parses.

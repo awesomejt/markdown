@@ -57,6 +57,9 @@ const BUDGETS: [(&str, usize, Duration); 4] = [
     ("long-lines-1mib", 4 * MIB, Duration::from_millis(100)),
 ];
 
+/// A 2 MiB `*a` storm, about 1.25x its 407.7 MiB measured peak.
+const DENSE_STORM_BUDGET: usize = 510 * MIB;
+
 fn parse(source: &str) -> Document {
     parse_markdown(
         source,
@@ -124,4 +127,31 @@ fn retained_snapshot_is_smaller_than_the_parse_peak() {
     assert!(retained < peak);
     assert!(retained <= 128 * MIB, "retained {retained} bytes");
     drop(doc);
+}
+
+#[test]
+fn dense_delimiter_storm_stays_within_its_heap_budget() {
+    let _guard = SERIAL.lock().unwrap_or_else(|e| e.into_inner());
+    // Upstream inline work runs before the node limit can fire, so a dense
+    // storm peaks far above its source size (about 140x at the 8 MiB ceiling).
+    // 2 MiB keeps CI light while catching a regression in that ratio.
+    let source = "*a".repeat(MIB);
+    let (result, peak) = peak_during(|| {
+        parse_markdown(
+            &source,
+            DocumentId("budget".into()),
+            RevisionId("r1".into()),
+            ParseLimits::default(),
+        )
+    });
+    eprintln!(
+        "dense-storm-2mib: peak {:.1} MiB, {:?}",
+        peak as f64 / MIB as f64,
+        result.as_ref().err()
+    );
+    drop(result);
+    assert!(
+        peak <= DENSE_STORM_BUDGET,
+        "peak {peak} bytes over the budget"
+    );
 }

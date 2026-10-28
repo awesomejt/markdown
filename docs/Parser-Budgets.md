@@ -68,6 +68,12 @@ model and C ABI node ceiling, and 2,000,000 events. Depth (128), source (8 MiB)
 and copied text (32 MiB) are unchanged. Zero in `md_session_options` still
 selects these defaults; the ABI does not change. See D-024.
 
+`ENABLE_MATH` splits text at every non-math `$`, and the builder rejoins those
+splits into one Text node. A rejoined event is not charged to the event
+limit, so dollar-dense prose (`Costs $5 and $10, or $7.50.` lines) parses at
+the source ceiling like plain prose instead of failing with `EventLimit` from
+about 7 MiB. The source ceiling still bounds the raw event count.
+
 ## Source-offset fallback
 
 pulldown-cmark 0.13.5 reports some tab-expanded container offsets outside
@@ -139,8 +145,11 @@ everywhere. Release builds also guard wall time, using the best of three runs.
 | prose-5mib | 184 MiB | 1,500 ms | 143.3 ms |
 | delimiter-storm-1mib | 84 MiB | 600 ms | 53.3 ms |
 | long-lines-1mib | 4 MiB | 100 ms | 5.2 ms |
+| `*a` storm, 2 MiB | 510 MiB | none | stops with `NodeLimit` |
 
-Heap budgets are about 1.25 times the measured peak. Time guards are about 10
+Heap budgets are about 1.25 times the measured peak.
+The dense storm row is the worst case measured, not a fixture profile; see the
+memory risk below. Time guards are about 10
 times the named-host median, which leaves room for slower hosted runners while
 still catching superlinear regressions. A completed 5 MiB snapshot must also
 retain no more than 128 MiB. These figures are the parser's share of D-016's
@@ -157,9 +166,25 @@ evidence.
   guards on Linux, macOS and Windows; named Windows and Linux workstations
   still need their own measurements in the platform phases.
 - Memory: a parse peaks at about 29 times the source size for 5 MiB prose, and
-  a snapshot retains about 20 times. A 1,000,000-node hostile document can
-  approach 300 MiB at peak. Reducing per-node cost (string IDs, per-node child
-  vectors) would need a model change and is not attempted here.
+  a snapshot retains about 20 times. Dense delimiter input is much worse,
+  because upstream inline work runs before the node limit can fire. Counted
+  release peaks above baseline:
+
+  | Input | Result | Peak heap MiB |
+  | --- | --- | ---: |
+  | `delimiter-storm-v1` profile, 8 MiB | `NodeLimit` | 312.2 |
+  | `*a` repeated, 1 MiB | parses | 311.7 |
+  | `*a` repeated, 2 MiB | `NodeLimit` | 407.7 |
+  | `*a` or `**a* _b__` (with a trailing space) repeated, 8 MiB | `NodeLimit` | 1,152.0 |
+
+  That is about 140 times the source at the 8 MiB ceiling, and the same on
+  the pre-phase base, so it is not a regression. Sessions, workspace content
+  search (`max_file_bytes` defaults to 8 MiB) and C ABI callers inherit it, so
+  one hostile file in a scanned folder can briefly cost over 1 GiB. CI
+  budgets the 2 MiB storm to catch regressions in the ratio. A lower content
+  search file default or a delimiter-density pre-check is left to the
+  workspace and platform phases. Reducing per-node cost (string IDs, per-node
+  child vectors) would need a model change and is not attempted here.
 - SHA-256 fingerprinting is duplicated between the builder and validation.
   Removing the second pass would weaken independent validation, so it is left
   as an optimization opportunity.

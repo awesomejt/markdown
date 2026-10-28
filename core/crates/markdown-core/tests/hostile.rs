@@ -408,6 +408,10 @@ fn source_ceiling_and_dense_markup_stop_with_typed_limits() {
     let prose = profiles::generate("prose-sections-v1", limits.model.max_source_bytes - 1, 0);
     let prose = String::from_utf8(prose).unwrap();
     assert!(v1(&prose).is_ok());
+    // Dollar-dense prose costs no extra events: `$` splits are rejoined first.
+    let line = "Costs $5 and $10, or $7.50.\n";
+    let dollars = line.repeat(limits.model.max_source_bytes / line.len());
+    assert!(v1(&dollars).is_ok());
     // Dense hostile markup at the ceiling stops with a typed node limit.
     let storm = profiles::generate("delimiter-storm-v1", limits.model.max_source_bytes, 0);
     let storm = String::from_utf8(storm).unwrap();

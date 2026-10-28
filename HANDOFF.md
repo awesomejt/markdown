@@ -32,8 +32,13 @@ on this branch. CORE-003B4 adds the following
   top-level block. The whole-body path remains as a safety net, and mutation
   tests assert it never fires.
 
-Next: run `tools/check.py all`, open the phase PR, post `/grok review` and get
-an owner-authorized merge. Then close CORE-003B, followed by the owner's
+- **Review fixes.** Grok's first review of PR #13 found that dense
+  delimiter storms peak at about 1,152 MiB at the 8 MiB ceiling (the same on
+  base). The worst case is now documented, with a 510 MiB budget on a 2 MiB
+  `*a` storm. Rejoined `$` text events are refunded from the event limit, so
+  dollar-dense prose parses at the ceiling.
+
+Next: owner acceptance of D-024 and an owner-authorized merge of PR #13. Then close CORE-003B, followed by the owner's
 holistic review before any platform phase.
 
 ## CORE-003B3 extension semantics (merged in PR #12)
