@@ -72,6 +72,7 @@ Refine an oversized row before coding, preserving its parent acceptance criteria
 | CORE-003D | CORE-FIX 4. Bare GFM `http(s)://`, `www.` and email autolinks in one bounded shared pass with exact spans, URI policy and v2 provenance; conformance, hostile and budget checks pass; goldens regenerated with a reviewed diff | CORE-003C |
 | CORE-005C | CORE-FIX 5. Workspace content-search memory guard: lower per-file default and/or density admission check with a typed skip and false-positive tests; content search documented as a model-independent text index; counted heap budget and Rust/FFI parity pass | CORE-005B2, CORE-003D |
 | CORE-005D | CORE-FIX 6. Invisible-filename flag also covers blank characters that are not Cf (Hangul fillers, Braille blank), never rejecting names; Rust/FFI parity pass | CORE-005C |
+| CORE-003E | CORE-FIX 7 (owner-added from the PR #17 Grok review). Front-matter strings: decide and apply treatment of invisible characters that are not Cf (Hangul fillers, U+2800, default-ignorables), keeping the variation-selector/CGJ allowance; producer and shared validation at v1/v2 parity; decision recorded | CORE-005D |
 
 CORE-003B was refined after CORE-003A review because metadata, reference/model
 compatibility, extension semantics and fuzz/performance acceptance were too
@@ -93,7 +94,7 @@ CORE-005 depends on CORE-005B2.
 The CORE-FIX rows come from the three
 [shared-core reviews](reviews/README.md) of 2026-10-28, which the owner
 reconciled in D-026. They run in the numbered order, and state encodes it as
-dependency edges. CORE-005D then leads into the CORE aggregates (below), so
+dependency edges. CORE-003E (added after D-026) then leads into the CORE aggregates (below), so
 no platform phase starts before CORE-FIX completes. When the 002 tasks are
 created, each platform's 002B needs CORE-005D and each 002C needs CORE-005C.
 
@@ -104,8 +105,8 @@ predecessor. Only DESK-001 and DESK-002 join tracks:
 
 ```text
 Shared (portable-core):  DOC-001 -> CORE-002B -> CORE-003C -> CORE-003D -> CORE-005C
-                         -> CORE-005D -> CORE-001 -> CORE-002 -> CORE-003 -> CORE-004
-                         -> CORE-005 -> CORE-006 -> phase complete
+                         -> CORE-005D -> CORE-003E -> CORE-001 -> CORE-002 -> CORE-003
+                         -> CORE-004 -> CORE-005 -> CORE-006 -> phase complete
 Each host (desktop-apps): CORE-006 -> 001A -> 001B -> 001C -> 001D [-> LNX-001D1]
                          -> 001E -> 001F -> 001G -> 001H -> 001I -> 001 aggregate
 Joins:                   MAC-001 + LNX-001 + WIN-001 -> DESK-001 -> HARD-001,
