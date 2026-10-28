@@ -1,7 +1,7 @@
 # Agent Session and Platform Handoff
 
-Updated: 2026-10-28, DOC-001 closeout (PR #17, approved by the owner).
-Source baseline: `main` after the PR #17 merge. Preserve intended source, lock/spec/golden
+Updated: 2026-10-28, CORE-002B closeout (PR #18, approved by the owner).
+Source baseline: `main` after the PR #18 merge. Preserve intended source, lock/spec/golden
 files, docs and state together. Never transfer caches, environments, build
 products, private runtime state or user documents.
 
@@ -20,9 +20,13 @@ in order before any platform phase. Their scope is in
   [PR #17](https://github.com/awesomejt/markdown/pull/17). Its Grok review
   added CORE-003E (front-matter invisible-character parity), which the owner
   placed after CORE-005D as a separate task.
-- **Current:** CORE-002B (import-policy parity and FFI host guidance), the
-  only eligible task. Start its pass from `main`.
-- **Then:** CORE-003C, CORE-003D, CORE-005C, CORE-005D and CORE-003E, then
+- **Done:** CORE-002B, import-policy parity and FFI host guidance,
+  [PR #18](https://github.com/awesomejt/markdown/pull/18). V1 and v2 imports
+  now re-check intents and metadata text against the producer's policy. One
+  hand-written v1 golden intent became denied, with owner approval.
+- **Current:** CORE-003C (v2 corpus conformance assertions), the only
+  eligible task. Start its pass from `main`.
+- **Then:** CORE-003D, CORE-005C, CORE-005D and CORE-003E, then
   the CORE-001 to CORE-006 aggregates. Each host's chain in `desktop-apps` starts after
   CORE-006 (D-027). Do not select platform tasks before then.
 
