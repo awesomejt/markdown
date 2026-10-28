@@ -14,9 +14,9 @@ open until those pass on their hosts).
 ## Artifacts
 
 `markdown-ffi` builds `rlib` (Rust tests), `cdylib` (`libmarkdown_ffi.dylib`,
-`.so` or `markdown_ffi.dll`) and `staticlib`. Exactly the 20 functions in the
-header are exported with the `md_` prefix: the 18 from PR #7 plus the two
-CORE-005A2 additions below. Feature `model-v2` forwards to the
+`.so` or `markdown_ffi.dll`) and `staticlib`. Exactly the 24 functions in the
+header are exported with the `md_` prefix: the 18 from PR #7, the two
+CORE-005A2 additions and the four CORE-005B2 workspace functions below. Feature `model-v2` forwards to the
 core feature and adds model v2 to negotiation; the default build offers v1 only.
 Packaging (install names, import libraries, XCFrameworks, signing) belongs to
 each platform's B and I phases.
@@ -49,7 +49,8 @@ has a header size constant and is checked through `struct_size` on every call.
 Hosts compare those constants with `sizeof` after negotiation. An older library
 lacks the new symbols, so it fails at link or load time; there is no runtime
 probe. Anything incompatible needs a new ABI version. CORE-005A2 is the first
-phase to use this rule ([find and reading statistics](#find-and-reading-statistics-core-005a2)).
+phase to use this rule ([find and reading statistics](#find-and-reading-statistics-core-005a2)),
+and CORE-005B2 the second ([workspace search](#workspace-search-core-005b2)).
 
 ## Ownership and lifetimes
 
@@ -60,7 +61,8 @@ phase to use this rule ([find and reading statistics](#find-and-reading-statisti
 | `md_snapshot` | core registry | `md_snapshot_release` |
 | Arrays/strings reachable from `md_snapshot_view` | the snapshot handle | freed with that handle |
 | Input bytes (`document_id`, source, tokens, anchors) | caller | copied during the call; never retained |
-| Output structs, anchor buffers, find/read record arrays | caller | caller |
+| Output structs, anchor buffers, find/read/workspace record, text and anchor arrays | caller | caller |
+| `md_content_progress` (in/out) | caller | caller; written back only on success |
 | `md_status_name` strings | static | never freed |
 
 Handles are nonzero 64-bit registry keys, not pointers, and are never reused
@@ -104,8 +106,9 @@ Functions return `md_status`. Outputs are zeroed (keeping `struct_size`)
 before other work and receive their final values in one write after all
 fallible work, so every failure (including a contained panic) leaves them
 zeroed. The exceptions are deliberate: `MD_ERR_BUFFER_TOO_SMALL` reports the
-required length, and `md_abi_negotiate` fills `md_abi_info` on a version
-mismatch. Rejected versioned structs (wrong `struct_size`) are left
+required length, `md_abi_negotiate` fills `md_abi_info` on a version
+mismatch, and the in/out `md_content_progress` is left unchanged on every
+failure. Rejected versioned structs (wrong `struct_size`) are left
 unwritten. `md_status_name` returns static ASCII names; it is the one
 function without `catch_unwind`, because a match over constants returning
 static strings cannot panic.
@@ -272,6 +275,118 @@ follow-up). The caller's arrays add 24 bytes per match and per segment, and
 debounce on a worker and drop stale results. Cancellable find is a candidate
 for a later ABI version.
 
+## Workspace search (CORE-005B2)
+
+Four functions expose [`markdown_core::workspace`](../workspace-search/README.md)
+under D-022. None takes a handle. The adapter keeps folder access,
+enumeration and file reads. It passes display paths, which are relative,
+`/`-separated UTF-8 labels that grant no access, and the file bytes it read.
+The core opens nothing. Validation rules, ranking, matching, snippets,
+budgets and Unicode limits are those of the workspace contract; the ABI
+validates arguments, maps zero limits to defaults and flattens results.
+
+- `md_workspace_classify_path(path, path_length, out_info)` returns `MD_OK`
+  for any bytes and puts the verdict in `md_workspace_path_info.error`
+  (`MD_PATH_VALID` or one `MD_PATH_*` code per `PathError`, plus
+  `MD_PATH_INVALID_UTF8`). Input over `MD_WORKSPACE_MAX_PATH_BYTES` is
+  `MD_PATH_TOO_LONG` without being decoded. Valid paths report
+  `MD_PATH_MARKDOWN`, `MD_PATH_HIDDEN` and `MD_PATH_INVISIBLE` (the
+  `has_invisible` rule) and the file name's byte offset. Adapters use it to
+  skip names the core rejects and to mark invisible ones.
+- `md_workspace_find_names(paths, paths_length, entries, entry_count, query,
+  query_length, options, hits, hit_capacity, out_result)`: each
+  `md_workspace_entry` holds the adapter's opaque `id` and a byte range in the
+  single `paths` buffer (`reserved` must be 0). Only the first `max_entries`
+  entries are examined. Among them, a range outside `paths` or a nonzero
+  `reserved` is `MD_ERR_INVALID_ARGUMENT`. A path the core rejects is skipped
+  and counted in `skipped_invalid` (included in `entries_examined`), so one
+  bad name cannot fail a search, and it is never shown. `md_name_options`
+  carries `MD_NAMES_CASE_SENSITIVE`, `MD_NAMES_INCLUDE_HIDDEN` and
+  `MD_NAMES_ALL_FILES` (Markdown-only is the default) and `max_results`/
+  `max_entries` (0 selects 200/100,000; at most 10,000/1,000,000). An empty or
+  whitespace-only query succeeds with a zeroed result, as `md_snapshot_find`
+  does. Each `md_name_hit` reports the entry `id`, its index in `entries`,
+  `MD_NAME_RANK_PREFIX`/`NAME`/`PATH` and the byte range of the first match
+  in the path. Hits are in the core order, and `md_name_result` reports
+  `MD_NAMES_TRUNCATED`, `MD_NAMES_ENTRIES_LIMITED` and every core count.
+- `md_workspace_content_admit(query, query_length, options, path,
+  path_length, byte_length, progress, out_outcome, out_reason)` decides before
+  a read: `MD_CONTENT_READ`, or `MD_CONTENT_SKIPPED` with an `MD_SKIP_*`
+  reason, or `MD_CONTENT_STOPPED` with an `MD_STOP_*` reason. It records
+  skips and stops in `progress`.
+- `md_workspace_content_search(query, query_length, options, path,
+  path_length, content, content_length, progress, hits, hit_capacity, text,
+  text_capacity, anchors, anchor_capacity, out_result)` re-checks admission
+  with the real length, so calling admit first is optional. `md_content_result`
+  reports `MD_CONTENT_SEARCHED`, `SKIPPED` or `STOPPED` with the reason,
+  `MD_CONTENT_TRUNCATED`, the hit, text and anchor byte counts, and the
+  searched bytes' length and SHA-256 (64 lowercase hex bytes, not
+  NUL-terminated, comparable with the view's `source_sha256`). Each
+  `md_content_hit` has the covering source span, the 1-based line,
+  `MD_HIT_EXACT`, `MD_HIT_LEADING_MORE`, `MD_HIT_TRAILING_MORE` and
+  `MD_HIT_ANCHOR`. Its snippet is `text[text_offset .. + text_length)`, with
+  the match at `[match_start, match_end)` inside it. Its serialized anchor is
+  `anchors[anchor_offset .. + anchor_length)`. Snippets and anchors are packed
+  in hit order.
+
+**Options.** `md_content_options` carries `MD_CONTENT_CASE_SENSITIVE`,
+`MD_CONTENT_WHOLE_WORD` and `MD_CONTENT_INCLUDE_HIDDEN` and the six
+`ContentLimits`. Zero selects the documented default for `max_files`,
+`max_total_bytes`, `max_file_bytes`, `max_matches_per_file` and
+`max_total_matches`. `snippet_context` is used as given, because zero context
+is meaningful; `MD_CONTENT_DEFAULT_SNIPPET_CONTEXT` (40) is the default.
+Out-of-range limits, an empty or whitespace-only query (an error here, unlike
+name search, because a workspace pass would otherwise charge budgets for
+files it cannot match) and an invalid path are `MD_ERR_INVALID_ARGUMENT`.
+Queries are UTF-8 of at most `MD_WORKSPACE_MAX_QUERY_BYTES`.
+
+**Progress.** `md_content_progress` is the caller-owned form of
+`ContentProgress`: `stopped` (0 or `MD_STOP_*`), files read, matched and
+truncated, bytes read, matches, and one count per skip reason. Start from a
+zeroed struct with `struct_size` set and pass the same struct to every admit
+and search call of one workspace search. The call reads it (exact
+`struct_size`; an unknown `stopped` code is `MD_ERR_INVALID_ARGUMENT`) and
+writes it back only on `MD_OK`. Every failure, including
+`MD_ERR_BUFFER_TOO_SMALL` and a contained panic, leaves it unchanged, so a
+retry is identical. A nonzero `stopped` is permanent, and the UI should say
+the results may be incomplete. The progress struct is plain data that the
+host can edit. The core never trusts it for memory safety, and counts that no
+budget bounds (skips, matched and truncated files) saturate instead of
+overflowing. Calls on one progress struct must be sequential. Parallel
+readers serialize their calls or keep one progress struct per worker with
+partitioned budgets.
+
+**Sizes and buffers.** Every new struct has a header constant
+(`MD_WORKSPACE_PATH_INFO_SIZE`, `MD_WORKSPACE_ENTRY_SIZE`,
+`MD_NAME_OPTIONS_SIZE`, `MD_NAME_RESULT_SIZE`, `MD_NAME_HIT_SIZE`,
+`MD_CONTENT_OPTIONS_SIZE`, `MD_CONTENT_PROGRESS_SIZE`,
+`MD_CONTENT_RESULT_SIZE`, `MD_CONTENT_HIT_SIZE`). All fields are fixed-width.
+`md_name_options` carries `entry_size` and `hit_size`, and
+`md_content_options` carries `hit_size`, checked on every call. Arrays follow
+the find rules: null only with zero capacity, aligned, and at most
+`PTRDIFF_MAX` bytes. If any array is too small, the result struct is written
+in full and nothing else is. Hosts avoid the retry, which re-parses the file,
+by sizing from the limits: `max_matches_per_file` hits,
+`max_matches_per_file × MD_CONTENT_MAX_SNIPPET_BYTES` (2,624, from
+2 × 200 + 256 characters of at most 4 bytes) of text and
+`max_matches_per_file × MD_ANCHOR_MAX_BYTES` of anchors.
+
+**Navigation.** When the user opens a hit, the host reads the file into a
+session. If the snapshot view's `source_length` and `source_sha256` equal the
+result's, the span applies directly, and for a v1 view so does `unit`. V2
+adds nodes, so v2 hosts navigate by span or anchor. Otherwise the host
+passes the anchor bytes to `md_snapshot_resolve_anchor` (exact, relocated or
+nearest). Anchors and snippets are document-derived private state; never
+log them.
+
+**Cost and cancellation.** Name search is O(examined path bytes + query)
+plus O(hits × log max_results) and copies each examined valid path once (at
+most 4 KiB each). A content call holds the file's parse, its hits (at most
+`max_matches_per_file` records) and their serialized anchors (up to 1 KiB
+each) before writing, about 10 MiB at the 10,000-match ceiling. There is no
+cancel handle. Each content call is bounded by `max_file_bytes`, and hosts
+cancel by not making the next call.
+
 ## Evidence
 
 - `core/crates/markdown-ffi/src/tests.rs` calls the exported functions as a
@@ -293,6 +408,23 @@ for a later ABI version.
   untouched arrays, truncation, empty queries, every argument and size check
   with zeroed results, released handles, injected panics and concurrent calls
   on one snapshot.
+  For workspace search (`src/tests/workspace.rs`), path classification
+  matches `WorkspacePath` for every error kind, invalid UTF-8 and over-long
+  input. Name search matches `find_names` over a mixed workspace (Markdown,
+  other, hidden, invalid and duplicate names; Unicode folding) for 16
+  queries, five flag sets and five result/entry limits, with entry indices
+  mapped through skipped invalid paths. It is also checked over 100,001
+  entries. Content search matches `ContentQuery` file by file over the corpus
+  for four flag sets and three snippet/per-file settings, comparing every
+  hit field, snippet byte, anchor byte and the progress after each file.
+  Admit-then-search and search-only runs match the Rust sequence through
+  every skip reason and every stop. Hits open into v1 and v2 session
+  snapshots of the same bytes, where the hashes are equal and anchors resolve
+  exactly; units index the v1 view. Further tests cover sizing from the
+  limits, each array being too small with progress unchanged, every argument
+  and limit check with zeroed results and unchanged progress, saturation of
+  forged counters, injected panics in all four functions, concurrent content
+  searches and equality of the ABI and core constants.
   Every test asserts that all handles return to zero.
 - `core/crates/markdown-ffi/tests/c_abi.rs` checks every header constant
   against Rust. It then builds the shared library for its own profile and
@@ -307,7 +439,11 @@ for a later ABI version.
   provides `md_abi_negotiate` via `dladdr`, which must canonicalize to the
   staged copy, and asserts the library's model mask matches the build: negotiation, v1 and (when built) v2 sessions, bulk copy, two-call
   find with segment highlighting checked against the view, reading statistics
-  and their argument checks, anchor round trip, external change, cancellation,
+  and their argument checks, workspace path classification, name search over
+  an entry array with hidden, non-Markdown and invalid names, a content
+  admit/search pass with arrays sized from the limits, unchanged progress on
+  failure, a sticky stop, and navigation from a hit into a session snapshot
+  (equal hash, exact anchor), anchor round trip, external change, cancellation,
   snapshot-outlives-session and 200 lifecycle iterations ending with zero live
   handles. The smoke also `_Static_assert`s every D-022 size constant.
 - `tools/check.py core` runs both in debug and release across default,

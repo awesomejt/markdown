@@ -17,8 +17,16 @@ design belong in `docs/` or `agents/`; runtime transcripts do not belong here.
   approval is inferred. Its supported state closeout travels in this branch.
 - CORE-003B retains B1 metadata, B2 references/URI, B3 other extension semantics
   and B4 conformance/fuzz/performance with original aggregate/native gates.
-- Status 2026-10-28: PR #9 (CORE-005A2) merged as `ec58c84`. CORE-005B is in
-  progress on `feat/core-005b-workspace-search`: `markdown_core::workspace`
+- Status 2026-10-28: CORE-005B2 is in progress on
+  `feat/core-005b2-workspace-ffi`. Four D-022 functions (24 exports):
+  `md_workspace_classify_path`, `md_workspace_find_names` (an entry array
+  referencing one paths buffer; invalid names are skipped and counted),
+  `md_workspace_content_admit` and `md_workspace_content_search`. The search
+  fills hit records plus packed snippet text and anchor buffers. A
+  caller-owned in/out `md_content_progress` is written back only on success,
+  and its counts not bounded by a budget saturate in the core. Hit `unit`
+  indexes a v1 view only; v2 hosts navigate by span or anchor.
+- CORE-005B (merged, PR #10 `0bf8eb7`): `markdown_core::workspace`
   (specs/workspace-search/README.md) takes adapter entries (opaque `u64` ID
   plus validated `/`-relative display path; the core never resolves paths)
   and bytes. It provides a shared Markdown/hidden filter (md/markdown/mdx,
