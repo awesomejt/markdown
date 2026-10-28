@@ -390,6 +390,28 @@ each) before writing, about 10 MiB at the 10,000-match ceiling. There is no
 cancel handle. Each content call is bounded by `max_file_bytes`, and hosts
 cancel by not making the next call.
 
+## Host guidance for search calls (CORE-002B)
+
+`md_snapshot_find`, `md_snapshot_read_stats` and the workspace content
+functions cannot be interrupted, and an `MD_ERR_BUFFER_TOO_SMALL` retry runs
+the whole search again. At 5 MiB one call takes about 31 ms for find and 61 ms
+for reading statistics, and parse validation adds up to about 50 ms (holistic
+review F4). Hosts therefore:
+
+- Call these functions on a host worker, never on the UI thread, and drop
+  results that a newer query or generation has superseded.
+- Size the arrays up front so that one call is enough: `matches` from
+  `max_matches`, `sections` from the view's `outline_count + 1`, and the
+  workspace content arrays from the limits listed under
+  [Workspace search](#workspace-search-core-005b2). A find match has one
+  segment per node it crosses, so the segment count has no fixed bound per
+  match. Start `segments` at `max_matches` and keep grown arrays for later
+  calls, so a retry happens at most once per growth.
+
+Cancellable variants would be new functions under the D-022 growth rule. They
+are added only if the 001F host measurements show that this latency matters
+in practice.
+
 ## Evidence
 
 - `core/crates/markdown-ffi/src/tests.rs` calls the exported functions as a

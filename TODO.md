@@ -238,7 +238,10 @@ is one feature branch and PR under
    - Acceptance: regression tests for the review probes on both models.
      Traversal, encoded dot segments, whitespace and a U+202E destination are
      rejected; a U+202E title or property is rejected under v1 and v2. No
-     wire, schema or golden change.
+     wire, schema or parser-golden change. One owner-approved exception
+     (2026-10-28): the hand-written v1 model golden `resources.json` claimed
+     `requires_capability` for `../café.md#part`, which the parser denies,
+     so that one intent is now denied, with the source and spans unchanged.
 3. **CORE-003C — V2 corpus conformance assertions (C5).** Test-only. After
    D-025, v2 is the shipped model, but the generated conformance suite
    compares only the outline and the link count for v2.

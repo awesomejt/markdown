@@ -72,22 +72,17 @@ fn contains(outer: SourceSpan, inner: SourceSpan) -> bool {
 fn text_present(value: &str) -> bool {
     !value.trim().is_empty()
 }
-fn relative(value: &str) -> bool {
-    !value.is_empty()
-        && !value.starts_with(['/', '\\', '#'])
-        && !value.contains([':', '\\'])
-        && !value.chars().any(char::is_control)
+// The front-matter producer's display guard: it never emits these characters,
+// so imported metadata must not carry them either (CORE-002B).
+fn display_safe(value: &str) -> bool {
+    !value.chars().any(crate::metadata::unsafe_character)
 }
-fn external(value: &str) -> bool {
-    if value.chars().any(char::is_control) || value.contains('\\') {
-        return false;
+fn metadata_value_safe(value: &MetadataValue) -> bool {
+    match value {
+        MetadataValue::String { value } => display_safe(value),
+        MetadataValue::Strings { value } => value.iter().all(|item| display_safe(item)),
+        _ => true,
     }
-    let lower = value.to_ascii_lowercase();
-    ["https://", "http://", "mailto:"].iter().any(|prefix| {
-        lower
-            .strip_prefix(prefix)
-            .is_some_and(|tail| !tail.is_empty())
-    })
 }
 
 /// Immutable validated snapshot. Deserialize via `from_json`, not unchecked serde.
@@ -353,8 +348,17 @@ fn validate_parts(
         )?;
     }
     require(
-        d.metadata.properties.keys().all(|k| text_present(k)),
+        d.metadata
+            .properties
+            .keys()
+            .all(|k| text_present(k) && display_safe(k)),
         "metadata_key",
+        "metadata",
+    )?;
+    require(
+        d.metadata.title.as_deref().is_none_or(display_safe)
+            && d.metadata.properties.values().all(metadata_value_safe),
+        "metadata_text",
         "metadata",
     )?;
     require(d.capabilities == caps, "capabilities", "capabilities")?;
@@ -394,13 +398,11 @@ fn validate_intents(d: &DocumentInput, source: &str) -> Result<(), ModelError> {
             path,
         )?;
         require_lazy(span_valid(link.span, source), "invalid_span", path)?;
+        // Re-run the parser's own policy, as v2 does: a decoded document may
+        // narrow an intent to Denied but never claim one the parser withheld.
         let allowed = match &link.disposition {
-            LinkDisposition::Fragment { anchor } => {
-                !anchor.is_empty() && link.destination == format!("#{anchor}")
-            }
-            LinkDisposition::RequiresCapability {} => relative(&link.destination),
-            LinkDisposition::External {} => external(&link.destination),
             LinkDisposition::Denied { reason } => text_present(reason),
+            disposition => *disposition == crate::parse::classify_link(&link.destination),
         };
         require_lazy(allowed, "link_policy", path)?;
     }
@@ -414,7 +416,7 @@ fn validate_intents(d: &DocumentInput, source: &str) -> Result<(), ModelError> {
         )?;
         require_lazy(span_valid(resource.span, source), "invalid_span", path)?;
         let allowed = match &resource.access {
-            ResourceAccess::RequiresCapability {} => relative(&resource.destination),
+            ResourceAccess::RequiresCapability {} => crate::parse::local(&resource.destination),
             ResourceAccess::Denied { reason } => text_present(reason),
         };
         require_lazy(allowed, "resource_policy", path)?;

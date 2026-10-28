@@ -1663,7 +1663,7 @@ fn safe_uri(value: &str) -> bool {
         && !value.chars().any(|c| c.is_control() || c.is_whitespace())
         && !value.contains(['\\', '%'])
 }
-fn local(value: &str) -> bool {
+pub(crate) fn local(value: &str) -> bool {
     safe_uri(value)
         && !value.starts_with(['/', '#'])
         && !value.contains(':')
@@ -1671,7 +1671,7 @@ fn local(value: &str) -> bool {
             .split(['/', '?', '#'])
             .any(|part| matches!(part, "." | ".."))
 }
-fn classify_link(value: &str) -> LinkDisposition {
+pub(crate) fn classify_link(value: &str) -> LinkDisposition {
     if safe_uri(value) {
         if let Some(anchor) = value.strip_prefix('#').filter(|a| !a.is_empty()) {
             return LinkDisposition::Fragment {

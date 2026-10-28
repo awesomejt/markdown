@@ -643,3 +643,29 @@ fn b3_extension_containers_keep_exact_intent_provenance() {
             .any(|x| x.code == "footnote_definition_duplicate")
     );
 }
+
+#[test]
+fn imported_v2_metadata_text_keeps_the_front_matter_display_guard() {
+    let s = "---\ntitle: Safe\n---\n[go](safe.md)\n";
+    let wire = |input: &v2::DocumentInput| {
+        v2::Document::from_json(
+            &serde_json::to_vec(input).unwrap(),
+            s,
+            ModelLimits::default(),
+        )
+    };
+    let d = parse(s).into_input();
+    assert!(wire(&d).is_ok());
+    let rlo = "abc\u{202e}txt";
+    let mut bad = d.clone();
+    bad.metadata.title = Some(rlo.into());
+    assert_eq!(wire(&bad).unwrap_err().code, "metadata_text");
+    let mut bad = d;
+    bad.metadata
+        .properties
+        .insert("title".into(), MetadataValue::String { value: rlo.into() });
+    assert_eq!(wire(&bad).unwrap_err().code, "metadata_text");
+    // The producer itself never emits that title.
+    let source = format!("---\ntitle: {rlo}\n---\n[go](safe.md)\n");
+    assert_eq!(parse(&source).input().metadata.title, None);
+}
