@@ -18,6 +18,12 @@ supported expectation. It also adds corpus-seeded mutation and pathological-inpu
 tests, counted heap budgets and release time guards for the performance profiles,
 and named-host measurements ([Parser-Budgets.md](Parser-Budgets.md)).
 
+TOOL-002 splits the core suite into tiers (D-028). Hosted PR runs use
+`tools/check.py core`; main and manual runs add `core-extended`, which holds
+the model-v2-only build and the release build with its time guards. The pass
+runner's local `tools/check.py all` covers both tiers before review, so release
+guards still gate every PR on the current host.
+
 ## Evidence levels
 
 ### Documentation changes

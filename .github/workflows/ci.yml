@@ -16,6 +16,9 @@ concurrency:
 jobs:
   changes:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      checks: read
     outputs:
       linux: ${{ steps.paths.outputs.linux }}
       windows: ${{ steps.paths.outputs.windows }}
@@ -30,6 +33,11 @@ jobs:
           BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
           HEAD: ${{ github.sha }}
           EVENT: ${{ github.event_name }}
+          # PR pushes may skip host checks when only state/docs follow a green head.
+          PREV: ${{ github.event_name == 'pull_request' && github.event.action == 'synchronize' && github.event.before || '' }}
+          PR_HEAD: ${{ github.event.pull_request.head.sha }}
+          REPO: ${{ github.repository }}
+          GH_TOKEN: ${{ github.token }}
         run: python3 tools/ci_paths.py
 
   common:
@@ -78,8 +86,14 @@ jobs:
         with:
           toolchain: '1.99.1'
           components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        if: needs.changes.outputs[matrix.host] == 'true'
       - run: python tools/check.py core
         if: needs.changes.outputs[matrix.host] == 'true'
+      # Release time guards and the model-v2-only build run on main and manual runs;
+      # PR authors run them locally through `tools/check.py all` (TOOL-002, D-028).
+      - run: python tools/check.py core-extended
+        if: needs.changes.outputs[matrix.host] == 'true' && github.event_name != 'pull_request'
 
   complete:
     if: always()

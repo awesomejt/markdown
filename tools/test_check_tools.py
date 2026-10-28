@@ -53,6 +53,39 @@ class GitChecks(unittest.TestCase):
         result = decide({"BASE": base, "HEAD": "HEAD", "EVENT": "push"}, cwd=self.root)
         self.assertTrue(result["windows"])
 
+    def pr_push(self, prev, green=True):
+        env = {"BASE": self.base, "HEAD": "HEAD", "EVENT": "pull_request",
+               "PREV": prev, "PR_HEAD": self.git("rev-parse", "HEAD")}
+        return decide(env, cwd=self.root, green=lambda sha: green and sha == prev)
+
+    def test_state_only_push_after_green_head_skips_hosts(self):
+        self.write("core/example.rs", "changed\n")
+        self.commit()
+        prev = self.git("rev-parse", "HEAD")
+        self.write("project.yaml", "state\n")
+        self.write("HANDOFF.md", "handoff\n")
+        self.commit()
+        self.assertFalse(any(self.pr_push(prev).values()))
+        # The PR as a whole still changed core: a red or unknown previous run checks it.
+        self.assertTrue(all(self.pr_push(prev, green=False).values()))
+
+    def test_build_change_since_previous_head_checks_every_host(self):
+        prev = self.git("rev-parse", "HEAD")
+        self.write("core/example.rs", "changed\n")
+        self.commit()
+        self.assertTrue(all(self.pr_push(prev).values()))
+
+    def test_force_push_or_missing_previous_head_uses_the_full_rule(self):
+        self.write("core/example.rs", "first\n")
+        self.commit()
+        prev = self.git("rev-parse", "HEAD")
+        self.git("reset", "--quiet", "--hard", self.base)
+        self.write("core/example.rs", "rewritten\n")
+        self.commit()
+        self.assertTrue(all(self.pr_push(prev).values()))
+        self.assertTrue(all(self.pr_push("f" * 40).values()))
+        self.assertTrue(all(self.pr_push("0" * 40).values()))
+
     def test_source_fixture_whitespace_exception_does_not_cover_code(self):
         attributes = (Path(__file__).resolve().parents[1] / ".gitattributes").read_text()
         self.write(".gitattributes", attributes)

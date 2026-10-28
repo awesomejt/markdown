@@ -1,8 +1,10 @@
 """Guard against skipping a host affected by a shared or native change."""
+import io
+import json
 import unittest
 from unittest import mock
 
-from ci_paths import classify, decide
+from ci_paths import checks_green, classify, decide
 
 
 class HostSelectionTests(unittest.TestCase):
@@ -42,6 +44,28 @@ class HostSelectionTests(unittest.TestCase):
                         {"BASE": "abc", "EVENT": "workflow_dispatch"}):
                 with self.subTest(env=env):
                     self.assertTrue(all(decide(env).values()))
+
+    def test_previous_green_requires_a_successful_actions_check(self):
+        def runs(*items):
+            response = mock.MagicMock()
+            response.__enter__.return_value = io.BytesIO(json.dumps({"check_runs": list(items)}).encode())
+            return response
+        env = {"REPO": "o/r", "GH_TOKEN": "t"}
+        actions = {"slug": "github-actions"}
+        cases = [
+            (runs({"conclusion": "success", "app": actions}), True),
+            (runs({"conclusion": "failure", "app": actions}), False),
+            (runs({"conclusion": "cancelled", "app": actions}), False),
+            (runs({"conclusion": "success", "app": {"slug": "other-app"}}), False),
+            (runs(), False),
+            (OSError("offline"), False),
+        ]
+        for result, expected in cases:
+            with self.subTest(expected=expected), \
+                    mock.patch("ci_paths.urllib.request.urlopen", side_effect=[result]):
+                self.assertEqual(checks_green("abc", env), expected)
+        with mock.patch("ci_paths.urllib.request.urlopen", side_effect=AssertionError("no token")):
+            self.assertFalse(checks_green("abc", {}))
 
 
 if __name__ == "__main__":

@@ -46,7 +46,9 @@ an explicit migration plan and affected-host validation.
 2. Start/resume the phase's execution task through the normal state helper.
    Implement only its acceptance criteria and keep unrelated changes out.
    A draft PR is allowed when useful; do not trigger review of unfinished work.
-3. Run proportionate tests and the phase's native checks. Record exact commands,
+3. Run proportionate tests and the phase's native checks, including a local
+   `tools/check.py all` for any core change, because hosted PR runs use only the
+   faster core tier (D-028). Record exact commands,
    host/tool versions, results, limitations and evidence. An unavailable required
    runner/check keeps the PR in draft; an unrun check is not a pass.
 4. Prepare focused commits and push the phase branch to this repository's
