@@ -1,11 +1,20 @@
 # Agent Session and Platform Handoff
 
-Updated: 2026-10-28, CORE-003B4 parser hardening on `feat/core-003b4-parser-hardening`.
-Source baseline: `66c2162` on main (PR #12 merge) plus this phase's changes. Preserve intended
+Updated: 2026-10-28, CORE-003B closeout on `chore/core-003b-closeout`.
+Source baseline: `29f7334` on main (PR #13 merge) plus this state/docs closeout. Preserve intended
 source, lock/spec/golden files, docs and state together. Never transfer caches,
 environments, build products, private runtime state or user documents.
 
-## Resume here — CORE-003B4 parser conformance hardening and budgets
+## Resume here — owner holistic CORE review
+
+PR #13 (CORE-003B4) merged as `29f7334` from reviewed head `9b6bd46`; D-024 is
+accepted. CORE-003B4 and the CORE-003B aggregate are completed in
+`project.yaml` (revision 370, no live lease) on `chore/core-003b-closeout`.
+The next step is the owner's holistic review of the shared CORE work. Do not
+select MAC/WIN/LNX tasks until that review is done, even though state lists
+MAC-001A, LNX-001A and WIN-001A as eligible.
+
+## CORE-003B4 parser conformance hardening and budgets (merged in PR #13)
 
 PR #12 (CORE-003B3) merged as `66c2162`; its state closeout is commit `3f73eb7`
 on this branch. CORE-003B4 adds the following
@@ -38,8 +47,7 @@ on this branch. CORE-003B4 adds the following
   `*a` storm. Rejoined `$` text events are refunded from the event limit, so
   dollar-dense prose parses at the ceiling.
 
-Next: owner acceptance of D-024 and an owner-authorized merge of PR #13. Then close CORE-003B, followed by the owner's
-holistic review before any platform phase.
+Merged in PR #13 as `29f7334`; closeout on `chore/core-003b-closeout`.
 
 ## CORE-003B3 extension semantics (merged in PR #12)
 

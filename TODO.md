@@ -12,8 +12,9 @@ branch and PR. Once ready, post a separate PR comment exactly `/grok review`,
 address the feedback, and obtain owner merge approval. Follow
 [Delivery-Workflow.md](docs/Delivery-Workflow.md) for branch, review and handoff
 rules. GATE-001 is approved (D-018). CORE-001A through CORE-003A, CORE-003B1
-through CORE-003B3 (with B2F), CORE-004A, CORE-005A/A2, CORE-005B/B2 and
-CORE-006A are merged; CORE-003B4 is in review; ADV-005 carries deferred engine
+through CORE-003B4 (with B2F), CORE-004A, CORE-005A/A2, CORE-005B/B2 and
+CORE-006A are merged, and the CORE-003B aggregate is closed. The owner's
+holistic CORE review comes before any platform phase. ADV-005 carries deferred engine
 work after DESK-002.
 
 ## Current phase: portable core and early native foundations
@@ -46,9 +47,8 @@ generated [conformance contract](specs/parsing/conformance/README.md), adds
 mutation and pathological-input coverage, and records named-host parser
 time/memory with enforced heap budgets ([Parser-Budgets.md](docs/Parser-Budgets.md)).
 It raises the node/event defaults (D-024) and scopes the source-offset
-fallback to the affected top-level block. It is on
-`feat/core-003b4-parser-hardening` and stays partial until review disposition
-and owner-authorized merge. CORE-003B was refined into four
+fallback to the affected top-level block. It merged in PR #13 as `29f7334`,
+and D-024 is accepted. CORE-003B was refined into four
 tracked children: B1 metadata; B2 reference representation/URI compatibility;
 B3 remaining extension semantics; B4 conformance/fuzz/property and parser
 budgets. See [the catalog](docs/Implementation-Plan.md) for scope/dependencies.

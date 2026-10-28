@@ -388,7 +388,7 @@ contracts; the flat view must keep round-tripping them exactly.
 
 **Date:** 2026-10-28
 
-**Status:** proposed in CORE-003B4; owner acceptance pending at phase review
+**Status:** accepted by the owner with the PR #13 merge approval (2026-10-28)
 
 **Context:** CORE-003B4 measured the generated profiles. The accepted 5 MiB
 prose profile, the upper-bound document for D-016, failed with `NodeLimit`

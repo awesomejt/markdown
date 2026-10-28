@@ -17,21 +17,20 @@ design belong in `docs/` or `agents/`; runtime transcripts do not belong here.
   approval is inferred. Its supported state closeout travels in this branch.
 - CORE-003B retains B1 metadata, B2 references/URI, B3 other extension semantics
   and B4 conformance/fuzz/performance with original aggregate/native gates.
-- Status 2026-10-28: CORE-003B4 is in progress on
-  `feat/core-003b4-parser-hardening` (docs/Parser-Budgets.md). The generated
+- Status 2026-10-28: CORE-003B4 merged (PR #13 `29f7334`, reviewed head
+  `9b6bd46`) and the CORE-003B aggregate is closed (docs/Parser-Budgets.md). The generated
   `specs/parsing/conformance/corpus.json` maps every fixture expectation to a
   Rust check or a reasoned deferral (`tools/generate_conformance.py --check`
   is in the common suite). There are mutation and pathological-input tests
   and counted heap budgets. The 5 MiB prose profile hit `NodeLimit`, so D-024
-  (proposed) raises the defaults to 1,000,000 nodes and 2,000,000 events.
+  (accepted) raises the defaults to 1,000,000 nodes and 2,000,000 events.
   Faster validation (hash index, visit bitmap) halved parse time: 5 MiB prose
   takes 143 ms with a 145 MiB peak on the M5 Max. The source-offset fallback
   now replaces only the affected top-level block. Grok (PR #13) found dense
   delimiter storms peak at about 1,152 MiB at the 8 MiB ceiling (unchanged
   from base); now documented and a 2 MiB storm is budgeted. `$` rejoins are
-  refunded from the event limit. After merge, CORE-003B (the
-  aggregate) can close, then the owner's holistic review comes before any
-  platform phase.
+  refunded from the event limit. Next: the owner's holistic CORE review,
+  before any platform phase.
 - CORE-003B3 (merged, PR #12 `66c2162`). One shared `PARSER_OPTIONS` (also
   used by v2 provenance reparsing) enables GFM footnotes, math and alert tags.
   Alerts and footnotes map to existing v1/v2 nodes. Footnote references
