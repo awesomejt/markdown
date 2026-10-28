@@ -185,8 +185,15 @@ breaks, code-block line endings and footnote-reference separators collapse to
 one space. Other control characters, which find matches literally, are shown
 as U+FFFD. Format characters are dropped, as find skips them.
 
-- `text[match_start..match_end]` (byte offsets) is the matched text, so
-  `normalize(match) == normalize(query)` under find's rules.
+- `text[match_start..match_end]` (byte offsets) is the displayed match. It
+  equals the query under find's rules (case folding, collapsed whitespace,
+  dropped format characters) only where the display shows what find
+  compared. A matched control character shows as U+FFFD, and a clipped
+  match shows only its first `MAX_SNIPPET_MATCH_CHARS` characters, so
+  `normalize(match) == normalize(query)` does not hold for those snippets.
+  Display text is for reading only. Navigate by the hit's `source` range and
+  `anchor`, which stay authoritative, and never rebuild the query or the
+  source match from the snippet.
 - Up to `snippet_context` characters (default 40, at most 200) on each side,
   never crossing the block. Edge spaces are trimmed. `leading_more` and
   `trailing_more` report omitted text in the same block, so the UI can draw

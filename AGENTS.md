@@ -16,6 +16,10 @@ are authoritative for this project.
    sequencing, dependency, or platform work; read `docs/Delivery-Workflow.md`
    before core or later implementation work
 
+`agents/Memory-Archive.md` holds older run logs and phase handoffs. It is
+history, not a required read; consult it only when a task needs that
+background.
+
 Also inspect `git status` before editing. Preserve user changes and keep
 unrelated changes out of the task.
 

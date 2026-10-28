@@ -1,8 +1,8 @@
 # Semantic document model v2
 
-Status: opt-in CORE-003B2 contract under phase-PR review; freeze at owner-authorized
-merge. The owner selected additive v2 with explicit reference provenance while
-retaining v1. Enable Rust feature `model-v2`; use `parse_markdown_v2` and
+Status: opt-in CORE-003B2 contract, frozen at the owner-authorized PR #5 merge
+(`752912a`), which included the B2F follow-ups. The owner selected additive
+v2 with explicit reference provenance while retaining v1. Enable Rust feature `model-v2`; use `parse_markdown_v2` and
 `markdown_core::v2::{Document, DocumentInput}`. Default `parse_markdown`, root v1
 APIs, v1 schema and v1 goldens remain intact. The shared parser does correct v1
 link/resource spans for destinations on blockquote continuation lines, which

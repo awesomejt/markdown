@@ -298,8 +298,10 @@ engine, parser implementation, native presenter or C ABI layout.
 
 **Date:** 2026-10-27
 
-**Status:** owner selected the additive versioning direction; implementation
-contract awaits phase review and owner-authorized merge.
+**Status:** accepted by owner. The owner selected the additive versioning
+direction, and the v2 contract froze at the owner-authorized CORE-003B2
+[PR #5](https://github.com/awesomejt/markdown/pull/5) merge (`752912a`,
+2026-10-27), which also carried the B2F review fixes.
 
 CORE-003B2 requires reference destinations outside their referring node, while
 frozen v1 requires occurrence-contained destination spans. Add opt-in v2 with

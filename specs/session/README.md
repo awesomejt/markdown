@@ -1,7 +1,7 @@
 # Document session contract
 
-Status: CORE-004A contract under phase-PR review; freeze at owner-authorized
-merge. Rust module `markdown_core::session` implements it with no new
+Status: CORE-004A contract, frozen at the owner-authorized PR #6 merge
+(`3b1eb4e`). Rust module `markdown_core::session` implements it with no new
 dependency, no unsafe code and no wire-model change. V1/v2 APIs, schemas and
 goldens are unchanged. It adds no C ABI, file I/O, threads, clocks, search or
 UI; CORE-006A wraps these values in the versioned facade.

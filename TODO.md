@@ -38,70 +38,17 @@ core alone.
 
 ## Immediate session handoff
 
-The shared-core review PR #16 is merged. The current handoff is the
-[CORE-FIX phase](#core-fix-phase-shared-core-review-follow-ups), starting with
-DOC-001. The history that follows is kept until DOC-001
-trims it.
+- The current task, branch and exact next step are in [HANDOFF.md](HANDOFF.md).
+- The current posture, host notes and risks are in [MEMORY.md](MEMORY.md).
+- The merge-by-merge history of the completed shared phases, the CORE-003B2F
+  scope and the GATE-001 preparation steps are in
+  [the memory archive](agents/Memory-Archive.md#todomd-session-handoff-history).
 
-PR #7 (CORE-006A C ABI facade, [contract](specs/ffi/README.md)) merged as
-`a751f48`; it unblocks each host's 001B adapter phase, and CORE-006 stays open
-until the Swift, C# and gtk-rs consumers pass there. PR #8 (**CORE-005A**
-source-accurate find, word count and section timing;
-[contract](specs/search/README.md)) merged as `237cd88`, and PR #9
-(**CORE-005A2**, `md_snapshot_find`/`md_snapshot_read_stats` under D-022)
-merged as `ec58c84`. **CORE-005B** adds capability-fed
-[workspace search primitives](specs/workspace-search/README.md) in Rust,
-merged in PR #10 as `0bf8eb7`. Its C ABI exposure, the owner-approved split
-**CORE-005B2** required by each platform's 002C, merged in PR #11 as
-`28e33bc`. **CORE-003B3** maps GFM alerts and footnotes to existing v1/v2
-nodes. Math becomes explicit source fallbacks, and voice-script opt-in gets
-a diagnostic ([extension semantics](docs/Parsing.md#extension-semantics-core-003b3)).
-It merged in PR #12 as `66c2162`. **CORE-003B4** reconciles the corpus through a
-generated [conformance contract](specs/parsing/conformance/README.md), adds
-mutation and pathological-input coverage, and records named-host parser
-time/memory with enforced heap budgets ([Parser-Budgets.md](docs/Parser-Budgets.md)).
-It raises the node/event defaults (D-024) and scopes the source-offset
-fallback to the affected top-level block. It merged in PR #13 as `29f7334`,
-and D-024 is accepted. CORE-003B was refined into four
-tracked children: B1 metadata; B2 reference representation/URI compatibility;
-B3 remaining extension semantics; B4 conformance/fuzz/property and parser
-budgets. See [the catalog](docs/Implementation-Plan.md) for scope/dependencies.
-The parent retains all original acceptance and native packaging gates.
-Inspect state and `HANDOFF.md` before any pass. Scoped commits/pushes/PR/review are authorized; merge requires
-owner authorization; concurrency remains one.
-
-- **CORE-003B2F — PR 5 URI and source-span follow-up (merged in PR #5).** Harden the Unicode
-  visibility policy for URI targets and shared front-matter text, considering
-  compatibility with legitimate text and pinned Unicode provenance. Test
-  literal and percent-encoded invisible characters in paths and external URIs.
-  Document and regression-test the v1 correction for blockquote continuation
-  destination spans. Evaluate a bounded diagnostic for shadowed duplicate
-  reference definitions; retain CommonMark first-definition precedence and
-  document the decision. This follows B2 and gates B4 and the B aggregate.
-
-The numbered steps below are the earlier handoff for GATE-001 preparation,
-kept as a record; steps 1–3 are done.
-
-1. **Carry forward Windows FEAS-003.** The report in
-   `docs/Windows-Rendering-Evaluation.md` records 60 native trials, continuous
-   text versus virtualized blocks, C#/C++ host smokes, owner-confirmed Narrator,
-   clipboard, same-scale multi-display checks, source/PDB debugging and a local
-   development package. Preserve the 12 timeouts and unverified mixed-DPI,
-   external UIA, managed-debugging and profiling behaviors. No production stack
-   was accepted.
-2. **Carry forward the completed macOS FEAS-004 evidence.** The report in
-   `docs/macOS-Rendering-Evaluation.md` compares TextKit 1/2, reusable rows and
-   SwiftUI hosting, with named-host measurements, native selection/copy,
-   owner-confirmed VoiceOver reading, scale-2 display inspection, debugger,
-   profiler and local development bundles. Preserve its unverified production
-   behaviors and signing/distribution limits; do not treat them as passes.
-3. **Reconcile the platform reports in the monorepo.** Preserve deviations;
-   do not force identical UI implementations. Confirm each pass is complete
-   and `project.yaml` has no stale lease before selecting more work.
-4. **Prepare GATE-001.** The capability matrix is in
-   `docs/Platform-Capability-Evaluation.md`; its “Implications for GATE-001”
-   section lists the decisions the owner must make or defer. Ask the owner to
-   accept or revise GATE-001; do not accept it on the owner's behalf.
+The shared-core reviews (PR #16) are merged. The current work is the
+[CORE-FIX phase](#core-fix-phase-shared-core-review-follow-ups), DOC-001 and
+then CORE-002B. Inspect state and `HANDOFF.md` before any pass. Scoped
+commits, pushes, PR updates and review comments are authorized; merge
+requires owner authorization; concurrency remains one.
 
 ### Requirements and feasibility
 

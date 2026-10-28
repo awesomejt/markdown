@@ -1,11 +1,11 @@
 contract_version: project-state/v1
-revision: 498
+revision: 499
 project: &id001
   concurrency_limit: 1
   created_at: '2026-10-24T23:34:09.871478+00:00'
   project_ref: markdown-native
-  status: active
-  updated_at: '2026-10-28T16:10:51.032288+00:00'
+  status: working
+  updated_at: '2026-10-28T20:00:04.772640+00:00'
   workflow_id: native-app-development
   workflow_version: '2'
 phases: &id003
@@ -1736,11 +1736,11 @@ tasks:
     validation_expectations: Markdown lint and local link check pass; no durable fact lost (moved, not
       deleted); required-reading files consistent with project.yaml and Decisions.md; owner-authorized
       merge.
-    status: pending
-    active_pass_ref: null
+    status: working
+    active_pass_ref: c38091e9-96d1-4fa0-8b4d-59415f036178
     blockers: []
     created_at: '2026-10-28T16:44:19.292706+00:00'
-    updated_at: '2026-10-28T16:44:19.292706+00:00'
+    updated_at: '2026-10-28T20:00:04.772640+00:00'
     completed_at: null
   - id: 1cf1a432-bfba-454c-b1db-48ec27fd9325
     task_key: CORE-003C
@@ -4734,44 +4734,30 @@ passes:
     completed_at: '2026-10-28T16:10:51.032288+00:00'
     lease_expires_at: null
     lease_version: 1
+  - &id046
+    id: c38091e9-96d1-4fa0-8b4d-59415f036178
+    sequence: 62
+    task_ref: 0be1a8ee-d8c7-4794-8eaf-3b18e571a07d
+    phase_ref: f1e4c757-a3fc-4cfd-810b-4cbed98586c8
+    actor: claude-macos
+    status: active
+    outcome: null
+    objective: 'Agent-facing docs cleanup (F5/G5/C6): trim MEMORY.md posture to ~30 lines with an archive
+      file, remove stale HANDOFF.md sections, fix stale status text, trim TODO.md session handoff, qualify
+      the workspace-search snippet invariant, on docs/doc-001-agent-docs-cleanup.'
+    summary: null
+    handoff: null
+    validation_result: null
+    evidence: {}
+    participants: []
+    blocker: null
+    execution_record: {}
+    started_at: '2026-10-28T20:00:04.772640+00:00'
+    last_heartbeat_at: null
+    completed_at: null
+    lease_expires_at: '2026-10-28T22:00:04.772640+00:00'
+    lease_version: 1
 idempotency:
-  89640459-6051-4ef4-bc5a-e7e308e9009c:
-    fingerprint: 39a802ef1818705f07ebb67dd9c09f7a6322c6f8167d2fa0e13e0d5e66fed58d
-    response:
-      contract_version: project-state/v1
-      operation: remove_dependency
-      revision: 399
-      data:
-        relationship:
-          predecessor_task_ref: 3830e4e9-eaae-4bb2-90e2-b21ac69ef490
-          successor_task_ref: db740a43-d5ce-4730-86b0-b30557061ad9
-          relationship: blocks
-      snapshot:
-        contract_version: project-state/v1
-        snapshot_at: '2026-10-28T18:55:39.035702+00:00'
-        revision: 399
-        project: *id001
-        current_phase: *id002
-        phases: *id003
-        active_tasks: []
-        working_tasks_without_active_lease: []
-        active_passes: []
-        stale_passes: []
-        blocked_tasks: []
-        eligible_tasks:
-          - *id004
-        latest_pass: *id005
-        queue_counts:
-          by_status:
-            completed: 30
-            pending: 57
-          total: 87
-          active_passes: 0
-          stale_passes: 0
-          eligible: 1
-          blocked: 0
-        warnings: []
-        recommended_action: select_new_task
   5b9af3ca-42f3-4c27-a435-bead825731bd:
     fingerprint: 649edfad294e7aa08d2725a4da7d5ea3390b579b5c9055f97941164ff8f5f6f8
     response:
@@ -8330,3 +8316,40 @@ idempotency:
           blocked: 0
         warnings: []
         recommended_action: select_new_task
+  77e8b3d1-8995-468a-a012-3968796b55b4:
+    fingerprint: b101943f0c4def217c25b2c4b66691861aa2a7307ec14af6e75fdbac4fe7d089
+    response:
+      contract_version: project-state/v1
+      operation: start_pass
+      revision: 499
+      data:
+        pass: *id046
+        task: *id004
+      snapshot:
+        contract_version: project-state/v1
+        snapshot_at: '2026-10-28T20:00:04.772680+00:00'
+        revision: 499
+        project: *id001
+        current_phase: *id002
+        phases: *id003
+        active_tasks:
+          - *id004
+        working_tasks_without_active_lease: []
+        active_passes:
+          - *id046
+        stale_passes: []
+        blocked_tasks: []
+        eligible_tasks: []
+        latest_pass: *id046
+        queue_counts:
+          by_status:
+            completed: 30
+            pending: 56
+            working: 1
+          total: 87
+          active_passes: 1
+          stale_passes: 0
+          eligible: 0
+          blocked: 0
+        warnings: []
+        recommended_action: resume_active
