@@ -14,8 +14,9 @@ open until those pass on their hosts).
 ## Artifacts
 
 `markdown-ffi` builds `rlib` (Rust tests), `cdylib` (`libmarkdown_ffi.dylib`,
-`.so` or `markdown_ffi.dll`) and `staticlib`. Exactly the 18 functions in the
-header are exported with the `md_` prefix. Feature `model-v2` forwards to the
+`.so` or `markdown_ffi.dll`) and `staticlib`. Exactly the 20 functions in the
+header are exported with the `md_` prefix: the 18 from PR #7 plus the two
+CORE-005A2 additions below. Feature `model-v2` forwards to the
 core feature and adds model v2 to negotiation; the default build offers v1 only.
 Packaging (install names, import libraries, XCFrameworks, signing) belongs to
 each platform's B and I phases.
@@ -48,7 +49,7 @@ has a header size constant and is checked through `struct_size` on every call.
 Hosts compare those constants with `sizeof` after negotiation. An older library
 lacks the new symbols, so it fails at link or load time; there is no runtime
 probe. Anything incompatible needs a new ABI version. CORE-005A2 is the first
-phase to use this rule.
+phase to use this rule ([find and reading statistics](#find-and-reading-statistics-core-005a2)).
 
 ## Ownership and lifetimes
 
@@ -59,7 +60,7 @@ phase to use this rule.
 | `md_snapshot` | core registry | `md_snapshot_release` |
 | Arrays/strings reachable from `md_snapshot_view` | the snapshot handle | freed with that handle |
 | Input bytes (`document_id`, source, tokens, anchors) | caller | copied during the call; never retained |
-| Output structs, anchor buffers | caller | caller |
+| Output structs, anchor buffers, find/read record arrays | caller | caller |
 | `md_status_name` strings | static | never freed |
 
 Handles are nonzero 64-bit registry keys, not pointers, and are never reused
@@ -199,6 +200,70 @@ tests rebuild the exact Rust model from it. Arrays with count 0 are `NULL`.
 All indices, spans and string offsets are `uint32_t`; a snapshot that could
 not fit returns `MD_ERR_LIMIT`, which the session ceilings prevent in practice.
 
+## Find and reading statistics (CORE-005A2)
+
+Two functions expose [`markdown_core::search`](../search/README.md) over a
+snapshot handle under D-022. The semantics, Unicode rules, source mapping and
+bounds are those of the search contract; the ABI only validates arguments and
+flattens results. Both are thread-safe, start no threads and should run on a
+host worker.
+
+- `md_snapshot_find(snapshot, query, query_length, options, matches,
+  match_capacity, segments, segment_capacity, out_result)`: the query is UTF-8
+  (invalid UTF-8 or more than `MD_FIND_MAX_QUERY_BYTES` bytes is
+  `MD_ERR_INVALID_ARGUMENT`); an empty or whitespace-only query succeeds with no
+  matches. `md_find_options` carries `MD_FIND_CASE_SENSITIVE`/`MD_FIND_WHOLE_WORD`
+  flags and `max_matches` (0 selects 10,000; at most 1,000,000).
+  `md_find_result` reports `MD_FIND_TRUNCATED` and the match and segment
+  counts. Each `md_find_match` (leaf `unit` node, covering source span,
+  `MD_MATCH_EXACT`) owns the contiguous range `segments[first_segment ..
+  first_segment + segment_count)`. Each `md_match_segment` has its node, the
+  byte range in that node's display text (`md_node.text` for text, code and
+  image alt; the source slice for unsupported nodes; empty at 0 for breaks),
+  its source span and `MD_MATCH_EXACT`.
+- `md_snapshot_read_stats(snapshot, options, sections, section_capacity,
+  out_stats)`: `md_read_options` carries `MD_READ_INCLUDE_HEADINGS`/
+  `MD_READ_INCLUDE_CODE` and `words_per_minute` (0 selects 160; otherwise
+  60..600). `md_read_stats` reports the rate used, total words and seconds,
+  and the section count, which always equals the view's `outline_count + 1`.
+  `md_read_section` is the intro (`heading`/`outline_index` `MD_NONE`, level 0)
+  or one heading, with own and cumulative words and seconds.
+
+Node indices are view node indices and spans are source byte ranges, so hosts
+highlight from segments and keep positions across generations with
+`md_snapshot_anchor_at(match.span_start)`. Several matches inside one atomic
+node can share a span, so navigate by match index (see the search contract).
+
+**Sizes.** Every new struct has a header constant (`MD_FIND_OPTIONS_SIZE`,
+`MD_FIND_RESULT_SIZE`, `MD_FIND_MATCH_SIZE`, `MD_MATCH_SEGMENT_SIZE`,
+`MD_READ_OPTIONS_SIZE`, `MD_READ_STATS_SIZE`, `MD_READ_SECTION_SIZE`). All
+fields are fixed-width, so the sizes are the same on every target. The options
+and result structs begin with `struct_size`. The record arrays have no
+per-element header, so the options carry `match_size`, `segment_size` and
+`section_size`, which the caller sets to `sizeof` the record type. Any
+mismatch is `MD_ERR_STRUCT_SIZE` on every call. Unknown flag bits and a
+nonzero `md_find_options.reserved` are `MD_ERR_INVALID_ARGUMENT`.
+
+**Buffers.** Record arrays are caller-owned. Each may be `NULL` only with a
+zero capacity, must be aligned for its record type, and its byte size must
+not exceed `PTRDIFF_MAX`. If any array is too small, the call returns
+`MD_ERR_BUFFER_TOO_SMALL`, writes the result struct in full (counts, flags,
+totals) and writes no records; the host grows its arrays and calls again,
+which recomputes the work. Hosts can size `matches` from `max_matches` and
+`sections` from the view's `outline_count + 1` to avoid the sizing call. On
+`MD_OK` exactly `match_count`/`segment_count`/`section_count` leading records
+are written and the rest of each array is untouched. On every other failure,
+including a contained panic, the result struct is zeroed (keeping
+`struct_size`) and no record is written.
+
+**Cost and cancellation.** There is no cancel handle, because D-022 adds no
+handle types. Work is linear in the snapshot's visible text and query length,
+results are capped by `max_matches`, and working memory follows the search
+contract plus the flattened records (24 bytes per match and per segment, 48
+per section). The snapshot ceilings bound a call. Hosts that type-ahead should
+debounce on a worker and drop stale results. Cancellable find is a candidate
+for a later ABI version.
+
 ## Evidence
 
 - `core/crates/markdown-ffi/src/tests.rs` calls the exported functions as a
@@ -210,7 +275,16 @@ not fit returns `MD_ERR_LIMIT`, which the session ceilings prevent in practice.
   anchor round trips and forged anchors, panic injection at every entry point
   (including while the registry lock is held, and after a job ran, proving
   zeroed results), shared encodings, bounded oversized submissions,
-  overlapping outputs and multi-threaded sessions.
+  overlapping outputs and multi-threaded sessions. For find and reading
+  statistics it checks parity with the Rust API (every match, segment and
+  section field) over the corpus in v1 and v2, for fixed Unicode queries
+  (NFC/NFD, ß/ẞ, emoji, CJK), each source's first 60 distinct words and first
+  10 lines, all flag combinations and five rates. Every exact segment is checked
+  against the bulk view's display text. Further tests cover cross-inline,
+  atomic entity, cluster-boundary and case-folding cases, two-call sizing with
+  untouched arrays, truncation, empty queries, every argument and size check
+  with zeroed results, released handles, injected panics and concurrent calls
+  on one snapshot.
   Every test asserts that all handles return to zero.
 - `core/crates/markdown-ffi/tests/c_abi.rs` checks every header constant
   against Rust. It then builds the shared library for its own profile and
@@ -223,9 +297,11 @@ not fit returns `MD_ERR_LIMIT`, which the session ceilings prevent in practice.
   the C smoke with `LD_LIBRARY_PATH`, `DYLD_LIBRARY_PATH` and
   `DYLD_FALLBACK_LIBRARY_PATH` removed. The smoke reports the file that
   provides `md_abi_negotiate` via `dladdr`, which must canonicalize to the
-  staged copy, and asserts the library's model mask matches the build: negotiation, v1 and (when built) v2 sessions, bulk copy, anchor
-  round trip, external change, cancellation, snapshot-outlives-session and
-  200 lifecycle iterations ending with zero live handles.
+  staged copy, and asserts the library's model mask matches the build: negotiation, v1 and (when built) v2 sessions, bulk copy, two-call
+  find with segment highlighting checked against the view, reading statistics
+  and their argument checks, anchor round trip, external change, cancellation,
+  snapshot-outlives-session and 200 lifecycle iterations ending with zero live
+  handles. The smoke also `_Static_assert`s every D-022 size constant.
 - `tools/check.py core` runs both in debug and release across default,
   `model-v2` and all-feature builds; it requires the C smoke on macOS/Linux.
   Windows runs the Rust tests and constant check but skips the C smoke until

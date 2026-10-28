@@ -12,7 +12,7 @@ branch and PR. Once ready, post a separate PR comment exactly `/grok review`,
 address the feedback, and obtain owner merge approval. Follow
 [Delivery-Workflow.md](docs/Delivery-Workflow.md) for branch, review and handoff
 rules. GATE-001 is approved (D-018). CORE-001A through CORE-003A, CORE-003B1 and
-CORE-003B2/B2F, CORE-004A and CORE-006A are merged; CORE-005A is selected;
+CORE-003B2/B2F, CORE-004A, CORE-006A and CORE-005A are merged; CORE-005A2 is selected;
 ADV-005 carries deferred engine work after DESK-002.
 
 ## Current phase: portable core and early native foundations
@@ -29,13 +29,13 @@ core alone.
 
 PR #7 (CORE-006A C ABI facade, [contract](specs/ffi/README.md)) merged as
 `a751f48`; it unblocks each host's 001B adapter phase, and CORE-006 stays open
-until the Swift, C# and gtk-rs consumers pass there. **CORE-005A**
-(source-accurate find, word count and section timing;
-[contract](specs/search/README.md)) is the active phase on
-`feat/core-005a-find-wordcount` and stays partial until review disposition and
-owner-authorized merge. It delivers the Rust core semantics only; the owner
-split C ABI exposure into **CORE-005A2** (additive-only ABI growth, D-022),
-which each platform's 001F phase requires. CORE-003B was refined into four
+until the Swift, C# and gtk-rs consumers pass there. PR #8 (**CORE-005A**
+source-accurate find, word count and section timing;
+[contract](specs/search/README.md)) merged as `237cd88`. **CORE-005A2** exposes
+them over ABI v1 by two new functions (`md_snapshot_find`,
+`md_snapshot_read_stats`) under D-022. It is the active phase on
+`feat/core-005a2-ffi-search` and stays partial until review disposition and
+owner-authorized merge; each platform's 001F phase requires it. CORE-003B was refined into four
 tracked children: B1 metadata; B2 reference representation/URI compatibility;
 B3 remaining extension semantics; B4 conformance/fuzz/property and parser
 budgets. See [the catalog](docs/Implementation-Plan.md) for scope/dependencies.

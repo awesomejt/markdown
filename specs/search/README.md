@@ -1,7 +1,7 @@
 # Document find and reading metadata
 
-Status: CORE-005A contract under phase-PR review; freeze at owner-authorized
-merge. Rust module `markdown_core::search`
+Status: frozen at owner-authorized CORE-005A PR #8 merge (`237cd88`). The
+C ABI exposure (CORE-005A2) is in the [C ABI contract](../ffi/README.md#find-and-reading-statistics-core-005a2). Rust module `markdown_core::search`
 ([source](../../core/crates/markdown-core/src/search/mod.rs)) implements it
 over one validated [v1](../semantic-model/v1/README.md) or
 [v2](../semantic-model/v2/README.md) document or a published
@@ -9,7 +9,7 @@ over one validated [v1](../semantic-model/v1/README.md) or
 locale data, wire-model change or new dependency. V1/v2 APIs, schemas and
 goldens are unchanged.
 
-Out of scope here: C ABI exposure (CORE-005A2, owner-approved split, below),
+Out of scope here: the C ABI encoding (CORE-005A2, in the C ABI contract),
 workspace/multi-file search (CORE-005B) and native find UI, highlighting and
 navigation commands (each platform's 001F phase).
 
@@ -277,14 +277,14 @@ all-feature builds:
 
 ## Decided follow-up and open proposals
 
-1. **C ABI exposure** is decided: the owner split it into CORE-005A2 under
-   [D-022](../../agents/Decisions.md). ABI v1 grows only by new functions that
-   fill caller-owned arrays (for example `md_snapshot_find` and
-   `md_snapshot_read_stats` over a snapshot handle). Each new record struct
-   has a header size constant checked through `struct_size`. There are no new
-   handle types and no changes to `md_abi_info` or `md_live_handles`. Without
-   a cancel handle, FFI find is bounded by `max_matches` and the snapshot
-   limits. Each platform's 001F depends on it.
+1. **C ABI exposure** (CORE-005A2) follows
+   [D-022](../../agents/Decisions.md): `md_snapshot_find` and
+   `md_snapshot_read_stats` fill caller-owned record arrays over a snapshot
+   handle, with header size constants checked on every call, no new handle
+   types and no change to `md_abi_info` or `md_live_handles`. Without a cancel
+   handle, FFI find is bounded by `max_matches` and the snapshot limits. See
+   the [C ABI contract](../ffi/README.md#find-and-reading-statistics-core-005a2).
+   Each platform's 001F depends on it.
 2. **Normalization-insensitive find:** canonical-equivalence matching needs
    NFC/NFD data. `icu_normalizer` is already in the optional `model-v2` graph,
    so an opt-in mode could reuse it rather than add a package.
