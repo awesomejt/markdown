@@ -17,8 +17,14 @@ design belong in `docs/` or `agents/`; runtime transcripts do not belong here.
   approval is inferred. Its supported state closeout travels in this branch.
 - CORE-003B retains B1 metadata, B2 references/URI, B3 other extension semantics
   and B4 conformance/fuzz/performance with original aggregate/native gates.
-- Status 2026-10-27: PR #7 (CORE-006A) merged as `a751f48`. CORE-005A is in
-  progress on `feat/core-005a-find-wordcount`: `markdown_core::search`
+- Status 2026-10-28: PR #8 (CORE-005A) merged as `237cd88`. CORE-005A2 is in
+  progress on `feat/core-005a2-ffi-search`: `md_snapshot_find` and
+  `md_snapshot_read_stats` (specs/ffi/README.md) are the first D-022
+  additions (20 exports). They fill caller-owned record arrays with two-call
+  `MD_ERR_BUFFER_TOO_SMALL` sizing. Options carry the record element sizes,
+  so every new struct size is checked on each call. There is no cancel
+  handle. Rust parity tests and the C smoke cover them.
+- CORE-005A (merged, PR #8 `237cd88`): `markdown_core::search`
   (specs/search/README.md) adds literal source-mapped find (simple case fold,
   no NFC/NFD normalization, approximate cluster/whole-word boundaries, bounded
   and cancellable), simplified-UAX #29 word count (one word per CJK

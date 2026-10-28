@@ -31,7 +31,7 @@ pub(crate) struct Flat {
 }
 
 /// Every table index, span and string offset must fit the ABI's `u32`.
-fn small(value: impl TryInto<u32>) -> Result<u32, md_status> {
+pub(crate) fn small(value: impl TryInto<u32>) -> Result<u32, md_status> {
     value.try_into().map_err(|_| MD_ERR_LIMIT)
 }
 

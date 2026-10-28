@@ -1,11 +1,29 @@
 # Agent Session and Platform Handoff
 
-Updated: 2026-10-27, CORE-005A find and reading metadata on `feat/core-005a-find-wordcount`.
-Source baseline: `a751f48` on main (PR #7 merge) plus this phase's changes. Preserve intended
+Updated: 2026-10-28, CORE-005A2 C ABI find/read stats on `feat/core-005a2-ffi-search`.
+Source baseline: `237cd88` on main (PR #8 merge) plus this phase's changes. Preserve intended
 source, lock/spec/golden files, docs and state together. Never transfer caches,
 environments, build products, private runtime state or user documents.
 
-## Resume here — CORE-005A find, word count and section timing
+## Resume here — CORE-005A2 C ABI find and reading statistics
+
+PR #8 (CORE-005A) merged as `237cd88`; its state closeout travels on this
+branch. CORE-005A2 adds two exports under D-022 per
+[the C ABI contract](specs/ffi/README.md#find-and-reading-statistics-core-005a2).
+`md_snapshot_find` fills `md_find_match` and `md_match_segment` arrays and an
+`md_find_result`. `md_snapshot_read_stats` fills `md_read_section` records and
+an `md_read_stats`. Both use two-call `MD_ERR_BUFFER_TOO_SMALL` sizing, and no
+records are written on failure. Each new struct has an `MD_*_SIZE` header
+constant. The options carry the record element sizes, which are checked on
+every call. There is no new handle type, no change to existing items and no
+cancel handle. Evidence: Rust parity with `markdown_core::search` over the
+corpus (v1/v2), argument, size, panic and concurrency tests, layout and
+constant drift checks and the macOS C smoke. Next: phase PR, `/grok review`,
+owner-authorized merge. After that, the remaining shared CORE tasks per the
+owner's plan (CORE-005B, CORE-003B3, CORE-003B4 and the CORE-003B closeout),
+then the owner's holistic review before any platform phase.
+
+## CORE-005A find, word count and section timing (merged in PR #8)
 
 PR #7 (CORE-006A C ABI) merged as `a751f48`; its state closeout is owned by the
 orchestrator's project-state pass. CORE-005A adds `markdown_core::search` per
@@ -20,9 +38,7 @@ matching markdown-viewer `b881034` defaults/exclusions. No new dependency, no
 model/ABI change. The owner split FFI exposure into CORE-005A2 under D-022
 (ABI v1 grows by new functions only, filling caller-owned arrays; no new
 handle types or changes to existing items) and froze the PR #7 flat view as
-an ABI v1 representation (D-023). Independent review findings 1–8 are fixed
-on this branch. Next: phase PR, `/grok review`, owner-authorized merge; then
-CORE-005A2 before each platform's 001F find UI.
+an ABI v1 representation (D-023). Review findings were fixed before the merge.
 
 ## CORE-006A C ABI facade (merged in PR #7)
 

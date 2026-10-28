@@ -121,6 +121,16 @@ fn rust_layout() -> BTreeMap<String, usize> {
             document_id, revision_id, source_sha256, title,
         }
         md_anchor_resolution { struct_size, quality, node, reserved, offset, source_offset }
+        md_find_options { struct_size, flags, max_matches, match_size, segment_size, reserved }
+        md_find_result { struct_size, flags, match_count, segment_count }
+        md_find_match { unit, flags, span_start, span_end, first_segment, segment_count }
+        md_match_segment { node, flags, text_start, text_end, span_start, span_end }
+        md_read_options { struct_size, flags, words_per_minute, section_size }
+        md_read_stats { struct_size, words_per_minute, words, seconds, section_count }
+        md_read_section {
+            heading, outline_index, level, reserved, words, seconds, cumulative_words,
+            cumulative_seconds,
+        }
     }
 }
 
