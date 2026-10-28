@@ -45,8 +45,8 @@ core alone.
   [the memory archive](agents/Memory-Archive.md#todomd-session-handoff-history).
 
 The shared-core reviews (PR #16) are merged. The current work is the
-[CORE-FIX phase](#core-fix-phase-shared-core-review-follow-ups), DOC-001 and
-then CORE-002B. Inspect state and `HANDOFF.md` before any pass. Scoped
+[CORE-FIX phase](#core-fix-phase-shared-core-review-follow-ups): DOC-001
+merged in PR #17, and CORE-002B is next. Inspect state and `HANDOFF.md` before any pass. Scoped
 commits, pushes, PR updates and review comments are authorized; merge
 requires owner authorization; concurrency remains one.
 
@@ -197,7 +197,7 @@ Three reviews of the shared core at the same implementation baseline (`39d1a56`)
 found a correctness, memory-safety or file-access defect. The owner
 dispositioned them on 2026-10-28 (D-026). CORE-FIX starts the shared track
 and runs before any platform phase, including the 001A shells. State chains
-the six tasks in the order below, so only the next one is eligible. Each task
+the seven tasks in the order below, so only the next one is eligible. Each task
 is one feature branch and PR under
 [Delivery-Workflow.md](docs/Delivery-Workflow.md).
 
@@ -290,6 +290,21 @@ is one feature branch and PR under
      the exact name and the opaque entry ID.
    - Add Rust/FFI flag parity tests and update the workspace-search spec.
      Each platform's 002B needs it.
+7. **CORE-003E — Front-matter invisible-character parity (Grok, PR #17).**
+   The owner added it on 2026-10-28 as its own follow-up, without widening
+   CORE-002B or CORE-005D. `metadata::unsafe_character` covers only Cf, while
+   v2 URI targets deny Default_Ignorable_Code_Point and U+2800 (B2F) and
+   CORE-005D flags Hangul fillers and U+2800 in filenames.
+   - Decide and record whether the metadata title and scalar and list string
+     properties also reject or diagnose blank or invisible characters that
+     are not Cf: the Hangul fillers, U+2800 and other default-ignorable
+     values. Keep the variation-selector and CGJ display allowance.
+   - Reuse the v2 and CORE-005D tables with provenance. Apply the rule in the
+     producer and in shared `validate_structure`, so v1, v2 and `from_json`
+     keep the parity CORE-002B establishes.
+   - Acceptance: v1 and v2 tests for each new range and for the allowance,
+     goldens unchanged or regenerated with a reviewed diff, and
+     docs/Front-Matter.md and the model specs updated.
 
 Not in CORE-FIX, kept where they belong:
 
@@ -397,7 +412,7 @@ CORE-004A -> CORE-005A -> CORE-005A2;  CORE-005A -> CORE-005B -> CORE-005B2
 
 Shared track (portable-core, one chain; D-026, D-027):
 DOC-001 -> CORE-002B -> CORE-003C -> CORE-003D -> CORE-005C -> CORE-005D
-  -> CORE-001 -> CORE-002 -> CORE-003 -> CORE-004 -> CORE-005 -> CORE-006
+  -> CORE-003E -> CORE-001 -> CORE-002 -> CORE-003 -> CORE-004 -> CORE-005 -> CORE-006
   -> portable-core complete, desktop-apps active
 
 Each host (desktop-apps; MAC, LNX and WIN chains are independent):

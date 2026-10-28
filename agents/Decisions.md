@@ -466,7 +466,10 @@ owner reconciled them and decided the open questions.
   phase, including the 001A shells: DOC-001, CORE-002B, CORE-003C, CORE-003D,
   CORE-005C, CORE-005D. State encodes the order as dependency edges, and the
   shared track then closes the CORE aggregates before any 001A (D-027).
-  [TODO.md](../TODO.md) holds the scope.
+  [TODO.md](../TODO.md) holds the scope. On 2026-10-28 the owner appended
+  CORE-003E (front-matter invisible-character parity, from the PR #17 Grok
+  review) after CORE-005D as its own task rather than widening an existing
+  one.
 - **Import policy (F3, G3, C2).** CORE-002B makes decoding match the producer,
   not a stricter policy. V1 `from_json` re-runs the parser's own link and
   resource policy. The shared structural validation applies the producer's

@@ -27,10 +27,9 @@ read.
   stays the Rust default), D-026 (the CORE-FIX phase) and D-027 (one linear
   shared track, then one independent chain per host from CORE-006).
 - CORE-FIX order: DOC-001, CORE-002B, CORE-003C, CORE-003D, CORE-005C,
-  CORE-005D. The CORE-001 to CORE-006 aggregates follow and close on shared
+  CORE-005D, then CORE-003E (owner-added from the PR #17 review). The CORE-001 to CORE-006 aggregates follow and close on shared
   acceptance. HARD-001 sits between DESK-001 and DESK-002.
-- Now: DOC-001 on `docs/doc-001-agent-docs-cleanup`, PR #17 awaiting owner
-  merge approval. Next: CORE-002B. See
+- DOC-001 merged in PR #17. Now: CORE-002B. See
   [HANDOFF.md](HANDOFF.md) and [TODO.md](TODO.md).
 - Each 001B also measures flat-view and retained RSS on its host, and WIN-001B
   makes the MSVC C smoke a required CI step.
