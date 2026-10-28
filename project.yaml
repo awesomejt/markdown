@@ -1,11 +1,11 @@
 contract_version: project-state/v1
-revision: 499
+revision: 500
 project: &id001
   concurrency_limit: 1
   created_at: '2026-10-24T23:34:09.871478+00:00'
   project_ref: markdown-native
-  status: working
-  updated_at: '2026-10-28T20:00:04.772640+00:00'
+  status: active
+  updated_at: '2026-10-28T20:06:27.485113+00:00'
   workflow_id: native-app-development
   workflow_version: '2'
 phases: &id003
@@ -1737,10 +1737,10 @@ tasks:
       deleted); required-reading files consistent with project.yaml and Decisions.md; owner-authorized
       merge.
     status: working
-    active_pass_ref: c38091e9-96d1-4fa0-8b4d-59415f036178
+    active_pass_ref: null
     blockers: []
     created_at: '2026-10-28T16:44:19.292706+00:00'
-    updated_at: '2026-10-28T20:00:04.772640+00:00'
+    updated_at: '2026-10-28T20:06:27.485113+00:00'
     completed_at: null
   - id: 1cf1a432-bfba-454c-b1db-48ec27fd9325
     task_key: CORE-003C
@@ -4740,61 +4740,41 @@ passes:
     task_ref: 0be1a8ee-d8c7-4794-8eaf-3b18e571a07d
     phase_ref: f1e4c757-a3fc-4cfd-810b-4cbed98586c8
     actor: claude-macos
-    status: active
-    outcome: null
+    status: completed
+    outcome: partial
     objective: 'Agent-facing docs cleanup (F5/G5/C6): trim MEMORY.md posture to ~30 lines with an archive
       file, remove stale HANDOFF.md sections, fix stale status text, trim TODO.md session handoff, qualify
       the workspace-search snippet invariant, on docs/doc-001-agent-docs-cleanup.'
-    summary: null
-    handoff: null
-    validation_result: null
-    evidence: {}
+    summary: 'DOC-001 docs cleanup delivered on docs/doc-001-agent-docs-cleanup (head ae7e778), PR 17:
+      MEMORY.md posture trimmed with verbatim agents/Memory-Archive.md, stale HANDOFF.md sections removed,
+      TODO.md handoff trimmed to pointers, D-020 and v2/session spec status fixed, workspace-search snippet
+      invariant qualified.'
+    handoff: Await Grok review on PR 17 (trigger https://github.com/awesomejt/markdown/pull/17#issuecomment-6479336812,
+      head ae7e778) and hosted CI; resolve feedback (no re-review needed per owner), then on owner merge
+      approval resume DOC-001, finish completed in a chore(state) closeout commit on the PR branch (also
+      update MEMORY/HANDOFF to CORE-002B current), merge and delete branch.
+    validation_result:
+      checks:
+        - 'tools/check.py common passed on macOS: link check, markdownlint-cli2 63 files 0 errors, tool
+          tests, generate_conformance --check'
+        - 'line-level audit: removed MEMORY/HANDOFF/TODO lines present in archive or restated'
+      pending:
+        - Grok review disposition
+        - hosted CI on PR 17
+        - owner merge approval
+    evidence:
+      pr: https://github.com/awesomejt/markdown/pull/17
+      review_request: https://github.com/awesomejt/markdown/pull/17#issuecomment-6479336812
+      head: ae7e778
     participants: []
     blocker: null
     execution_record: {}
     started_at: '2026-10-28T20:00:04.772640+00:00'
     last_heartbeat_at: null
-    completed_at: null
-    lease_expires_at: '2026-10-28T22:00:04.772640+00:00'
+    completed_at: '2026-10-28T20:06:27.485113+00:00'
+    lease_expires_at: null
     lease_version: 1
 idempotency:
-  5b9af3ca-42f3-4c27-a435-bead825731bd:
-    fingerprint: 649edfad294e7aa08d2725a4da7d5ea3390b579b5c9055f97941164ff8f5f6f8
-    response:
-      contract_version: project-state/v1
-      operation: remove_dependency
-      revision: 400
-      data:
-        relationship:
-          predecessor_task_ref: 48dad44a-1ef5-44e6-b6a6-d471e4df28e0
-          successor_task_ref: db740a43-d5ce-4730-86b0-b30557061ad9
-          relationship: blocks
-      snapshot:
-        contract_version: project-state/v1
-        snapshot_at: '2026-10-28T18:55:39.495138+00:00'
-        revision: 400
-        project: *id001
-        current_phase: *id002
-        phases: *id003
-        active_tasks: []
-        working_tasks_without_active_lease: []
-        active_passes: []
-        stale_passes: []
-        blocked_tasks: []
-        eligible_tasks:
-          - *id004
-        latest_pass: *id005
-        queue_counts:
-          by_status:
-            completed: 30
-            pending: 57
-          total: 87
-          active_passes: 0
-          stale_passes: 0
-          eligible: 1
-          blocked: 0
-        warnings: []
-        recommended_action: select_new_task
   1dede8b2-09f3-4bd2-afd7-f11b0e5ec617:
     fingerprint: f292cf58984d9c58417bd3a7e46aa73b7bea5c73251710b2e2a4e6c77544d552
     response:
@@ -8353,3 +8333,39 @@ idempotency:
           blocked: 0
         warnings: []
         recommended_action: resume_active
+  e0b92d9b-8c80-4eae-925f-12a6334e5727:
+    fingerprint: bb24f2a893f5b4e9642f5a746ea54f51f543f5d3567b528f56fdc5e69b104504
+    response:
+      contract_version: project-state/v1
+      operation: finish_pass
+      revision: 500
+      data:
+        pass: *id046
+        task: *id004
+      snapshot:
+        contract_version: project-state/v1
+        snapshot_at: '2026-10-28T20:06:27.485125+00:00'
+        revision: 500
+        project: *id001
+        current_phase: *id002
+        phases: *id003
+        active_tasks: []
+        working_tasks_without_active_lease:
+          - *id004
+        active_passes: []
+        stale_passes: []
+        blocked_tasks: []
+        eligible_tasks: []
+        latest_pass: *id046
+        queue_counts:
+          by_status:
+            completed: 30
+            pending: 56
+            working: 1
+          total: 87
+          active_passes: 0
+          stale_passes: 0
+          eligible: 0
+          blocked: 0
+        warnings: []
+        recommended_action: recover_stale_task
