@@ -1,6 +1,6 @@
 use crate::*;
 use serde::Serialize;
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::fmt;
 
 /// Caller-adjustable safety ceilings, not performance or release budgets.
@@ -160,7 +160,7 @@ fn validate_parts(
         "source",
     )?;
     require(d.nodes.len() <= limits.max_nodes, "node_limit", "nodes")?;
-    let mut index = BTreeMap::new();
+    let mut index = HashMap::with_capacity(d.nodes.len());
     let mut caps = BTreeSet::new();
     let mut anchors = BTreeSet::new();
     let mut footnotes = BTreeSet::new();
@@ -169,9 +169,11 @@ fn validate_parts(
         require_lazy(id_valid(&node.id.0), "invalid_id", || {
             format!("nodes[{i}].id")
         })?;
-        require_lazy(index.insert(&node.id, i).is_none(), "duplicate_id", || {
-            format!("nodes[{i}].id")
-        })?;
+        require_lazy(
+            index.insert(node.id.0.as_str(), i).is_none(),
+            "duplicate_id",
+            || format!("nodes[{i}].id"),
+        )?;
         require_lazy(span_valid(node.span, source), "invalid_span", || {
             format!("nodes[{i}].span")
         })?;
@@ -237,7 +239,7 @@ fn validate_parts(
     let mut parents = vec![0usize; d.nodes.len()];
     let resolve = |id: &NodeId| {
         index
-            .get(id)
+            .get(id.0.as_str())
             .copied()
             .ok_or_else(|| err("unknown_node", "tree"))
     };
@@ -289,12 +291,14 @@ fn validate_parts(
     }
     require(parents.iter().all(|n| *n == 1), "parent_count", "tree")?;
     let mut stack: Vec<_> = d.roots.iter().rev().map(|id| (id, 1usize, false)).collect();
-    let mut visited = BTreeSet::new();
+    let mut visited = vec![false; d.nodes.len()];
+    let mut visits = 0usize;
     let mut headings = Vec::new();
     while let Some((id, depth, inside_link)) = stack.pop() {
         let i = resolve(id)?;
         require(depth <= limits.max_depth, "depth_limit", "tree")?;
-        require(visited.insert(i), "cycle", "tree")?;
+        require(!std::mem::replace(&mut visited[i], true), "cycle", "tree")?;
+        visits += 1;
         let node = &d.nodes[i];
         let link = matches!(node.content, NodeKind::Link { .. });
         require_lazy(!(inside_link && link), "nested_link", || {
@@ -311,7 +315,7 @@ fn validate_parts(
                 .map(|child| (child, depth + 1, inside_link || link)),
         );
     }
-    require(visited.len() == d.nodes.len(), "unreachable_node", "tree")?;
+    require(visits == d.nodes.len(), "unreachable_node", "tree")?;
     require(
         headings.len() == d.outline.len(),
         "outline_coverage",
@@ -336,7 +340,7 @@ fn validate_parts(
         require(
             d.roots
                 .first()
-                .is_none_or(|id| d.nodes[index[id]].span.start >= span.end),
+                .is_none_or(|id| d.nodes[index[id.0.as_str()]].span.start >= span.end),
             "front_matter_overlap",
             "metadata",
         )?;
@@ -372,7 +376,7 @@ fn validate_parts(
             diagnostic
                 .node
                 .as_ref()
-                .is_none_or(|id| index.contains_key(id)),
+                .is_none_or(|id| index.contains_key(id.0.as_str())),
             "unknown_node",
             || format!("diagnostics[{i}].node"),
         )?;
