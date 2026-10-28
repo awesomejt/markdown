@@ -444,6 +444,8 @@ md_status md_snapshot_release(md_snapshot snapshot);
 #define MD_READ_SECTION_SIZE 48u
 /* Longer queries (raw UTF-8 bytes) are rejected with MD_ERR_INVALID_ARGUMENT. */
 #define MD_FIND_MAX_QUERY_BYTES 4096u
+/* Results cost about 250 bytes of transient core heap per match (about
+   240 MiB at the maximum) besides the caller's arrays; see the contract. */
 #define MD_FIND_DEFAULT_MAX_MATCHES 10000u
 #define MD_FIND_MAX_MATCHES 1000000u
 #define MD_READ_DEFAULT_WPM 160u

@@ -258,9 +258,17 @@ including a contained panic, the result struct is zeroed (keeping
 
 **Cost and cancellation.** There is no cancel handle, because D-022 adds no
 handle types. Work is linear in the snapshot's visible text and query length,
-results are capped by `max_matches`, and working memory follows the search
-contract plus the flattened records (24 bytes per match and per segment, 48
-per section). The snapshot ceilings bound a call. Hosts that type-ahead should
+and results are capped by `max_matches`. The call first converts every record
+to validate it, then writes records straight into the caller arrays; it keeps
+no second copy, and a sizing call allocates no records. Transient heap memory
+is therefore the core `FindResults`: about 250 bytes per single-segment match,
+mostly its per-match segment vector. That is about 2.5 MiB at the default
+10,000 matches and about 240 MiB at `MD_FIND_MAX_MATCHES`. This was measured
+with a counting allocator in a release build for 1,000,000 matches; before the
+PR #9 review fix, an intermediate flat copy made it 312 bytes per match. A
+flat or visitor result form in the core could remove most of it (a candidate
+follow-up). The caller's arrays add 24 bytes per match and per segment, and
+`read_stats` adds 48 per section. The snapshot ceilings bound a call. Hosts that type-ahead should
 debounce on a worker and drop stale results. Cancellable find is a candidate
 for a later ABI version.
 

@@ -6,12 +6,13 @@ use crate::abi::*;
 use crate::flat::small;
 use crate::*;
 use markdown_core::search::{
-    self, FindOptions, FindResults, ReadOptions, ReadStats, SearchDocument, SearchError,
+    self, FindMatch, FindOptions, FindResults, MatchSegment, ReadOptions, ReadStats,
+    SearchDocument, SearchError,
 };
 
 /// A caller-owned record array (null only with zero capacity). Like [`Out`],
-/// it is written only through raw stores, and only once, after all fallible
-/// work, so failures leave it untouched.
+/// it is written only through raw stores, and only after all fallible work,
+/// so failures leave it untouched.
 struct Records<T> {
     ptr: *mut T,
     capacity: usize,
@@ -31,17 +32,22 @@ impl<T: Copy> Records<T> {
         }
         Ok(Self { ptr, capacity })
     }
-    fn fits(&self, values: &[T]) -> bool {
-        values.len() <= self.capacity
+    fn fits(&self, count: usize) -> bool {
+        count <= self.capacity
+    }
+    fn set(&self, index: usize, value: T) {
+        assert!(index < self.capacity, "record index checked by `fits`");
+        // SAFETY: `new` validated the pointer for `capacity` writes and the
+        // index is in range.
+        unsafe { self.ptr.add(index).write(value) };
     }
     fn write(&self, values: &[T]) {
-        debug_assert!(self.fits(values));
+        assert!(self.fits(values.len()), "record count checked by `fits`");
         if values.is_empty() {
             return;
         }
-        // SAFETY: `fits` was checked by the caller and `new` validated the
-        // pointer for `capacity` writes; `values` is core-owned, so the
-        // ranges cannot overlap.
+        // SAFETY: `new` validated the pointer for `capacity` writes;
+        // `values` is core-owned, so the ranges cannot overlap.
         unsafe { std::ptr::copy_nonoverlapping(values.as_ptr(), self.ptr, values.len()) };
     }
 }
@@ -99,37 +105,53 @@ fn exact(exact: bool) -> u32 {
     if exact { MD_MATCH_EXACT } else { 0 }
 }
 
-/// Flatten matches and their segments into the ABI records.
-pub(crate) fn find_records(
+fn match_record(found: &FindMatch, first_segment: usize) -> Result<md_find_match, md_status> {
+    Ok(md_find_match {
+        unit: small(found.unit)?,
+        flags: exact(found.exact),
+        span_start: small(found.source.start)?,
+        span_end: small(found.source.end)?,
+        first_segment: small(first_segment)?,
+        segment_count: small(found.segments.len())?,
+    })
+}
+fn segment_record(segment: &MatchSegment) -> Result<md_match_segment, md_status> {
+    Ok(md_match_segment {
+        node: small(segment.node)?,
+        flags: exact(segment.exact),
+        text_start: small(segment.text_start)?,
+        text_end: small(segment.text_end)?,
+        span_start: small(segment.source.start)?,
+        span_end: small(segment.source.end)?,
+    })
+}
+
+/// Convert every match and segment record, writing each only when `out` is
+/// given, and return the segment count. Records are built from the core
+/// results one at a time, never as a second copy of the whole result.
+fn find_records(
     results: &FindResults,
-) -> Result<(Vec<md_find_match>, Vec<md_match_segment>), md_status> {
-    let mut matches = Vec::with_capacity(results.matches.len());
-    let mut segments = Vec::new();
-    for found in &results.matches {
-        matches.push(md_find_match {
-            unit: small(found.unit)?,
-            flags: exact(found.exact),
-            span_start: small(found.source.start)?,
-            span_end: small(found.source.end)?,
-            first_segment: small(segments.len())?,
-            segment_count: small(found.segments.len())?,
-        });
+    out: Option<(&Records<md_find_match>, &Records<md_match_segment>)>,
+) -> Result<usize, md_status> {
+    let mut next = 0;
+    for (index, found) in results.matches.iter().enumerate() {
+        let record = match_record(found, next)?;
+        if let Some((matches, _)) = out {
+            matches.set(index, record);
+        }
         for segment in &found.segments {
-            segments.push(md_match_segment {
-                node: small(segment.node)?,
-                flags: exact(segment.exact),
-                text_start: small(segment.text_start)?,
-                text_end: small(segment.text_end)?,
-                span_start: small(segment.source.start)?,
-                span_end: small(segment.source.end)?,
-            });
+            let record = segment_record(segment)?;
+            if let Some((_, segments)) = out {
+                segments.set(next, record);
+            }
+            next += 1;
         }
     }
-    Ok((matches, segments))
+    Ok(next)
 }
 
 /// Flatten reading sections into the ABI records.
-pub(crate) fn section_records(stats: &ReadStats) -> Result<Vec<md_read_section>, md_status> {
+fn section_records(stats: &ReadStats) -> Result<Vec<md_read_section>, md_status> {
     let index = |value: Option<usize>| value.map_or(Ok(MD_NONE), small);
     stats
         .sections
@@ -192,21 +214,22 @@ pub unsafe extern "C" fn md_snapshot_find(
         checkpoint();
         let document = SearchDocument::from_snapshot(&entry.snapshot);
         let results = search::find(&document, query, &options).map_err(search_error)?;
-        let (records, segment_records) = find_records(&results)?;
+        // Validate every record (the only fallible step) before writing any,
+        // then write them straight into the caller's arrays.
+        let segment_count = find_records(&results, None)?;
         let mut result = md_find_result::sized();
         result.flags = if results.truncated {
             MD_FIND_TRUNCATED
         } else {
             0
         };
-        result.match_count = records.len() as u64;
-        result.segment_count = segment_records.len() as u64;
-        if !match_out.fits(&records) || !segment_out.fits(&segment_records) {
+        result.match_count = results.matches.len() as u64;
+        result.segment_count = segment_count as u64;
+        if !match_out.fits(results.matches.len()) || !segment_out.fits(segment_count) {
             out.set(result);
             return Err(MD_ERR_BUFFER_TOO_SMALL);
         }
-        match_out.write(&records);
-        segment_out.write(&segment_records);
+        find_records(&results, Some((&match_out, &segment_out)))?;
         out.set(result);
         Ok(())
     })
@@ -244,7 +267,7 @@ pub unsafe extern "C" fn md_snapshot_read_stats(
         result.words = stats.words;
         result.seconds = stats.seconds;
         result.section_count = records.len() as u64;
-        if !section_out.fits(&records) {
+        if !section_out.fits(records.len()) {
             out.set(result);
             return Err(MD_ERR_BUFFER_TOO_SMALL);
         }
