@@ -1,11 +1,31 @@
 # Agent Session and Platform Handoff
 
-Updated: 2026-10-28, CORE-005A2 C ABI find/read stats on `feat/core-005a2-ffi-search`.
-Source baseline: `237cd88` on main (PR #8 merge) plus this phase's changes. Preserve intended
+Updated: 2026-10-28, CORE-005B workspace search on `feat/core-005b-workspace-search`.
+Source baseline: `ec58c84` on main (PR #9 merge) plus this phase's changes. Preserve intended
 source, lock/spec/golden files, docs and state together. Never transfer caches,
 environments, build products, private runtime state or user documents.
 
-## Resume here — CORE-005A2 C ABI find and reading statistics
+## Resume here — CORE-005B workspace search primitives
+
+PR #9 (CORE-005A2) merged as `ec58c84`; its state closeout travels on this
+branch. CORE-005B adds `markdown_core::workspace` per
+[the workspace search contract](specs/workspace-search/README.md). Adapters
+feed `WorkspaceEntry` values: an opaque `u64` ID plus a validated
+`WorkspacePath`, which is relative and `/`-separated with no dot components,
+controls or bidi overrides. The core never resolves paths. `find_names`
+ranks name-prefix, name and path hits. `ContentQuery::admit` and `search`
+work file by file, with a caller-held `ContentProgress` holding file, byte,
+per-file and total match budgets and permanent stops. Hits equal find's
+matches and add a visible-text snippet, a line number, an anchor and the
+file's `SourceInfo` for navigation. Cancellation returns nothing and leaves
+progress unchanged. There is no new dependency, model or ABI change. The
+owner approved splitting the C ABI exposure into CORE-005B2 (task created,
+blocks CORE-005; each 002C needs it). Next: phase PR, `/grok review`,
+owner-authorized merge. Then CORE-005B2, CORE-003B3, CORE-003B4 (with the
+CORE-003B closeout), then the owner's holistic review before any platform
+phase.
+
+## CORE-005A2 C ABI find and reading statistics (merged in PR #9)
 
 PR #8 (CORE-005A) merged as `237cd88`; its state closeout travels on this
 branch. CORE-005A2 adds two exports under D-022 per
@@ -18,10 +38,8 @@ constant. The options carry the record element sizes, which are checked on
 every call. There is no new handle type, no change to existing items and no
 cancel handle. Evidence: Rust parity with `markdown_core::search` over the
 corpus (v1/v2), argument, size, panic and concurrency tests, layout and
-constant drift checks and the macOS C smoke. Next: phase PR, `/grok review`,
-owner-authorized merge. After that, the remaining shared CORE tasks per the
-owner's plan (CORE-005B, CORE-003B3, CORE-003B4 and the CORE-003B closeout),
-then the owner's holistic review before any platform phase.
+constant drift checks and the macOS C smoke. The Grok review nit was fixed,
+and the owner merged PR #9 as `ec58c84` from reviewed head `f05cbb4`.
 
 ## CORE-005A find, word count and section timing (merged in PR #8)
 
