@@ -17,6 +17,7 @@ mod flat;
 mod search;
 #[cfg(test)]
 mod tests;
+mod workspace;
 
 use abi::*;
 use markdown_core::session::*;
@@ -289,7 +290,10 @@ sized!(
     md_snapshot_view,
     md_anchor_resolution,
     md_find_result,
-    md_read_stats
+    md_read_stats,
+    md_workspace_path_info,
+    md_name_result,
+    md_content_result
 );
 
 /// Two-call buffer protocol: `length` always receives the required size;
