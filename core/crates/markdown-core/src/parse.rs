@@ -703,6 +703,45 @@ impl Builder<'_> {
         });
         Ok(i)
     }
+    /// `ENABLE_MATH` splits text at every non-math `$`; rejoin a contiguous split
+    /// so prices and shell variables cost no extra nodes. Limited to `$` source
+    /// boundaries so trees without dollars keep their frozen shape.
+    fn merge_dollar_text(&mut self, range: &Range<usize>, text: &str) -> bool {
+        let Some(parent) = self.stack.last() else {
+            return false;
+        };
+        let last = self.doc.nodes.len().saturating_sub(1);
+        let sibling = match &self.doc.nodes[parent.node].content {
+            NodeKind::Paragraph { children }
+            | NodeKind::Heading { children, .. }
+            | NodeKind::TableCell { children }
+            | NodeKind::Emphasis { children }
+            | NodeKind::Strong { children }
+            | NodeKind::Strikethrough { children }
+            | NodeKind::Link { children, .. } => children.last().cloned(),
+            _ => None,
+        };
+        let bytes = self.source.as_bytes();
+        let Some(Node {
+            id,
+            span: prev,
+            content: NodeKind::Text { text: joined },
+        }) = self.doc.nodes.get_mut(last)
+        else {
+            return false;
+        };
+        let start = range.start as u64;
+        let dollar = |i: Option<usize>| i.and_then(|i| bytes.get(i)) == Some(&b'$');
+        if sibling.as_ref() != Some(id)
+            || prev.end != start
+            || !(dollar(Some(range.start)) || dollar(range.start.checked_sub(1)))
+        {
+            return false;
+        }
+        joined.push_str(text);
+        prev.end = range.end as u64;
+        true
+    }
     fn inline_parent(&mut self, range: &Range<usize>) -> Result<(), ParseError> {
         // Block containers never hold inlines directly; wrap them as tight items do.
         if self.stack.last().is_some_and(|f| {
@@ -839,6 +878,11 @@ impl Builder<'_> {
                     self.inline_parent(&range)?;
                 } else if self.stack.last().is_some_and(|f| f.end.is_none()) {
                     self.stack.pop();
+                }
+                if let NodeKind::Text { text } = &content
+                    && self.merge_dollar_text(&range, text)
+                {
+                    return Ok(());
                 }
                 let diagnostic = match &content {
                     NodeKind::UnsupportedInline { feature, .. } if feature == "raw_html" => {

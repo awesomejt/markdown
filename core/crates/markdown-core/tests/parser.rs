@@ -827,7 +827,7 @@ fn b3_math_is_explicit_source_fallback_with_exact_spans() {
     assert!(
         nodes(
             &d,
-            |k| matches!(k, NodeKind::Text { text } if text == "\\frac{1}{")
+            |k| matches!(k, NodeKind::Text { text } if text == " and an error $\\frac{1}{$ in one paragraph.")
         )
         .len()
             == 1
@@ -851,6 +851,45 @@ fn b3_math_is_explicit_source_fallback_with_exact_spans() {
         .collect();
     assert_eq!(spans, ["$[a](b.md)$", "$$d$$", "$p$"]);
     assert!(d.input().links.is_empty());
+}
+
+#[test]
+fn b3_non_math_dollars_cost_no_extra_nodes() {
+    // ENABLE_MATH splits text at each `$`; contiguous pieces are rejoined.
+    let d = parse("Costs $5 and $10, or $7.50.\n");
+    let text = nodes(&d, |k| matches!(k, NodeKind::Text { .. }));
+    assert_eq!(text.len(), 1);
+    assert!(
+        matches!(&text[0].content, NodeKind::Text { text } if text == "Costs $5 and $10, or $7.50.")
+    );
+    assert_eq!(text[0].span, SourceSpan { start: 0, end: 27 });
+    // An escaped dollar is not contiguous with its neighbour and keeps its split.
+    let escaped = parse("a \\$x$ b\n");
+    assert_eq!(
+        kinds(&escaped, |k| matches!(
+            k,
+            NodeKind::UnsupportedInline { .. }
+        )),
+        0
+    );
+    // ~1.3 MiB of prices or shell variables stays at base node counts.
+    for (line, lines, expected) in [
+        ("Costs $5 and $10, or $7.50.\n", 50_000, 100_000),
+        ("Run `x` with $HOME and $PATH set.\n", 40_000, 160_000),
+    ] {
+        assert_eq!(
+            parse(&line.repeat(lines)).input().nodes.len(),
+            expected,
+            "{line:?}"
+        );
+    }
+    // `$$$$` is empty display math, real syntax that spends nodes like any span.
+    let runs = parse(&"$".repeat(11));
+    assert_eq!(
+        kinds(&runs, |k| matches!(k, NodeKind::UnsupportedInline { .. })),
+        2
+    );
+    assert!(matches!(&runs.input().nodes[3].content, NodeKind::Text { text } if text == "$$$"));
 }
 
 #[test]

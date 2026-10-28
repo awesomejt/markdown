@@ -119,7 +119,8 @@ same-label runs without blank lines can be under-reported, never misreported.
 ## Extension semantics (CORE-003B3)
 
 CORE-003B3 maps the MVP extensions onto existing v1/v2 node kinds. The frozen
-model, schemas and goldens do not change.
+model schemas and model goldens do not change. v1/v2 trees and reading stats do
+change for documents that use these extensions; see `specs/search/README.md`.
 
 - **Alerts.** `> [!NOTE]`, `[!TIP]`, `[!IMPORTANT]`, `[!WARNING]` and
   `[!CAUTION]` on their own first quote line become `alert` nodes. Markers are
@@ -146,7 +147,10 @@ model, schemas and goldens do not change.
   anchors as `math-emc2`), and image alt keeps it as text. Brace-unbalanced
   math (`$\frac{1}{$`), prices (`$5 and $10`), spaced or escaped dollars and
   code spans stay ordinary text, so invalid math remains readable without an
-  error node (FEAS-010). `math`/`latex` fences stay `unsupported_block`.
+  error node (FEAS-010). Upstream splits text at every non-math `$`; the
+  builder rejoins contiguous text pieces at a `$` source boundary, so dollar
+  prose costs the same nodes as without math. `math`/`latex` fences stay
+  `unsupported_block`.
 - **Diagrams.** Fences whose first info word is exactly `mermaid` or `d2`
   (case-sensitive, as in markdown-viewer) are `unsupported_block` over the
   whole fence, with `advanced_fence_disabled`. Other spellings are literal
