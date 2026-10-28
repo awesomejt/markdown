@@ -339,6 +339,9 @@ fn session_dropped_on_another_thread_while_jobs_run() {
     for _ in 0..20 {
         let s = session();
         publish(&s, "base");
+        // Hold the base snapshot before any job can run; taking it after the
+        // runners start raced with a fast publish (CORE-003B4 CI).
+        let held = s.current().unwrap();
         let jobs: Vec<Job> = (0..4)
             .map(|i| s.submit(large(200 + i).into_bytes(), None).unwrap())
             .collect();
@@ -346,7 +349,6 @@ fn session_dropped_on_another_thread_while_jobs_run() {
             .into_iter()
             .map(|job| thread::spawn(move || job.run()))
             .collect();
-        let held = s.current().unwrap();
         drop(s);
         for runner in runners {
             match runner.join().unwrap() {
