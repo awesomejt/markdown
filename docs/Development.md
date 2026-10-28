@@ -56,6 +56,10 @@ external-change and anchor regressions ([session contract](../specs/session/READ
 CORE-005A adds `tests/search.rs` for [find and reading metadata](../specs/search/README.md):
 source-span/UTF-8 invariants, Unicode folding/cluster cases, budgets,
 cancellation, v1/v2 parity and word/section goldens.
+CORE-005B adds `tests/workspace.rs` for [workspace search](../specs/workspace-search/README.md):
+path validation and the shared Markdown/hidden filter, name ranking, content
+hits equal to find, snippet invariants, anchors, budget stops, cancellation
+and 4,096 generated inputs (`WORKSPACE_CASES` raises the count).
 CORE-006A adds `markdown-ffi` extern-function tests (negotiation, handles,
 ownership, panics, cancellation, bulk-view round trips) and `tests/c_abi.rs`:
 a header constant drift check and a C smoke compiled with the host `cc`

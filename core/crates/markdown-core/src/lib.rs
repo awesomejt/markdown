@@ -4,6 +4,7 @@
 //! Use [`Document::new`] or [`Document::from_json`] to obtain validated snapshots.
 //! [`session`] adds generations, cancellation, external-change state and anchors.
 //! [`search`] adds source-mapped find, word count and section reading time.
+//! [`workspace`] adds capability-fed file-name and content search with budgets.
 #![forbid(unsafe_code)]
 
 mod cancel;
@@ -15,6 +16,7 @@ pub mod session;
 #[cfg(feature = "model-v2")]
 pub mod v2;
 mod validate;
+pub mod workspace;
 pub use cancel::{CancellableParseError, CancellationToken, Cancelled};
 pub use model::*;
 pub use parse::{

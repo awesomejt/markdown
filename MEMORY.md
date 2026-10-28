@@ -17,8 +17,17 @@ design belong in `docs/` or `agents/`; runtime transcripts do not belong here.
   approval is inferred. Its supported state closeout travels in this branch.
 - CORE-003B retains B1 metadata, B2 references/URI, B3 other extension semantics
   and B4 conformance/fuzz/performance with original aggregate/native gates.
-- Status 2026-10-28: PR #8 (CORE-005A) merged as `237cd88`. CORE-005A2 is in
-  progress on `feat/core-005a2-ffi-search`: `md_snapshot_find` and
+- Status 2026-10-28: PR #9 (CORE-005A2) merged as `ec58c84`. CORE-005B is in
+  progress on `feat/core-005b-workspace-search`: `markdown_core::workspace`
+  (specs/workspace-search/README.md) takes adapter entries (opaque `u64` ID
+  plus validated `/`-relative display path; the core never resolves paths)
+  and bytes. It provides a shared Markdown/hidden filter (md/markdown/mdx,
+  dot components; viewer parity), ranked file-name search and per-file
+  content search via find with visible-text snippets, line numbers, anchors
+  and `SourceInfo`. Budgets live in a caller-held plain `ContentProgress`
+  value with permanent stops, which suits D-022. The owner split the FFI
+  exposure into CORE-005B2 (blocks CORE-005; each 002C needs it).
+- CORE-005A2 (merged, PR #9 `ec58c84`): `md_snapshot_find` and
   `md_snapshot_read_stats` (specs/ffi/README.md) are the first D-022
   additions (20 exports). They fill caller-owned record arrays with two-call
   `MD_ERR_BUFFER_TOO_SMALL` sizing. Options carry the record element sizes,

@@ -63,7 +63,9 @@ facade negotiation. This is additive, not an implicit model-version migration.
 - Apply extension passes deterministically.
 - Compute outline, properties, anchors, word/section data, and link intents.
 - Search approved document snapshots within caller-supplied budgets
-  ([document find and reading metadata](../specs/search/README.md)).
+  ([document find and reading metadata](../specs/search/README.md)), and
+  search adapter-supplied workspace entries and bytes
+  ([workspace search primitives](../specs/workspace-search/README.md)).
 - Resolve portable settings semantics.
 - Reject or classify unsafe HTML, URLs, and resources.
 

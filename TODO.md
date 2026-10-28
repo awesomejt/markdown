@@ -12,8 +12,8 @@ branch and PR. Once ready, post a separate PR comment exactly `/grok review`,
 address the feedback, and obtain owner merge approval. Follow
 [Delivery-Workflow.md](docs/Delivery-Workflow.md) for branch, review and handoff
 rules. GATE-001 is approved (D-018). CORE-001A through CORE-003A, CORE-003B1 and
-CORE-003B2/B2F, CORE-004A, CORE-006A and CORE-005A are merged; CORE-005A2 is selected;
-ADV-005 carries deferred engine work after DESK-002.
+CORE-003B2/B2F, CORE-004A, CORE-006A, CORE-005A and CORE-005A2 are merged;
+CORE-005B is selected; ADV-005 carries deferred engine work after DESK-002.
 
 ## Current phase: portable core and early native foundations
 
@@ -31,11 +31,13 @@ PR #7 (CORE-006A C ABI facade, [contract](specs/ffi/README.md)) merged as
 `a751f48`; it unblocks each host's 001B adapter phase, and CORE-006 stays open
 until the Swift, C# and gtk-rs consumers pass there. PR #8 (**CORE-005A**
 source-accurate find, word count and section timing;
-[contract](specs/search/README.md)) merged as `237cd88`. **CORE-005A2** exposes
-them over ABI v1 by two new functions (`md_snapshot_find`,
-`md_snapshot_read_stats`) under D-022. It is the active phase on
-`feat/core-005a2-ffi-search` and stays partial until review disposition and
-owner-authorized merge; each platform's 001F phase requires it. CORE-003B was refined into four
+[contract](specs/search/README.md)) merged as `237cd88`, and PR #9
+(**CORE-005A2**, `md_snapshot_find`/`md_snapshot_read_stats` under D-022)
+merged as `ec58c84`. **CORE-005B** adds capability-fed
+[workspace search primitives](specs/workspace-search/README.md) in Rust on
+`feat/core-005b-workspace-search`; it stays partial until review disposition
+and owner-authorized merge. Its C ABI exposure is the owner-approved split
+**CORE-005B2**, required by each platform's 002C. CORE-003B was refined into four
 tracked children: B1 metadata; B2 reference representation/URI compatibility;
 B3 remaining extension semantics; B4 conformance/fuzz/property and parser
 budgets. See [the catalog](docs/Implementation-Plan.md) for scope/dependencies.
@@ -286,13 +288,13 @@ CORE-003A -> CORE-003B1, CORE-003B2
 CORE-003B1 -> CORE-003B3; CORE-003B2 -> CORE-003B2F
 CORE-003B2F + CORE-003B3 -> CORE-003B4
 CORE-003B1–B4 -> CORE-003B; CORE-004A -> CORE-005A -> CORE-005B
-CORE-005A -> CORE-005A2 -> CORE-005
+CORE-005A -> CORE-005A2 -> CORE-005; CORE-005B -> CORE-005B2 -> CORE-005
 CORE-001A -> each host 001A; CORE-006A + own 001A -> own 001B -> ... -> 001I
 CORE-005A + CORE-005A2 -> own 001F; CORE-003B -> own 001I
 LNX-001D -> LNX-001D1 (early accessibility proof) -> LNX-001E + LNX-001F
 all CORE + WIN/MAC/LNX-001 aggregate acceptance -> DESK-001
 DESK-001 -> each host 002A -> ... -> 002F -> platform 002 aggregate
-CORE-005B -> own 002C; all platform 002 aggregates -> DESK-002 -> DESK-003
+CORE-005B + CORE-005B2 -> own 002C; all platform 002 aggregates -> DESK-002 -> DESK-003
 DESK-002 -> IOS-001 -> IOS-002
 DESK-002 -> ADV-001/ADV-003/ADV-004
 DESK-002 -> ADV-005 -> ADV-002

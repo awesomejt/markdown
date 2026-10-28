@@ -170,7 +170,7 @@ fn key(c: char, case_sensitive: bool) -> u32 {
 
 /// Collapse whitespace runs to one space, skip format characters, fold case
 /// and trim edge whitespace (a block edge is not whitespace in the text).
-fn normalize_query(query: &str, case_sensitive: bool) -> Vec<u32> {
+pub(crate) fn normalize_query(query: &str, case_sensitive: bool) -> Vec<u32> {
     let mut out: Vec<u32> = Vec::with_capacity(query.len());
     for c in query.trim().chars() {
         if c.is_whitespace() {
@@ -190,7 +190,7 @@ fn normalize_query(query: &str, case_sensitive: bool) -> Vec<u32> {
     out
 }
 
-fn kmp_table(pattern: &[u32]) -> Vec<usize> {
+pub(crate) fn kmp_table(pattern: &[u32]) -> Vec<usize> {
     let mut table = vec![0; pattern.len()];
     let mut k = 0;
     for i in 1..pattern.len() {

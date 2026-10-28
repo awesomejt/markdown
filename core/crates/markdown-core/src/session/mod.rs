@@ -202,6 +202,16 @@ impl Snapshot {
             SnapshotModel::V2(d) => &d.input().revision_id,
         }
     }
+    /// A generation-1 snapshot outside any session, for callers that parse
+    /// one file themselves (workspace search anchors).
+    pub(crate) fn detached(source: Arc<str>, model: SnapshotModel) -> Self {
+        Self {
+            generation: Generation(1),
+            source,
+            model,
+            blocks: OnceLock::new(),
+        }
+    }
     pub(crate) fn structure(&self) -> (&[NodeId], &[Node]) {
         match &self.model {
             SnapshotModel::V1(d) => (&d.input().roots, &d.input().nodes),

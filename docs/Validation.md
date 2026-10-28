@@ -50,6 +50,10 @@ CORE-005A's [find and reading metadata](../specs/search/README.md) checks run in
 `tools/check.py core`: Unicode/range invariants over the corpus and all v1
 goldens, case-fold/cluster/whole-word rules, budgets, cancellation, v1/v2
 parity and word/section goldens. Native highlighting is platform 001F work.
+CORE-005B's [workspace search](../specs/workspace-search/README.md) checks also
+run there: path/filter rules, name ranking, find parity, snippet invariants,
+budget stops, cancellation and generated inputs. Native result navigation is
+platform 002C work.
 
 CORE-006A's [C ABI](../specs/ffi/README.md) checks run in `tools/check.py core`:
 extern-function lifetime/error/panic tests and a current-host C package smoke
