@@ -11,6 +11,8 @@ newest first.
 
 | Date | Review | Scope | Baseline |
 | --- | --- | --- | --- |
+| 2026-10-28 | [Grok shared CORE review](2026-10-28-grok-shared-core-review.md) | Shared CORE delivery phases CORE-001A to CORE-006A | `146ea51` |
+| 2026-10-28 | [Codex shared CORE review](2026-10-28-codex-shared-core-review.md) | Shared CORE delivery phases CORE-001A to CORE-006A | `c330090` |
 | 2026-10-28 | [Holistic CORE review](2026-10-28-core-holistic-review.md) | Shared CORE delivery phases CORE-001A to CORE-006A | `39d1a56` |
 
 The earlier feasibility review (REV-001) is
