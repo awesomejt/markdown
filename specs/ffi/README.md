@@ -1,7 +1,8 @@
 # C ABI v1 contract
 
-Status: CORE-006A contract under phase-PR review; freeze at owner-authorized
-merge. The hand-written header [`core/include/markdown_core.h`](../../core/include/markdown_core.h)
+Status: frozen at owner-authorized CORE-006A PR #7 merge (`a751f48`). The
+flat-record snapshot view is a frozen ABI v1 representation (D-023), and ABI
+v1 grows only under the additive rule below (D-022). The hand-written header [`core/include/markdown_core.h`](../../core/include/markdown_core.h)
 is normative (D-009). Crate [`markdown-ffi`](../../core/crates/markdown-ffi/src/lib.rs)
 implements it over the [session contract](../session/README.md) and the
 [v1](../semantic-model/v1/README.md)/[v2](../semantic-model/v2/README.md)
@@ -37,6 +38,17 @@ otherwise) and then writes the whole struct. A future ABI version may accept
 known smaller prefixes; v1 does not, so unknown sizes fail closed. Constants
 are stable integers; later versions may add values, so hosts must treat
 unknown status/kind codes as errors or unsupported content, not crash.
+
+## ABI v1 growth rule (D-022)
+
+ABI v1 grows only by adding functions. New functions fill caller-owned arrays
+or structs and introduce no new handle types. Existing functions, structs,
+constants, `md_abi_info` and `md_live_handles` never change. Each new struct
+has a header size constant and is checked through `struct_size` on every call.
+Hosts compare those constants with `sizeof` after negotiation. An older library
+lacks the new symbols, so it fails at link or load time; there is no runtime
+probe. Anything incompatible needs a new ABI version. CORE-005A2 is the first
+phase to use this rule.
 
 ## Ownership and lifetimes
 

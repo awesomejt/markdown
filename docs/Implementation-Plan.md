@@ -62,6 +62,7 @@ Refine an oversized row before coding, preserving its parent acceptance criteria
 | CORE-003B4 | Supported semantic corpus reconciliation, hostile/fuzz/property checks and measured named-host parser time/memory budgets; remaining offset fallbacks | CORE-003B2, CORE-003B3 |
 | CORE-004A | Immutable sessions, generations, cancellation, external changes and anchors; race/lifetime checks pass | CORE-003A |
 | CORE-005A | Source-accurate document find, word count and section timing; Unicode/range checks pass | CORE-004A |
+| CORE-005A2 | C ABI exposure of find, word count and section timing under D-022 (new functions only, caller-owned arrays, header size constants checked via `struct_size`); header constant/layout checks and C smoke pass | CORE-005A |
 | CORE-005B | Capability-fed workspace search primitives, cancellation and resource budgets; bounded-search checks pass | CORE-005A |
 | CORE-006A | Bulk facade, value ownership, typed errors and version negotiation; ABI/lifetime tests and current-host package smoke pass | CORE-004A |
 
@@ -72,6 +73,11 @@ rehearsed on disposable state, then materialized through the state helper.
 The original CORE-003B prerequisites/dependents, native gates and aggregate
 acceptance remain intact. CORE-004A remains independently ready after CORE-003A;
 metadata does not add a new prerequisite for sessions or native A phases.
+
+CORE-005A was split by owner approval: CORE-005A delivers the Rust find and
+reading-metadata semantics, and CORE-005A2 exposes them through the C ABI
+under D-022. Each platform's 001F needs CORE-005A2, because native find UI
+calls the core through the C ABI. CORE-005 also depends on CORE-005A2.
 
 CORE-006A enables native adapters without waiting for all workspace-search work.
 It does not close CORE-006: all three native package consumers must pass in their
@@ -93,7 +99,7 @@ live alongside shared foundation work in the `portable-core` state bucket.
 | 001C | File open/association, permission capability and errors; generation-safe off-thread load and revoked/unavailable-file checks | own 001B |
 | 001D | Headings/prose/lists/links/code, outline and basic selection; semantic corpus/navigation checks | own 001C |
 | 001E | Tables/task lists/images and resource policy; rich-block and denied/unsafe-resource checks | own 001D |
-| 001F | Document find, theme and text controls; Unicode find and native command/settings checks | own 001D, CORE-005A |
+| 001F | Document find, theme and text controls; Unicode find and native command/settings checks | own 001D, CORE-005A, CORE-005A2 |
 | 001G | Large-document layout, global selection and accessibility; native reader/copy, scaling and performance budgets | own 001E, own 001F |
 | 001H | External refresh, anchors and reading restoration; replacement/deletion/race and relaunch checks | own 001G |
 | 001I | Local development artifact, license inventory and relocated launch; full skeleton acceptance on this host | own 001H, CORE-003B |

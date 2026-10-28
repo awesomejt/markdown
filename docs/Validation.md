@@ -46,6 +46,11 @@ panic containment, native source/PDB debugging and normal-DLL package launches.
 It does not substitute for Swift/AppKit and GTK package tests, mixed managed/Rust
 IDE stepping, full semantic conformance or clean-machine deployment.
 
+CORE-005A's [find and reading metadata](../specs/search/README.md) checks run in
+`tools/check.py core`: Unicode/range invariants over the corpus and all v1
+goldens, case-fold/cluster/whole-word rules, budgets, cancellation, v1/v2
+parity and word/section goldens. Native highlighting is platform 001F work.
+
 CORE-006A's [C ABI](../specs/ffi/README.md) checks run in `tools/check.py core`:
 extern-function lifetime/error/panic tests and a current-host C package smoke
 with header layout comparison. Swift, C# Native AOT and gtk-rs consumers remain

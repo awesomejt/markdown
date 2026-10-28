@@ -202,7 +202,7 @@ impl Snapshot {
             SnapshotModel::V2(d) => &d.input().revision_id,
         }
     }
-    fn structure(&self) -> (&[NodeId], &[Node]) {
+    pub(crate) fn structure(&self) -> (&[NodeId], &[Node]) {
         match &self.model {
             SnapshotModel::V1(d) => (&d.input().roots, &d.input().nodes),
             #[cfg(feature = "model-v2")]

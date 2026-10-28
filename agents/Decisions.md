@@ -343,3 +343,43 @@ reload or lost multi-block selection. The likely cheaper path is an
 anchor-based old-block to new-block mapping rather than full persistent IDs.
 The follow-up requirements are listed in
 [the session contract](../specs/session/README.md).
+
+## D-022 — C ABI v1 grows by adding functions only
+
+**Date:** 2026-10-27
+
+**Status:** accepted by owner
+
+**Context:** CORE-005A needed a way to expose find and reading statistics to
+native hosts. ABI v1 has no extension point: `md_abi_info` cannot report new
+struct sizes without changing its own size, and `md_live_handles` counts only
+sessions, jobs and snapshots.
+
+**Decision:** ABI v1 grows only by adding new functions. Each new function
+fills caller-owned arrays or structs. No new handle types are added. No
+existing function, struct, constant, `md_abi_info` or `md_live_handles`
+changes. The size of each new struct is a header constant and is checked
+through `struct_size` on every call (`MD_ERR_STRUCT_SIZE` otherwise). An
+incompatible change still requires a new ABI version.
+
+**Consequences:** Hosts negotiate as before, then compare each new struct's
+header size constant with `sizeof` before calling the new functions. A host
+built against a newer header fails to link or load against an older library;
+there is no runtime feature probe. Leak checks keep the three handle counts.
+New results that cannot be owned by a snapshot handle are sized through
+`MD_ERR_BUFFER_TOO_SMALL` or a caller capacity. The first application is
+CORE-005A2 (find, word count and section timing over a snapshot handle).
+
+## D-023 — Flat-record snapshot view is a frozen ABI v1 representation
+
+**Date:** 2026-10-27
+
+**Status:** accepted by owner
+
+The PR #7 (`a751f48`) bulk `md_snapshot_view`, made of fixed-size records plus
+one string table and owned by the snapshot handle, is a frozen ABI v1
+representation alongside the v1 and v2 JSON models. Its record layouts,
+field meanings, constants and index conventions follow the
+[C ABI contract](../specs/ffi/README.md) and change only under D-022's
+additive rule or a new ABI version. The JSON models remain the semantic wire
+contracts; the flat view must keep round-tripping them exactly.
