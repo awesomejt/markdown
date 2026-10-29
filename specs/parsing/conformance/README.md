@@ -46,10 +46,11 @@ those bytes exactly.
 
 ## Model v2
 
-D-025 makes v2 the model native hosts ship. With the `model-v2` feature, the
-default and all-features test runs parse every case as v2 too, and the
-tokens run through a version-neutral view of nodes, outline, metadata,
-diagnostics and intents. The fixtures name only intent kinds, so the
+D-025 makes v2 the model native hosts ship. Features are opt-in, so the
+default-feature run stays v1-only. Runs with `model-v2` (`--features model-v2`
+in `core-extended` and `--all-features` in the PR tier) also parse every case
+as v2, and the tokens run through a version-neutral view of nodes, outline,
+metadata, diagnostics and intents. The fixtures name only intent kinds, so the
 version-specific expectations are written in the test rather than the
 generated contract:
 
@@ -79,9 +80,12 @@ corpus has none. A separate test uses the
 Under v1, each reference occurrence is a `reference_link` or `reference_image`
 fallback with a `reference_link_deferred` diagnostic and no intent. Under v2,
 exactly those occurrence spans become reference-sourced intents, and the
-inline intents match v1. The fixture also fixes the `unsupported_scheme`,
-`remote_resource` and local image targets, and one intent per reuse of a
-definition.
+inline intents pair with v1 by destination and span (v2 also numbers the
+reference intents, so snapshot-local IDs differ). Their targets are
+pinned exactly, including the deliberate split: v1 denies the non-ASCII and
+percent-encoded destinations that v2 decodes into typed targets. The fixture
+also fixes the `unsupported_scheme`, `remote_resource` and decoded local image
+targets, and one intent per reuse of a definition.
 
 ## Deferred categories
 

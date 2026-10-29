@@ -603,21 +603,45 @@ fn references_inert_in_v1_are_reference_intents_in_v2() {
                 assert!(definition.slice(&source).unwrap().starts_with('['));
             }
         }
-        // V2 inline intents are v1's, with typed targets.
-        let inline: Vec<_> = b
-            .links
-            .iter()
-            .filter(|l| !reference(&l.source))
-            .map(|l| (&l.id, &l.destination, l.source.span()))
-            .collect();
-        let v1: Vec<_> = a
-            .links
-            .iter()
-            .map(|l| (&l.id, &l.destination, l.span))
-            .collect();
-        assert_eq!(inline.len(), v1.len());
-        for ((_, d2, s2), (_, d1, s1)) in inline.iter().zip(&v1) {
-            assert_eq!((d2, s2), (d1, s1));
+        // V2 inline intents pair with v1's by destination and span. IDs are
+        // snapshot-local (D-021) and v2 also numbers the reference intents, so
+        // they differ here. The policies split on purpose: v1 denies non-ASCII
+        // and percent-encoded destinations, which v2 decodes into typed targets.
+        let inline: Vec<_> = b.links.iter().filter(|l| !reference(&l.source)).collect();
+        let fragment = |anchor: &str| v2::Target::Fragment {
+            anchor: anchor.into(),
+        };
+        let external = |uri: &str| v2::Target::External { uri: uri.into() };
+        let legacy_denied = LinkDisposition::Denied {
+            reason: "unsafe_or_unsupported_destination".into(),
+        };
+        let expected = [
+            (
+                legacy_denied.clone(),
+                v2::Target::RequiresCapability {
+                    path: "docs/café one.md".into(),
+                    fragment: Some("café".into()),
+                },
+            ),
+            (
+                legacy_denied.clone(),
+                external("https://xn--r8jz45g.test/a%20b"),
+            ),
+            (legacy_denied, fragment("café")),
+            (
+                LinkDisposition::External {},
+                external("mailto:a@example.com"),
+            ),
+        ];
+        assert_eq!(inline.len(), a.links.len());
+        assert_eq!(a.links.len(), expected.len());
+        for ((l2, l1), (disposition, target)) in inline.iter().zip(&a.links).zip(&expected) {
+            assert_eq!(
+                (&l2.destination, l2.source.span()),
+                (&l1.destination, l1.span)
+            );
+            assert_eq!(&l1.disposition, disposition, "v1 {}", l1.destination);
+            assert_eq!(&l2.target, target, "v2 {}", l2.destination);
         }
         let targets = |dest: &str| -> Vec<&v2::Target> {
             b.links
@@ -637,10 +661,14 @@ fn references_inert_in_v1_are_reference_intents_in_v2() {
             targets("https://example.com/image.png"),
             [&denied(v2::Denial::RemoteResource)]
         );
-        assert!(matches!(
-            targets("images/cafe%CC%81.png")[..],
-            [v2::Target::RequiresCapability { .. }]
-        ));
+        assert_eq!(
+            targets("images/cafe%CC%81.png"),
+            [&v2::Target::RequiresCapability {
+                path: "images/cafe\u{301}.png".into(),
+                fragment: None,
+            }],
+            "decoded, normalization preserved"
+        );
         assert_eq!(
             targets("docs/café%20one.md").len(),
             3,
