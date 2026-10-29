@@ -1,0 +1,31 @@
+# Bare autolinks www.heading.example
+
+Forms: https://example.com/a, http://example.com, www.example.com/path and
+mail me@example.com or first.last+tag@sub.example.org.
+
+Trailing: www.example.com. https://a.example/x?y=1! (www.paren.example/a_(b))
+www.example.com/q=a&hl; https://a.example/a_b_c_ and *www.emph.example*.
+
+Split events: https://a.example/$5/x*y and https://a.example/a_b.
+
+Not links: xhttp://a.example awww.a.example www.a_b.c_d ftp://a.example
+`https://code.example` [www.label.example](https://real.example)
+![www.alt.example](i.png) <https://angle.example> https://a.example/&amp;b
+
+```
+https://block.example
+```
+
+<div>
+https://html.example
+</div>
+
+> Quoted www.quote.example
+
+- Item https://item.example
+
+| Cell |
+| --- |
+| www.cell.example |
+
+Policy: https://例え.example/パス and www.ünicode.example

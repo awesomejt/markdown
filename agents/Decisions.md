@@ -649,3 +649,27 @@ the owner. Problems found at a milestone cost more rework than per-PR review
 would, which the milestone cap bounds. Review fixes are made on the review
 branch and reach `develop` through the sync. Tags for milestones are authorized; release
 tags, signing and publishing still need explicit approval.
+
+## D-031 — Bare GFM autolinks in the shared parser, for v1 and v2
+
+**Date:** 2026-10-28
+
+**Status:** proposed in CORE-003D; accepted on approved merge
+
+**Context:** R1.2 requires GFM autolinks, and the owner decided to implement
+them in the shared core (D-026, Codex C3). pulldown-cmark 0.13.5 detects only
+angle autolinks. The task asked whether v1 output also gains them.
+
+**Decision:** One shared pass detects bare `http(s)://`, `www.` and email
+links per cmark-gfm's extended-autolink rules, over runs of exact-source text
+outside links, images and code. Both the v1 and v2 parsers produce them: the
+builder is shared, v1 stays the Rust default, and the wire formats are
+unchanged. They are new `Link` nodes and intents under each version's existing
+URI policy. The v2 provenance pass calls the same detector, so it proves them.
+
+**Consequences:** v1 and v2 output changes for documents with bare URLs. The
+frozen corpus and existing goldens contain none, so none changed; a new
+fixture (`specs/parsing/autolinks`) pins both versions. v1 denies non-ASCII
+hosts that v2 normalizes, as it already does for inline links. Documented
+differences from cmark-gfm (no `ftp://`, Unicode whitespace ends a link, a
+decoded entity ends a run) can be revisited if parity needs them.

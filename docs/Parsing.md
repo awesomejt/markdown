@@ -33,6 +33,7 @@ into an owned flat tree:
 - Indented/fenced literal code, including unknown or missing language info.
 - GFM tables/alignment and task checked states.
 - Inline links, angle autolinks/email links and inline images with plain alt text.
+- Bare GFM autolinks: `http(s)://`, `www.` and email (CORE-003D, below).
 - Reading-order outline, source fingerprint and exact UTF-8 spans.
 
 Tight items receive explicit paragraph nodes; loose lists retain their setting.
@@ -42,6 +43,43 @@ or syntax highlighting yet. Destination spans exclude optional angle brackets;
 email autolinks retain their source address span while their semantic destination
 includes `mailto:`. Autolinks nested in another link become inert inline source
 fallbacks, with no inner activation intent. The outer link retains its destination.
+
+### Bare autolinks
+
+One bounded shared pass (`src/autolink.rs`, D-031) follows cmark-gfm's
+extended-autolink rules, which GitHub uses:
+
+- `http://` or `https://` (any case) not preceded by a letter, then a domain
+  (`localhost` allowed). `www.` at a line start or after whitespace, `*`, `_`,
+  `~` or `(`, then a domain with a dot. An email has a local part of
+  alphanumerics and `.+-_`, `@`, and a dotted domain ending in a letter.
+- No underscore in a domain's last two labels. A link runs to whitespace or `<`.
+- Trailing `?!.,:*_~'"` is dropped, as are an entity-like `&name;` or lone `;`
+  at the end and each `)` that is unbalanced within the link.
+
+Detection runs over a run of contiguous text events whose text equals their
+exact source, so a link can cross pulldown-cmark's event splits at `_`, `*` or
+`$`. Anything else ends the run: an escape, a decoded entity, emphasis, a code
+span, inline math or HTML. A link is never found inside an existing link,
+image alt, code span or block, HTML block or fenced engine block. Text between
+inline HTML tags is ordinary text in this model, since the tags are inert, so
+it can link.
+
+The link node and its one text child cover the exact lexeme, which is also the
+intent span. Destinations add `http://` to `www.` links and `mailto:` to email
+links, then take the normal URI policy: v1 is ASCII-only, and v2 classifies and
+normalizes the target (IDNA, percent-encoding). The v2 provenance pass calls
+the same detector over the same runs, so it proves these intents like any
+other inline link. Runs without a link keep one text node per event, so
+documents without bare links parse exactly as before.
+
+The pass is linear in the run: a failed candidate resumes past the domain it
+scanned, an email scan never passes the next `@`, and the trailing-delimiter
+counts are taken once. Each link adds two nodes and copied text, so the node
+and text limits bound it, and the parser's cancellation checks still apply.
+Differences from cmark-gfm: no `ftp://` or `mailto:`/`xmpp:` forms, any
+Unicode whitespace ends a link, and a decoded entity ends a run (cmark-gfm
+links across `&amp;`).
 
 Upstream tab-expanded container offsets can violate v1 child containment or
 sibling ordering. Since CORE-003B4, only each affected top-level block becomes
@@ -168,10 +206,9 @@ change for documents that use these extensions; see `specs/search/README.md`.
   definition. Body lines are never an opt-in.
 
 Diagnostics are one per fallback node and are bounded by the node limit. No
-engine, renderer, executable node or post-MVP syntax is added. Bare GFM URL
-autolinks, definition lists, super/subscript and wikilinks stay disabled.
-R1.2 still requires bare autolinks: CORE-003D adds them as one bounded shared
-pass (D-026).
+engine, renderer, executable node or post-MVP syntax is added. Definition
+lists, super/subscript and wikilinks stay disabled. Bare GFM autolinks are
+supported (CORE-003D, D-031; see [Bare autolinks](#bare-autolinks)).
 
 The frozen FEAS corpus is unchanged. The tests assert the implemented subset:
 13 GFM headings, tables and tasks, links, code, security invariants, and the
@@ -228,12 +265,24 @@ review identified email classification, Unicode URI obfuscation and nested-link/
 tab-container robustness gaps, now fixed with the regressions above. CORE-003B4
 adds the [conformance contract](../specs/parsing/conformance/README.md),
 corpus-seeded mutation, a pathological-construct catalog and heap budgets
-([Parser-Budgets.md](Parser-Budgets.md)). None of this is coverage-guided fuzzing.
+([Parser-Budgets.md](Parser-Budgets.md)). CORE-003D adds the bare-autolink
+[fixture](../specs/parsing/autolinks/input.source.txt) with
+[v1](../specs/parsing/autolinks/expected.json) and
+[v2](../specs/parsing/autolinks/expected.v2.json) goldens, forged-intent
+rejection, a 20,000-case generated autolink check in both versions, and
+autolink storms in the hostile catalog. None of this is coverage-guided fuzzing.
 
 The bounded stdin example can reproduce the new golden:
 
 ```sh
 cargo run --locked --example parse_markdown < specs/parsing/basic/input.source.txt > build/parser.json
+```
+
+The autolink goldens were generated the same way, deliberately, and reviewed:
+
+```sh
+cargo run --locked --example parse_markdown < specs/parsing/autolinks/input.source.txt > specs/parsing/autolinks/expected.json
+cargo run --locked --features model-v2 --example parse_markdown_v2 < specs/parsing/autolinks/input.source.txt > specs/parsing/autolinks/expected.v2.json
 ```
 
 Use generated output only for deliberately supplied input; user snapshots must
