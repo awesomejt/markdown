@@ -75,8 +75,15 @@ fn url(run: &str, start: usize, prev: Option<char>) -> Scan {
         })
         .ok_or(start + 1)?;
     let host = start + scheme.len();
-    let end = domain(run, host, true).ok_or_else(|| resume(run, host))?;
-    let end = delimit(run, start, path(run, end));
+    let host_end = domain_end(run, host);
+    // Keeping every dot is the most lenient judgment; failing it skips the path scan.
+    if !domain(run, host..host_end, host_end, true) {
+        return Err(resume(run, host));
+    }
+    let end = delimit(run, start, path(run, host_end));
+    if !domain(run, host..host_end, end, true) {
+        return Err(resume(run, host));
+    }
     if end <= host {
         return Err(host);
     }
@@ -89,8 +96,14 @@ fn www(run: &str, start: usize, prev: Option<char>) -> Scan {
     {
         return Err(start + 1);
     }
-    let end = domain(run, start, false).ok_or_else(|| resume(run, start))?;
-    let end = delimit(run, start, path(run, end));
+    let host_end = domain_end(run, start);
+    if !domain(run, start..host_end, host_end, false) {
+        return Err(resume(run, start));
+    }
+    let end = delimit(run, start, path(run, host_end));
+    if !domain(run, start..host_end, end, false) {
+        return Err(resume(run, start));
+    }
     if end <= start + 4 {
         return Err(start + 4);
     }
@@ -135,15 +148,18 @@ fn email(run: &str, at: usize, floor: usize) -> Scan {
     Ok((start..end, Kind::Email))
 }
 
-/// End of a valid domain starting at `start`: host characters and dots, no
-/// underscore in the last two labels, and a dot unless `short` is allowed.
-/// Labels are judged without trailing dots, which [`delimit`] drops.
-fn domain(run: &str, start: usize, short: bool) -> Option<usize> {
-    let end = domain_end(run, start);
-    let host = run[start..end].trim_end_matches('.');
+/// Whether the scanned domain is valid for a link ending at `link_end`: no
+/// underscore in its last two labels, and a dot unless `short` is allowed.
+/// Trailing dots the link drops do not count as label separators; a dot the
+/// link keeps (`example.com./path`) still does.
+fn domain(run: &str, scanned: Range<usize>, link_end: usize, short: bool) -> bool {
+    let mut end = scanned.end;
+    while end > scanned.start && end > link_end && run.as_bytes()[end - 1] == b'.' {
+        end -= 1;
+    }
+    let host = &run[scanned.start..end];
     let clean = host.rsplit('.').take(2).all(|label| !label.contains('_'));
-    let valid = !host.is_empty() && clean && (short || host.contains('.'));
-    valid.then_some(end)
+    !host.is_empty() && clean && (short || host.contains('.'))
 }
 fn domain_end(run: &str, start: usize) -> usize {
     run[start..]
@@ -277,6 +293,12 @@ mod tests {
         // A trailing dot is dropped, so it cannot hide an underscore (PR #24 review).
         assert!(links("www.example_.com.").is_empty());
         assert!(links("http://ex_ample.com.").is_empty());
+        // A dot the link keeps still separates labels, as in cmark-gfm.
+        assert_eq!(
+            links("http://ex_ample.com./foo"),
+            ["http://ex_ample.com./foo"]
+        );
+        assert_eq!(links("www.example_.com./x"), ["www.example_.com./x"]);
         // A failed domain does not hide a scheme that starts inside it.
         assert_eq!(
             links("http://bad_.http://good.example/x"),
