@@ -78,8 +78,10 @@ scanned, an email scan never passes the next `@`, and the trailing-delimiter
 counts are taken once. Each link adds two nodes and copied text, so the node
 and text limits bound it, and the parser's cancellation checks still apply.
 Differences from cmark-gfm: no `ftp://` or `mailto:`/`xmpp:` forms, any
-Unicode whitespace ends a link, and a decoded entity ends a run (cmark-gfm
-links across `&amp;`).
+Unicode whitespace ends a link, a decoded entity ends a run (cmark-gfm links
+across `&amp;`), and matched emphasis or strikethrough inside a URL ends it,
+so `https://example.com/a*b*c` links only `https://example.com/a`. Each keeps
+spans exact source; escape or angle-bracket such URLs to link them whole.
 
 Upstream tab-expanded container offsets can violate v1 child containment or
 sibling ordering. Since CORE-003B4, only each affected top-level block becomes

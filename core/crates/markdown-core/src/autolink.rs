@@ -75,7 +75,7 @@ fn url(run: &str, start: usize, prev: Option<char>) -> Scan {
         })
         .ok_or(start + 1)?;
     let host = start + scheme.len();
-    let end = domain(run, host, true).ok_or_else(|| skip_domain(run, host))?;
+    let end = domain(run, host, true).ok_or_else(|| resume(run, host))?;
     let end = delimit(run, start, path(run, end));
     if end <= host {
         return Err(host);
@@ -89,7 +89,7 @@ fn www(run: &str, start: usize, prev: Option<char>) -> Scan {
     {
         return Err(start + 1);
     }
-    let end = domain(run, start, false).ok_or_else(|| skip_domain(run, start))?;
+    let end = domain(run, start, false).ok_or_else(|| resume(run, start))?;
     let end = delimit(run, start, path(run, end));
     if end <= start + 4 {
         return Err(start + 4);
@@ -137,35 +137,26 @@ fn email(run: &str, at: usize, floor: usize) -> Scan {
 
 /// End of a valid domain starting at `start`: host characters and dots, no
 /// underscore in the last two labels, and a dot unless `short` is allowed.
+/// Labels are judged without trailing dots, which [`delimit`] drops.
 fn domain(run: &str, start: usize, short: bool) -> Option<usize> {
-    let (mut dots, mut last, mut current) = (0, 0, 0); // underscores per label
-    let mut end = start;
-    for (i, c) in run[start..].char_indices() {
-        match c {
-            '.' => {
-                dots += 1;
-                last = current;
-                current = 0;
-            }
-            '_' => current += 1,
-            '-' => {}
-            c if c.is_alphanumeric() => {}
-            _ => break,
-        }
-        end = start + i + c.len_utf8();
-    }
-    let valid = end > start && last == 0 && current == 0 && (short || dots > 0);
+    let end = domain_end(run, start);
+    let host = run[start..end].trim_end_matches('.');
+    let clean = host.rsplit('.').take(2).all(|label| !label.contains('_'));
+    let valid = !host.is_empty() && clean && (short || host.contains('.'));
     valid.then_some(end)
 }
-
-/// Where a failed domain scan stopped; no candidate inside it can succeed, since
-/// it would share the same final labels.
-fn skip_domain(run: &str, start: usize) -> usize {
+fn domain_end(run: &str, start: usize) -> usize {
     run[start..]
         .char_indices()
         .find(|&(_, c)| !(c.is_alphanumeric() || matches!(c, '.' | '_' | '-')))
         .map_or(run.len(), |(i, _)| start + i)
-        .max(start + 1)
+}
+
+/// Where to resume after a failed domain. A `www.` or email candidate inside
+/// it would share its final labels and fail too, but a scheme can start in
+/// its last five characters (`https` before the `:` that ended it).
+fn resume(run: &str, start: usize) -> usize {
+    domain_end(run, start).saturating_sub(5).max(start + 1)
 }
 
 /// A link continues to whitespace or `<`.
@@ -283,6 +274,15 @@ mod tests {
             "underscore in the last two labels"
         );
         assert_eq!(links("www.a_b.c.d"), ["www.a_b.c.d"]);
+        // A trailing dot is dropped, so it cannot hide an underscore (PR #24 review).
+        assert!(links("www.example_.com.").is_empty());
+        assert!(links("http://ex_ample.com.").is_empty());
+        // A failed domain does not hide a scheme that starts inside it.
+        assert_eq!(
+            links("http://bad_.http://good.example/x"),
+            ["http://good.example/x"]
+        );
+        assert_eq!(links("www.a_.x-https://b.example"), ["https://b.example"]);
         assert!(links("www.").is_empty());
         assert!(links("awww.example.com").is_empty(), "www needs a boundary");
         assert_eq!(links("*www.example.com*"), ["www.example.com"]);

@@ -672,4 +672,5 @@ frozen corpus and existing goldens contain none, so none changed; a new
 fixture (`specs/parsing/autolinks`) pins both versions. v1 denies non-ASCII
 hosts that v2 normalizes, as it already does for inline links. Documented
 differences from cmark-gfm (no `ftp://`, Unicode whitespace ends a link, a
-decoded entity ends a run) can be revisited if parity needs them.
+decoded entity or matched emphasis ends a run) can be revisited if parity
+needs them.
