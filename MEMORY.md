@@ -29,8 +29,8 @@ read.
 - CORE-FIX order: DOC-001, CORE-002B, CORE-003C, CORE-003D, CORE-005C,
   CORE-005D, then CORE-003E (owner-added from the PR #17 review). The CORE-001 to CORE-006 aggregates follow and close on shared
   acceptance. HARD-001 sits between DESK-001 and DESK-002.
-- DOC-001, CORE-002B and TOOL-002 (CI tiers, D-028) merged in PRs #17 to
-  #19. Now: CORE-003C. See
+- DOC-001, CORE-002B, TOOL-002 (CI tiers, D-028) and CORE-003C (v2 corpus
+  conformance) merged in PRs #17 to #21. Now: CORE-003D. See
   [HANDOFF.md](HANDOFF.md) and [TODO.md](TODO.md).
 - Each 001B also measures flat-view and retained RSS on its host, and WIN-001B
   makes the MSVC C smoke a required CI step.

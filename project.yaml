@@ -1,11 +1,11 @@
 contract_version: project-state/v1
-revision: 518
+revision: 520
 project: &id001
   concurrency_limit: 1
   created_at: '2026-10-24T23:34:09.871478+00:00'
   project_ref: markdown-native
   status: active
-  updated_at: '2026-10-29T00:03:52.373596+00:00'
+  updated_at: '2026-10-29T01:25:04.260461+00:00'
   workflow_id: native-app-development
   workflow_version: '2'
 phases: &id003
@@ -1761,13 +1761,14 @@ tasks:
     validation_expectations: Every supported check token runs on v1 and v2 (model-v2 and all-feature runs);
       version-specific expectations documented in the conformance contract; no parser output or golden
       change; full tools/check.py all and hosted CI; review and owner-authorized merge.
-    status: working
+    status: completed
     active_pass_ref: null
     blockers: []
     created_at: '2026-10-28T17:41:45.435227+00:00'
-    updated_at: '2026-10-29T00:03:52.373596+00:00'
-    completed_at: null
-  - id: c3e29b62-9c15-4368-95c4-96d2017a222b
+    updated_at: '2026-10-29T01:25:04.260461+00:00'
+    completed_at: '2026-10-29T01:25:04.260461+00:00'
+  - &id055
+    id: c3e29b62-9c15-4368-95c4-96d2017a222b
     task_key: CORE-003D
     title: 'Shared: bare GFM autolinks'
     description: 'Shared-core reviews 2026-10-28 (docs/reviews/: Claude holistic, Codex, Grok), owner-dispositioned
@@ -5075,81 +5076,47 @@ passes:
     completed_at: '2026-10-29T00:03:52.373596+00:00'
     lease_expires_at: null
     lease_version: 1
+  - &id054
+    id: f331044b-5a9e-463d-bedc-f7c41e348e3b
+    sequence: 69
+    task_ref: 1cf1a432-bfba-454c-b1db-48ec27fd9325
+    phase_ref: f1e4c757-a3fc-4cfd-810b-4cbed98586c8
+    actor: claude-macos
+    status: completed
+    outcome: completed
+    objective: Record owner approval of PR 21 and close out CORE-003C on test/core-003c-v2-corpus-conformance.
+    summary: 'CORE-003C delivered in PR 21: every conformance check token runs on v1 and v2 through a
+      version-neutral View; v2_matches_v1 asserts shared fields and explicit per-intent v1 disposition
+      to v2 target pairings plus a v2 from_json round trip; blocked schemes checked on v2; the references
+      test proves v1 inert reference fallbacks are exactly v2 reference intents and pins inline and resource
+      targets, including the deliberate v1/v2 policy split. Conformance README documents the v2 expectations.
+      Test-only: no parser, golden or corpus.json change. Grok review: 0 bugs, 2 suggestions, both fixed
+      in 468f36d.'
+    handoff: None
+    validation_result:
+      checks:
+        - tools/check.py all passed on macOS 27.0.1 with rustc 1.99.1
+        - conformance passes with default, model-v2 and all features
+        - mutations of v2 external URI and remote-resource denial each fail conformance
+        - hosted CI green on macOS, Linux and Windows at 468f36d (run 40799772262)
+        - 'Grok review on PR 21: no bugs, two suggestions fixed'
+      pending: []
+    evidence:
+      pr: https://github.com/awesomejt/markdown/pull/21
+      reviewed_head: 177d48d
+      fixed_head: 468f36d
+      review: Grok review on PR 21 at 177d48d
+      disposition: https://github.com/awesomejt/markdown/pull/21#issuecomment-6485211046
+      approval: owner approved merge 2026-10-28
+    participants: []
+    blocker: null
+    execution_record: {}
+    started_at: '2026-10-29T01:24:49.286825+00:00'
+    last_heartbeat_at: null
+    completed_at: '2026-10-29T01:25:04.260461+00:00'
+    lease_expires_at: null
+    lease_version: 1
 idempotency:
-  c0a90ca4-db01-4f6f-97fb-97dc77a583e2:
-    fingerprint: 2c9b013a47cafa42c9e8b29cac9c9c39b5ece28c044419acc644447cb489ee5d
-    response:
-      contract_version: project-state/v1
-      operation: remove_dependency
-      revision: 419
-      data:
-        relationship:
-          predecessor_task_ref: 7f790cf6-b945-4af0-996f-6e2457b3eefa
-          successor_task_ref: b50794e3-b295-42ab-8bb5-91893ba0027d
-          relationship: blocks
-      snapshot:
-        contract_version: project-state/v1
-        snapshot_at: '2026-10-28T18:55:48.296503+00:00'
-        revision: 419
-        project: *id001
-        current_phase: *id002
-        phases: *id003
-        active_tasks: []
-        working_tasks_without_active_lease: []
-        active_passes: []
-        stale_passes: []
-        blocked_tasks: []
-        eligible_tasks:
-          - *id004
-        latest_pass: *id005
-        queue_counts:
-          by_status:
-            completed: 30
-            pending: 57
-          total: 87
-          active_passes: 0
-          stale_passes: 0
-          eligible: 1
-          blocked: 0
-        warnings: []
-        recommended_action: select_new_task
-  654f364d-853b-483d-a11f-73f50aeb83a0:
-    fingerprint: da23ea642776132c91eae8ecbd12d5cb4283f93926025f45c43c33aeaf3cb26a
-    response:
-      contract_version: project-state/v1
-      operation: remove_dependency
-      revision: 420
-      data:
-        relationship:
-          predecessor_task_ref: 5e897dd7-6ac0-4e9d-b304-e657f9366dd4
-          successor_task_ref: 7f790cf6-b945-4af0-996f-6e2457b3eefa
-          relationship: blocks
-      snapshot:
-        contract_version: project-state/v1
-        snapshot_at: '2026-10-28T18:55:48.758230+00:00'
-        revision: 420
-        project: *id001
-        current_phase: *id002
-        phases: *id003
-        active_tasks: []
-        working_tasks_without_active_lease: []
-        active_passes: []
-        stale_passes: []
-        blocked_tasks: []
-        eligible_tasks:
-          - *id004
-        latest_pass: *id005
-        queue_counts:
-          by_status:
-            completed: 30
-            pending: 57
-          total: 87
-          active_passes: 0
-          stale_passes: 0
-          eligible: 1
-          blocked: 0
-        warnings: []
-        recommended_action: select_new_task
   842a31cb-37b0-402c-acaf-ec104648595a:
     fingerprint: d4eba952083fd0c972b6de0980ba715f920fde3f92873655dd6ce3a7d9f30907
     response:
@@ -8655,3 +8622,75 @@ idempotency:
           blocked: 0
         warnings: []
         recommended_action: recover_stale_task
+  b069564f-f73c-4880-882e-9a01b216d219:
+    fingerprint: 4126a19e4aedd7127248f08bbf71458f53472fc92a8e6450315f18bd8ba079dd
+    response:
+      contract_version: project-state/v1
+      operation: start_pass
+      revision: 519
+      data:
+        pass: *id054
+        task: *id048
+      snapshot:
+        contract_version: project-state/v1
+        snapshot_at: '2026-10-29T01:24:49.286853+00:00'
+        revision: 519
+        project: *id001
+        current_phase: *id002
+        phases: *id003
+        active_tasks:
+          - *id048
+        working_tasks_without_active_lease: []
+        active_passes:
+          - *id054
+        stale_passes: []
+        blocked_tasks: []
+        eligible_tasks: []
+        latest_pass: *id054
+        queue_counts:
+          by_status:
+            completed: 33
+            pending: 55
+            working: 1
+          total: 89
+          active_passes: 1
+          stale_passes: 0
+          eligible: 0
+          blocked: 0
+        warnings: []
+        recommended_action: resume_active
+  51443c87-b0c6-487b-af81-6d6da424c38e:
+    fingerprint: e30028982987e182534aff6ad7acac808d5b0f48c4c846f8dd38b90138e5f161
+    response:
+      contract_version: project-state/v1
+      operation: finish_pass
+      revision: 520
+      data:
+        pass: *id054
+        task: *id048
+      snapshot:
+        contract_version: project-state/v1
+        snapshot_at: '2026-10-29T01:25:04.260477+00:00'
+        revision: 520
+        project: *id001
+        current_phase: *id002
+        phases: *id003
+        active_tasks: []
+        working_tasks_without_active_lease: []
+        active_passes: []
+        stale_passes: []
+        blocked_tasks: []
+        eligible_tasks:
+          - *id055
+        latest_pass: *id054
+        queue_counts:
+          by_status:
+            completed: 34
+            pending: 55
+          total: 89
+          active_passes: 0
+          stale_passes: 0
+          eligible: 1
+          blocked: 0
+        warnings: []
+        recommended_action: select_new_task
