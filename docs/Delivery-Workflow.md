@@ -75,17 +75,19 @@ an explicit migration plan and affected-host validation.
    adjusted prompt. Record the PR URL, reviewed head SHA and review URL in the
    handoff. A finished command proves a request, not that Grok reviewed or
    approved.
-7. Inspect Grok's actual feedback and applicable CI results. Fix the findings
-   it rates high or critical now; fix or defer nits and low findings with a
-   stated reason. Explain any rejected finding with evidence in the PR and
-   re-run relevant checks. Feedback on an older head does not establish
-   review of new changes, so run the CLI again for new phase commits. Fixes
-   for the first review's findings are the exception: the owner reviews the
-   whole phase at merge and does not need a Grok re-review of them.
-8. Decide the merge (D-029). When Grok's review on the PR has no finding it
-   rates high or critical (or says to fix now), and any such finding has been
-   fixed on this branch, that review is the owner's standing approval to
-   merge. Record each remaining low finding or nit in
+7. Inspect Grok's actual feedback and applicable CI results. A finding is
+   **serious** when Grok rates it high or critical or lists it to fix now;
+   Grok's `bug` label usually lands there. Low findings, `suggestion` and
+   `nit` are not serious. Fix serious findings on this branch, re-run the
+   checks, then run the CLI again on the new head, repeating until a review
+   has no serious finding. Fix or defer the others with a stated reason, and
+   explain any rejected finding with evidence in the PR. Do not request
+   another review for commits that only fix non-serious findings, make minor
+   tweaks, update documentation or record project status.
+8. Decide the merge (D-029). When the latest Grok review has no serious
+   finding, it is the owner's standing approval to merge the PR at its
+   current head, including later commits of the kinds step 7 exempts from
+   review. Record each finding left unfixed in
    [TODO.md](../TODO.md#deferred-review-findings) for a later pass, then
    follow [Closing out an approved PR](#closing-out-an-approved-pr) and report
    the outcome. Stop and ask the owner instead when the review is missing or
@@ -110,8 +112,8 @@ Do not route around its lease/recovery rules to start another task.
 
 Review-request receipts and subsequent review-only discussion may be recorded
 in the PR without generating another source commit. This avoids repeatedly
-changing the head merely to record that it was reviewed. Source changes still
-require checks and a new review request. If Grok does not respond or the CLI
+changing the head merely to record that it was reviewed. Every new commit
+still needs its checks; step 7 says which commits also need a new review. If Grok does not respond or the CLI
 is unavailable, retain the pending-review handoff and report it; never invent
 an approval or silently waive the review.
 
@@ -135,8 +137,8 @@ no high or critical finding (step 8), the closeout travels in that PR, so
    state: no live lease and no `working` task may remain.
 2. **Push the closeout.** Commit only these state and documentation files as
    one `chore(state)` commit and push it to the PR branch. Run the common
-   checks first. This commit needs no new Grok review; any other source
-   change needs a new review, and with it a new approval.
+   checks first. This commit needs no new Grok review. A later commit that
+   step 7 does not exempt needs a new review, and with it a new approval.
 3. **Merge and delete the remote branch.** Wait for the required CI on the new
    head, then merge with a merge commit and delete the remote branch. Verify
    that the PR head that merged is the approved head plus the closeout commit.

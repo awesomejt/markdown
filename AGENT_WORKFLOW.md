@@ -141,7 +141,8 @@ unowned `working` task.
 - Use focused Conventional Commits. When the PR is out of draft, request the
   review with the `grok` CLI as Delivery-Workflow.md shows, check the PR for
   the review, assess actual feedback and fix valid findings. Request it again
-  for new phase commits, but not for fixes to the first review's findings.
+  after fixing high or critical findings, but not for commits that only fix
+  low findings, make minor tweaks, update docs or record project status.
   Keep review/merge waits as partial passes with resumable handoffs.
 - Expand future delivery-task graphs at their prerequisite gate through the
   helper; do not rewrite today's feasibility queue for a future policy.

@@ -85,7 +85,8 @@ delivery phases, grouped by platform where possible to support booting between
 hosts. Each phase uses a feature branch and PR. Once ready, request the Grok
 review by running the `grok` CLI (amended 2026-10-28 at the owner's request;
 it was a `/grok review` PR comment), assess the actual review and address
-findings; owner merge authorization remains required. Scoped phase commits,
+findings; merge needs owner authorization, which a clean Grok review now
+gives under D-029. Scoped phase commits,
 pushes, PR updates and review requests are authorized as routine steps of this
 workflow.
 
@@ -588,8 +589,10 @@ the `grok` CLI, which rates findings as fix-now (high or critical) or later
 
 **Decision:** A Grok review with no high or critical finding is the owner's
 standing approval to merge that PR. High or critical findings are fixed on the
-same branch before moving on; those fixes need no Grok re-review. Low findings
-and nits are recorded in TODO.md "Deferred review findings" for a later pass.
+same branch and reviewed again until a review is clean. Commits that only fix
+low findings, make minor tweaks, update documentation or record project status
+need no re-review. Low findings and nits left unfixed are recorded in TODO.md
+"Deferred review findings" for a later pass.
 The usual closeout, CI, merge and branch cleanup follow. The runner stops and
 asks the owner when the review is missing or its severity unclear, when
 required CI fails, or when the PR needs an owner decision a review cannot

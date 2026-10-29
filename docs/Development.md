@@ -127,4 +127,4 @@ minimum-OS packaging, accessibility or performance acceptance.
 CORE-001A includes GATE-001's approved documentation/state closeout in its PR,
 as permitted by the delivery workflow. After checks pass, set the PR ready,
 request the Grok review through the `grok` CLI and assess the actual feedback. Keep the
-task partial until an owner-authorized merge; do not start dependent phases.
+task partial until the merge is approved; do not start dependent phases.
