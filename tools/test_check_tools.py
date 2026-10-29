@@ -237,6 +237,31 @@ class GitChecks(unittest.TestCase):
         self.push_review()
         self.check_review()
 
+    def test_header_like_inherited_content_passes(self):
+        self.remote_main()
+        self.pushed_branch("a", "a.txt", "error:1: boom " + "\n")
+        self.pushed_branch("b", "b.txt", "error:1: other " + "\n")
+        self.git("merge", "--quiet", "--no-ff", "-m", "octopus", "origin/a", "origin/b")
+        self.push_review()
+        self.check_review()
+
+    def test_another_remote_holding_the_pushed_commit_is_ignored(self):
+        self.remote_main()
+        self.write("new.txt", "bad " + "\n")
+        self.commit()
+        self.push_review()
+        self.git("update-ref", "refs/remotes/upstream/HEAD", "HEAD")
+        with self.assertRaises(subprocess.CalledProcessError):
+            self.check_review()
+
+    def test_rename_of_pushed_dirty_file_passes_without_rename_config(self):
+        self.remote_main()
+        self.git("mv", "old.md", "moved.md")
+        self.commit()
+        self.push_review()
+        self.git("config", "diff.renames", "false")
+        self.check_review()
+
     def test_unidentified_pushed_branch_checks_the_whole_tree(self):
         self.new_branch(dirty=False)
         for name in ("", "no-such-branch"):

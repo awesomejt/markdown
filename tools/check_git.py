@@ -13,14 +13,16 @@ def new_branch_whitespace(*, cwd=None) -> None:
     lines a merge, conflict resolution or octopus merge inherited from any of
     them pass. `git diff --check` reports positions in HEAD, so a problem
     counts when the diff from each branch's fork point reports it. The pushed
-    branch itself (GITHUB_REF_NAME) is already on the remote. With no other
-    branch, or a pushed branch that cannot be identified, the whole tree is
-    checked rather than risk excluding the branch under test.
+    branch itself (GITHUB_REF_NAME) is already on the remote. Only `origin`
+    counts: another remote could hold the pushed commit under another name
+    and hide every problem. With no other branch, or a pushed branch that
+    cannot be identified, the whole tree is checked rather than risk
+    excluding the branch under test.
     """
     def out(*args):
         return subprocess.run(["git", *args], cwd=cwd, capture_output=True, text=True)
 
-    refs = out("for-each-ref", "--format=%(refname)", "refs/remotes").stdout.split()
+    refs = out("for-each-ref", "--format=%(refname)", "refs/remotes/origin").stdout.split()
     pushed = f"refs/remotes/origin/{os.environ.get('GITHUB_REF_NAME', '')}"
     forks = set()
     if pushed in refs:
@@ -35,11 +37,13 @@ def new_branch_whitespace(*, cwd=None) -> None:
         return
     common = None
     for fork in sorted(forks):
-        result = out("diff", "--check", fork, "HEAD", "--")
+        # Renames keep a moved file's lines old whatever the local Git config.
+        result = out("-c", "diff.renames=true", "diff", "--check", fork, "HEAD", "--")
         if result.returncode not in (0, 2):
             raise subprocess.CalledProcessError(result.returncode, result.args, result.stdout, result.stderr)
+        # Offending content follows each header as a "+" line; never parse it.
         found = {(m[1], m[2]): line for line in result.stdout.splitlines()
-                 if (m := PROBLEM.match(line))}
+                 if not line.startswith("+") and (m := PROBLEM.match(line))}
         common = found if common is None else {k: v for k, v in common.items() if k in found}
     if common:
         print("\n".join(common.values()))

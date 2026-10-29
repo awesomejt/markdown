@@ -93,8 +93,8 @@ availability are not checked by this bounded tooling parser.
 
 Whitespace checks use `CHECK_BASE...HEAD` in CI with full history, then include
 staged/unstaged tracked changes. A branch's first push has an all-zero base;
-it flags a problem only on a line that is new against every other remote
-branch, judged from HEAD's fork point with each. Lines inherited through a
+it flags a problem only on a line that is new against every other `origin`
+branch, judged from HEAD's fork point with each (with rename detection on). Lines inherited through a
 merge, conflict resolution or octopus merge pass; committed conflict markers
 and new dirty lines fail. The pushed branch is named by `GITHUB_REF_NAME`; when
 it is unset or not found, or no other branch exists, the whole tree is checked. Without CHECK_BASE, local/manual runs check the latest commit plus
