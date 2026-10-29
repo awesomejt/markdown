@@ -133,6 +133,6 @@ running a portable Rust suite on a hosted runner does not prove native UI,
 minimum-OS packaging, accessibility or performance acceptance.
 
 CORE-001A includes GATE-001's approved documentation/state closeout in its PR,
-as permitted by the delivery workflow. After checks pass, set the PR ready,
-request the Grok review through the `grok` CLI and assess the actual feedback. Keep the
+as permitted by the delivery workflow. After checks pass, open the PR, which
+starts the Grok review, and assess the actual feedback. Keep the
 task partial until the merge is approved; do not start dependent phases.

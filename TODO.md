@@ -8,9 +8,9 @@ leases, and passes. This document defines task scope and acceptance criteria.
 CORE/WIN/MAC/LNX/IOS entries below are aggregate milestones. Execute the small,
 platform-focused delivery phases in [the catalog](docs/Implementation-Plan.md),
 batching ready work on the current OS. Each delivery phase uses one feature
-branch and PR into `develop`. Once ready, request the Grok review through the
-`grok` CLI, address the feedback, and merge into `develop` once a review has no
-serious finding (D-029). The owner reviews and merges milestones from
+branch and PR into `develop`. Opening the PR when ready starts the Grok review;
+address the feedback, and merge into `develop` once a review has no serious
+finding (D-029). Unreviewed housekeeping uses `patch/` branches (D-033). The owner reviews and merges milestones from
 `review/<milestone>` into `main` (D-030). Follow
 [Delivery-Workflow.md](docs/Delivery-Workflow.md) for branch, review and handoff
 rules. GATE-001 is approved (D-018). CORE-001A through CORE-003A, CORE-003B1

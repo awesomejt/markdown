@@ -43,8 +43,10 @@ read.
   milestone is the closed CORE-001 to CORE-006 aggregates, or the cap.
 - Milestone reviews: Claude writes the packet; Grok and Codex add independent
   reviews in `docs/reviews/` on the review branch, not normal PR reviews.
-  On 2026-10-29 Claude Code's auto mode blocked `grok --always-approve`,
-  so the owner ran it; allow `grok` in the Bash permissions, or ask the owner.
+- Grok reviews come from its GitHub integration (D-033): creating a PR starts
+  one, `/grok review` asks for another, and the runner polls the PR for it.
+  Grok ignores `review/*` and `patch/*`; `patch/` carries unreviewed docs,
+  workflow, state and behavior-free nit changes and merges on green CI.
 - Each 001B also measures flat-view and retained RSS on its host, and WIN-001B
   makes the MSVC C smoke a required CI step.
 - Node IDs are snapshot-local and block anchors carry position (D-021). ABI v1

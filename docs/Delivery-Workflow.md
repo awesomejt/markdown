@@ -46,7 +46,8 @@ The owner reviews milestones, not every task PR:
 | `main` | Owner-approved milestones only, each tagged `m-<milestone>` | Owner merge of a milestone review PR |
 | `develop` | Integration of finished tasks; the default base for work | Task PRs merged under D-029 |
 | `review/<milestone>` | Frozen snapshot of `develop` under owner review | Owner-requested review fixes |
-| `feat/`, `fix/`, `chore/`, `docs/`, `test/` | One task each | The pass runner |
+| `feat/`, `fix/`, `chore/`, `docs/`, `test/` | One task each, reviewed by Grok | The pass runner |
+| `patch/` | Unreviewed housekeeping (below); Grok ignores it | The pass runner |
 
 Never commit directly to `main` or `develop`. (On 2026-10-28 the owner allowed
 two one-time direct commits to `main`, to install this workflow and then the
@@ -76,11 +77,12 @@ request, and force pushes and deletion are blocked.
 3. Keep working on `develop` meanwhile; the review branch does not move with
    it. Make owner-requested fixes on the review branch with checks, and keep
    `project.yaml` changes on `develop` so the two do not conflict. A fix that
-   needs a Grok review gets one, per step 7 below.
+   needs a Grok review gets one, per step 7 below. Grok ignores `review/*`,
+   so such a fix goes on a reviewed branch with a PR into the review branch.
 4. Only the owner merges the review PR, with a merge commit. Then tag the
    merge `m-<milestone>` and push the tag, delete the review branch, and merge
-   `main` back into `develop` through a PR. That sync PR adds nothing new, so
-   it needs CI but no Grok review, and D-029 approves it.
+   `main` back into `develop` through a PR from a `patch/` branch. That sync
+   PR adds nothing new, so it needs CI but no Grok review (D-033).
 
 Things that need the owner still stop work at once, not at the milestone:
 gates, golden exceptions, new architecture decisions, a missing or unclear
@@ -90,55 +92,52 @@ Grok review, and failing CI on `develop`.
 
 1. Inspect state and Git, then select the phase and verify prerequisites. Create
    `feat/<phase-id-lowercase>-<short-description>` from `develop`; use `fix/`,
-   `chore/`, `docs/` or `test/` for those scopes. Reuse that branch and PR
-   across sessions. Task PRs target `develop`, never `main`.
+   `chore/`, `docs/` or `test/` for those scopes, or `patch/` for the
+   unreviewed housekeeping [below](#unreviewed-patch-branches). Reuse that
+   branch and PR across sessions. Task PRs target `develop`, never `main`.
 2. Start/resume the phase's execution task through the normal state helper.
    Implement only its acceptance criteria and keep unrelated changes out.
-   A draft PR is allowed when useful; do not trigger review of unfinished work.
+   Do not open the PR before the work is reviewable: creating it starts the
+   Grok review (step 5), and that review counts toward the cap.
 3. Run proportionate tests and the phase's native checks, including a local
    `tools/check.py all` for any core change, because hosted PR runs use only the
    faster core tier (D-028). Record exact commands,
    host/tool versions, results, limitations and evidence. An unavailable required
-   runner/check keeps the PR in draft; an unrun check is not a pass.
+   runner/check keeps the PR unopened; an unrun check is not a pass.
 4. Prepare focused commits and push the phase branch to this repository's
-   configured remote. Create or update the phase PR, using the repository
-   template. Describe the resulting behavior, acceptance criteria, validation,
-   compatibility changes and residual risks. Set the PR ready for review only
-   once the phase is reviewable and required checks pass.
-5. Once the PR is out of draft, request the review by running the local `grok`
-   CLI from the repository root, headless, with the PR number filled in:
-
-   ```sh
-   grok --always-approve -p "In GitHub, PR #$PR is ready for review in the \
-   Markdown repository. The current folder is the local copy of the \
-   repository. Put the contents of the review in the comments, and submit \
-   the review (do not leave it pending). Provide a \
-   summary of the review that includes if the findings are significant enough \
-   to fix now (high/critical) or later - nits or low findings."
-   ```
-
-   `--always-approve` keeps Grok from stopping on tool permissions. Keep its
-   output for the next step.
-6. When the command returns, the review is usually complete. Check the PR for
-   it (reviews, review comments and conversation comments). If it is missing,
-   inspect Grok's output for the cause and run the command again with an
-   adjusted prompt. Record the PR URL, reviewed head SHA and review URL in the
-   handoff. A finished command proves a request, not that Grok reviewed or
-   approved.
+   configured remote. Create the phase PR, using the repository template,
+   once the phase is reviewable. Describe the resulting behavior, acceptance
+   criteria, validation, compatibility changes and residual risks.
+5. Creating the PR starts the review: the Grok GitHub integration (through
+   Cursor) reviews every new PR whose branch is not `review/*` or `patch/*`.
+   Nothing needs to be run. To request a later review, post a separate PR
+   conversation comment that is exactly `/grok review`. If no review starts
+   after creation, post that comment once.
+6. Monitor the PR until Grok's review arrives, for example by polling
+   `gh pr view <PR> --json reviews,comments` every minute or two. Check
+   reviews, review comments and conversation comments, and identify Grok's
+   by its app account, not by the owner's. Record the PR URL, reviewed head
+   SHA and review URL in the handoff. A trigger proves a request, not that
+   Grok reviewed or approved. If nothing arrives within about 30 minutes,
+   post `/grok review` once more; if that also stays silent, keep the pass
+   partial with a pending-review handoff and report it.
 7. Inspect Grok's actual feedback and applicable CI results. A finding is
    **serious** when Grok rates it high or critical or lists it to fix now;
    Grok's `bug` label usually lands there. Low findings, `suggestion` and
    `nit` are not serious. Fix serious findings on this branch, re-run the
-   checks, then run the CLI again on the new head, repeating until a review
-   has no serious finding. Fix or defer the others with a stated reason, and
-   explain any rejected finding with evidence in the PR. Do not request
-   another review for commits that only fix non-serious findings, make minor
-   tweaks, update documentation or record project status.
+   checks, push, then post `/grok review` for the new head and monitor again,
+   repeating until a review has no serious finding. Fix or defer the others
+   with a stated reason, and explain any rejected finding with evidence in
+   the PR. Do not request another review for commits that only fix
+   non-serious findings, make minor tweaks, update documentation or record
+   project status.
 
-   **Review cap.** A PR gets at most three Grok reviews. When the third still
-   has a serious finding, stop: post the disposition, report the open
-   findings and wait for the owner, who merges, defers the findings or asks
-   for more fixes. Do not run a fourth review or merge without that answer.
+   **Review cap.** A PR gets at most three Grok reviews, the automatic one
+   included. When the third still has a serious finding, stop: post the
+   disposition, report the open findings and wait for the owner, who merges,
+   defers the findings or asks for more fixes. Do not request a fourth
+   review or merge without that answer. If Grok reviews a push on its own,
+   that review counts too.
 8. Decide the merge (D-029). When the latest Grok review has no serious
    finding, it is the owner's standing approval to merge the PR into
    `develop`. The approved head is the reviewed commit plus any later
@@ -150,13 +149,32 @@ Grok review, and failing CI on `develop`.
    owner decision the review cannot give, such as a golden exception or a
    gate.
 
+### Unreviewed patch branches
+
+Grok ignores PRs from `review/*` and `patch/*` branches (the owner's Grok
+setting, D-033). Use a `patch/<short-description>` branch from `develop` for
+a change that needs no PR review:
+
+- workflow, process and other documentation changes;
+- administrative changes: project-state records, roadmap and handoff updates,
+  and the milestone sync from `main` into `develop`;
+- nit fixes that change no behavior, such as typos, comments and formatting.
+
+Anything that changes the behavior of code, tools, CI, specs, fixtures or
+goldens uses a reviewed branch, as does any change that needs an owner
+decision. Task closeouts stay on their task's branch. A `patch/` PR merges
+into `develop` with a merge commit once its required CI passes; that green
+CI is the approval (D-033). Run `tools/check.py common` first, and say in the
+PR why it needs no review. If a `patch/` change turns out to need review,
+move it to a reviewed branch rather than asking Grok on the patch PR.
+
 The owner has authorized the scoped commits, phase-branch pushes, PR creation/
-updates and `grok` CLI review requests needed for this workflow. Do not ask again
-for these routine steps, nor for a merge into `develop` that step 8 approves,
-nor for the milestone steps above other than the owner's merge into `main`.
-This does not authorize unrelated communication, repository exposure or
-settings changes, other merges, releases, signing or production deployment.
-This documentation change does not itself open a PR or trigger a review.
+updates and `/grok review` comments needed for this workflow. Do not ask again
+for these routine steps, nor for a merge into `develop` that step 8 or the
+patch rule approves, nor for the milestone steps above other than the owner's
+merge into `main`. This does not authorize unrelated communication,
+repository exposure or settings changes, other merges, releases, signing or
+production deployment.
 
 ## Waiting, closeout and switching machines
 
@@ -170,9 +188,9 @@ Do not route around its lease/recovery rules to start another task.
 Review-request receipts and subsequent review-only discussion may be recorded
 in the PR without generating another source commit. This avoids repeatedly
 changing the head merely to record that it was reviewed. Every new commit
-still needs its checks; step 7 says which commits also need a new review. If Grok does not respond or the CLI
-is unavailable, retain the pending-review handoff and report it; never invent
-an approval or silently waive the review.
+still needs its checks; step 7 says which commits also need a new review. If
+Grok does not respond (step 6), retain the pending-review handoff and report
+it; never invent an approval or silently waive the review.
 
 On another boot, reconcile the linked PR's actual state before selecting
 work. A PR merged without its closeout commit, for example one merged before

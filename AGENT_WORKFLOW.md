@@ -140,19 +140,23 @@ unowned `working` task.
   owner-approved milestone reviews from `review/<milestone>` (D-030).
   Use the platform-focused catalog in `docs/Implementation-Plan.md`, not one
   branch for an entire aggregate roadmap milestone.
-- Use focused Conventional Commits. When the PR is out of draft, request the
-  review with the `grok` CLI as Delivery-Workflow.md shows, check the PR for
-  the review, assess actual feedback and fix valid findings. Request it again
-  after fixing high or critical findings, but not for commits that only fix
+- Use focused Conventional Commits. Open the PR only when it is reviewable:
+  creating it starts the Grok review. Monitor the PR until the review
+  arrives, assess actual feedback and fix valid findings. Request another
+  review with a `/grok review` comment after fixing high or critical
+  findings, but not for commits that only fix
   low findings, make minor tweaks, update docs or record project status.
   Stop after three reviews if a serious finding remains, and wait for the
   owner. Keep review/merge waits as partial passes with resumable handoffs.
+  Housekeeping that needs no review (docs, workflow, state, behavior-free
+  nits) goes on a `patch/` branch, which Grok ignores and green CI merges
+  (D-033).
 - Expand future delivery-task graphs at their prerequisite gate through the
   helper; do not rewrite today's feasibility queue for a future policy.
 - Never stage unrelated user changes.
 - Run task checks before asking for review; record exact commands.
 - The owner has authorized scoped implementation phase commits, branch pushes,
-  PR creation/updates and the Grok CLI review requests under Delivery-Workflow.md.
+  PR creation/updates and `/grok review` comments under Delivery-Workflow.md.
   A Grok review with no high or critical finding approves the merge into
   `develop` (D-029); record its other findings in TODO.md. Milestone review
   branches, PRs, tags and the sync back to `develop` follow D-030; only the
