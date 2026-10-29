@@ -140,7 +140,8 @@ unowned `working` task.
   branch for an entire aggregate roadmap milestone.
 - Use focused Conventional Commits. When the PR is out of draft, request the
   review with the `grok` CLI as Delivery-Workflow.md shows, check the PR for
-  the review, assess actual feedback and fix valid findings.
+  the review, assess actual feedback and fix valid findings. Request it again
+  for new phase commits, but not for fixes to the first review's findings.
   Keep review/merge waits as partial passes with resumable handoffs.
 - Expand future delivery-task graphs at their prerequisite gate through the
   helper; do not rewrite today's feasibility queue for a future policy.

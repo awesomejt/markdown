@@ -82,10 +82,12 @@ Disable Git line-ending conversion for the frozen fixture corpus.
 
 Starting after GATE-001, divide core and application implementation into bounded
 delivery phases, grouped by platform where possible to support booting between
-hosts. Each phase uses a feature branch and PR. Once ready, post a separate PR
-comment exactly `/grok review`, assess the actual review and address findings;
-owner merge authorization remains required. Scoped phase commits, pushes, PR
-updates and review comments are authorized as routine steps of this workflow.
+hosts. Each phase uses a feature branch and PR. Once ready, request the Grok
+review by running the `grok` CLI (amended 2026-10-28 at the owner's request;
+it was a `/grok review` PR comment), assess the actual review and address
+findings; owner merge authorization remains required. Scoped phase commits,
+pushes, PR updates and review requests are authorized as routine steps of this
+workflow.
 
 Use `docs/Delivery-Workflow.md` and the catalog in `docs/Implementation-Plan.md`.
 Retain broad state buckets and aggregate milestones; materialize their smaller

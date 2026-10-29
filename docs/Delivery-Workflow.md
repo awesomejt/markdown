@@ -79,7 +79,9 @@ an explicit migration plan and affected-host validation.
    it rates high or critical now; fix or defer nits and low findings with a
    stated reason. Explain any rejected finding with evidence in the PR and
    re-run relevant checks. Feedback on an older head does not establish
-   review of new changes.
+   review of new changes, so run the CLI again for new phase commits. Fixes
+   for the first review's findings are the exception: the owner reviews the
+   whole phase at merge and does not need a Grok re-review of them.
 8. Report readiness to the owner with the PR, checks, review disposition and
    remaining risks. Merge only when explicitly authorized or performed by the
    owner, then follow [Closing out an approved PR](#closing-out-an-approved-pr).

@@ -8,7 +8,7 @@ leases, and passes. This document defines task scope and acceptance criteria.
 CORE/WIN/MAC/LNX/IOS entries below are aggregate milestones. Execute the small,
 platform-focused delivery phases in [the catalog](docs/Implementation-Plan.md),
 batching ready work on the current OS. Each delivery phase uses one feature
-branch and PR. Once ready, post a separate PR comment exactly `/grok review`,
+branch and PR. Once ready, request the Grok review through the `grok` CLI,
 address the feedback, and obtain owner merge approval. Follow
 [Delivery-Workflow.md](docs/Delivery-Workflow.md) for branch, review and handoff
 rules. GATE-001 is approved (D-018). CORE-001A through CORE-003A, CORE-003B1

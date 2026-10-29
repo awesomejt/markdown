@@ -74,8 +74,8 @@ hand-edit `project.yaml` or improvise a backend.
 After GATE-001, use the small platform-focused phase catalog in
 [Implementation-Plan.md](docs/Implementation-Plan.md) and the branch/PR lifecycle
 in [Delivery-Workflow.md](docs/Delivery-Workflow.md). Each phase gets a feature
-branch and PR, followed by a separate `/grok review` comment. Scoped phase
-commits, pushes, PR updates and review comments are authorized; merge, tag,
+branch and PR, followed by a Grok review requested through the `grok` CLI.
+Scoped phase commits, pushes, PR updates and review requests are authorized; merge, tag,
 signing, publishing and production deployment require explicit owner approval.
 
 Keep `markdown-viewer` read-only. Do not add a sibling build/runtime dependency
