@@ -210,6 +210,33 @@ class GitChecks(unittest.TestCase):
         with self.assertRaises(subprocess.CalledProcessError):
             self.check_review()
 
+    def pushed_branch(self, name, path, value):
+        self.git("switch", "--quiet", "-c", name, "origin/main")
+        self.write(path, value)
+        self.commit()
+        self.git("push", "--quiet", "origin", f"HEAD:refs/heads/{name}")
+        self.git("switch", "--quiet", "review/m1")
+
+    def test_resolution_keeping_the_other_side_passes(self):
+        self.remote_main()
+        self.pushed_branch("develop", "shared.txt", "develop  \n\n")
+        self.write("shared.txt", "review\n")
+        self.commit()
+        with self.assertRaises(subprocess.CalledProcessError):
+            self.git("merge", "--quiet", "develop")
+        self.git("checkout", "--theirs", "shared.txt")
+        self.git("commit", "--quiet", "-am", "take develop")
+        self.push_review()
+        self.check_review()
+
+    def test_octopus_merge_of_pushed_dirty_branches_passes(self):
+        self.remote_main()
+        self.pushed_branch("a", "a.md", "hard break  \n")
+        self.pushed_branch("b", "b.md", "hard break  \n")
+        self.git("merge", "--quiet", "--no-ff", "-m", "octopus", "origin/a", "origin/b")
+        self.push_review()
+        self.check_review()
+
     def test_unidentified_pushed_branch_checks_the_whole_tree(self):
         self.new_branch(dirty=False)
         for name in ("", "no-such-branch"):
