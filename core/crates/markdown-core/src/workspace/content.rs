@@ -14,8 +14,14 @@ pub const DEFAULT_MAX_FILES: u64 = 10_000;
 pub const MAX_FILES: u64 = 1_000_000;
 pub const DEFAULT_MAX_TOTAL_BYTES: u64 = 256 * 1024 * 1024;
 pub const MAX_TOTAL_BYTES: u64 = 16 * 1024 * 1024 * 1024;
-/// Default and largest per-file size: the reader's own parse ceiling.
+/// Default per-file size (CORE-005C): bounds one call's parse memory.
+pub const DEFAULT_MAX_FILE_BYTES: usize = 2 * 1024 * 1024;
+/// Largest per-file size: the reader's own parse ceiling.
 pub const MAX_FILE_BYTES: usize = 8 * 1024 * 1024;
+/// Source bytes per parse node allowed (CORE-005C); see [`parse_limits`].
+const BYTES_PER_NODE: usize = 4;
+/// Smallest node allowance, so small file budgets still admit dense files.
+const MIN_NODES: usize = 65_536;
 pub const DEFAULT_MAX_MATCHES_PER_FILE: usize = 100;
 pub const MAX_MATCHES_PER_FILE: usize = 10_000;
 pub const DEFAULT_MAX_TOTAL_MATCHES: u64 = 2_000;
@@ -46,7 +52,7 @@ impl Default for ContentLimits {
         Self {
             max_files: DEFAULT_MAX_FILES,
             max_total_bytes: DEFAULT_MAX_TOTAL_BYTES,
-            max_file_bytes: MAX_FILE_BYTES,
+            max_file_bytes: DEFAULT_MAX_FILE_BYTES,
             max_matches_per_file: DEFAULT_MAX_MATCHES_PER_FILE,
             max_total_matches: DEFAULT_MAX_TOTAL_MATCHES,
             snippet_context: DEFAULT_SNIPPET_CONTEXT,
@@ -300,14 +306,12 @@ impl ContentQuery {
             return Ok(DocumentOutcome::Skipped(SkipReason::InvalidUtf8));
         };
         let limits = &self.options.limits;
-        let mut parse_limits = ParseLimits::default();
-        parse_limits.model.max_source_bytes = limits.max_file_bytes;
         let source: Arc<str> = Arc::from(text);
         let document = match parse_markdown_cancellable(
             &source,
             DocumentId("workspace".into()),
             RevisionId("g1".into()),
-            parse_limits,
+            parse_limits(limits.max_file_bytes),
             token,
         ) {
             Ok(document) => document,
@@ -365,6 +369,19 @@ impl ContentQuery {
             truncated: found.truncated,
         }))
     }
+}
+
+/// The bounded parse for one file. Parse memory grows with the node count, so
+/// the node and event allowances follow the file budget rather than the
+/// reader's fixed limits; specs/workspace-search/README.md (memory guard) has
+/// the rule and its measurements.
+fn parse_limits(max_file_bytes: usize) -> ParseLimits {
+    let mut limits = ParseLimits::default();
+    let nodes = (max_file_bytes / BYTES_PER_NODE).clamp(MIN_NODES, limits.model.max_nodes);
+    limits.max_events = limits.max_events.min(2 * nodes);
+    limits.model.max_nodes = nodes;
+    limits.model.max_source_bytes = max_file_bytes;
+    limits
 }
 
 /// Incremental 1-based line numbers for mostly increasing offsets.

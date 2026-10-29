@@ -43,6 +43,13 @@ fn md(id: u64) -> WorkspaceEntry {
 fn query(text: &str) -> ContentQuery {
     ContentQuery::new(text, ContentOptions::default()).unwrap()
 }
+/// The reader's parse ceiling, which callers may choose over the default.
+fn largest_file() -> ContentLimits {
+    ContentLimits {
+        max_file_bytes: MAX_FILE_BYTES,
+        ..ContentLimits::default()
+    }
+}
 fn with_limits(text: &str, limits: ContentLimits) -> ContentQuery {
     ContentQuery::new(
         text,
@@ -593,13 +600,15 @@ fn snippets_handle_dense_overlapping_and_clipped_matches() {
     assert!(s.trailing_more);
     assert!(s.text.starts_with("lead x"));
 
-    // Snippets stay bounded inside one very large paragraph.
+    // Snippets stay bounded inside one very large paragraph, above the
+    // default file budget.
     let big = format!(
         "{}needle{}",
         "word ".repeat(400_000),
         " tail".repeat(400_000)
     );
-    let found = one(&big, "needle");
+    let q = with_limits("needle", largest_file());
+    let found = hits(search(&q, &mut ContentProgress::default(), &md(1), &big));
     let s = &found.hits[0].snippet;
     assert!(s.text.chars().count() <= 2 * DEFAULT_SNIPPET_CONTEXT + "needle".len());
     assert!(s.leading_more && s.trailing_more);
@@ -980,6 +989,7 @@ fn cancellation_returns_nothing_and_keeps_progress() {
 
     // Concurrent cancellation of a large file: either a full result or
     // `Cancelled` with untouched progress, never a partial result.
+    let q = with_limits("needle", largest_file());
     let big: Arc<str> = Arc::from(format!("{}needle", "word ".repeat(1_500_000)));
     for delay in [0u64, 1, 5] {
         let token = CancellationToken::new();

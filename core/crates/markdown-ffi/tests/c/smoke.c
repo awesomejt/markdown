@@ -483,6 +483,20 @@ static void check_workspace_content(void) {
     CHECK(progress.matches == 3 && progress.bytes_read == bytes);
     CHECK(progress.skipped_hidden == 1 && progress.skipped_not_markdown == 1);
 
+    /* Zero selects the default file budget; a larger file is skipped unread. */
+    uint32_t outcome = 0, reason = 0;
+    md_content_progress sizes;
+    memset(&sizes, 0, sizeof sizes);
+    sizes.struct_size = sizeof sizes;
+    CHECK(options.max_file_bytes == 0);
+    CHECK_STATUS(md_workspace_content_admit((const uint8_t *)query, strlen(query), &options,
+                                            (const uint8_t *)"big.md", 6,
+                                            MD_CONTENT_DEFAULT_MAX_FILE_BYTES + 1u, &sizes,
+                                            &outcome, &reason),
+                 MD_OK);
+    CHECK(outcome == MD_CONTENT_SKIPPED && reason == MD_SKIP_TOO_LARGE);
+    CHECK(sizes.skipped_too_large == 1 && sizes.files_read == 0);
+
     /* Arguments are checked and failures leave progress unchanged. */
     md_content_progress before = progress;
     md_content_result result;
@@ -503,7 +517,6 @@ static void check_workspace_content(void) {
     CHECK(result.hit_count == 2 && memcmp(&before, &progress, sizeof progress) == 0);
     /* A spent budget is a permanent stop. */
     options.max_files = 3;
-    uint32_t outcome = 0, reason = 0;
     CHECK_STATUS(md_workspace_content_admit((const uint8_t *)query, strlen(query), &options,
                                             (const uint8_t *)"z.md", 4, 1, &progress, &outcome,
                                             &reason),

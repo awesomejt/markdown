@@ -178,13 +178,20 @@ evidence.
   | `*a` or `**a* _b__` (with a trailing space) repeated, 8 MiB | `NodeLimit` | 1,152.0 |
 
   That is about 140 times the source at the 8 MiB ceiling, and the same on
-  the pre-phase base, so it is not a regression. Sessions, workspace content
-  search (`max_file_bytes` defaults to 8 MiB) and C ABI callers inherit it, so
-  one hostile file in a scanned folder can briefly cost over 1 GiB. CI
-  budgets the 2 MiB storm to catch regressions in the ratio. A lower content
-  search file default or a delimiter-density pre-check is left to the
-  workspace and platform phases. Reducing per-node cost (string IDs, per-node
-  child vectors) would need a model change and is not attempted here.
+  the pre-phase base, so it is not a regression. Sessions and C ABI session
+  callers inherit it. CI budgets the 2 MiB storm to catch regressions in the
+  ratio. Reducing per-node cost (string IDs, per-node child vectors) would
+  need a model change and is not attempted here.
+
+  The peak has two terms. The upstream first pass grows to up to 144 bytes
+  per source byte when nearly every byte is a token (`[`, `*a`, `a` plus a
+  line ending), before the node limit can act. The model adds a few hundred
+  bytes per node. Workspace content search bounds both (CORE-005C): a 2 MiB
+  default file budget and a node allowance of `max_file_bytes / 4`. Under
+  its defaults, ten hostile constructs peak at 334.4 MiB at most, against a
+  420 MiB budget in `tests/content_budgets.rs`. See the
+  [workspace-search memory guard](../specs/workspace-search/README.md#memory-guard-core-005c).
+  Hosts that pass the 8 MiB maximum accept the reader's cost.
 - SHA-256 fingerprinting is duplicated between the builder and validation.
   Removing the second pass would weaken independent validation, so it is left
   as an optimization opportunity.
