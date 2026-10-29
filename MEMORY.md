@@ -30,7 +30,8 @@ read.
   CORE-005D, then CORE-003E (owner-added from the PR #17 review). The CORE-001 to CORE-006 aggregates follow and close on shared
   acceptance. HARD-001 sits between DESK-001 and DESK-002.
 - DOC-001, CORE-002B, TOOL-002 (CI tiers, D-028) and CORE-003C (v2 corpus
-  conformance) merged in PRs #17 to #21, TOOL-003 in #23, CORE-003D (bare autolinks, D-031) in #24. Now: CORE-005C. See
+  conformance) merged in PRs #17 to #21, TOOL-003 in #23, CORE-003D (bare autolinks, D-031) in #24, CORE-005C
+  (content-search memory guard) in #25. Now: CORE-005D. See
   [HANDOFF.md](HANDOFF.md) and [TODO.md](TODO.md).
 - Workflow: task PRs target `develop` and merge on a Grok review with no
   serious finding (D-029). `main` takes only owner-approved milestone reviews
@@ -146,6 +147,9 @@ read.
   after twenty loads with zero native owners and no leaked bytes. It looks
   like macOS allocator retention; Linux/glibc stays flat. No acceptable
   repeated-session budget is established.
-- Dense delimiter input at the 8 MiB source ceiling peaks at about 1,152 MiB
-  before the node limit stops it (D-024). The content-search guard is
-  CORE-005C; hosts still cap concurrency.
+- Dense token input at the 8 MiB source ceiling peaks at about 1,152 MiB
+  before the node limit stops it (D-024): pulldown-cmark's first pass costs
+  up to 144 bytes per source byte, and the model a few hundred per node.
+  Sessions inherit it. Content search bounds one call to 334 MiB measured
+  (420 MiB budget) with a 2 MiB default file budget and a node allowance of
+  `max_file_bytes / 4` (CORE-005C); hosts still cap concurrency.

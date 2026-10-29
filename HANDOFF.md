@@ -1,7 +1,7 @@
 # Agent Session and Platform Handoff
 
-Updated: 2026-10-28, review cap and branch settings on `main` (after PR #23).
-Source baseline: `develop`, fast-forwarded to that `main` commit. Preserve intended source, lock/spec/golden
+Updated: 2026-10-29, CORE-005C closeout (PR #25).
+Source baseline: `develop` after the PR #25 merge. Preserve intended source, lock/spec/golden
 files, docs and state together. Never transfer caches, environments, build
 products, private runtime state or user documents.
 
@@ -41,9 +41,14 @@ in order before any platform phase. Their scope is in
 - **Done:** CORE-003D, bare GFM autolinks (D-031),
   [PR #24](https://github.com/awesomejt/markdown/pull/24), merged into
   `develop` after the three-review cap with the owner's approval.
-- **Current:** CORE-005C, the only eligible task. Start its pass on a branch
+- **Done:** CORE-005C, the content-search memory guard,
+  [PR #25](https://github.com/awesomejt/markdown/pull/25), merged into
+  `develop` on a clean Grok review (D-029). The default file budget is
+  2 MiB, and the node allowance follows it; see the
+  [workspace-search spec](specs/workspace-search/README.md#memory-guard-core-005c).
+- **Current:** CORE-005D, the only eligible task. Start its pass on a branch
   from `develop`, and target its PR at `develop`.
-- **Then:** CORE-005D and CORE-003E. Their end is the first
+- **Then:** CORE-003E. Their end is the first
   milestone review (`review/core-fix` into `main`). Then the CORE-001 to
   CORE-006 aggregates. Each host's chain in `desktop-apps` starts after
   CORE-006 (D-027). Do not select platform tasks before then.

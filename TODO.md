@@ -49,8 +49,8 @@ core alone.
 The shared-core reviews (PR #16) are merged. The current work is the
 [CORE-FIX phase](#core-fix-phase-shared-core-review-follow-ups): DOC-001,
 CORE-002B, TOOL-002 and CORE-003C merged in PRs #17 to #21, the D-029 and
-D-030 workflow changes in PR #22 and on `main`, TOOL-003 in PR #23 and CORE-003D in PR #24. CORE-005C is next, on a branch
-from `develop`; the end of CORE-FIX is the first milestone review. Inspect
+D-030 workflow changes in PR #22 and on `main`, TOOL-003 in PR #23, CORE-003D in PR #24 and CORE-005C in PR #25. CORE-005D
+is next, on a branch from `develop`; the end of CORE-FIX is the first milestone review. Inspect
 state and `HANDOFF.md` before any pass. Scoped commits, pushes, PR updates and
 review requests are authorized; a Grok review with no serious finding approves
 a merge into `develop` (D-029); only the owner merges into `main` (D-030);
