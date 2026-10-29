@@ -55,13 +55,26 @@ ordinary characters. Windows adapters convert `\` separators to `/` before
 building a path. An adapter skips entries it cannot represent. A rejected name
 is never shown.
 
-Other invisible format characters are accepted, because rejecting them would
-hide real files, but `WorkspacePath::has_invisible()` reports them. It uses the
-Unicode 16.0 General_Category=Cf table shared with
-[front matter](../../docs/Front-Matter.md), except ZWNJ and ZWJ, which emoji,
-Persian and Indic names need. Examples are U+200B ZWSP, U+FEFF, U+2060 and the
-soft hyphen. Such a name can display exactly like another name, so the UI
-should mark it.
+Other invisible characters are accepted, because rejecting them would hide
+real files, but `WorkspacePath::has_invisible()` reports them. A name is never
+rejected or rewritten for them, and keeps its exact text and opaque entry ID.
+The rule flags:
+
+- Unicode 16.0 General_Category=Cf, the table shared with
+  [front matter](../../docs/Front-Matter.md): for example U+200B ZWSP,
+  U+FEFF, U+2060 and the soft hyphen.
+- Unicode 16.0 Default_Ignorable_Code_Point plus U+2800 BRAILLE PATTERN BLANK,
+  the table shared with [v2 URI targets](../../docs/URI-Policy.md). This adds
+  blank characters that are not Cf: the Hangul fillers U+115F, U+1160, U+3164
+  and U+FFA0, U+2800, the Khmer inherent vowels U+17B4 and U+17B5, and
+  unassigned default-ignorable code points.
+
+It exempts ZWNJ and ZWJ, which emoji, Persian and Indic names need, and the
+display modifiers that front matter also keeps: CGJ (U+034F), Mongolian FVS
+1–4 (U+180B–180D, U+180F) and the variation selectors (U+FE00–FE0F,
+U+E0100–E01EF), so `❤️.md` is not flagged. Such a name can display exactly
+like another name, so the UI should mark it. `MD_PATH_INVISIBLE` reports the
+same rule through the C ABI.
 
 ### Shared entry filter
 

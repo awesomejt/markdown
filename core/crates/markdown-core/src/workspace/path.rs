@@ -93,14 +93,19 @@ impl WorkspacePath {
     pub fn kind(&self) -> EntryKind {
         classify_name(self.name())
     }
-    /// True when the path contains an invisible format character (Unicode
-    /// General_Category=Cf, the table shared with front matter) other than
-    /// ZWNJ/ZWJ, which emoji and Indic names need. Such a name can look
-    /// identical to another; the UI should mark it rather than hide it.
+    /// True when the path contains an invisible character: a format character
+    /// (Unicode General_Category=Cf, the table shared with front matter) or a
+    /// blank default-ignorable one such as a Hangul filler or U+2800 (the
+    /// table shared with v2 URI targets). ZWNJ/ZWJ, which emoji and Indic names
+    /// need, and the display modifiers (variation selectors, Mongolian FVS,
+    /// CGJ) are exempt. Such a name can look identical to another; the UI
+    /// should mark it rather than hide it.
     pub fn has_invisible(&self) -> bool {
-        self.0
-            .chars()
-            .any(|c| !matches!(c, '\u{200C}' | '\u{200D}') && crate::metadata::unsafe_character(c))
+        use crate::metadata::{display_modifier, invisible_character, unsafe_character};
+        self.0.chars().any(|c| {
+            !matches!(c, '\u{200C}' | '\u{200D}')
+                && (unsafe_character(c) || (invisible_character(c) && !display_modifier(c)))
+        })
     }
 }
 impl Borrow<str> for WorkspacePath {

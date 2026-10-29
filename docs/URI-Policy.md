@@ -37,7 +37,9 @@ Rejecting default-ignorable values denies rare legitimate targets such as emoji
 with U+FE0F; display text keeps them. The pinned set comes from
 [Unicode 16.0 DerivedCoreProperties](https://www.unicode.org/Public/16.0.0/ucd/DerivedCoreProperties.txt),
 cross-checked against the locked icu_properties_data 2.4.0 (Unicode 18.0, same
-set), under the [Unicode License V3](../licenses/Unicode-3.0.txt).
+set), under the [Unicode License V3](../licenses/Unicode-3.0.txt). Workspace
+file-name warnings reuse the same table, minus the display modifiers
+([workspace search](../specs/workspace-search/README.md)).
 
 Scheme recognition only considers a colon before slash/query/fragment boundaries;
 a colon within a fragment is not a scheme. Unknown schemes, file/drive/ADS forms,
