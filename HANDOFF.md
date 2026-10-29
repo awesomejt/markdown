@@ -38,10 +38,12 @@ in order before any platform phase. Their scope is in
 - **Done:** TOOL-003, first-push whitespace check,
   [PR #23](https://github.com/awesomejt/markdown/pull/23). Two deferred
   findings are in TODO.md.
-- **Current:** CORE-003D (bare GFM autolinks), the only eligible task. Start
-  its pass on a branch from `develop`, and target its PR at `develop`. The
-  strengthened v2 conformance checks the change.
-- **Then:** CORE-005C, CORE-005D and CORE-003E. Their end is the first
+- **Done:** CORE-003D, bare GFM autolinks (D-031),
+  [PR #24](https://github.com/awesomejt/markdown/pull/24), merged into
+  `develop` after the three-review cap with the owner's approval.
+- **Current:** CORE-005C, the only eligible task. Start its pass on a branch
+  from `develop`, and target its PR at `develop`.
+- **Then:** CORE-005D and CORE-003E. Their end is the first
   milestone review (`review/core-fix` into `main`). Then the CORE-001 to
   CORE-006 aggregates. Each host's chain in `desktop-apps` starts after
   CORE-006 (D-027). Do not select platform tasks before then.

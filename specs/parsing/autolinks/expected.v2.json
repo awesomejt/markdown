@@ -1,0 +1,1673 @@
+{
+  "model_version": 2,
+  "document_id": "example",
+  "revision_id": "r1",
+  "source": {
+    "bytes": 826,
+    "sha256": "c0a501e817f3230890bce0b5cc28ac935158cf8dda4fe04925b998561a5d3dd6"
+  },
+  "capabilities": [
+    "tables"
+  ],
+  "roots": [
+    "n0",
+    "n4",
+    "n23",
+    "n46",
+    "n54",
+    "n71",
+    "n72",
+    "n73",
+    "n78",
+    "n84",
+    "n92"
+  ],
+  "nodes": [
+    {
+      "id": "n0",
+      "span": {
+        "start": 0,
+        "end": 37
+      },
+      "content": {
+        "kind": "heading",
+        "level": 1,
+        "anchor": "bare-autolinks-wwwheadingexample",
+        "children": [
+          "n1",
+          "n2"
+        ]
+      }
+    },
+    {
+      "id": "n1",
+      "span": {
+        "start": 2,
+        "end": 17
+      },
+      "content": {
+        "kind": "text",
+        "text": "Bare autolinks "
+      }
+    },
+    {
+      "id": "n2",
+      "span": {
+        "start": 17,
+        "end": 36
+      },
+      "content": {
+        "kind": "link",
+        "target": "l0",
+        "title": null,
+        "children": [
+          "n3"
+        ]
+      }
+    },
+    {
+      "id": "n3",
+      "span": {
+        "start": 17,
+        "end": 36
+      },
+      "content": {
+        "kind": "text",
+        "text": "www.heading.example"
+      }
+    },
+    {
+      "id": "n4",
+      "span": {
+        "start": 38,
+        "end": 168
+      },
+      "content": {
+        "kind": "paragraph",
+        "children": [
+          "n5",
+          "n6",
+          "n8",
+          "n9",
+          "n11",
+          "n12",
+          "n14",
+          "n15",
+          "n16",
+          "n17",
+          "n19",
+          "n20",
+          "n22"
+        ]
+      }
+    },
+    {
+      "id": "n5",
+      "span": {
+        "start": 38,
+        "end": 45
+      },
+      "content": {
+        "kind": "text",
+        "text": "Forms: "
+      }
+    },
+    {
+      "id": "n6",
+      "span": {
+        "start": 45,
+        "end": 66
+      },
+      "content": {
+        "kind": "link",
+        "target": "l1",
+        "title": null,
+        "children": [
+          "n7"
+        ]
+      }
+    },
+    {
+      "id": "n7",
+      "span": {
+        "start": 45,
+        "end": 66
+      },
+      "content": {
+        "kind": "text",
+        "text": "https://example.com/a"
+      }
+    },
+    {
+      "id": "n8",
+      "span": {
+        "start": 66,
+        "end": 68
+      },
+      "content": {
+        "kind": "text",
+        "text": ", "
+      }
+    },
+    {
+      "id": "n9",
+      "span": {
+        "start": 68,
+        "end": 86
+      },
+      "content": {
+        "kind": "link",
+        "target": "l2",
+        "title": null,
+        "children": [
+          "n10"
+        ]
+      }
+    },
+    {
+      "id": "n10",
+      "span": {
+        "start": 68,
+        "end": 86
+      },
+      "content": {
+        "kind": "text",
+        "text": "http://example.com"
+      }
+    },
+    {
+      "id": "n11",
+      "span": {
+        "start": 86,
+        "end": 88
+      },
+      "content": {
+        "kind": "text",
+        "text": ", "
+      }
+    },
+    {
+      "id": "n12",
+      "span": {
+        "start": 88,
+        "end": 108
+      },
+      "content": {
+        "kind": "link",
+        "target": "l3",
+        "title": null,
+        "children": [
+          "n13"
+        ]
+      }
+    },
+    {
+      "id": "n13",
+      "span": {
+        "start": 88,
+        "end": 108
+      },
+      "content": {
+        "kind": "text",
+        "text": "www.example.com/path"
+      }
+    },
+    {
+      "id": "n14",
+      "span": {
+        "start": 108,
+        "end": 112
+      },
+      "content": {
+        "kind": "text",
+        "text": " and"
+      }
+    },
+    {
+      "id": "n15",
+      "span": {
+        "start": 112,
+        "end": 113
+      },
+      "content": {
+        "kind": "soft_break"
+      }
+    },
+    {
+      "id": "n16",
+      "span": {
+        "start": 113,
+        "end": 118
+      },
+      "content": {
+        "kind": "text",
+        "text": "mail "
+      }
+    },
+    {
+      "id": "n17",
+      "span": {
+        "start": 118,
+        "end": 132
+      },
+      "content": {
+        "kind": "link",
+        "target": "l4",
+        "title": null,
+        "children": [
+          "n18"
+        ]
+      }
+    },
+    {
+      "id": "n18",
+      "span": {
+        "start": 118,
+        "end": 132
+      },
+      "content": {
+        "kind": "text",
+        "text": "me@example.com"
+      }
+    },
+    {
+      "id": "n19",
+      "span": {
+        "start": 132,
+        "end": 136
+      },
+      "content": {
+        "kind": "text",
+        "text": " or "
+      }
+    },
+    {
+      "id": "n20",
+      "span": {
+        "start": 136,
+        "end": 166
+      },
+      "content": {
+        "kind": "link",
+        "target": "l5",
+        "title": null,
+        "children": [
+          "n21"
+        ]
+      }
+    },
+    {
+      "id": "n21",
+      "span": {
+        "start": 136,
+        "end": 166
+      },
+      "content": {
+        "kind": "text",
+        "text": "first.last+tag@sub.example.org"
+      }
+    },
+    {
+      "id": "n22",
+      "span": {
+        "start": 166,
+        "end": 167
+      },
+      "content": {
+        "kind": "text",
+        "text": "."
+      }
+    },
+    {
+      "id": "n23",
+      "span": {
+        "start": 169,
+        "end": 320
+      },
+      "content": {
+        "kind": "paragraph",
+        "children": [
+          "n24",
+          "n25",
+          "n27",
+          "n28",
+          "n30",
+          "n31",
+          "n33",
+          "n34",
+          "n35",
+          "n37",
+          "n38",
+          "n40",
+          "n41",
+          "n42",
+          "n45"
+        ]
+      }
+    },
+    {
+      "id": "n24",
+      "span": {
+        "start": 169,
+        "end": 179
+      },
+      "content": {
+        "kind": "text",
+        "text": "Trailing: "
+      }
+    },
+    {
+      "id": "n25",
+      "span": {
+        "start": 179,
+        "end": 194
+      },
+      "content": {
+        "kind": "link",
+        "target": "l6",
+        "title": null,
+        "children": [
+          "n26"
+        ]
+      }
+    },
+    {
+      "id": "n26",
+      "span": {
+        "start": 179,
+        "end": 194
+      },
+      "content": {
+        "kind": "text",
+        "text": "www.example.com"
+      }
+    },
+    {
+      "id": "n27",
+      "span": {
+        "start": 194,
+        "end": 196
+      },
+      "content": {
+        "kind": "text",
+        "text": ". "
+      }
+    },
+    {
+      "id": "n28",
+      "span": {
+        "start": 196,
+        "end": 219
+      },
+      "content": {
+        "kind": "link",
+        "target": "l7",
+        "title": null,
+        "children": [
+          "n29"
+        ]
+      }
+    },
+    {
+      "id": "n29",
+      "span": {
+        "start": 196,
+        "end": 219
+      },
+      "content": {
+        "kind": "text",
+        "text": "https://a.example/x?y=1"
+      }
+    },
+    {
+      "id": "n30",
+      "span": {
+        "start": 219,
+        "end": 222
+      },
+      "content": {
+        "kind": "text",
+        "text": "! ("
+      }
+    },
+    {
+      "id": "n31",
+      "span": {
+        "start": 222,
+        "end": 245
+      },
+      "content": {
+        "kind": "link",
+        "target": "l8",
+        "title": null,
+        "children": [
+          "n32"
+        ]
+      }
+    },
+    {
+      "id": "n32",
+      "span": {
+        "start": 222,
+        "end": 245
+      },
+      "content": {
+        "kind": "text",
+        "text": "www.paren.example/a_(b)"
+      }
+    },
+    {
+      "id": "n33",
+      "span": {
+        "start": 245,
+        "end": 246
+      },
+      "content": {
+        "kind": "text",
+        "text": ")"
+      }
+    },
+    {
+      "id": "n34",
+      "span": {
+        "start": 246,
+        "end": 247
+      },
+      "content": {
+        "kind": "soft_break"
+      }
+    },
+    {
+      "id": "n35",
+      "span": {
+        "start": 247,
+        "end": 266
+      },
+      "content": {
+        "kind": "link",
+        "target": "l9",
+        "title": null,
+        "children": [
+          "n36"
+        ]
+      }
+    },
+    {
+      "id": "n36",
+      "span": {
+        "start": 247,
+        "end": 266
+      },
+      "content": {
+        "kind": "text",
+        "text": "www.example.com/q=a"
+      }
+    },
+    {
+      "id": "n37",
+      "span": {
+        "start": 266,
+        "end": 271
+      },
+      "content": {
+        "kind": "text",
+        "text": "&hl; "
+      }
+    },
+    {
+      "id": "n38",
+      "span": {
+        "start": 271,
+        "end": 294
+      },
+      "content": {
+        "kind": "link",
+        "target": "l10",
+        "title": null,
+        "children": [
+          "n39"
+        ]
+      }
+    },
+    {
+      "id": "n39",
+      "span": {
+        "start": 271,
+        "end": 294
+      },
+      "content": {
+        "kind": "text",
+        "text": "https://a.example/a_b_c"
+      }
+    },
+    {
+      "id": "n40",
+      "span": {
+        "start": 294,
+        "end": 295
+      },
+      "content": {
+        "kind": "text",
+        "text": "_"
+      }
+    },
+    {
+      "id": "n41",
+      "span": {
+        "start": 295,
+        "end": 300
+      },
+      "content": {
+        "kind": "text",
+        "text": " and "
+      }
+    },
+    {
+      "id": "n42",
+      "span": {
+        "start": 300,
+        "end": 318
+      },
+      "content": {
+        "kind": "emphasis",
+        "children": [
+          "n43"
+        ]
+      }
+    },
+    {
+      "id": "n43",
+      "span": {
+        "start": 301,
+        "end": 317
+      },
+      "content": {
+        "kind": "link",
+        "target": "l11",
+        "title": null,
+        "children": [
+          "n44"
+        ]
+      }
+    },
+    {
+      "id": "n44",
+      "span": {
+        "start": 301,
+        "end": 317
+      },
+      "content": {
+        "kind": "text",
+        "text": "www.emph.example"
+      }
+    },
+    {
+      "id": "n45",
+      "span": {
+        "start": 318,
+        "end": 319
+      },
+      "content": {
+        "kind": "text",
+        "text": "."
+      }
+    },
+    {
+      "id": "n46",
+      "span": {
+        "start": 321,
+        "end": 387
+      },
+      "content": {
+        "kind": "paragraph",
+        "children": [
+          "n47",
+          "n48",
+          "n50",
+          "n51",
+          "n53"
+        ]
+      }
+    },
+    {
+      "id": "n47",
+      "span": {
+        "start": 321,
+        "end": 335
+      },
+      "content": {
+        "kind": "text",
+        "text": "Split events: "
+      }
+    },
+    {
+      "id": "n48",
+      "span": {
+        "start": 335,
+        "end": 359
+      },
+      "content": {
+        "kind": "link",
+        "target": "l12",
+        "title": null,
+        "children": [
+          "n49"
+        ]
+      }
+    },
+    {
+      "id": "n49",
+      "span": {
+        "start": 335,
+        "end": 359
+      },
+      "content": {
+        "kind": "text",
+        "text": "https://a.example/$5/x*y"
+      }
+    },
+    {
+      "id": "n50",
+      "span": {
+        "start": 359,
+        "end": 364
+      },
+      "content": {
+        "kind": "text",
+        "text": " and "
+      }
+    },
+    {
+      "id": "n51",
+      "span": {
+        "start": 364,
+        "end": 385
+      },
+      "content": {
+        "kind": "link",
+        "target": "l13",
+        "title": null,
+        "children": [
+          "n52"
+        ]
+      }
+    },
+    {
+      "id": "n52",
+      "span": {
+        "start": 364,
+        "end": 385
+      },
+      "content": {
+        "kind": "text",
+        "text": "https://a.example/a_b"
+      }
+    },
+    {
+      "id": "n53",
+      "span": {
+        "start": 385,
+        "end": 386
+      },
+      "content": {
+        "kind": "text",
+        "text": "."
+      }
+    },
+    {
+      "id": "n54",
+      "span": {
+        "start": 388,
+        "end": 600
+      },
+      "content": {
+        "kind": "paragraph",
+        "children": [
+          "n55",
+          "n56",
+          "n57",
+          "n58",
+          "n59",
+          "n61",
+          "n62",
+          "n63",
+          "n64",
+          "n66",
+          "n67",
+          "n69",
+          "n70"
+        ]
+      }
+    },
+    {
+      "id": "n55",
+      "span": {
+        "start": 388,
+        "end": 459
+      },
+      "content": {
+        "kind": "text",
+        "text": "Not links: xhttp://a.example awww.a.example www.a_b.c_d ftp://a.example"
+      }
+    },
+    {
+      "id": "n56",
+      "span": {
+        "start": 459,
+        "end": 460
+      },
+      "content": {
+        "kind": "soft_break"
+      }
+    },
+    {
+      "id": "n57",
+      "span": {
+        "start": 460,
+        "end": 482
+      },
+      "content": {
+        "kind": "code_span",
+        "text": "https://code.example"
+      }
+    },
+    {
+      "id": "n58",
+      "span": {
+        "start": 482,
+        "end": 483
+      },
+      "content": {
+        "kind": "text",
+        "text": " "
+      }
+    },
+    {
+      "id": "n59",
+      "span": {
+        "start": 483,
+        "end": 524
+      },
+      "content": {
+        "kind": "link",
+        "target": "l14",
+        "title": null,
+        "children": [
+          "n60"
+        ]
+      }
+    },
+    {
+      "id": "n60",
+      "span": {
+        "start": 484,
+        "end": 501
+      },
+      "content": {
+        "kind": "text",
+        "text": "www.label.example"
+      }
+    },
+    {
+      "id": "n61",
+      "span": {
+        "start": 524,
+        "end": 525
+      },
+      "content": {
+        "kind": "soft_break"
+      }
+    },
+    {
+      "id": "n62",
+      "span": {
+        "start": 525,
+        "end": 550
+      },
+      "content": {
+        "kind": "image",
+        "resource": "r0",
+        "alt": "www.alt.example",
+        "title": null
+      }
+    },
+    {
+      "id": "n63",
+      "span": {
+        "start": 550,
+        "end": 551
+      },
+      "content": {
+        "kind": "text",
+        "text": " "
+      }
+    },
+    {
+      "id": "n64",
+      "span": {
+        "start": 551,
+        "end": 574
+      },
+      "content": {
+        "kind": "link",
+        "target": "l15",
+        "title": null,
+        "children": [
+          "n65"
+        ]
+      }
+    },
+    {
+      "id": "n65",
+      "span": {
+        "start": 552,
+        "end": 573
+      },
+      "content": {
+        "kind": "text",
+        "text": "https://angle.example"
+      }
+    },
+    {
+      "id": "n66",
+      "span": {
+        "start": 574,
+        "end": 575
+      },
+      "content": {
+        "kind": "text",
+        "text": " "
+      }
+    },
+    {
+      "id": "n67",
+      "span": {
+        "start": 575,
+        "end": 593
+      },
+      "content": {
+        "kind": "link",
+        "target": "l16",
+        "title": null,
+        "children": [
+          "n68"
+        ]
+      }
+    },
+    {
+      "id": "n68",
+      "span": {
+        "start": 575,
+        "end": 593
+      },
+      "content": {
+        "kind": "text",
+        "text": "https://a.example/"
+      }
+    },
+    {
+      "id": "n69",
+      "span": {
+        "start": 593,
+        "end": 598
+      },
+      "content": {
+        "kind": "text",
+        "text": "&"
+      }
+    },
+    {
+      "id": "n70",
+      "span": {
+        "start": 598,
+        "end": 599
+      },
+      "content": {
+        "kind": "text",
+        "text": "b"
+      }
+    },
+    {
+      "id": "n71",
+      "span": {
+        "start": 601,
+        "end": 630
+      },
+      "content": {
+        "kind": "code_block",
+        "info": "",
+        "text": "https://block.example\n"
+      }
+    },
+    {
+      "id": "n72",
+      "span": {
+        "start": 632,
+        "end": 666
+      },
+      "content": {
+        "kind": "unsupported_block",
+        "feature": "raw_html",
+        "reason": "disabled"
+      }
+    },
+    {
+      "id": "n73",
+      "span": {
+        "start": 667,
+        "end": 694
+      },
+      "content": {
+        "kind": "block_quote",
+        "children": [
+          "n74"
+        ]
+      }
+    },
+    {
+      "id": "n74",
+      "span": {
+        "start": 669,
+        "end": 694
+      },
+      "content": {
+        "kind": "paragraph",
+        "children": [
+          "n75",
+          "n76"
+        ]
+      }
+    },
+    {
+      "id": "n75",
+      "span": {
+        "start": 669,
+        "end": 676
+      },
+      "content": {
+        "kind": "text",
+        "text": "Quoted "
+      }
+    },
+    {
+      "id": "n76",
+      "span": {
+        "start": 676,
+        "end": 693
+      },
+      "content": {
+        "kind": "link",
+        "target": "l17",
+        "title": null,
+        "children": [
+          "n77"
+        ]
+      }
+    },
+    {
+      "id": "n77",
+      "span": {
+        "start": 676,
+        "end": 693
+      },
+      "content": {
+        "kind": "text",
+        "text": "www.quote.example"
+      }
+    },
+    {
+      "id": "n78",
+      "span": {
+        "start": 695,
+        "end": 724
+      },
+      "content": {
+        "kind": "list",
+        "ordered": false,
+        "start": null,
+        "tight": true,
+        "items": [
+          "n79"
+        ]
+      }
+    },
+    {
+      "id": "n79",
+      "span": {
+        "start": 695,
+        "end": 724
+      },
+      "content": {
+        "kind": "list_item",
+        "checked": null,
+        "children": [
+          "n80"
+        ]
+      }
+    },
+    {
+      "id": "n80",
+      "span": {
+        "start": 697,
+        "end": 722
+      },
+      "content": {
+        "kind": "paragraph",
+        "children": [
+          "n81",
+          "n82"
+        ]
+      }
+    },
+    {
+      "id": "n81",
+      "span": {
+        "start": 697,
+        "end": 702
+      },
+      "content": {
+        "kind": "text",
+        "text": "Item "
+      }
+    },
+    {
+      "id": "n82",
+      "span": {
+        "start": 702,
+        "end": 722
+      },
+      "content": {
+        "kind": "link",
+        "target": "l18",
+        "title": null,
+        "children": [
+          "n83"
+        ]
+      }
+    },
+    {
+      "id": "n83",
+      "span": {
+        "start": 702,
+        "end": 722
+      },
+      "content": {
+        "kind": "text",
+        "text": "https://item.example"
+      }
+    },
+    {
+      "id": "n84",
+      "span": {
+        "start": 724,
+        "end": 762
+      },
+      "content": {
+        "kind": "table",
+        "alignments": [
+          "none"
+        ],
+        "rows": [
+          "n85",
+          "n88"
+        ]
+      }
+    },
+    {
+      "id": "n85",
+      "span": {
+        "start": 724,
+        "end": 733
+      },
+      "content": {
+        "kind": "table_row",
+        "header": true,
+        "cells": [
+          "n86"
+        ]
+      }
+    },
+    {
+      "id": "n86",
+      "span": {
+        "start": 725,
+        "end": 731
+      },
+      "content": {
+        "kind": "table_cell",
+        "children": [
+          "n87"
+        ]
+      }
+    },
+    {
+      "id": "n87",
+      "span": {
+        "start": 726,
+        "end": 730
+      },
+      "content": {
+        "kind": "text",
+        "text": "Cell"
+      }
+    },
+    {
+      "id": "n88",
+      "span": {
+        "start": 741,
+        "end": 762
+      },
+      "content": {
+        "kind": "table_row",
+        "header": false,
+        "cells": [
+          "n89"
+        ]
+      }
+    },
+    {
+      "id": "n89",
+      "span": {
+        "start": 742,
+        "end": 760
+      },
+      "content": {
+        "kind": "table_cell",
+        "children": [
+          "n90"
+        ]
+      }
+    },
+    {
+      "id": "n90",
+      "span": {
+        "start": 743,
+        "end": 759
+      },
+      "content": {
+        "kind": "link",
+        "target": "l19",
+        "title": null,
+        "children": [
+          "n91"
+        ]
+      }
+    },
+    {
+      "id": "n91",
+      "span": {
+        "start": 743,
+        "end": 759
+      },
+      "content": {
+        "kind": "text",
+        "text": "www.cell.example"
+      }
+    },
+    {
+      "id": "n92",
+      "span": {
+        "start": 763,
+        "end": 826
+      },
+      "content": {
+        "kind": "paragraph",
+        "children": [
+          "n93",
+          "n94",
+          "n96",
+          "n97"
+        ]
+      }
+    },
+    {
+      "id": "n93",
+      "span": {
+        "start": 763,
+        "end": 771
+      },
+      "content": {
+        "kind": "text",
+        "text": "Policy: "
+      }
+    },
+    {
+      "id": "n94",
+      "span": {
+        "start": 771,
+        "end": 800
+      },
+      "content": {
+        "kind": "link",
+        "target": "l20",
+        "title": null,
+        "children": [
+          "n95"
+        ]
+      }
+    },
+    {
+      "id": "n95",
+      "span": {
+        "start": 771,
+        "end": 800
+      },
+      "content": {
+        "kind": "text",
+        "text": "https://例え.example/パス"
+      }
+    },
+    {
+      "id": "n96",
+      "span": {
+        "start": 800,
+        "end": 805
+      },
+      "content": {
+        "kind": "text",
+        "text": " and "
+      }
+    },
+    {
+      "id": "n97",
+      "span": {
+        "start": 805,
+        "end": 825
+      },
+      "content": {
+        "kind": "link",
+        "target": "l21",
+        "title": null,
+        "children": [
+          "n98"
+        ]
+      }
+    },
+    {
+      "id": "n98",
+      "span": {
+        "start": 805,
+        "end": 825
+      },
+      "content": {
+        "kind": "text",
+        "text": "www.ünicode.example"
+      }
+    }
+  ],
+  "outline": [
+    {
+      "node": "n0",
+      "level": 1,
+      "title": "Bare autolinks www.heading.example",
+      "anchor": "bare-autolinks-wwwheadingexample"
+    }
+  ],
+  "metadata": {
+    "front_matter_span": null,
+    "title": null,
+    "properties": {}
+  },
+  "links": [
+    {
+      "id": "l0",
+      "source": {
+        "kind": "inline",
+        "span": {
+          "start": 17,
+          "end": 36
+        }
+      },
+      "destination": "http://www.heading.example",
+      "target": {
+        "kind": "external",
+        "uri": "http://www.heading.example/"
+      }
+    },
+    {
+      "id": "l1",
+      "source": {
+        "kind": "inline",
+        "span": {
+          "start": 45,
+          "end": 66
+        }
+      },
+      "destination": "https://example.com/a",
+      "target": {
+        "kind": "external",
+        "uri": "https://example.com/a"
+      }
+    },
+    {
+      "id": "l2",
+      "source": {
+        "kind": "inline",
+        "span": {
+          "start": 68,
+          "end": 86
+        }
+      },
+      "destination": "http://example.com",
+      "target": {
+        "kind": "external",
+        "uri": "http://example.com/"
+      }
+    },
+    {
+      "id": "l3",
+      "source": {
+        "kind": "inline",
+        "span": {
+          "start": 88,
+          "end": 108
+        }
+      },
+      "destination": "http://www.example.com/path",
+      "target": {
+        "kind": "external",
+        "uri": "http://www.example.com/path"
+      }
+    },
+    {
+      "id": "l4",
+      "source": {
+        "kind": "inline",
+        "span": {
+          "start": 118,
+          "end": 132
+        }
+      },
+      "destination": "mailto:me@example.com",
+      "target": {
+        "kind": "external",
+        "uri": "mailto:me@example.com"
+      }
+    },
+    {
+      "id": "l5",
+      "source": {
+        "kind": "inline",
+        "span": {
+          "start": 136,
+          "end": 166
+        }
+      },
+      "destination": "mailto:first.last+tag@sub.example.org",
+      "target": {
+        "kind": "external",
+        "uri": "mailto:first.last+tag@sub.example.org"
+      }
+    },
+    {
+      "id": "l6",
+      "source": {
+        "kind": "inline",
+        "span": {
+          "start": 179,
+          "end": 194
+        }
+      },
+      "destination": "http://www.example.com",
+      "target": {
+        "kind": "external",
+        "uri": "http://www.example.com/"
+      }
+    },
+    {
+      "id": "l7",
+      "source": {
+        "kind": "inline",
+        "span": {
+          "start": 196,
+          "end": 219
+        }
+      },
+      "destination": "https://a.example/x?y=1",
+      "target": {
+        "kind": "external",
+        "uri": "https://a.example/x?y=1"
+      }
+    },
+    {
+      "id": "l8",
+      "source": {
+        "kind": "inline",
+        "span": {
+          "start": 222,
+          "end": 245
+        }
+      },
+      "destination": "http://www.paren.example/a_(b)",
+      "target": {
+        "kind": "external",
+        "uri": "http://www.paren.example/a_(b)"
+      }
+    },
+    {
+      "id": "l9",
+      "source": {
+        "kind": "inline",
+        "span": {
+          "start": 247,
+          "end": 266
+        }
+      },
+      "destination": "http://www.example.com/q=a",
+      "target": {
+        "kind": "external",
+        "uri": "http://www.example.com/q=a"
+      }
+    },
+    {
+      "id": "l10",
+      "source": {
+        "kind": "inline",
+        "span": {
+          "start": 271,
+          "end": 294
+        }
+      },
+      "destination": "https://a.example/a_b_c",
+      "target": {
+        "kind": "external",
+        "uri": "https://a.example/a_b_c"
+      }
+    },
+    {
+      "id": "l11",
+      "source": {
+        "kind": "inline",
+        "span": {
+          "start": 301,
+          "end": 317
+        }
+      },
+      "destination": "http://www.emph.example",
+      "target": {
+        "kind": "external",
+        "uri": "http://www.emph.example/"
+      }
+    },
+    {
+      "id": "l12",
+      "source": {
+        "kind": "inline",
+        "span": {
+          "start": 335,
+          "end": 359
+        }
+      },
+      "destination": "https://a.example/$5/x*y",
+      "target": {
+        "kind": "external",
+        "uri": "https://a.example/$5/x*y"
+      }
+    },
+    {
+      "id": "l13",
+      "source": {
+        "kind": "inline",
+        "span": {
+          "start": 364,
+          "end": 385
+        }
+      },
+      "destination": "https://a.example/a_b",
+      "target": {
+        "kind": "external",
+        "uri": "https://a.example/a_b"
+      }
+    },
+    {
+      "id": "l14",
+      "source": {
+        "kind": "inline",
+        "span": {
+          "start": 503,
+          "end": 523
+        }
+      },
+      "destination": "https://real.example",
+      "target": {
+        "kind": "external",
+        "uri": "https://real.example/"
+      }
+    },
+    {
+      "id": "l15",
+      "source": {
+        "kind": "inline",
+        "span": {
+          "start": 552,
+          "end": 573
+        }
+      },
+      "destination": "https://angle.example",
+      "target": {
+        "kind": "external",
+        "uri": "https://angle.example/"
+      }
+    },
+    {
+      "id": "l16",
+      "source": {
+        "kind": "inline",
+        "span": {
+          "start": 575,
+          "end": 593
+        }
+      },
+      "destination": "https://a.example/",
+      "target": {
+        "kind": "external",
+        "uri": "https://a.example/"
+      }
+    },
+    {
+      "id": "l17",
+      "source": {
+        "kind": "inline",
+        "span": {
+          "start": 676,
+          "end": 693
+        }
+      },
+      "destination": "http://www.quote.example",
+      "target": {
+        "kind": "external",
+        "uri": "http://www.quote.example/"
+      }
+    },
+    {
+      "id": "l18",
+      "source": {
+        "kind": "inline",
+        "span": {
+          "start": 702,
+          "end": 722
+        }
+      },
+      "destination": "https://item.example",
+      "target": {
+        "kind": "external",
+        "uri": "https://item.example/"
+      }
+    },
+    {
+      "id": "l19",
+      "source": {
+        "kind": "inline",
+        "span": {
+          "start": 743,
+          "end": 759
+        }
+      },
+      "destination": "http://www.cell.example",
+      "target": {
+        "kind": "external",
+        "uri": "http://www.cell.example/"
+      }
+    },
+    {
+      "id": "l20",
+      "source": {
+        "kind": "inline",
+        "span": {
+          "start": 771,
+          "end": 800
+        }
+      },
+      "destination": "https://例え.example/パス",
+      "target": {
+        "kind": "external",
+        "uri": "https://xn--r8jz45g.example/%E3%83%91%E3%82%B9"
+      }
+    },
+    {
+      "id": "l21",
+      "source": {
+        "kind": "inline",
+        "span": {
+          "start": 805,
+          "end": 825
+        }
+      },
+      "destination": "http://www.ünicode.example",
+      "target": {
+        "kind": "external",
+        "uri": "http://www.xn--nicode-2ya.example/"
+      }
+    }
+  ],
+  "resources": [
+    {
+      "id": "r0",
+      "source": {
+        "kind": "inline",
+        "span": {
+          "start": 544,
+          "end": 549
+        }
+      },
+      "destination": "i.png",
+      "target": {
+        "kind": "requires_capability",
+        "path": "i.png",
+        "fragment": null
+      }
+    }
+  ],
+  "diagnostics": [
+    {
+      "code": "raw_html_disabled",
+      "severity": "info",
+      "message": "Unsupported content is preserved as source and cannot execute.",
+      "span": {
+        "start": 632,
+        "end": 666
+      },
+      "node": "n72"
+    }
+  ]
+}

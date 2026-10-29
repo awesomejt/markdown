@@ -7,6 +7,7 @@
 //! [`workspace`] adds capability-fed file-name and content search with budgets.
 #![forbid(unsafe_code)]
 
+mod autolink;
 mod cancel;
 mod metadata;
 mod model;

@@ -105,6 +105,12 @@ const TOKENS: &[&str] = &[
     "e\u{301}",
     "🙂",
     "javascript:",
+    "www.",
+    "www.a.b",
+    "https://",
+    "http://a.b/(",
+    "a@b.co",
+    "&a;",
     "<http://a>",
     "<a@b.c>",
     "[x](#a)",
@@ -323,6 +329,21 @@ fn catalog() -> Vec<(&'static str, String)> {
         ("setext storm", rep("a\n=\n", n / 4)),
         ("thematic breaks", rep("***\n", n / 4)),
         ("autolink storm", rep("<http://a> <a@b.c> www.x.y ", n / 8)),
+        // Bare GFM autolinks (CORE-003D): long URL-like runs, prefix storms and
+        // trailing-delimiter scans must stay linear.
+        (
+            "bare autolink storm",
+            rep("https://a.b/c www.d.e f@g.hi ", n / 4),
+        ),
+        (
+            "long url run",
+            format!("https://a.b/{}", rep("x_y*z", n * 2)),
+        ),
+        ("www prefixes", rep("www.", n * 2)),
+        ("www underscores", rep("www._", n * 2)),
+        ("at-sign storm", rep("a@", n * 2)),
+        ("closing parens", format!("www.a.b/{}", rep(")", n * 4))),
+        ("entity-like suffixes", format!("www.a.b/{}", rep("&a;", n))),
         ("tab containers", rep("1. >\t- a\n", n / 8)),
         (
             "front matter only",

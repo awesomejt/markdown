@@ -97,6 +97,12 @@ struct Builder<'a> {
     offset_conflict: bool,
     /// Text events rejoined across a `$` split; not charged to `max_events`.
     merged_events: usize,
+    /// Contiguous exact-source text events held until their run ends, so a bare
+    /// autolink can span them (CORE-003D).
+    pending: Vec<Range<usize>>,
+    /// `$`-split refunds credited while text is held, so the event budget sees
+    /// them at once; replaced by the actual merges when the run is flushed.
+    pending_refunds: usize,
 }
 
 /// Produce a validated immutable snapshot from exact UTF-8 bytes, with no I/O.
@@ -255,6 +261,8 @@ fn build<'a, C: Checkpoint>(
         root_end: 0,
         offset_conflict: false,
         merged_events: 0,
+        pending: Vec::new(),
+        pending_refunds: 0,
         doc: DocumentInput {
             model_version: MODEL_VERSION,
             document_id,
@@ -360,6 +368,7 @@ fn build<'a, C: Checkpoint>(
         };
         b.event(event, range.start + offset..range.end + offset, definition)?;
     }
+    b.flush_text()?;
     if !b.stack.is_empty() || b.capture.is_some() {
         return Err(ParseError::SourceMapping.into());
     }
@@ -768,6 +777,90 @@ impl Builder<'_> {
         self.merged_events += 1;
         true
     }
+    fn in_link(&self) -> bool {
+        self.stack
+            .iter()
+            .any(|f| matches!(self.doc.nodes[f.node].content, NodeKind::Link { .. }))
+    }
+    /// End a held text run: plain text keeps one node per event, exactly as
+    /// before, and each bare autolink becomes a link over its exact lexeme.
+    fn flush_text(&mut self) -> Result<(), ParseError> {
+        if self.pending.is_empty() {
+            return Ok(());
+        }
+        let pieces = std::mem::take(&mut self.pending);
+        // Emitting the run counts the merges that actually happen.
+        self.merged_events -= std::mem::take(&mut self.pending_refunds);
+        let source = self.source;
+        let (start, end) = (pieces[0].start, pieces[pieces.len() - 1].end);
+        let before = source[..start].chars().next_back();
+        let mut next = 0; // first piece that may still hold plain text
+        let mut cursor = start;
+        for (found, kind) in crate::autolink::find(&source[start..end], before) {
+            let link = found.start + start..found.end + start;
+            self.plain_text(&pieces, &mut next, cursor..link.start)?;
+            self.autolink(link.clone(), kind)?;
+            cursor = link.end;
+        }
+        self.plain_text(&pieces, &mut next, cursor..end)
+    }
+    /// Text nodes for the parts of `pieces` inside `within`, which only moves forward.
+    fn plain_text(
+        &mut self,
+        pieces: &[Range<usize>],
+        next: &mut usize,
+        within: Range<usize>,
+    ) -> Result<(), ParseError> {
+        while let Some(piece) = pieces.get(*next) {
+            let range = piece.start.max(within.start)..piece.end.min(within.end);
+            if range.start < range.end {
+                let text = self.text(&self.source[range.clone()])?;
+                self.inline_parent(&range)?;
+                if !self.merge_dollar_text(&range, &text) {
+                    self.add(range, NodeKind::Text { text })?;
+                }
+            }
+            if piece.end > within.end {
+                break;
+            }
+            *next += 1;
+        }
+        Ok(())
+    }
+    fn autolink(
+        &mut self,
+        range: Range<usize>,
+        kind: crate::autolink::Kind,
+    ) -> Result<(), ParseError> {
+        let lexeme = &self.source[range.clone()];
+        self.inline_parent(&range)?;
+        let destination = self.text(&crate::autolink::destination(lexeme, kind))?;
+        let target = LinkId(format!("l{}", self.doc.links.len()));
+        let disposition = classify_link(&destination);
+        self.doc.links.push(LinkIntent {
+            id: target.clone(),
+            span: span(range.clone()),
+            destination,
+            disposition,
+        });
+        let node = self.add(
+            range.clone(),
+            NodeKind::Link {
+                target,
+                title: None,
+                children: Vec::new(),
+            },
+        )?;
+        self.stack.push(Frame {
+            node,
+            end: Some(TagEnd::Link),
+            last_end: 0,
+        });
+        let text = self.text(lexeme)?;
+        let added = self.add(range, NodeKind::Text { text });
+        self.stack.pop();
+        added.map(|_| ())
+    }
     fn inline_parent(&mut self, range: &Range<usize>) -> Result<(), ParseError> {
         // Block containers never hold inlines directly; wrap them as tight items do.
         if self.stack.last().is_some_and(|f| {
@@ -801,6 +894,27 @@ impl Builder<'_> {
         range: Range<usize>,
         definition: Option<SourceSpan>,
     ) -> Result<(), ParseError> {
+        if self.capture.is_none() {
+            if let Event::Text(t) = &event
+                && self.source.get(range.clone()) == Some(t.as_ref())
+                && !self.in_link()
+            {
+                if self.pending.last().is_some_and(|p| p.end != range.start) {
+                    self.flush_text()?;
+                }
+                let bytes = self.source.as_bytes();
+                if !self.pending.is_empty()
+                    && (bytes.get(range.start) == Some(&b'$')
+                        || range.start.checked_sub(1).and_then(|i| bytes.get(i)) == Some(&b'$'))
+                {
+                    self.pending_refunds += 1;
+                    self.merged_events += 1;
+                }
+                self.pending.push(range);
+                return Ok(());
+            }
+            self.flush_text()?;
+        }
         if matches!(event, Event::Start(_)) {
             self.depth += 1;
             if self.depth > self.limits.model.max_depth {
@@ -1106,11 +1220,7 @@ impl Builder<'_> {
                 title,
                 ..
             } => {
-                if self
-                    .stack
-                    .iter()
-                    .any(|f| matches!(self.doc.nodes[f.node].content, NodeKind::Link { .. }))
-                {
+                if self.in_link() {
                     capture = Some(Capture::Fallback);
                     diagnostic = Some("nested_link_disabled");
                     NodeKind::UnsupportedInline {
@@ -1876,9 +1986,73 @@ pub(crate) fn intent_facts(
     let mut quotes = 0usize;
     let mut mask = None;
     let mut copied = 0usize;
+    // Bare autolinks: the same exact-source text runs the builder holds, outside
+    // links, images and code blocks. Extra facts in text the builder captures
+    // instead are never looked up.
+    let mut run: Option<Range<usize>> = None;
+    let mut code = 0usize;
+    let autolinks = |run: Option<Range<usize>>,
+                     facts: &mut BTreeMap<(u64, u64, bool), IntentFact>,
+                     copied: &mut usize|
+     -> Result<(), ModelError> {
+        let Some(run) = run else { return Ok(()) };
+        let before = source[..run.start].chars().next_back();
+        for (found, kind) in crate::autolink::find(&source[run.clone()], before) {
+            let whole = span(found.start + run.start..found.end + run.start);
+            let destination = crate::autolink::destination(
+                whole
+                    .slice(source)
+                    .ok_or_else(|| fail("source_provenance"))?,
+                kind,
+            );
+            *copied = copied
+                .checked_add(destination.len())
+                .ok_or_else(|| fail("source_text_limit"))?;
+            if *copied > 64 * 1024 * 1024 {
+                return Err(fail("source_text_limit"));
+            }
+            if facts.len() >= limits.max_nodes {
+                return Err(fail("source_intent_limit"));
+            }
+            let fact = IntentFact {
+                destination,
+                source: IntentSource::Inline { span: whole },
+            };
+            if facts
+                .insert((whole.start, whole.end, false), fact)
+                .is_some()
+            {
+                return Err(fail("source_provenance"));
+            }
+        }
+        Ok(())
+    };
     // Finite source/event iterator, source byte cap and depth/fact/string caps
     // bound this pass. Node count is not an event budget (image alt is captured).
     while let Some((event, range)) = events.next() {
+        let absolute = range.start + offset..range.end + offset;
+        match &event {
+            Event::Text(t)
+                if mask.is_none()
+                    && active.is_empty()
+                    && code == 0
+                    && source.get(absolute.clone()) == Some(t.as_ref()) =>
+            {
+                match &mut run {
+                    Some(r) if r.end == absolute.start => r.end = absolute.end,
+                    _ => {
+                        autolinks(run.take(), &mut facts, &mut copied)?;
+                        run = Some(absolute.clone());
+                    }
+                }
+            }
+            _ => autolinks(run.take(), &mut facts, &mut copied)?,
+        }
+        match &event {
+            Event::Start(Tag::CodeBlock(_)) => code += 1,
+            Event::End(TagEnd::CodeBlock) => code = code.saturating_sub(1),
+            _ => {}
+        }
         let end_event = matches!(event, Event::End(_));
         for a in &mut active {
             if !(end_event && a.depth == depth) {
@@ -2003,6 +2177,7 @@ pub(crate) fn intent_facts(
             _ => {}
         }
     }
+    autolinks(run.take(), &mut facts, &mut copied)?;
     if !active.is_empty() || depth != 0 {
         return Err(fail("source_provenance"));
     }
