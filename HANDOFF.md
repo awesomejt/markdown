@@ -1,7 +1,7 @@
 # Agent Session and Platform Handoff
 
-Updated: 2026-10-29, CORE-005D closeout (PR #26).
-Source baseline: `develop` after the PR #26 merge. Preserve intended source, lock/spec/golden
+Updated: 2026-10-29, CORE-003E closeout (PR #27).
+Source baseline: `develop` after the PR #27 merge. Preserve intended source, lock/spec/golden
 files, docs and state together. Never transfer caches, environments, build
 products, private runtime state or user documents.
 
@@ -51,11 +51,18 @@ in order before any platform phase. Their scope is in
   `develop` on a clean Grok review (D-029). File names now flag Cf plus
   Default_Ignorable and U+2800, except ZWJ/ZWNJ and display modifiers; the
   shared tables live in `metadata.rs`.
-- **Current:** CORE-003E, the last CORE-FIX task. Start its pass on a branch
-  from `develop`, and target its PR at `develop`. Its end is the first
-  milestone review (`review/core-fix` into `main`). Then the CORE-001 to
-  CORE-006 aggregates. Each host's chain in `desktop-apps` starts after
-  CORE-006 (D-027). Do not select platform tasks before then.
+- **Done:** CORE-003E, front-matter invisible-character parity,
+  [PR #27](https://github.com/awesomejt/markdown/pull/27), merged into
+  `develop` on a clean Grok review (D-029). Front-matter text now rejects
+  the blank default-ignorable values and U+2800 too, keeping the display
+  modifiers (D-032). `metadata::hidden_character` is the one shared guard.
+- **Current:** CORE-FIX is complete, so the first milestone review is due
+  (D-030): confirm `develop` is green with no task PR waiting, cut
+  `review/core-fix` from it, and open the review PR into `main` with the
+  review packet. Only the owner merges it. Work continues on `develop`
+  meanwhile with CORE-001, the first CORE-001 to CORE-006 aggregate. Each
+  host's chain in `desktop-apps` starts after CORE-006 (D-027). Do not select
+  platform tasks before then.
 
 Inspect state before any pass, following AGENT_WORKFLOW.md:
 

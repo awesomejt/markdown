@@ -679,7 +679,7 @@ needs them.
 
 **Date:** 2026-10-29
 
-**Status:** proposed with CORE-003E; accepted when its PR is approved (D-029)
+**Status:** accepted 2026-10-29 (clean Grok review of PR #27, D-029)
 
 **Context:** The Grok review of PR #17 found that the front-matter guard
 covered only controls and General_Category=Cf. Blank characters that are not
