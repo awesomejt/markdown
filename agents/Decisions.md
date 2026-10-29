@@ -603,7 +603,9 @@ review quality carries more weight; the owner keeps the holistic phase review
 and can stop or revert any merge. Tags, releases, signing and publishing still
 need explicit approval.
 
-D-030 narrows this approval to merges into `develop`.
+D-030 narrows this approval to merges into `develop`. A PR gets at most three
+Grok reviews: when the third still has a serious finding, the runner stops and
+waits for the owner (added 2026-10-28 after PR #23 needed five).
 
 ## D-030 — Milestone reviews on `main`, task work on `develop`
 
@@ -635,14 +637,15 @@ each task. Long-lived branches per phase or platform would conflict on
   failing CI still stop work for the owner at once.
 - CI runs on pushes to `main`, `develop` and `review/*`, and runs
   `core-extended` on milestone PRs into `main` as well.
-- No direct commits to `main` or `develop`. The owner allowed one on
-  2026-10-28 to install this workflow, so that no branch carried conflicting
-  instructions; the allowance has ended.
+- No direct commits to `main` or `develop`. The owner allowed two on
+  2026-10-28, to install this workflow and then the review cap and branch
+  settings, so that no branch carried conflicting instructions; both
+  allowances have ended.
+- `develop` is the GitHub default branch, and `main` is protected (pull
+  requests only, no force pushes or deletion), applied 2026-10-28.
 
 **Consequences:** `main` is always owner-reviewed, and tasks never wait on
 the owner. Problems found at a milestone cost more rework than per-PR review
 would, which the milestone cap bounds. Review fixes are made on the review
-branch and reach `develop` through the sync. Making `develop` the GitHub
-default branch and protecting `main` are repository settings the owner
-applies or approves separately. Tags for milestones are authorized; release
+branch and reach `develop` through the sync. Tags for milestones are authorized; release
 tags, signing and publishing still need explicit approval.

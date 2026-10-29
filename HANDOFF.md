@@ -1,7 +1,7 @@
 # Agent Session and Platform Handoff
 
-Updated: 2026-10-28, D-030 milestone workflow installed on `main` (after PR #22).
-Source baseline: `develop`, created from that `main` commit. Preserve intended source, lock/spec/golden
+Updated: 2026-10-28, review cap and branch settings on `main` (after PR #23).
+Source baseline: `develop`, fast-forwarded to that `main` commit. Preserve intended source, lock/spec/golden
 files, docs and state together. Never transfer caches, environments, build
 products, private runtime state or user documents.
 

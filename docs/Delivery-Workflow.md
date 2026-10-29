@@ -49,8 +49,10 @@ The owner reviews milestones, not every task PR:
 | `feat/`, `fix/`, `chore/`, `docs/`, `test/` | One task each | The pass runner |
 
 Never commit directly to `main` or `develop`. (On 2026-10-28 the owner allowed
-one direct commit to `main` to install this workflow; that allowance has
-ended.)
+two one-time direct commits to `main`, to install this workflow and then the
+review cap and branch settings; both allowances have ended.) `develop` is the
+GitHub default branch, and `main` is protected: changes arrive only by pull
+request, and force pushes and deletion are blocked.
 
 **Milestones.** Cut a review at the first of these boundaries:
 
@@ -132,6 +134,11 @@ Grok review, and failing CI on `develop`.
    explain any rejected finding with evidence in the PR. Do not request
    another review for commits that only fix non-serious findings, make minor
    tweaks, update documentation or record project status.
+
+   **Review cap.** A PR gets at most three Grok reviews. When the third still
+   has a serious finding, stop: post the disposition, report the open
+   findings and wait for the owner, who merges, defers the findings or asks
+   for more fixes. Do not run a fourth review or merge without that answer.
 8. Decide the merge (D-029). When the latest Grok review has no serious
    finding, it is the owner's standing approval to merge the PR into
    `develop`. The approved head is the reviewed commit plus any later
@@ -153,7 +160,8 @@ This documentation change does not itself open a PR or trigger a review.
 
 ## Waiting, closeout and switching machines
 
-Release the execution lease before a long review wait. Finish
+Release the execution lease before a long review wait, or heartbeat it: a
+pass whose lease expires during review must be recovered before its closeout. Finish
 the pass as `partial`, with an exact PR/branch/review handoff; do not mark the
 delivery task complete just because code is ready. The current concurrency-one
 backend intentionally requires resuming that working task before new work.

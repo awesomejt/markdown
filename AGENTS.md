@@ -49,7 +49,9 @@ resolve it before changing implementation.
 - From core implementation onward, execute small platform-focused delivery
   phases, each with a feature branch and PR into `develop`. Follow
   `docs/Delivery-Workflow.md` and request the Grok review with the `grok` CLI
-  once ready; resolve feedback before merging. `main` receives only
+  once ready; resolve feedback before merging. A PR gets at most three Grok
+  reviews; if the third still has a serious finding, stop and wait for the
+  owner. `main` receives only
   owner-approved milestone reviews (D-030); never commit to `main` or
   `develop` directly.
 - Do not claim cross-platform behavior without evidence on the named platform.
