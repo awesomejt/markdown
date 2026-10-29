@@ -1,7 +1,7 @@
 # Agent Session and Platform Handoff
 
-Updated: 2026-10-29, CORE-005C closeout (PR #25).
-Source baseline: `develop` after the PR #25 merge. Preserve intended source, lock/spec/golden
+Updated: 2026-10-29, CORE-005D closeout (PR #26).
+Source baseline: `develop` after the PR #26 merge. Preserve intended source, lock/spec/golden
 files, docs and state together. Never transfer caches, environments, build
 products, private runtime state or user documents.
 
@@ -46,9 +46,13 @@ in order before any platform phase. Their scope is in
   `develop` on a clean Grok review (D-029). The default file budget is
   2 MiB, and the node allowance follows it; see the
   [workspace-search spec](specs/workspace-search/README.md#memory-guard-core-005c).
-- **Current:** CORE-005D, the only eligible task. Start its pass on a branch
-  from `develop`, and target its PR at `develop`.
-- **Then:** CORE-003E. Their end is the first
+- **Done:** CORE-005D, wider invisible-filename warnings,
+  [PR #26](https://github.com/awesomejt/markdown/pull/26), merged into
+  `develop` on a clean Grok review (D-029). File names now flag Cf plus
+  Default_Ignorable and U+2800, except ZWJ/ZWNJ and display modifiers; the
+  shared tables live in `metadata.rs`.
+- **Current:** CORE-003E, the last CORE-FIX task. Start its pass on a branch
+  from `develop`, and target its PR at `develop`. Its end is the first
   milestone review (`review/core-fix` into `main`). Then the CORE-001 to
   CORE-006 aggregates. Each host's chain in `desktop-apps` starts after
   CORE-006 (D-027). Do not select platform tasks before then.

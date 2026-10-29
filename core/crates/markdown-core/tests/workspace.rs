@@ -181,16 +181,32 @@ fn invisible_format_characters_are_flagged_not_rejected() {
         "a\u{FEFF}.md",
         "a\u{2060}b.md",
         "soft\u{AD}hyphen.md",
+        // Blank default-ignorable characters that are not Cf.
+        "\u{115F}.md",
+        "a\u{1160}.md",
+        "dir\u{3164}/a.md",
+        "a\u{FFA0}.md",
+        "braille\u{2800}blank.md",
+        "khmer\u{17B4}.md",
+        "a\u{FFF0}.md",
+        "a\u{E0080}.md",
     ] {
         let path = WorkspacePath::new(invisible).unwrap();
         assert!(path.has_invisible(), "{invisible:?}");
+        assert_eq!(path.as_str(), invisible, "never rewritten");
     }
-    // ZWJ emoji and ZWNJ (Persian, Indic) names are ordinary.
+    // ZWJ emoji, ZWNJ (Persian, Indic) and display modifiers are ordinary.
     for visible in [
         "emoji/👩\u{200D}💻.md",
         "\u{645}\u{6CC}\u{200C}\u{62E}\u{648}\u{627}\u{647}\u{645}.md",
         "plain.md",
         "Cafe\u{301}.md",
+        "love\u{2764}\u{FE0F}.md",
+        "\u{845B}\u{E0100}.md",
+        "\u{1820}\u{180B}.md",
+        "\u{5D0}\u{5B8}\u{34F}\u{5B7}.md",
+        "\u{1100}\u{1161}.md",
+        "\u{2801}.md",
     ] {
         assert!(
             !WorkspacePath::new(visible).unwrap().has_invisible(),

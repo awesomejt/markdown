@@ -458,6 +458,18 @@ fn classify_path_matches_the_rust_rules() {
         "zw\u{200B}sp.md",
         "\u{FEFF}bom.md",
         "family\u{200D}emoji.md",
+        "zwnj\u{200C}.md",
+        "\u{115F}.md",
+        "a\u{1160}.md",
+        "dir\u{3164}/a.md",
+        "a\u{FFA0}.md",
+        "braille\u{2800}.md",
+        "khmer\u{17B4}.md",
+        "a\u{E0080}.md",
+        "love\u{2764}\u{FE0F}.md",
+        "\u{845B}\u{E0100}.md",
+        "\u{1820}\u{180B}.md",
+        "cgj\u{34F}.md",
         "back\\slash:colon.md",
         "",
         "/abs.md",
@@ -531,6 +543,16 @@ fn classify_path_matches_the_rust_rules() {
     assert_eq!(
         classify(b"zw\xE2\x80\x8Bsp.md").flags,
         MD_PATH_MARKDOWN | MD_PATH_INVISIBLE
+    );
+    // Hangul filler and braille blank are flagged; emoji VS16 is not.
+    for blank in [&b"\xE3\x85\xA4.md"[..], b"\xE2\xA0\x80.md"] {
+        let info = classify(blank);
+        assert_eq!(info.error, MD_PATH_VALID);
+        assert_eq!(info.flags, MD_PATH_MARKDOWN | MD_PATH_INVISIBLE);
+    }
+    assert_eq!(
+        classify(b"\xE2\x9D\xA4\xEF\xB8\x8F.md").flags,
+        MD_PATH_MARKDOWN
     );
     assert_eq!(classify(&[]).error, MD_PATH_EMPTY);
 

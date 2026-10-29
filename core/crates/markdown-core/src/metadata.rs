@@ -336,6 +336,45 @@ pub(crate) fn unsafe_character(c: char) -> bool {
         )
 }
 
+// Unicode 16.0 Default_Ignorable_Code_Point plus U+2800 BRAILLE PATTERN BLANK.
+// Copyright (c) 2024 Unicode, Inc. Source/provenance and Unicode-3.0 notice:
+// docs/URI-Policy.md and licenses/Unicode-3.0.txt. URI targets deny all of it;
+// file names flag it except display modifiers (specs/workspace-search).
+pub(crate) fn invisible_character(c: char) -> bool {
+    matches!(c as u32,
+        0xAD |
+        0x34F |
+        0x61C |
+        0x115F..=0x1160 |
+        0x17B4..=0x17B5 |
+        0x180B..=0x180F |
+        0x200B..=0x200F |
+        0x202A..=0x202E |
+        0x2060..=0x206F |
+        0x2800 |
+        0x3164 |
+        0xFE00..=0xFE0F |
+        0xFEFF |
+        0xFFA0 |
+        0xFFF0..=0xFFF8 |
+        0x1BCA0..=0x1BCA3 |
+        0x1D173..=0x1D17A |
+        0xE0000..=0xE0FFF
+    )
+}
+
+// Default-ignorable values that display text needs: CGJ, Mongolian FVS 1-4
+// and the variation selectors (emoji presentation, ideographic variants).
+pub(crate) fn display_modifier(c: char) -> bool {
+    matches!(c as u32,
+        0x34F |
+        0x180B..=0x180D |
+        0x180F |
+        0xFE00..=0xFE0F |
+        0xE0100..=0xE01EF
+    )
+}
+
 // Deliberate literal ISO subset: calendar date, optionally time and zone.
 // No locale, timestamp conversion or timezone arithmetic is involved.
 fn iso_date(raw: &str) -> bool {

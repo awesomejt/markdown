@@ -2,7 +2,8 @@
 
 Status: frozen at the owner-authorized CORE-005B PR #10 merge (`0bf8eb7`),
 amended by CORE-005C (the [memory guard](#memory-guard-core-005c): a 2 MiB
-default file budget and a node allowance that follows it).
+default file budget and a node allowance that follows it) and CORE-005D (the
+wider [invisible-name flag](#path-validation)).
 Rust module `markdown_core::workspace`
 ([source](../../core/crates/markdown-core/src/workspace/mod.rs)) implements it
 on top of [document find](../search/README.md) and
@@ -55,13 +56,26 @@ ordinary characters. Windows adapters convert `\` separators to `/` before
 building a path. An adapter skips entries it cannot represent. A rejected name
 is never shown.
 
-Other invisible format characters are accepted, because rejecting them would
-hide real files, but `WorkspacePath::has_invisible()` reports them. It uses the
-Unicode 16.0 General_Category=Cf table shared with
-[front matter](../../docs/Front-Matter.md), except ZWNJ and ZWJ, which emoji,
-Persian and Indic names need. Examples are U+200B ZWSP, U+FEFF, U+2060 and the
-soft hyphen. Such a name can display exactly like another name, so the UI
-should mark it.
+Other invisible characters are accepted, because rejecting them would hide
+real files, but `WorkspacePath::has_invisible()` reports them. A name is never
+rejected or rewritten for them, and keeps its exact text and opaque entry ID.
+The rule flags:
+
+- Unicode 16.0 General_Category=Cf, the table shared with
+  [front matter](../../docs/Front-Matter.md): for example U+200B ZWSP,
+  U+FEFF, U+2060 and the soft hyphen.
+- Unicode 16.0 Default_Ignorable_Code_Point plus U+2800 BRAILLE PATTERN BLANK,
+  the table shared with [v2 URI targets](../../docs/URI-Policy.md). This adds
+  blank characters that are not Cf: the Hangul fillers U+115F, U+1160, U+3164
+  and U+FFA0, U+2800, the Khmer inherent vowels U+17B4 and U+17B5, and
+  unassigned default-ignorable code points.
+
+It exempts ZWNJ and ZWJ, which emoji, Persian and Indic names need, and the
+display modifiers that front matter also keeps: CGJ (U+034F), Mongolian FVS
+1–4 (U+180B–180D, U+180F) and the variation selectors (U+FE00–FE0F,
+U+E0100–E01EF), so `❤️.md` is not flagged. Such a name can display exactly
+like another name, so the UI should mark it. `MD_PATH_INVISIBLE` reports the
+same rule through the C ABI.
 
 ### Shared entry filter
 
@@ -352,8 +366,10 @@ covers:
 
 - Path validation for every error kind, including the bidi marks; the size
   and depth bounds; POSIX characters (backslash, colon); and errors that carry
-  no path text. Invisible format characters are flagged, while ZWJ and ZWNJ
-  names are not.
+  no path text. Invisible format characters and blank default-ignorable
+  characters (Hangul fillers, U+2800) are flagged without being rewritten,
+  while ZWJ, ZWNJ and display-modifier names are not (CORE-005D, with FFI
+  parity).
 - Classification, including case, a leading dot and double extensions, and
   hidden detection.
 - Name ranks, order, highlight ranges, filters, case sensitivity, matches

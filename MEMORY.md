@@ -31,7 +31,8 @@ read.
   acceptance. HARD-001 sits between DESK-001 and DESK-002.
 - DOC-001, CORE-002B, TOOL-002 (CI tiers, D-028) and CORE-003C (v2 corpus
   conformance) merged in PRs #17 to #21, TOOL-003 in #23, CORE-003D (bare autolinks, D-031) in #24, CORE-005C
-  (content-search memory guard) in #25. Now: CORE-005D. See
+  (content-search memory guard) in #25, CORE-005D (wider invisible-filename
+  warnings) in #26. Now: CORE-003E, the last CORE-FIX task. See
   [HANDOFF.md](HANDOFF.md) and [TODO.md](TODO.md).
 - Workflow: task PRs target `develop` and merge on a Grok review with no
   serious finding (D-029). `main` takes only owner-approved milestone reviews
