@@ -135,7 +135,9 @@ unowned `working` task.
 
 - Branch names: `<type>/<task-key-lowercase>-<slug>`.
 - From core implementation onward, use one small delivery phase per feature
-  branch and PR, following [Delivery-Workflow.md](docs/Delivery-Workflow.md).
+  branch and PR into `develop`, following
+  [Delivery-Workflow.md](docs/Delivery-Workflow.md). `main` takes only
+  owner-approved milestone reviews from `review/<milestone>` (D-030).
   Use the platform-focused catalog in `docs/Implementation-Plan.md`, not one
   branch for an entire aggregate roadmap milestone.
 - Use focused Conventional Commits. When the PR is out of draft, request the
@@ -150,10 +152,11 @@ unowned `working` task.
 - Run task checks before asking for review; record exact commands.
 - The owner has authorized scoped implementation phase commits, branch pushes,
   PR creation/updates and the Grok CLI review requests under Delivery-Workflow.md.
-  A Grok review with no high or critical finding approves the merge (D-029);
-  record its other findings in TODO.md. Other merges, tags, signing, publishing
-  and unrelated external actions still require owner authorization. Once a PR
-  is approved, record the closeout on its branch,
-  push, merge, delete the branch and return to `main`, as described in
-  Delivery-Workflow.md "Closing out an approved PR"; never push closeout
-  directly to `main`.
+  A Grok review with no high or critical finding approves the merge into
+  `develop` (D-029); record its other findings in TODO.md. Milestone review
+  branches, PRs, tags and the sync back to `develop` follow D-030; only the
+  owner merges into `main`. Other merges, signing, publishing and unrelated
+  external actions still require owner authorization. Once a PR is approved,
+  record the closeout on its branch, push, merge, delete the branch and return
+  to `develop`, as described in Delivery-Workflow.md "Closing out an approved
+  PR"; never push directly to `develop` or `main`.

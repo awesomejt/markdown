@@ -94,14 +94,15 @@ availability are not checked by this bounded tooling parser.
 Whitespace checks use `CHECK_BASE...HEAD` in CI with full history, then include
 staged/unstaged tracked changes. An all-zero initial-push base checks the whole
 initial tree. Without CHECK_BASE, local/manual runs check the latest commit plus
-staged/unstaged changes. Set `CHECK_BASE=origin/main` for the full local branch
+staged/unstaged changes. Set `CHECK_BASE=origin/develop` for the full local branch
 range. Untracked files enter the Git whitespace check once staged.
 `tools/test_project_state.py` remains a separate host setup check requiring the
 installed Codex state backend; CI does not depend on a private user-level skill.
 
 ## CI and native boundaries
 
-`.github/workflows/ci.yml` runs common checks on Ubuntu for every PR/main push.
+`.github/workflows/ci.yml` runs common checks on Ubuntu for every PR and for
+pushes to `main`, `develop` and `review/*` (D-030).
 Unknown build/configuration paths select every host by default; only known
 prose/operational paths skip host steps. Shared core/spec/fixture/tool/workflow
 changes select Linux, macOS and Windows. Known platform-only app paths select
@@ -112,8 +113,9 @@ an ancestor, its `Checks / complete` run by GitHub Actions succeeded, and the
 commits since then touch only those prose/operational paths, such as a
 `chore(state)` closeout. Force pushes, missing commits and red or cancelled
 previous runs fall back to the full rule. Host jobs cache Rust builds with
-`Swatinem/rust-cache`. PRs run `core`; main and manual runs also run
-`core-extended` (D-028). Only PR runs share a cancellable group; main/manual
+`Swatinem/rust-cache`. Task PRs run `core`; pushes, manual runs and milestone
+PRs into `main` also run `core-extended` (D-028, D-030). Only PR runs share a
+cancellable group; push/manual
 runs have unique groups so newer pushes cannot cancel their pending checks. `Checks / complete` fails if a required job
 fails or is cancelled. Host-selection/event logic, real Git rename/whitespace behavior and inline
 link cases have regression tests.

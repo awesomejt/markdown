@@ -3,7 +3,7 @@ name: Checks
 on:
   pull_request:
   push:
-    branches: [main]
+    branches: [main, develop, 'review/**']
   workflow_dispatch:
 
 permissions:
@@ -90,10 +90,11 @@ jobs:
         if: needs.changes.outputs[matrix.host] == 'true'
       - run: python tools/check.py core
         if: needs.changes.outputs[matrix.host] == 'true'
-      # Release time guards and the model-v2-only build run on main and manual runs;
-      # PR authors run them locally through `tools/check.py all` (TOOL-002, D-028).
+      # Release time guards and the model-v2-only build run on pushes, manual runs and
+      # milestone PRs into main; task PR authors run them locally through
+      # `tools/check.py all` (TOOL-002, D-028, D-030).
       - run: python tools/check.py core-extended
-        if: needs.changes.outputs[matrix.host] == 'true' && github.event_name != 'pull_request'
+        if: needs.changes.outputs[matrix.host] == 'true' && (github.event_name != 'pull_request' || github.base_ref == 'main')
 
   complete:
     if: always()

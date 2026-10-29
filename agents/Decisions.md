@@ -602,3 +602,47 @@ give, such as a golden exception or a gate.
 review quality carries more weight; the owner keeps the holistic phase review
 and can stop or revert any merge. Tags, releases, signing and publishing still
 need explicit approval.
+
+D-030 narrows this approval to merges into `develop`.
+
+## D-030 — Milestone reviews on `main`, task work on `develop`
+
+**Date:** 2026-10-28
+
+**Status:** accepted by owner request, installed by one owner-allowed direct
+commit to `main`
+
+**Context:** Under D-029 Grok reviews gate each task PR, but the owner wants to
+stay involved through periodic reviews and manual checks without holding up
+each task. Long-lived branches per phase or platform would conflict on
+`project.yaml`, which every task changes.
+
+**Decision:**
+
+- `develop` integrates finished tasks. Task branches start from it, and task
+  PRs target it and merge under D-029.
+- At a milestone, the runner freezes `develop` as `review/<milestone>` and
+  opens a PR into `main` with a review packet: tasks and PRs, decisions,
+  deferred findings, check evidence, manual checks per host, risks and open
+  owner decisions. Work continues on `develop` meanwhile.
+- Only the owner merges into `main`. The runner then tags the merge
+  `m-<milestone>`, deletes the review branch and syncs `main` into `develop`
+  by PR.
+- Milestones are the end of CORE-FIX, the closed CORE aggregates, each host's
+  skeleton (001A–001C) and MVP (001D–001I), and HARD-001, capped at about
+  8 task PRs or 2 weeks.
+- Gates, golden exceptions, new architecture decisions, unclear reviews and
+  failing CI still stop work for the owner at once.
+- CI runs on pushes to `main`, `develop` and `review/*`, and runs
+  `core-extended` on milestone PRs into `main` as well.
+- No direct commits to `main` or `develop`. The owner allowed one on
+  2026-10-28 to install this workflow, so that no branch carried conflicting
+  instructions; the allowance has ended.
+
+**Consequences:** `main` is always owner-reviewed, and tasks never wait on
+the owner. Problems found at a milestone cost more rework than per-PR review
+would, which the milestone cap bounds. Review fixes are made on the review
+branch and reach `develop` through the sync. Making `develop` the GitHub
+default branch and protecting `main` are repository settings the owner
+applies or approves separately. Tags for milestones are authorized; release
+tags, signing and publishing still need explicit approval.

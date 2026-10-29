@@ -47,9 +47,11 @@ resolve it before changing implementation.
   selecting new work.
 - Keep changes focused, reviewable, and covered by proportionate validation.
 - From core implementation onward, execute small platform-focused delivery
-  phases, each with a feature branch and PR. Follow `docs/Delivery-Workflow.md`
-  and request the Grok review with the `grok` CLI once ready; resolve feedback
-  before reporting merge readiness.
+  phases, each with a feature branch and PR into `develop`. Follow
+  `docs/Delivery-Workflow.md` and request the Grok review with the `grok` CLI
+  once ready; resolve feedback before merging. `main` receives only
+  owner-approved milestone reviews (D-030); never commit to `main` or
+  `develop` directly.
 - Do not claim cross-platform behavior without evidence on the named platform.
 - Treat `markdown-viewer` as a read-only reference unless the task explicitly
   includes that repository.
@@ -65,9 +67,10 @@ resolve it before changing implementation.
   The owner has authorized scoped phase commits, branch pushes, PR updates and
   Grok CLI review requests under `docs/Delivery-Workflow.md`. A Grok review
   with no high or critical finding, after any such finding is fixed on the
-  branch, is the owner's standing merge approval (D-029); record the remaining
-  findings for later. Otherwise merge requires explicit owner authorization.
-  Approval of a PR also covers its closeout commit, merge and branch deletion.
+  branch, is the owner's standing approval to merge a task PR into `develop`
+  (D-029); record the remaining findings for later. Merges into `main` happen
+  only through the owner's milestone review (D-030). Approval of a PR also
+  covers its closeout commit, merge and branch deletion.
 
 ## Architecture guardrails
 
@@ -107,7 +110,7 @@ For core and later delivery tasks, completion also requires actual review
 disposition and approval to merge (the owner's, or a clean Grok review under
 D-029); code-ready review waits are
 partial. On approval, record completion in a closeout commit on the PR branch,
-then merge, delete the branch and return to `main`, following "Closing out an
+then merge, delete the branch and return to `develop`, following "Closing out an
 approved PR" in `docs/Delivery-Workflow.md`.
 
 Report the concrete outcome, checks run, blocking issues, residual risk, and

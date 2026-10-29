@@ -32,6 +32,10 @@ read.
 - DOC-001, CORE-002B, TOOL-002 (CI tiers, D-028) and CORE-003C (v2 corpus
   conformance) merged in PRs #17 to #21. Now: CORE-003D. See
   [HANDOFF.md](HANDOFF.md) and [TODO.md](TODO.md).
+- Workflow: task PRs target `develop` and merge on a Grok review with no
+  serious finding (D-029). `main` takes only owner-approved milestone reviews
+  from `review/<milestone>`, tagged `m-<milestone>` (D-030). The first
+  milestone is the end of CORE-FIX.
 - Each 001B also measures flat-view and retained RSS on its host, and WIN-001B
   makes the MSVC C smoke a required CI step.
 - Node IDs are snapshot-local and block anchors carry position (D-021). ABI v1

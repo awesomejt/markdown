@@ -37,12 +37,59 @@ Keep such fixes explicit and run the affected checks. Introduce versioned,
 compatible contracts so the next platform can catch up; a breaking change needs
 an explicit migration plan and affected-host validation.
 
+## Branches and milestone reviews (D-030)
+
+The owner reviews milestones, not every task PR:
+
+| Branch | Holds | Changes by |
+| --- | --- | --- |
+| `main` | Owner-approved milestones only, each tagged `m-<milestone>` | Owner merge of a milestone review PR |
+| `develop` | Integration of finished tasks; the default base for work | Task PRs merged under D-029 |
+| `review/<milestone>` | Frozen snapshot of `develop` under owner review | Owner-requested review fixes |
+| `feat/`, `fix/`, `chore/`, `docs/`, `test/` | One task each | The pass runner |
+
+Never commit directly to `main` or `develop`. (On 2026-10-28 the owner allowed
+one direct commit to `main` to install this workflow; that allowance has
+ended.)
+
+**Milestones.** Cut a review at the first of these boundaries:
+
+1. The end of CORE-FIX (CORE-003D, CORE-005C, CORE-005D, CORE-003E).
+2. The CORE-001 to CORE-006 aggregates closed: the shared core is done.
+3. Per host, the 001A–001C walking skeleton, then the 001D–001I MVP.
+4. HARD-001, before DESK-002.
+5. A cap: about 8 task PRs or 2 weeks since the last review branch, whichever
+   comes first.
+
+**Milestone review.**
+
+1. Confirm `develop` is green and has no task PR waiting to merge, then create
+   `review/<milestone>` from it and push it.
+2. Open a PR from `review/<milestone>` into `main` with a review packet:
+   the tasks and PRs merged, decisions taken (including D-029 merges), the
+   deferred findings in [TODO.md](../TODO.md#deferred-review-findings), CI
+   and local check evidence, the manual checks the owner should run on each
+   named host (launch, reading, accessibility, performance), known risks,
+   and anything needing an owner decision.
+3. Keep working on `develop` meanwhile; the review branch does not move with
+   it. Make owner-requested fixes on the review branch with checks, and keep
+   `project.yaml` changes on `develop` so the two do not conflict. A fix that
+   needs a Grok review gets one, per step 7 below.
+4. Only the owner merges the review PR, with a merge commit. Then tag the
+   merge `m-<milestone>` and push the tag, delete the review branch, and merge
+   `main` back into `develop` through a PR. That sync PR adds nothing new, so
+   it needs CI but no Grok review, and D-029 approves it.
+
+Things that need the owner still stop work at once, not at the milestone:
+gates, golden exceptions, new architecture decisions, a missing or unclear
+Grok review, and failing CI on `develop`.
+
 ## Feature branch and pull request lifecycle
 
 1. Inspect state and Git, then select the phase and verify prerequisites. Create
-   `feat/<phase-id-lowercase>-<short-description>` from the current integration
-   branch (normally `main`); use `fix/` or `chore/` for those scopes. Reuse that
-   branch and PR across sessions. Avoid implementation commits on `main`.
+   `feat/<phase-id-lowercase>-<short-description>` from `develop`; use `fix/`,
+   `chore/`, `docs/` or `test/` for those scopes. Reuse that branch and PR
+   across sessions. Task PRs target `develop`, never `main`.
 2. Start/resume the phase's execution task through the normal state helper.
    Implement only its acceptance criteria and keep unrelated changes out.
    A draft PR is allowed when useful; do not trigger review of unfinished work.
@@ -86,9 +133,9 @@ an explicit migration plan and affected-host validation.
    another review for commits that only fix non-serious findings, make minor
    tweaks, update documentation or record project status.
 8. Decide the merge (D-029). When the latest Grok review has no serious
-   finding, it is the owner's standing approval to merge the PR at its
-   current head, including later commits of the kinds step 7 exempts from
-   review. Record each finding left unfixed in
+   finding, it is the owner's standing approval to merge the PR into
+   `develop`. The approved head is the reviewed commit plus any later
+   commits of the kinds step 7 exempts from review. Record each finding left unfixed in
    [TODO.md](../TODO.md#deferred-review-findings) for a later pass, then
    follow [Closing out an approved PR](#closing-out-an-approved-pr) and report
    the outcome. Stop and ask the owner instead when the review is missing or
@@ -98,14 +145,15 @@ an explicit migration plan and affected-host validation.
 
 The owner has authorized the scoped commits, phase-branch pushes, PR creation/
 updates and `grok` CLI review requests needed for this workflow. Do not ask again
-for these routine steps, nor for a merge that step 8 approves. This does not
-authorize unrelated communication, repository exposure changes, other merges,
-releases, signing or production deployment.
+for these routine steps, nor for a merge into `develop` that step 8 approves,
+nor for the milestone steps above other than the owner's merge into `main`.
+This does not authorize unrelated communication, repository exposure or
+settings changes, other merges, releases, signing or production deployment.
 This documentation change does not itself open a PR or trigger a review.
 
 ## Waiting, closeout and switching machines
 
-Release the execution lease before a long review or owner-merge wait. Finish
+Release the execution lease before a long review wait. Finish
 the pass as `partial`, with an exact PR/branch/review handoff; do not mark the
 delivery task complete just because code is ready. The current concurrency-one
 backend intentionally requires resuming that working task before new work.
@@ -124,9 +172,9 @@ this rule, is closed out in a small housekeeping branch and PR.
 
 ## Closing out an approved PR
 
-Once the owner approves a PR for merge, directly or through a Grok review with
-no high or critical finding (step 8), the closeout travels in that PR, so
-`main` is never edited directly and never needs a follow-up state commit:
+Once a task PR is approved for merge, through a Grok review with no serious
+finding (step 8) or by the owner, the closeout travels in that PR, so
+`develop` is never edited directly and never needs a follow-up state commit:
 
 1. **Record the approval on the PR branch.** Resume the task through the state
    helper and finish its pass `completed`. The evidence names the PR, the
@@ -141,11 +189,11 @@ no high or critical finding (step 8), the closeout travels in that PR, so
    checks first. This commit needs no new Grok review. A later commit that
    step 7 does not exempt needs a new review, and with it a new approval.
 3. **Merge and delete the remote branch.** Wait for the required CI on the new
-   head, then merge with a merge commit and delete the remote branch. Verify
-   that the PR head that merged is the approved head plus only the closeout
-   commit and commits that step 7 exempts from review.
+   head, then merge into `develop` with a merge commit and delete the remote
+   branch. Verify that the merged head is the approved head (step 8) followed
+   by exactly one closeout commit, and nothing after it.
    If CI fails or the merge conflicts, stop and report instead of forcing it.
-4. **Return the local repository to `main`.** Switch to `main`, pull the latest
+4. **Return the local repository to `develop`.** Switch to `develop`, pull the latest
    from GitHub with a fast-forward, and delete the old local branch. Confirm a
    clean working tree before selecting new work.
 
