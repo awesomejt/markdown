@@ -3,7 +3,7 @@
 ## Planning principles
 
 - Follow [Delivery-Workflow.md](Delivery-Workflow.md): one small delivery phase,
-  one feature branch, one PR, and a separate `/grok review` comment when ready.
+  one feature branch, one PR, and a Grok review through the `grok` CLI when ready.
 - Batch dependency-ready work on the current OS before switching machines.
 - Extract and prioritize requirements before selecting implementation reuse.
 - Prove native performance on every desktop before deepening one platform.

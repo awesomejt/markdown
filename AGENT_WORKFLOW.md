@@ -138,16 +138,16 @@ unowned `working` task.
   branch and PR, following [Delivery-Workflow.md](docs/Delivery-Workflow.md).
   Use the platform-focused catalog in `docs/Implementation-Plan.md`, not one
   branch for an entire aggregate roadmap milestone.
-- Use focused Conventional Commits. When the PR is ready, post a separate
-  conversation comment exactly `/grok review`; verify the request, assess actual
-  feedback, fix valid findings and request review again after source changes.
+- Use focused Conventional Commits. When the PR is out of draft, request the
+  review with the `grok` CLI as Delivery-Workflow.md shows, check the PR for
+  the review, assess actual feedback and fix valid findings.
   Keep review/merge waits as partial passes with resumable handoffs.
 - Expand future delivery-task graphs at their prerequisite gate through the
   helper; do not rewrite today's feasibility queue for a future policy.
 - Never stage unrelated user changes.
 - Run task checks before asking for review; record exact commands.
 - The owner has authorized scoped implementation phase commits, branch pushes,
-  PR creation/updates and the Grok review comments under Delivery-Workflow.md.
+  PR creation/updates and the Grok CLI review requests under Delivery-Workflow.md.
   Merge, tag, sign, publish and unrelated external actions still require owner
   authorization. Once a PR is approved, record the closeout on its branch,
   push, merge, delete the branch and return to `main`, as described in

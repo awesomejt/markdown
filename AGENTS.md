@@ -48,7 +48,7 @@ resolve it before changing implementation.
 - Keep changes focused, reviewable, and covered by proportionate validation.
 - From core implementation onward, execute small platform-focused delivery
   phases, each with a feature branch and PR. Follow `docs/Delivery-Workflow.md`
-  and post a separate `/grok review` PR comment once ready; resolve feedback
+  and request the Grok review with the `grok` CLI once ready; resolve feedback
   before reporting merge readiness.
 - Do not claim cross-platform behavior without evidence on the named platform.
 - Treat `markdown-viewer` as a read-only reference unless the task explicitly
@@ -63,7 +63,7 @@ resolve it before changing implementation.
 - Ask before production deployment, publishing, signing, unrelated external
   communication, destructive operations, or expanding to another repository.
   The owner has authorized scoped phase commits, branch pushes, PR updates and
-  Grok review comments under `docs/Delivery-Workflow.md`; merge requires explicit
+  Grok CLI review requests under `docs/Delivery-Workflow.md`; merge requires explicit
   owner authorization. Approval of a PR also covers its closeout commit, merge
   and branch deletion.
 
