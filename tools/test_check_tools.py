@@ -131,7 +131,7 @@ class GitChecks(unittest.TestCase):
             with self.subTest(base=base), self.assertRaises(subprocess.CalledProcessError):
                 check_whitespace(base, cwd=self.root)
 
-    def new_branch(self, *, dirty: bool):
+    def new_branch(self, *, dirty: bool, merge: bool = False):
         """Push old dirty history to a remote, then a new branch over it."""
         remote_dir = tempfile.TemporaryDirectory()
         self.addCleanup(remote_dir.cleanup)
@@ -142,8 +142,19 @@ class GitChecks(unittest.TestCase):
         self.git("remote", "add", "origin", str(remote))
         self.git("push", "--quiet", "origin", "HEAD:refs/heads/main")
         self.git("switch", "--quiet", "-c", "review/m1")
-        self.write("new.txt", "bad " + "\n" if dirty else "clean\n")
-        self.commit()
+        if merge:
+            # A clean side commit, then a merge that resolves to dirty content.
+            self.git("switch", "--quiet", "-c", "side", "origin/main")
+            self.write("side.txt", "clean\n")
+            self.commit()
+            self.git("switch", "--quiet", "review/m1")
+            self.git("merge", "--quiet", "--no-ff", "--no-commit", "side")
+            self.write("side.txt", "bad " + "\n")
+            self.git("add", ".")
+            self.git("commit", "--quiet", "-m", "merge")
+        else:
+            self.write("new.txt", "bad " + "\n" if dirty else "clean\n")
+            self.commit()
         self.git("push", "--quiet", "origin", "HEAD:refs/heads/review/m1")
         self.git("fetch", "--quiet", "origin")
 
@@ -151,6 +162,20 @@ class GitChecks(unittest.TestCase):
         self.new_branch(dirty=False)
         with mock.patch.dict(os.environ, {"GITHUB_REF_NAME": "review/m1"}):
             check_whitespace("0" * 40, cwd=self.root)
+
+    def test_new_branch_push_rejects_a_dirty_merge(self):
+        self.new_branch(dirty=True, merge=True)
+        with mock.patch.dict(os.environ, {"GITHUB_REF_NAME": "review/m1"}), \
+                self.assertRaises(subprocess.CalledProcessError):
+            check_whitespace("0" * 40, cwd=self.root)
+
+    def test_unidentified_pushed_branch_checks_the_whole_tree(self):
+        self.new_branch(dirty=False)
+        for name in ("", "no-such-branch"):
+            with self.subTest(name=name), \
+                    mock.patch.dict(os.environ, {"GITHUB_REF_NAME": name}), \
+                    self.assertRaises(subprocess.CalledProcessError):
+                check_whitespace("0" * 40, cwd=self.root)
 
     def test_new_branch_push_rejects_a_dirty_new_commit(self):
         self.new_branch(dirty=True)
