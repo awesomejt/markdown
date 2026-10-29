@@ -26,20 +26,25 @@ read.
   accepted D-025 (native 001B packages build `model-v2` and request v2; v1
   stays the Rust default), D-026 (the CORE-FIX phase) and D-027 (one linear
   shared track, then one independent chain per host from CORE-006).
-- CORE-FIX order: DOC-001, CORE-002B, CORE-003C, CORE-003D, CORE-005C,
-  CORE-005D, then CORE-003E (owner-added from the PR #17 review). The CORE-001 to CORE-006 aggregates follow and close on shared
-  acceptance. HARD-001 sits between DESK-001 and DESK-002.
-- DOC-001, CORE-002B, TOOL-002 (CI tiers, D-028) and CORE-003C (v2 corpus
-  conformance) merged in PRs #17 to #21, TOOL-003 in #23, CORE-003D (bare autolinks, D-031) in #24, CORE-005C
-  (content-search memory guard) in #25, CORE-005D (wider invisible-filename
-  warnings) in #26, CORE-003E (front-matter blank-character guard, D-032) in
-  #27. CORE-FIX is complete. Now: the first milestone review
-  (`review/core-fix`, D-030), with CORE-001 next on `develop`. See
-  [HANDOFF.md](HANDOFF.md) and [TODO.md](TODO.md).
+- CORE-FIX (DOC-001, CORE-002B, TOOL-002, CORE-003C, TOOL-003, CORE-003D,
+  CORE-005C, CORE-005D, CORE-003E; PRs #17 to #27, D-028 to D-032) is merged
+  into `main` through the first milestone review, PR #28, tagged
+  `m-core-fix`. Its three reviews (Claude, Grok, Codex) found no blocking
+  defect. Follow-ups: CORE-003F (front-matter ZWNJ/ZWJ allowance, amending
+  D-032) is next, before CORE-001; CORE-001 also takes the two TOOL-003
+  findings; CORE-006 records the 2 MiB content-search default change; each
+  001B sets a session memory bound. Requiring `Checks / complete` on `main`
+  awaits the owner. See [HANDOFF.md](HANDOFF.md) and
+  [TODO.md](TODO.md#core-fix-milestone-follow-ups). HARD-001 sits between
+  DESK-001 and DESK-002.
 - Workflow: task PRs target `develop` and merge on a Grok review with no
   serious finding (D-029). `main` takes only owner-approved milestone reviews
-  from `review/<milestone>`, tagged `m-<milestone>` (D-030). The first
-  milestone is the end of CORE-FIX.
+  from `review/<milestone>`, tagged `m-<milestone>` (D-030). The next
+  milestone is the closed CORE-001 to CORE-006 aggregates, or the cap.
+- Milestone reviews: Claude writes the packet; Grok and Codex add independent
+  reviews in `docs/reviews/` on the review branch, not normal PR reviews.
+  On 2026-10-29 Claude Code's auto mode blocked `grok --always-approve`,
+  so the owner ran it; allow `grok` in the Bash permissions, or ask the owner.
 - Each 001B also measures flat-view and retained RSS on its host, and WIN-001B
   makes the MSVC C smoke a required CI step.
 - Node IDs are snapshot-local and block anchors carry position (D-021). ABI v1

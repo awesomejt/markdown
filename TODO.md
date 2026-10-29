@@ -46,12 +46,14 @@ core alone.
   scope and the GATE-001 preparation steps are in
   [the memory archive](agents/Memory-Archive.md#todomd-session-handoff-history).
 
-The shared-core reviews (PR #16) are merged. The current work is the
+The shared-core reviews (PR #16) are merged, and so is the
 [CORE-FIX phase](#core-fix-phase-shared-core-review-follow-ups): DOC-001,
-CORE-002B, TOOL-002 and CORE-003C merged in PRs #17 to #21, the D-029 and
-D-030 workflow changes in PR #22 and on `main`, TOOL-003 in PR #23, CORE-003D in PR #24, CORE-005C in PR #25, CORE-005D in PR #26 and CORE-003E in PR #27 (D-032).
-CORE-FIX is complete: the first milestone review (`review/core-fix`, D-030) is
-due, and CORE-001 is next on `develop`. Inspect
+CORE-002B, TOOL-002 and CORE-003C in PRs #17 to #21, the D-029 and D-030
+workflow changes in PR #22 and on `main`, TOOL-003 in PR #23, CORE-003D in
+PR #24, CORE-005C in PR #25, CORE-005D in PR #26 and CORE-003E in PR #27
+(D-032). The owner merged the first milestone review (PR #28) into `main`,
+tagged `m-core-fix`. Its [follow-ups](#core-fix-milestone-follow-ups) start
+with CORE-003F, which is next on `develop`, before CORE-001. Inspect
 state and `HANDOFF.md` before any pass. Scoped commits, pushes, PR updates and
 review requests are authorized; a Grok review with no serious finding approves
 a merge into `develop` (D-029); only the owner merges into `main` (D-030);
@@ -345,6 +347,46 @@ Not in CORE-FIX, kept where they belong:
   upgrade of the `pulldown-cmark` pin is its own gated task that re-runs the
   conformance, mutation and pathological suites. No broad refactor.
 
+### CORE-FIX milestone follow-ups
+
+The [CORE-FIX milestone review](docs/reviews/README.md) (PR #28, tag
+`m-core-fix`) had three independent reviewers: Claude, Grok and Codex. None
+found a blocking defect. The items they agreed on, or that should be
+addressed later, are recorded here and in state:
+
+- **CORE-003F — Front-matter joiner allowance (M1, all three).** A new task
+  between CORE-003E and CORE-001. Front matter rejects ZWNJ and ZWJ (Cf), so a
+  title or value holding either discards the whole map: Persian,
+  Arabic-script, Indic and emoji ZWJ titles lose their metadata. File names
+  already exempt both.
+  - Allow ZWNJ and ZWJ in the title and string and list values, not in keys,
+    in the producer and in shared validation (v1, v2, `from_json`).
+  - Keep the bidi embedding, override and isolate controls rejected. LRM and
+    RLM stay rejected unless the owner decides otherwise (Grok suggested
+    allowing them; Codex treats it as a separate choice).
+  - Decide and record whether emoji tag characters are allowed only inside a
+    well-formed tag sequence (U+1F3F4 … U+E007F), as Grok suggests.
+  - It amends D-032, so record a new decision. Acceptance: v1 and v2 tests
+    for Persian, Devanagari and ZWJ emoji, keys still rejecting joiners, bidi
+    controls still rejected, goldens unchanged or regenerated with a reviewed
+    diff.
+- **TOOL-003 deferred findings (M3, C-M4).** Folded into CORE-001, which owns
+  the common checks; see [Deferred review findings](#deferred-review-findings).
+- **2 MiB content-search default (Grok, C-M2).** A zero `max_file_bytes` now
+  means 2 MiB instead of 8 MiB. Reviewers differ on whether that strains
+  D-022; it changes no layout or signature and no host had shipped. CORE-006
+  records the before/after behavior in the FFI spec.
+- **Session memory bound (Grok, C-M3).** Content search is bounded, but a
+  session can still reach about 1,152 MiB on a dense 8 MiB input. Each
+  host's 001B now measures that and sets the host's session
+  `max_source_bytes`, or records why the default is acceptable, before
+  IOS-001.
+- **No change:** the ASCII-letter autolink boundary matches cmark-gfm (M2).
+  The specs already tell hosts to cap concurrent content searches.
+- **Owner decision pending:** require `Checks / complete` on `main` (M4,
+  C-M5). All three reviewers recommend it; see
+  [Process options](#process-options-under-consideration).
+
 ### Desktop walking skeletons
 
 Each host is one chain in `desktop-apps`, from CORE-006 through 001A–001I to
@@ -432,13 +474,17 @@ when it is resolved.
     raises `UnicodeDecodeError`. Read bytes, or decode with
     `errors="surrogateescape"`.
 
+  Both are now part of CORE-001's scope (CORE-FIX milestone review M3).
+
 ## Process options under consideration
 
 Harder gates the owner deferred on 2026-10-28 to see how the D-030 workflow
-works first. Revisit at the first milestone review (the end of CORE-FIX).
+works first, revisited at the first milestone review (PR #28).
 
 - Require the `Checks / complete` status in `main`'s branch protection. It is
-  off so a stuck check cannot block a milestone merge.
+  off so a stuck check cannot block a milestone merge. All three CORE-FIX
+  milestone reviewers recommend turning it on; the owner has not decided, and
+  it is a settings change for the owner.
 
 ## Dependency summary
 
@@ -456,7 +502,7 @@ CORE-004A -> CORE-005A -> CORE-005A2;  CORE-005A -> CORE-005B -> CORE-005B2
 
 Shared track (portable-core, one chain; D-026, D-027):
 DOC-001 -> CORE-002B -> TOOL-002 -> CORE-003C -> CORE-003D -> CORE-005C -> CORE-005D
-  -> CORE-003E -> CORE-001 -> CORE-002 -> CORE-003 -> CORE-004 -> CORE-005 -> CORE-006
+  -> CORE-003E -> CORE-003F -> CORE-001 -> CORE-002 -> CORE-003 -> CORE-004 -> CORE-005 -> CORE-006
   -> portable-core complete, desktop-apps active
 
 Each host (desktop-apps; MAC, LNX and WIN chains are independent):

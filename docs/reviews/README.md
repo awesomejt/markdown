@@ -19,7 +19,11 @@ newest first.
 | 2026-10-28 | [Holistic CORE review](2026-10-28-core-holistic-review.md) | Shared CORE delivery phases CORE-001A to CORE-006A | `39d1a56` |
 
 The owner's reconciliation of the three 2026-10-28 reviews is D-026 and D-027
-in [Decisions.md](../../agents/Decisions.md).
+in [Decisions.md](../../agents/Decisions.md). The three 2026-10-29 CORE-FIX
+milestone reviews were merged into `main` with PR #28 (`m-core-fix`); their
+agreed follow-ups are in
+[TODO.md](../../TODO.md#core-fix-milestone-follow-ups) and in state, starting
+with CORE-003F.
 
 The earlier feasibility review (REV-001) is
 [Feasibility-Review.md](../Feasibility-Review.md).

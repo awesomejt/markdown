@@ -1,68 +1,37 @@
 # Agent Session and Platform Handoff
 
-Updated: 2026-10-29, CORE-003E closeout (PR #27).
-Source baseline: `develop` after the PR #27 merge. Preserve intended source, lock/spec/golden
+Updated: 2026-10-29, after the CORE-FIX milestone merge (PR #28, `m-core-fix`).
+Source baseline: `develop` after the `main` sync. Preserve intended source, lock/spec/golden
 files, docs and state together. Never transfer caches, environments, build
 products, private runtime state or user documents.
 
 Older per-phase handoffs and the feasibility host notes are in
 [the memory archive](agents/Memory-Archive.md).
 
-## Resume here — CORE-FIX phase
+## Resume here — after the CORE-FIX milestone
 
-PR #16 merged the three shared-core reviews
-([docs/reviews/](docs/reviews/README.md)). The owner accepted D-025, D-026
-and D-027 ([Decisions](agents/Decisions.md)). CORE-FIX runs seven shared tasks
-in order before any platform phase. Their scope is in
-[TODO.md](TODO.md#core-fix-phase-shared-core-review-follow-ups).
+CORE-FIX (PRs #17 to #27) is merged into `main` through the first milestone
+review, [PR #28](https://github.com/awesomejt/markdown/pull/28), tagged
+`m-core-fix` (D-030). `main` and `develop` are in sync. Its three reviews
+(Claude, Grok, Codex) are in [docs/reviews/](docs/reviews/README.md); none
+found a blocking defect. The follow-ups are in
+[TODO.md](TODO.md#core-fix-milestone-follow-ups) and in state. The CORE-FIX
+done list is in [the memory archive](agents/Memory-Archive.md#handoffmd-phase-handoff-history).
 
-- **Done:** DOC-001, the agent-facing docs cleanup,
-  [PR #17](https://github.com/awesomejt/markdown/pull/17). Its Grok review
-  added CORE-003E (front-matter invisible-character parity), which the owner
-  placed after CORE-005D as a separate task.
-- **Done:** CORE-002B, import-policy parity and FFI host guidance,
-  [PR #18](https://github.com/awesomejt/markdown/pull/18). V1 and v2 imports
-  now re-check intents and metadata text against the producer's policy. One
-  hand-written v1 golden intent became denied, with owner approval.
-- **Done:** TOOL-002, CI speed-up,
-  [PR #19](https://github.com/awesomejt/markdown/pull/19) (D-028). PRs run
-  `tools/check.py core`; `main` and manual runs add `core-extended`. Run
-  `tools/check.py all` locally before each review request.
-- **Done:** CORE-003C, v2 corpus conformance assertions,
-  [PR #21](https://github.com/awesomejt/markdown/pull/21). Every corpus check
-  token runs on v1 and v2, with explicit per-intent pairing rules documented
-  in the [conformance contract](specs/parsing/conformance/README.md).
-- **Done:** PR #22 (`grok` CLI reviews, D-029 review-gated merges) and the
-  D-030 milestone workflow. Task PRs now target `develop`; `main` takes only
-  owner-approved milestone reviews.
-- **Done:** TOOL-003, first-push whitespace check,
-  [PR #23](https://github.com/awesomejt/markdown/pull/23). Two deferred
-  findings are in TODO.md.
-- **Done:** CORE-003D, bare GFM autolinks (D-031),
-  [PR #24](https://github.com/awesomejt/markdown/pull/24), merged into
-  `develop` after the three-review cap with the owner's approval.
-- **Done:** CORE-005C, the content-search memory guard,
-  [PR #25](https://github.com/awesomejt/markdown/pull/25), merged into
-  `develop` on a clean Grok review (D-029). The default file budget is
-  2 MiB, and the node allowance follows it; see the
-  [workspace-search spec](specs/workspace-search/README.md#memory-guard-core-005c).
-- **Done:** CORE-005D, wider invisible-filename warnings,
-  [PR #26](https://github.com/awesomejt/markdown/pull/26), merged into
-  `develop` on a clean Grok review (D-029). File names now flag Cf plus
-  Default_Ignorable and U+2800, except ZWJ/ZWNJ and display modifiers; the
-  shared tables live in `metadata.rs`.
-- **Done:** CORE-003E, front-matter invisible-character parity,
-  [PR #27](https://github.com/awesomejt/markdown/pull/27), merged into
-  `develop` on a clean Grok review (D-029). Front-matter text now rejects
-  the blank default-ignorable values and U+2800 too, keeping the display
-  modifiers (D-032). `metadata::hidden_character` is the one shared guard.
-- **Current:** CORE-FIX is complete, so the first milestone review is due
-  (D-030): confirm `develop` is green with no task PR waiting, cut
-  `review/core-fix` from it, and open the review PR into `main` with the
-  review packet. Only the owner merges it. Work continues on `develop`
-  meanwhile with CORE-001, the first CORE-001 to CORE-006 aggregate. Each
-  host's chain in `desktop-apps` starts after CORE-006 (D-027). Do not select
-  platform tasks before then.
+- **Next:** CORE-003F, the front-matter joiner allowance (milestone M1). Allow
+  ZWNJ and ZWJ in front-matter title and string/list values, not keys, at
+  v1/v2 parity; keep bidi controls rejected; decide emoji tag sequences;
+  record a decision amending D-032. Branch
+  `feat/core-003f-front-matter-joiners` from `develop`.
+- **Then:** CORE-001 (now also fixing the two TOOL-003 deferred findings),
+  then the CORE-002 to CORE-006 aggregates. CORE-006 also records the 8 to
+  2 MiB content-search default change in the FFI spec. Each host's chain in
+  `desktop-apps` starts after CORE-006 (D-027); do not select platform tasks
+  before then.
+- **Owner decision pending:** requiring `Checks / complete` on `main`
+  (milestone M4; all three reviewers recommend it).
+- The next milestone is the CORE-001 to CORE-006 aggregates closing, or the
+  cap of about 8 task PRs or 2 weeks.
 
 Inspect state before any pass, following AGENT_WORKFLOW.md:
 
@@ -88,7 +57,9 @@ evidence, not production contracts. Preserve these open items:
   closed by owner-approved deferral (D-014), not by passing; ADV-005 keeps
   its checks.
 - Each 001B builds `model-v2` and requests v2 (D-025), measures flat-view and
-  retained RSS, and on Windows makes the MSVC C smoke required.
+  retained RSS, and on Windows makes the MSVC C smoke required. It also
+  measures session peak memory on a dense 8 MiB input and sets the host's
+  session `max_source_bytes`, before IOS-001 (milestone review).
 
 ## Workflow and authorization boundaries
 
