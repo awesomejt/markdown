@@ -149,8 +149,10 @@ unowned `working` task.
 - Run task checks before asking for review; record exact commands.
 - The owner has authorized scoped implementation phase commits, branch pushes,
   PR creation/updates and the Grok CLI review requests under Delivery-Workflow.md.
-  Merge, tag, sign, publish and unrelated external actions still require owner
-  authorization. Once a PR is approved, record the closeout on its branch,
+  A Grok review with no high or critical finding approves the merge (D-029);
+  record its other findings in TODO.md. Other merges, tags, signing, publishing
+  and unrelated external actions still require owner authorization. Once a PR
+  is approved, record the closeout on its branch,
   push, merge, delete the branch and return to `main`, as described in
   Delivery-Workflow.md "Closing out an approved PR"; never push closeout
   directly to `main`.

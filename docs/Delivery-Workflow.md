@@ -82,15 +82,22 @@ an explicit migration plan and affected-host validation.
    review of new changes, so run the CLI again for new phase commits. Fixes
    for the first review's findings are the exception: the owner reviews the
    whole phase at merge and does not need a Grok re-review of them.
-8. Report readiness to the owner with the PR, checks, review disposition and
-   remaining risks. Merge only when explicitly authorized or performed by the
-   owner, then follow [Closing out an approved PR](#closing-out-an-approved-pr).
-   A cloud review is not an automatic merge authorization.
+8. Decide the merge (D-029). When Grok's review on the PR has no finding it
+   rates high or critical (or says to fix now), and any such finding has been
+   fixed on this branch, that review is the owner's standing approval to
+   merge. Record each remaining low finding or nit in
+   [TODO.md](../TODO.md#deferred-review-findings) for a later pass, then
+   follow [Closing out an approved PR](#closing-out-an-approved-pr) and report
+   the outcome. Stop and ask the owner instead when the review is missing or
+   its severity is unclear, when required CI fails, or when the PR needs an
+   owner decision the review cannot give, such as a golden exception or a
+   gate.
 
 The owner has authorized the scoped commits, phase-branch pushes, PR creation/
 updates and `grok` CLI review requests needed for this workflow. Do not ask again
-for these routine steps. This does not authorize unrelated communication,
-repository exposure changes, merging, releases, signing or production deployment.
+for these routine steps, nor for a merge that step 8 approves. This does not
+authorize unrelated communication, repository exposure changes, other merges,
+releases, signing or production deployment.
 This documentation change does not itself open a PR or trigger a review.
 
 ## Waiting, closeout and switching machines
@@ -114,12 +121,13 @@ this rule, is closed out in a small housekeeping branch and PR.
 
 ## Closing out an approved PR
 
-Once the owner approves a PR for merge, the closeout travels in that PR, so
+Once the owner approves a PR for merge, directly or through a Grok review with
+no high or critical finding (step 8), the closeout travels in that PR, so
 `main` is never edited directly and never needs a follow-up state commit:
 
 1. **Record the approval on the PR branch.** Resume the task through the state
    helper and finish its pass `completed`. The evidence names the PR, the
-   reviewed head, the review and the owner's approval; the merge commit is not
+   reviewed head, the review and the approval; the merge commit is not
    known yet and is not invented. If the task is the last child of an
    aggregate, close the aggregate the same way. Mark decisions the owner
    accepted with the approval, and update `TODO.md`, `MEMORY.md` and
@@ -127,8 +135,8 @@ Once the owner approves a PR for merge, the closeout travels in that PR, so
    state: no live lease and no `working` task may remain.
 2. **Push the closeout.** Commit only these state and documentation files as
    one `chore(state)` commit and push it to the PR branch. Run the common
-   checks first. This commit needs no new Grok review; any source change
-   does, and then the owner's approval must be renewed.
+   checks first. This commit needs no new Grok review; any other source
+   change needs a new review, and with it a new approval.
 3. **Merge and delete the remote branch.** Wait for the required CI on the new
    head, then merge with a merge commit and delete the remote branch. Verify
    that the PR head that merged is the approved head plus the closeout commit.
@@ -137,7 +145,7 @@ Once the owner approves a PR for merge, the closeout travels in that PR, so
    from GitHub with a fast-forward, and delete the old local branch. Confirm a
    clean working tree before selecting new work.
 
-The owner's approval of a PR authorizes these steps for that PR only.
+An approval authorizes these steps for that PR only.
 
 Before switching OS, update `HANDOFF.md` with the phase/task, branch, PR URL,
 review status, last validated code/head reference, completed checks, unrun

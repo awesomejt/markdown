@@ -574,3 +574,28 @@ tiers that only one other OS shows surfaces on the `main` run after merge and
 is fixed forward. The skip adds no risk beyond merging an older green head
 after `main` moved, which the repository already allows. Branch and PR sizing
 (one task per PR) is unchanged.
+
+## D-029 — Grok review severity gates the merge
+
+**Date:** 2026-10-28
+
+**Status:** accepted by owner request
+
+**Context:** Every PR waited for an explicit owner merge approval even when
+Grok's review found nothing serious. Grok reviews are now requested through
+the `grok` CLI, which rates findings as fix-now (high or critical) or later
+(low or nits).
+
+**Decision:** A Grok review with no high or critical finding is the owner's
+standing approval to merge that PR. High or critical findings are fixed on the
+same branch before moving on; those fixes need no Grok re-review. Low findings
+and nits are recorded in TODO.md "Deferred review findings" for a later pass.
+The usual closeout, CI, merge and branch cleanup follow. The runner stops and
+asks the owner when the review is missing or its severity unclear, when
+required CI fails, or when the PR needs an owner decision a review cannot
+give, such as a golden exception or a gate.
+
+**Consequences:** Delivery no longer waits on the owner for routine PRs, so
+review quality carries more weight; the owner keeps the holistic phase review
+and can stop or revert any merge. Tags, releases, signing and publishing still
+need explicit approval.

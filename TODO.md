@@ -47,7 +47,8 @@ core alone.
 The shared-core reviews (PR #16) are merged. The current work is the
 [CORE-FIX phase](#core-fix-phase-shared-core-review-follow-ups): DOC-001,
 CORE-002B, TOOL-002 and CORE-003C merged in PRs #17 to #21, and CORE-003D is next. Inspect state and `HANDOFF.md` before any pass. Scoped
-commits, pushes, PR updates and review comments are authorized; merge
+commits, pushes, PR updates and review requests are authorized; a Grok review
+with no high or critical finding approves the merge (D-029), otherwise merge
 requires owner authorization; concurrency remains one.
 
 ### Requirements and feasibility
@@ -406,6 +407,14 @@ CORE-006 no longer carry. The three host chains are independent.
   platform/engine delivery tasks before implementation. It lives in the
   desktop-apps state bucket so it need not wait for the entire mobile phase.
 - **Follow-up:** Revisit persistent cross-revision node identity (see D-021).
+
+## Deferred review findings
+
+Low findings and nits from Grok reviews that were merged under D-029 without
+being fixed. A later pass fixes them or records why not; remove each entry
+when it is resolved.
+
+None yet.
 
 ## Dependency summary
 
