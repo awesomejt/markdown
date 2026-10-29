@@ -22,7 +22,7 @@ struct Context<'a> {
 }
 impl Context<'_> {
     fn own(&mut self, value: &str) -> Result<String, Error> {
-        if value.chars().any(unsafe_character) {
+        if value.chars().any(hidden_character) {
             return Err(Error::Unsupported);
         }
         *self.copied = self
@@ -339,7 +339,7 @@ pub(crate) fn unsafe_character(c: char) -> bool {
 // Unicode 16.0 Default_Ignorable_Code_Point plus U+2800 BRAILLE PATTERN BLANK.
 // Copyright (c) 2024 Unicode, Inc. Source/provenance and Unicode-3.0 notice:
 // docs/URI-Policy.md and licenses/Unicode-3.0.txt. URI targets deny all of it;
-// file names flag it except display modifiers (specs/workspace-search).
+// front matter rejects and file names flag it except display modifiers.
 pub(crate) fn invisible_character(c: char) -> bool {
     matches!(c as u32,
         0xAD |
@@ -373,6 +373,13 @@ pub(crate) fn display_modifier(c: char) -> bool {
         0xFE00..=0xFE0F |
         0xE0100..=0xE01EF
     )
+}
+
+// The display-text guard (D-032): controls, Cf, and the blank default-ignorable
+// values such as Hangul fillers and U+2800, except the display modifiers.
+// Front-matter values reject it; file names flag it (minus ZWNJ/ZWJ).
+pub(crate) fn hidden_character(c: char) -> bool {
+    unsafe_character(c) || (invisible_character(c) && !display_modifier(c))
 }
 
 // Deliberate literal ISO subset: calendar date, optionally time and zone.

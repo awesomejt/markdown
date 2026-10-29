@@ -101,11 +101,9 @@ impl WorkspacePath {
     /// CGJ) are exempt. Such a name can look identical to another; the UI
     /// should mark it rather than hide it.
     pub fn has_invisible(&self) -> bool {
-        use crate::metadata::{display_modifier, invisible_character, unsafe_character};
-        self.0.chars().any(|c| {
-            !matches!(c, '\u{200C}' | '\u{200D}')
-                && (unsafe_character(c) || (invisible_character(c) && !display_modifier(c)))
-        })
+        self.0
+            .chars()
+            .any(|c| !matches!(c, '\u{200C}' | '\u{200D}') && crate::metadata::hidden_character(c))
     }
 }
 impl Borrow<str> for WorkspacePath {

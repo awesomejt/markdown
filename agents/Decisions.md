@@ -674,3 +674,31 @@ hosts that v2 normalizes, as it already does for inline links. Documented
 differences from cmark-gfm (no `ftp://`, Unicode whitespace ends a link, a
 decoded entity or matched emphasis ends a run) can be revisited if parity
 needs them.
+
+## D-032 — Front-matter text rejects blank default-ignorable characters
+
+**Date:** 2026-10-29
+
+**Status:** accepted 2026-10-29 (clean Grok review of PR #27, D-029)
+
+**Context:** The Grok review of PR #17 found that the front-matter guard
+covered only controls and General_Category=Cf. Blank characters that are not
+Cf, such as the Hangul fillers and U+2800, passed into titles and properties,
+while v2 URI targets deny them (B2F) and workspace file names flag them
+(CORE-005D). CORE-003E asked whether metadata should reject or diagnose them.
+
+**Decision:** Reject them, as Cf already is. One shared predicate,
+`metadata::hidden_character`, covers controls, Cf, and Unicode 16.0
+Default_Ignorable_Code_Point plus U+2800, minus the display modifiers (CGJ,
+Mongolian FVS 1-4, variation selectors). The producer refuses any title or
+string or list value containing one, so the whole map is discarded with
+`front_matter_unsupported`; shared validation rejects imported v1 and v2
+metadata with `metadata_text` or `metadata_key`. File names use the same
+predicate but exempt ZWNJ and ZWJ and only flag. A new diagnostic was not
+chosen: it would publish values the importer must then accept, and the
+existing atomic rejection already keeps the source readable.
+
+**Consequences:** Documents whose front matter holds these characters lose
+their typed metadata and title and show a `front_matter_unsupported` warning
+instead. The frozen corpus and goldens contain none, so none changed. URI
+targets stay stricter: they also deny the display modifiers.

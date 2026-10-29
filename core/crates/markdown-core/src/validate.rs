@@ -73,9 +73,9 @@ fn text_present(value: &str) -> bool {
     !value.trim().is_empty()
 }
 // The front-matter producer's display guard: it never emits these characters,
-// so imported metadata must not carry them either (CORE-002B).
+// so imported metadata must not carry them either (CORE-002B, D-032).
 fn display_safe(value: &str) -> bool {
-    !value.chars().any(crate::metadata::unsafe_character)
+    !value.chars().any(crate::metadata::hidden_character)
 }
 fn metadata_value_safe(value: &MetadataValue) -> bool {
     match value {
