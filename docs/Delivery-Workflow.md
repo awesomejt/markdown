@@ -56,38 +56,51 @@ an explicit migration plan and affected-host validation.
    template. Describe the resulting behavior, acceptance criteria, validation,
    compatibility changes and residual risks. Set the PR ready for review only
    once the phase is reviewable and required checks pass.
-5. Post a **new PR conversation comment whose complete body is exactly**:
-
-   ```text
-   /grok review
-   ```
-
-   This must be a comment on the correct phase PR, not text only in its body,
-   a commit message or an inline code comment. Prefer the connected GitHub tool
-   when it supports the operation. The equivalent CLI is:
+5. Once the PR is out of draft, request the review by running the local `grok`
+   CLI from the repository root, headless, with the PR number filled in:
 
    ```sh
-   gh pr comment "$PR_URL" --body '/grok review'
+   grok --always-approve -p "In GitHub, PR #$PR is ready for review in the \
+   Markdown repository. The current folder is the local copy of the \
+   repository. Put the contents of the review in the comments, and submit \
+   the review (do not leave it pending). Provide a \
+   summary of the review that includes if the findings are significant enough \
+   to fix now (high/critical) or later - nits or low findings."
    ```
 
-6. Record the PR URL, requested head SHA and trigger-comment URL in the PR's
-   review notes or session handoff. Verify that posting succeeded. One request
-   per ready head is enough; inspect existing comments before retrying to avoid
-   duplicates. A posted trigger proves a request, not that Grok ran or approved.
-7. Inspect Grok's actual feedback and applicable CI results. Assess every
-   finding, fix valid issues, and explain any rejected finding with evidence in
-   the PR. Re-run relevant checks. After pushing review fixes or other new
-   phase commits, request `/grok review` again for the new ready head. Feedback
-   on an older head does not establish review of new changes.
-8. Report readiness to the owner with the PR, checks, review disposition and
-   remaining risks. Merge only when explicitly authorized or performed by the
-   owner, then follow [Closing out an approved PR](#closing-out-an-approved-pr).
-   A cloud review is not an automatic merge authorization.
+   `--always-approve` keeps Grok from stopping on tool permissions. Keep its
+   output for the next step.
+6. When the command returns, the review is usually complete. Check the PR for
+   it (reviews, review comments and conversation comments). If it is missing,
+   inspect Grok's output for the cause and run the command again with an
+   adjusted prompt. Record the PR URL, reviewed head SHA and review URL in the
+   handoff. A finished command proves a request, not that Grok reviewed or
+   approved.
+7. Inspect Grok's actual feedback and applicable CI results. A finding is
+   **serious** when Grok rates it high or critical or lists it to fix now;
+   Grok's `bug` label usually lands there. Low findings, `suggestion` and
+   `nit` are not serious. Fix serious findings on this branch, re-run the
+   checks, then run the CLI again on the new head, repeating until a review
+   has no serious finding. Fix or defer the others with a stated reason, and
+   explain any rejected finding with evidence in the PR. Do not request
+   another review for commits that only fix non-serious findings, make minor
+   tweaks, update documentation or record project status.
+8. Decide the merge (D-029). When the latest Grok review has no serious
+   finding, it is the owner's standing approval to merge the PR at its
+   current head, including later commits of the kinds step 7 exempts from
+   review. Record each finding left unfixed in
+   [TODO.md](../TODO.md#deferred-review-findings) for a later pass, then
+   follow [Closing out an approved PR](#closing-out-an-approved-pr) and report
+   the outcome. Stop and ask the owner instead when the review is missing or
+   its severity is unclear, when required CI fails, or when the PR needs an
+   owner decision the review cannot give, such as a golden exception or a
+   gate.
 
 The owner has authorized the scoped commits, phase-branch pushes, PR creation/
-updates and `/grok review` comments needed for this workflow. Do not ask again
-for these routine steps. This does not authorize unrelated communication,
-repository exposure changes, merging, releases, signing or production deployment.
+updates and `grok` CLI review requests needed for this workflow. Do not ask again
+for these routine steps, nor for a merge that step 8 approves. This does not
+authorize unrelated communication, repository exposure changes, other merges,
+releases, signing or production deployment.
 This documentation change does not itself open a PR or trigger a review.
 
 ## Waiting, closeout and switching machines
@@ -100,8 +113,8 @@ Do not route around its lease/recovery rules to start another task.
 
 Review-request receipts and subsequent review-only discussion may be recorded
 in the PR without generating another source commit. This avoids repeatedly
-changing the head merely to record that it was reviewed. Source changes still
-require checks and a new trigger. If Grok does not respond or the integration
+changing the head merely to record that it was reviewed. Every new commit
+still needs its checks; step 7 says which commits also need a new review. If Grok does not respond or the CLI
 is unavailable, retain the pending-review handoff and report it; never invent
 an approval or silently waive the review.
 
@@ -111,12 +124,13 @@ this rule, is closed out in a small housekeeping branch and PR.
 
 ## Closing out an approved PR
 
-Once the owner approves a PR for merge, the closeout travels in that PR, so
+Once the owner approves a PR for merge, directly or through a Grok review with
+no high or critical finding (step 8), the closeout travels in that PR, so
 `main` is never edited directly and never needs a follow-up state commit:
 
 1. **Record the approval on the PR branch.** Resume the task through the state
    helper and finish its pass `completed`. The evidence names the PR, the
-   reviewed head, the review and the owner's approval; the merge commit is not
+   reviewed head, the review and the approval; the merge commit is not
    known yet and is not invented. If the task is the last child of an
    aggregate, close the aggregate the same way. Mark decisions the owner
    accepted with the approval, and update `TODO.md`, `MEMORY.md` and
@@ -124,17 +138,18 @@ Once the owner approves a PR for merge, the closeout travels in that PR, so
    state: no live lease and no `working` task may remain.
 2. **Push the closeout.** Commit only these state and documentation files as
    one `chore(state)` commit and push it to the PR branch. Run the common
-   checks first. This commit needs no new `/grok review`; any source change
-   does, and then the owner's approval must be renewed.
+   checks first. This commit needs no new Grok review. A later commit that
+   step 7 does not exempt needs a new review, and with it a new approval.
 3. **Merge and delete the remote branch.** Wait for the required CI on the new
    head, then merge with a merge commit and delete the remote branch. Verify
-   that the PR head that merged is the approved head plus the closeout commit.
+   that the PR head that merged is the approved head plus only the closeout
+   commit and commits that step 7 exempts from review.
    If CI fails or the merge conflicts, stop and report instead of forcing it.
 4. **Return the local repository to `main`.** Switch to `main`, pull the latest
    from GitHub with a fast-forward, and delete the old local branch. Confirm a
    clean working tree before selecting new work.
 
-The owner's approval of a PR authorizes these steps for that PR only.
+An approval authorizes these steps for that PR only.
 
 Before switching OS, update `HANDOFF.md` with the phase/task, branch, PR URL,
 review status, last validated code/head reference, completed checks, unrun

@@ -114,8 +114,8 @@ From core implementation onward, each small delivery phase has one feature
 branch and PR. Batch ready phases for the current host; counterpart platforms
 need not advance in lockstep. Shared contract changes still require affected
 native CI, and all-platform gates remain intact. Follow
-[Delivery-Workflow.md](Delivery-Workflow.md) for `/grok review`, feedback, owner
-merge approval and cross-machine handoffs; use the concrete catalog in
+[Delivery-Workflow.md](Delivery-Workflow.md) for the Grok review, feedback, merge
+approval (D-029) and cross-machine handoffs; use the concrete catalog in
 [Implementation-Plan.md](Implementation-Plan.md).
 
 ## When to split repositories

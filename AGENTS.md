@@ -48,7 +48,7 @@ resolve it before changing implementation.
 - Keep changes focused, reviewable, and covered by proportionate validation.
 - From core implementation onward, execute small platform-focused delivery
   phases, each with a feature branch and PR. Follow `docs/Delivery-Workflow.md`
-  and post a separate `/grok review` PR comment once ready; resolve feedback
+  and request the Grok review with the `grok` CLI once ready; resolve feedback
   before reporting merge readiness.
 - Do not claim cross-platform behavior without evidence on the named platform.
 - Treat `markdown-viewer` as a read-only reference unless the task explicitly
@@ -63,9 +63,11 @@ resolve it before changing implementation.
 - Ask before production deployment, publishing, signing, unrelated external
   communication, destructive operations, or expanding to another repository.
   The owner has authorized scoped phase commits, branch pushes, PR updates and
-  Grok review comments under `docs/Delivery-Workflow.md`; merge requires explicit
-  owner authorization. Approval of a PR also covers its closeout commit, merge
-  and branch deletion.
+  Grok CLI review requests under `docs/Delivery-Workflow.md`. A Grok review
+  with no high or critical finding, after any such finding is fixed on the
+  branch, is the owner's standing merge approval (D-029); record the remaining
+  findings for later. Otherwise merge requires explicit owner authorization.
+  Approval of a PR also covers its closeout commit, merge and branch deletion.
 
 ## Architecture guardrails
 
@@ -102,7 +104,8 @@ A task is complete only when:
    working state.
 
 For core and later delivery tasks, completion also requires actual review
-disposition and the owner's approval to merge; code-ready review waits are
+disposition and approval to merge (the owner's, or a clean Grok review under
+D-029); code-ready review waits are
 partial. On approval, record completion in a closeout commit on the PR branch,
 then merge, delete the branch and return to `main`, following "Closing out an
 approved PR" in `docs/Delivery-Workflow.md`.

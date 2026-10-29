@@ -3,7 +3,7 @@
 ## Planning principles
 
 - Follow [Delivery-Workflow.md](Delivery-Workflow.md): one small delivery phase,
-  one feature branch, one PR, and a separate `/grok review` comment when ready.
+  one feature branch, one PR, and a Grok review through the `grok` CLI when ready.
 - Batch dependency-ready work on the current OS before switching machines.
 - Extract and prioritize requirements before selecting implementation reuse.
 - Prove native performance on every desktop before deepening one platform.
@@ -218,7 +218,8 @@ Record exact dependencies and capability fallbacks when those gates open.
 ### Example boot schedule
 
 After the shared track closes with CORE-006, complete the current host's
-001A–001I sequence, with one PR/review/owner merge per phase. Then boot another host and
+001A–001I sequence, with one PR, Grok review and approved merge per phase
+(D-029). Then boot another host and
 complete its ready foundation sequence. Host order is flexible; no host needs
 the counterpart's 001B–001I merely for symmetry. Close each host's 001
 aggregate, then DESK-001, then batch each platform's 002 phases in the

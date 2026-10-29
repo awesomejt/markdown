@@ -82,10 +82,13 @@ Disable Git line-ending conversion for the frozen fixture corpus.
 
 Starting after GATE-001, divide core and application implementation into bounded
 delivery phases, grouped by platform where possible to support booting between
-hosts. Each phase uses a feature branch and PR. Once ready, post a separate PR
-comment exactly `/grok review`, assess the actual review and address findings;
-owner merge authorization remains required. Scoped phase commits, pushes, PR
-updates and review comments are authorized as routine steps of this workflow.
+hosts. Each phase uses a feature branch and PR. Once ready, request the Grok
+review by running the `grok` CLI (amended 2026-10-28 at the owner's request;
+it was a `/grok review` PR comment), assess the actual review and address
+findings; merge needs owner authorization, which a clean Grok review now
+gives under D-029. Scoped phase commits,
+pushes, PR updates and review requests are authorized as routine steps of this
+workflow.
 
 Use `docs/Delivery-Workflow.md` and the catalog in `docs/Implementation-Plan.md`.
 Retain broad state buckets and aggregate milestones; materialize their smaller
@@ -572,3 +575,30 @@ tiers that only one other OS shows surfaces on the `main` run after merge and
 is fixed forward. The skip adds no risk beyond merging an older green head
 after `main` moved, which the repository already allows. Branch and PR sizing
 (one task per PR) is unchanged.
+
+## D-029 — Grok review severity gates the merge
+
+**Date:** 2026-10-28
+
+**Status:** accepted by owner request
+
+**Context:** Every PR waited for an explicit owner merge approval even when
+Grok's review found nothing serious. Grok reviews are now requested through
+the `grok` CLI, which rates findings as fix-now (high or critical) or later
+(low or nits).
+
+**Decision:** A Grok review with no high or critical finding is the owner's
+standing approval to merge that PR. High or critical findings are fixed on the
+same branch and reviewed again until a review is clean. Commits that only fix
+low findings, make minor tweaks, update documentation or record project status
+need no re-review. Low findings and nits left unfixed are recorded in TODO.md
+"Deferred review findings" for a later pass.
+The usual closeout, CI, merge and branch cleanup follow. The runner stops and
+asks the owner when the review is missing or its severity unclear, when
+required CI fails, or when the PR needs an owner decision a review cannot
+give, such as a golden exception or a gate.
+
+**Consequences:** Delivery no longer waits on the owner for routine PRs, so
+review quality carries more weight; the owner keeps the holistic phase review
+and can stop or revert any merge. Tags, releases, signing and publishing still
+need explicit approval.
