@@ -1,7 +1,7 @@
 # Agent Session and Platform Handoff
 
-Updated: 2026-10-28, TOOL-002 closeout (PR #19, merged by the owner).
-Source baseline: `main` after the PR #19 merge. Preserve intended source, lock/spec/golden
+Updated: 2026-10-28, CORE-003C closeout (PR #21, approved by the owner).
+Source baseline: `main` after the PR #21 merge. Preserve intended source, lock/spec/golden
 files, docs and state together. Never transfer caches, environments, build
 products, private runtime state or user documents.
 
@@ -28,9 +28,13 @@ in order before any platform phase. Their scope is in
   [PR #19](https://github.com/awesomejt/markdown/pull/19) (D-028). PRs run
   `tools/check.py core`; `main` and manual runs add `core-extended`. Run
   `tools/check.py all` locally before each review request.
-- **Current:** CORE-003C (v2 corpus conformance assertions), the only
-  eligible task. Start its pass from `main`.
-- **Then:** CORE-003D, CORE-005C, CORE-005D and CORE-003E, then
+- **Done:** CORE-003C, v2 corpus conformance assertions,
+  [PR #21](https://github.com/awesomejt/markdown/pull/21). Every corpus check
+  token runs on v1 and v2, with explicit per-intent pairing rules documented
+  in the [conformance contract](specs/parsing/conformance/README.md).
+- **Current:** CORE-003D (bare GFM autolinks), the only eligible task. Start
+  its pass from `main`. The strengthened v2 conformance checks the change.
+- **Then:** CORE-005C, CORE-005D and CORE-003E, then
   the CORE-001 to CORE-006 aggregates. Each host's chain in `desktop-apps` starts after
   CORE-006 (D-027). Do not select platform tasks before then.
 

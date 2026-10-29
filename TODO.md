@@ -46,7 +46,7 @@ core alone.
 
 The shared-core reviews (PR #16) are merged. The current work is the
 [CORE-FIX phase](#core-fix-phase-shared-core-review-follow-ups): DOC-001,
-CORE-002B and TOOL-002 merged in PRs #17 to #19, and CORE-003C is next. Inspect state and `HANDOFF.md` before any pass. Scoped
+CORE-002B, TOOL-002 and CORE-003C merged in PRs #17 to #21, and CORE-003D is next. Inspect state and `HANDOFF.md` before any pass. Scoped
 commits, pushes, PR updates and review comments are authorized; merge
 requires owner authorization; concurrency remains one.
 
