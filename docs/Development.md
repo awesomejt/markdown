@@ -93,8 +93,10 @@ availability are not checked by this bounded tooling parser.
 
 Whitespace checks use `CHECK_BASE...HEAD` in CI with full history, then include
 staged/unstaged tracked changes. A branch's first push has an all-zero base;
-it checks only the commits no other remote branch has, each merge against its
-first parent. The pushed branch is named by `GITHUB_REF_NAME`; when it is
+it checks only the commits no other remote branch has. A merge is checked for
+what it adds beyond Git's automatic merge (`git merge-tree`), plus its
+conflicted paths against the first parent, so inherited lines pass and
+committed conflict markers fail. The pushed branch is named by `GITHUB_REF_NAME`; when it is
 unset or not found, or no other branch exists, the whole tree is checked. Without CHECK_BASE, local/manual runs check the latest commit plus
 staged/unstaged changes. Set `CHECK_BASE=origin/develop` for the full local branch
 range. Untracked files enter the Git whitespace check once staged.

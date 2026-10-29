@@ -131,8 +131,8 @@ class GitChecks(unittest.TestCase):
             with self.subTest(base=base), self.assertRaises(subprocess.CalledProcessError):
                 check_whitespace(base, cwd=self.root)
 
-    def new_branch(self, *, dirty: bool, merge: bool = False):
-        """Push old dirty history to a remote, then a new branch over it."""
+    def remote_main(self):
+        """Push old dirty history to a remote as main, then start review/m1."""
         remote_dir = tempfile.TemporaryDirectory()
         self.addCleanup(remote_dir.cleanup)
         remote = Path(remote_dir.name) / "remote.git"
@@ -142,6 +142,18 @@ class GitChecks(unittest.TestCase):
         self.git("remote", "add", "origin", str(remote))
         self.git("push", "--quiet", "origin", "HEAD:refs/heads/main")
         self.git("switch", "--quiet", "-c", "review/m1")
+
+    def push_review(self):
+        self.git("push", "--quiet", "origin", "HEAD:refs/heads/review/m1")
+        self.git("fetch", "--quiet", "origin")
+
+    def check_review(self):
+        with mock.patch.dict(os.environ, {"GITHUB_REF_NAME": "review/m1"}):
+            check_whitespace("0" * 40, cwd=self.root)
+
+    def new_branch(self, *, dirty: bool, merge: bool = False):
+        """A new branch over old dirty history, optionally ending in a merge."""
+        self.remote_main()
         if merge:
             # A clean side commit, then a merge that resolves to dirty content.
             self.git("switch", "--quiet", "-c", "side", "origin/main")
@@ -155,8 +167,7 @@ class GitChecks(unittest.TestCase):
         else:
             self.write("new.txt", "bad " + "\n" if dirty else "clean\n")
             self.commit()
-        self.git("push", "--quiet", "origin", "HEAD:refs/heads/review/m1")
-        self.git("fetch", "--quiet", "origin")
+        self.push_review()
 
     def test_new_branch_push_checks_only_its_new_commits(self):
         self.new_branch(dirty=False)
@@ -168,6 +179,36 @@ class GitChecks(unittest.TestCase):
         with mock.patch.dict(os.environ, {"GITHUB_REF_NAME": "review/m1"}), \
                 self.assertRaises(subprocess.CalledProcessError):
             check_whitespace("0" * 40, cwd=self.root)
+
+    def test_clean_merge_of_a_pushed_dirty_branch_passes(self):
+        # The develop sync: dirty lines already on a remote branch are inherited.
+        self.remote_main()
+        self.git("switch", "--quiet", "-c", "develop", "origin/main")
+        self.write("dev.md", "hard break  \n")
+        self.commit()
+        self.git("push", "--quiet", "origin", "HEAD:refs/heads/develop")
+        self.git("switch", "--quiet", "review/m1")
+        self.write("fix.txt", "clean\n")
+        self.commit()
+        self.git("merge", "--quiet", "--no-ff", "-m", "sync", "develop")
+        self.push_review()
+        self.check_review()
+
+    def test_committed_conflict_markers_are_rejected(self):
+        self.remote_main()
+        self.git("switch", "--quiet", "-c", "develop", "origin/main")
+        self.write("shared.txt", "develop\n")
+        self.commit()
+        self.git("push", "--quiet", "origin", "HEAD:refs/heads/develop")
+        self.git("switch", "--quiet", "review/m1")
+        self.write("shared.txt", "review\n")
+        self.commit()
+        with self.assertRaises(subprocess.CalledProcessError):
+            self.git("merge", "--quiet", "develop")
+        self.git("commit", "--quiet", "-am", "merge with markers")
+        self.push_review()
+        with self.assertRaises(subprocess.CalledProcessError):
+            self.check_review()
 
     def test_unidentified_pushed_branch_checks_the_whole_tree(self):
         self.new_branch(dirty=False)
