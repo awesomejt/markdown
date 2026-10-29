@@ -2,7 +2,8 @@
 
 Status: frozen at the owner-authorized CORE-005B PR #10 merge (`0bf8eb7`),
 amended by CORE-005C (the [memory guard](#memory-guard-core-005c): a 2 MiB
-default file budget and a node allowance that follows it).
+default file budget and a node allowance that follows it) and CORE-005D (the
+wider [invisible-name flag](#path-validation)).
 Rust module `markdown_core::workspace`
 ([source](../../core/crates/markdown-core/src/workspace/mod.rs)) implements it
 on top of [document find](../search/README.md) and
@@ -365,8 +366,10 @@ covers:
 
 - Path validation for every error kind, including the bidi marks; the size
   and depth bounds; POSIX characters (backslash, colon); and errors that carry
-  no path text. Invisible format characters are flagged, while ZWJ and ZWNJ
-  names are not.
+  no path text. Invisible format characters and blank default-ignorable
+  characters (Hangul fillers, U+2800) are flagged without being rewritten,
+  while ZWJ, ZWNJ and display-modifier names are not (CORE-005D, with FFI
+  parity).
 - Classification, including case, a leading dot and double extensions, and
   hidden detection.
 - Name ranks, order, highlight ranges, filters, case sensitivity, matches
