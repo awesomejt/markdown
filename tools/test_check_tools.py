@@ -1,8 +1,10 @@
 """Exercise real Git changes and common inline-link edge cases from PR review."""
+import os
 from pathlib import Path
 import subprocess
 import tempfile
 import unittest
+from unittest import mock
 
 from check_git import check_whitespace
 from check_links import check_paths, local_targets
@@ -128,6 +130,33 @@ class GitChecks(unittest.TestCase):
         for base in ("0" * 40, ""):
             with self.subTest(base=base), self.assertRaises(subprocess.CalledProcessError):
                 check_whitespace(base, cwd=self.root)
+
+    def new_branch(self, *, dirty: bool):
+        """Push old dirty history to a remote, then a new branch over it."""
+        remote_dir = tempfile.TemporaryDirectory()
+        self.addCleanup(remote_dir.cleanup)
+        remote = Path(remote_dir.name) / "remote.git"
+        subprocess.check_output(["git", "init", "--quiet", "--bare", str(remote)])
+        self.write("old.md", "hard break  \n")
+        self.commit()
+        self.git("remote", "add", "origin", str(remote))
+        self.git("push", "--quiet", "origin", "HEAD:refs/heads/main")
+        self.git("switch", "--quiet", "-c", "review/m1")
+        self.write("new.txt", "bad " + "\n" if dirty else "clean\n")
+        self.commit()
+        self.git("push", "--quiet", "origin", "HEAD:refs/heads/review/m1")
+        self.git("fetch", "--quiet", "origin")
+
+    def test_new_branch_push_checks_only_its_new_commits(self):
+        self.new_branch(dirty=False)
+        with mock.patch.dict(os.environ, {"GITHUB_REF_NAME": "review/m1"}):
+            check_whitespace("0" * 40, cwd=self.root)
+
+    def test_new_branch_push_rejects_a_dirty_new_commit(self):
+        self.new_branch(dirty=True)
+        with mock.patch.dict(os.environ, {"GITHUB_REF_NAME": "review/m1"}), \
+                self.assertRaises(subprocess.CalledProcessError):
+            check_whitespace("0" * 40, cwd=self.root)
 
 
 class LinkChecks(unittest.TestCase):
