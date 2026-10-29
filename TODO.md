@@ -419,7 +419,15 @@ Low findings and nits from Grok reviews that were merged under D-029 without
 being fixed. A later pass fixes them or records why not; remove each entry
 when it is resolved.
 
-None yet.
+- **TOOL-003, PR #23, Grok review 5692910610 (owner-approved merge).**
+  Both are false failures of the first-push whitespace check in
+  `tools/check_git.py`, outside default settings:
+  - With `color.ui=always` or `color.diff=always`, the `+` content lines
+    start with an ANSI code and can be parsed as problem headers. Run the
+    diffs with `--no-color`.
+  - Output is decoded as strict UTF-8, so an inherited non-UTF-8 problem line
+    raises `UnicodeDecodeError`. Read bytes, or decode with
+    `errors="surrogateescape"`.
 
 ## Dependency summary
 

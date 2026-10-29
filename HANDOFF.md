@@ -35,6 +35,9 @@ in order before any platform phase. Their scope is in
 - **Done:** PR #22 (`grok` CLI reviews, D-029 review-gated merges) and the
   D-030 milestone workflow. Task PRs now target `develop`; `main` takes only
   owner-approved milestone reviews.
+- **Done:** TOOL-003, first-push whitespace check,
+  [PR #23](https://github.com/awesomejt/markdown/pull/23). Two deferred
+  findings are in TODO.md.
 - **Current:** CORE-003D (bare GFM autolinks), the only eligible task. Start
   its pass on a branch from `develop`, and target its PR at `develop`. The
   strengthened v2 conformance checks the change.
