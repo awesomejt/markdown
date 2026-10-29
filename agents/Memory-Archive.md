@@ -578,6 +578,62 @@ shared-core and capability work still wait for Windows evidence.
 From HANDOFF.md, newest first. Each "Former resume point" was the live
 handoff at its time and is superseded.
 
+### Former resume point — CORE-FIX phase, through the milestone review
+
+PR #16 merged the three shared-core reviews
+([docs/reviews/](../docs/reviews/README.md)). The owner accepted D-025, D-026
+and D-027 ([Decisions](Decisions.md)). CORE-FIX runs seven shared tasks
+in order before any platform phase. Their scope is in
+[TODO.md](../TODO.md#core-fix-phase-shared-core-review-follow-ups).
+
+- **Done:** DOC-001, the agent-facing docs cleanup,
+  [PR #17](https://github.com/awesomejt/markdown/pull/17). Its Grok review
+  added CORE-003E (front-matter invisible-character parity), which the owner
+  placed after CORE-005D as a separate task.
+- **Done:** CORE-002B, import-policy parity and FFI host guidance,
+  [PR #18](https://github.com/awesomejt/markdown/pull/18). V1 and v2 imports
+  now re-check intents and metadata text against the producer's policy. One
+  hand-written v1 golden intent became denied, with owner approval.
+- **Done:** TOOL-002, CI speed-up,
+  [PR #19](https://github.com/awesomejt/markdown/pull/19) (D-028). PRs run
+  `tools/check.py core`; `main` and manual runs add `core-extended`. Run
+  `tools/check.py all` locally before each review request.
+- **Done:** CORE-003C, v2 corpus conformance assertions,
+  [PR #21](https://github.com/awesomejt/markdown/pull/21). Every corpus check
+  token runs on v1 and v2, with explicit per-intent pairing rules documented
+  in the [conformance contract](../specs/parsing/conformance/README.md).
+- **Done:** PR #22 (`grok` CLI reviews, D-029 review-gated merges) and the
+  D-030 milestone workflow. Task PRs now target `develop`; `main` takes only
+  owner-approved milestone reviews.
+- **Done:** TOOL-003, first-push whitespace check,
+  [PR #23](https://github.com/awesomejt/markdown/pull/23). Two deferred
+  findings are in TODO.md.
+- **Done:** CORE-003D, bare GFM autolinks (D-031),
+  [PR #24](https://github.com/awesomejt/markdown/pull/24), merged into
+  `develop` after the three-review cap with the owner's approval.
+- **Done:** CORE-005C, the content-search memory guard,
+  [PR #25](https://github.com/awesomejt/markdown/pull/25), merged into
+  `develop` on a clean Grok review (D-029). The default file budget is
+  2 MiB, and the node allowance follows it; see the
+  [workspace-search spec](../specs/workspace-search/README.md#memory-guard-core-005c).
+- **Done:** CORE-005D, wider invisible-filename warnings,
+  [PR #26](https://github.com/awesomejt/markdown/pull/26), merged into
+  `develop` on a clean Grok review (D-029). File names now flag Cf plus
+  Default_Ignorable and U+2800, except ZWJ/ZWNJ and display modifiers; the
+  shared tables live in `metadata.rs`.
+- **Done:** CORE-003E, front-matter invisible-character parity,
+  [PR #27](https://github.com/awesomejt/markdown/pull/27), merged into
+  `develop` on a clean Grok review (D-029). Front-matter text now rejects
+  the blank default-ignorable values and U+2800 too, keeping the display
+  modifiers (D-032). `metadata::hidden_character` is the one shared guard.
+- **Current:** CORE-FIX is complete, so the first milestone review is due
+  (D-030): confirm `develop` is green with no task PR waiting, cut
+  `review/core-fix` from it, and open the review PR into `main` with the
+  review packet. Only the owner merges it. Work continues on `develop`
+  meanwhile with CORE-001, the first CORE-001 to CORE-006 aggregate. Each
+  host's chain in `desktop-apps` starts after CORE-006 (D-027). Do not select
+  platform tasks before then.
+
 ### Former resume point — CORE-FIX phase, starting with DOC-001
 
 PR #16 merged after owner approval. It holds three shared-core reviews (Claude, Codex,
