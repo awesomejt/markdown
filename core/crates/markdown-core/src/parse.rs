@@ -100,6 +100,9 @@ struct Builder<'a> {
     /// Contiguous exact-source text events held until their run ends, so a bare
     /// autolink can span them (CORE-003D).
     pending: Vec<Range<usize>>,
+    /// `$`-split refunds credited while text is held, so the event budget sees
+    /// them at once; replaced by the actual merges when the run is flushed.
+    pending_refunds: usize,
 }
 
 /// Produce a validated immutable snapshot from exact UTF-8 bytes, with no I/O.
@@ -259,6 +262,7 @@ fn build<'a, C: Checkpoint>(
         offset_conflict: false,
         merged_events: 0,
         pending: Vec::new(),
+        pending_refunds: 0,
         doc: DocumentInput {
             model_version: MODEL_VERSION,
             document_id,
@@ -785,6 +789,8 @@ impl Builder<'_> {
             return Ok(());
         }
         let pieces = std::mem::take(&mut self.pending);
+        // Emitting the run counts the merges that actually happen.
+        self.merged_events -= std::mem::take(&mut self.pending_refunds);
         let source = self.source;
         let (start, end) = (pieces[0].start, pieces[pieces.len() - 1].end);
         let before = source[..start].chars().next_back();
@@ -895,6 +901,14 @@ impl Builder<'_> {
             {
                 if self.pending.last().is_some_and(|p| p.end != range.start) {
                     self.flush_text()?;
+                }
+                let bytes = self.source.as_bytes();
+                if !self.pending.is_empty()
+                    && (bytes.get(range.start) == Some(&b'$')
+                        || range.start.checked_sub(1).and_then(|i| bytes.get(i)) == Some(&b'$'))
+                {
+                    self.pending_refunds += 1;
+                    self.merged_events += 1;
                 }
                 self.pending.push(range);
                 return Ok(());

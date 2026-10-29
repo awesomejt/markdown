@@ -309,3 +309,18 @@ fn link_counts_stay_within_the_node_and_text_limits() {
         Err(ParseError::NodeLimit)
     ));
 }
+
+#[test]
+fn dollar_refunds_apply_while_text_is_buffered() {
+    // One long paragraph: every `$` splits a text event, and the splits are
+    // refunded as before CORE-003D even though the run is held (review 3).
+    let units = 20_000;
+    let source = "Costs $5 and $10, or $7.50. ".repeat(units);
+    let limits = ParseLimits {
+        max_events: units * 2,
+        ..ParseLimits::default()
+    };
+    let (di, ri) = ids();
+    let d = parse_markdown(&source, di, ri, limits).unwrap_or_else(|e| panic!("{e:?}"));
+    assert!(d.input().links.is_empty());
+}

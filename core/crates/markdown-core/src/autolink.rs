@@ -121,7 +121,8 @@ fn email(run: &str, at: usize, floor: usize) -> Scan {
         return Err(at + 1);
     }
     // Domain: alphanumerics, `-` and `_`, and `.` only before an alphanumeric.
-    // A second `@` fails the candidate, so scans never pass the next `@`.
+    // A second `@` fails the candidate, so scans never pass the next `@`. A
+    // failure resumes after this `@`, so a scheme inside the scan is still tried.
     let mut end = at + 1;
     let mut dots = 0;
     while end < b.len() {
@@ -132,14 +133,14 @@ fn email(run: &str, at: usize, floor: usize) -> Scan {
             dots += 1;
             end += 1;
         } else if c == b'@' {
-            return Err(end);
+            return Err(at + 1);
         } else {
             break;
         }
     }
     let last = b[end - 1];
     if end < at + 2 || dots == 0 || !(last.is_ascii_alphabetic() || last == b'.') {
-        return Err(end.max(at + 1));
+        return Err(at + 1);
     }
     let end = delimit(run, start, end);
     if end <= at + 1 {
@@ -305,6 +306,9 @@ mod tests {
             ["http://good.example/x"]
         );
         assert_eq!(links("www.a_.x-https://b.example"), ["https://b.example"]);
+        // A failed email does not hide a scheme after its `@` (PR #24 review 3).
+        assert_eq!(links("x@http://example.com"), ["http://example.com"]);
+        assert_eq!(links("a@b@https://c.example"), ["https://c.example"]);
         assert!(links("www.").is_empty());
         assert!(links("awww.example.com").is_empty(), "www needs a boundary");
         assert_eq!(links("*www.example.com*"), ["www.example.com"]);
