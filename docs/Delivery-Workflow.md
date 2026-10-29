@@ -62,7 +62,8 @@ an explicit migration plan and affected-host validation.
    ```sh
    grok --always-approve -p "In GitHub, PR #$PR is ready for review in the \
    Markdown repository. The current folder is the local copy of the \
-   repository. Put the contents of the review in the comments. Provide a \
+   repository. Put the contents of the review in the comments, and submit \
+   the review (do not leave it pending). Provide a \
    summary of the review that includes if the findings are significant enough \
    to fix now (high/critical) or later - nits or low findings."
    ```
@@ -141,7 +142,8 @@ no high or critical finding (step 8), the closeout travels in that PR, so
    step 7 does not exempt needs a new review, and with it a new approval.
 3. **Merge and delete the remote branch.** Wait for the required CI on the new
    head, then merge with a merge commit and delete the remote branch. Verify
-   that the PR head that merged is the approved head plus the closeout commit.
+   that the PR head that merged is the approved head plus only the closeout
+   commit and commits that step 7 exempts from review.
    If CI fails or the merge conflicts, stop and report instead of forcing it.
 4. **Return the local repository to `main`.** Switch to `main`, pull the latest
    from GitHub with a fast-forward, and delete the old local branch. Confirm a
