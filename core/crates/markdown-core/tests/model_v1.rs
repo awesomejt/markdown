@@ -550,7 +550,39 @@ fn imported_metadata_text_keeps_the_front_matter_display_guard() {
         .properties
         .insert("x\u{200b}".into(), MetadataValue::Null {});
     assert_eq!(imported(&bad, s).unwrap_err().code, "metadata_key");
-    // Variation selectors and CGJ stay allowed in display text.
+    // Blank default-ignorable values that are not Cf (CORE-003E, D-032).
+    for c in [
+        '\u{115f}',
+        '\u{1160}',
+        '\u{17b4}',
+        '\u{2065}',
+        '\u{2800}',
+        '\u{3164}',
+        '\u{ffa0}',
+        '\u{e0002}',
+    ] {
+        let blank = format!("a{c}b");
+        let mut bad = d.clone();
+        bad.metadata.title = Some(blank.clone());
+        assert_eq!(imported(&bad, s).unwrap_err().code, "metadata_text");
+        let mut bad = d.clone();
+        bad.metadata.properties.insert(
+            "tags".into(),
+            MetadataValue::Strings {
+                value: vec!["a".into(), blank],
+            },
+        );
+        assert_eq!(imported(&bad, s).unwrap_err().code, "metadata_text");
+    }
+    // Variation selectors, Mongolian FVS and CGJ stay allowed in display text.
+    let mut allowed = d.clone();
+    allowed.metadata.properties.insert(
+        "tags".into(),
+        MetadataValue::Strings {
+            value: vec!["\u{1820}\u{180b}".into(), "\u{845b}\u{e0100}".into()],
+        },
+    );
+    assert!(imported(&allowed, s).is_ok());
     let mut allowed = d;
     allowed.metadata.title = Some("\u{2764}\u{fe0f} a\u{34f}b".into());
     assert!(imported(&allowed, s).is_ok());

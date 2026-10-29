@@ -30,7 +30,11 @@ performed. A nonempty value must be separated from the colon by a space.
 Blank lines and comment lines are ignored. Literal control characters, including
 tabs, are unsupported. Decoded or literal control characters and Unicode 16.0
 General_Category=Cf format characters are rejected in all string values, including
-list items. This blocks bidi/zero-width spoofing while keeping ordinary Unicode
+list items. Since CORE-003E (D-032) so are the blank default-ignorable values
+that are not Cf: the Hangul fillers U+115F, U+1160, U+3164 and U+FFA0, the
+Khmer inherent vowels U+17B4 and U+17B5, U+2800 BRAILLE PATTERN BLANK and the
+unassigned default-ignorable code points. A title made of them would show as
+blank. This blocks bidi/zero-width spoofing while keeping ordinary Unicode
 letters/marks/emoji. It also excludes legitimate format-dependent text such as
 joiner sequences; unsupported values retain the source rather than being stripped.
 
@@ -92,11 +96,14 @@ The pinned format-character facts come from
 checked against Python's Unicode 16.0 category data. The small static predicate
 requires no runtime download or new dependency. The data notice is retained in
 source and [Unicode License V3](../licenses/Unicode-3.0.txt); updating Unicode
-categories requires deliberate review. This is a Cf/control guard, not a full
-Unicode confusable or grapheme validator. Metadata deliberately keeps other
-default-ignorable values: variation selectors, Mongolian FVS and CGJ are needed
-for emoji, Mongolian and Hebrew display text. [URI targets](URI-Policy.md) are
-stricter because they are actionable.
+categories requires deliberate review. The blank values use the Unicode 16.0
+Default_Ignorable_Code_Point table plus U+2800 that
+[URI targets](URI-Policy.md) and workspace file names share, with the same
+provenance. This is a control/format/blank guard, not a full Unicode
+confusable or grapheme validator. Metadata deliberately keeps the
+default-ignorable display modifiers: variation selectors, Mongolian FVS 1-4 and
+CGJ are needed for emoji, Mongolian and Hebrew display text. URI targets are
+stricter and deny those too, because they are actionable.
 
 ## Atomic failure and diagnostics
 

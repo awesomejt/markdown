@@ -660,7 +660,7 @@ fn imported_v2_metadata_text_keeps_the_front_matter_display_guard() {
     let mut bad = d.clone();
     bad.metadata.title = Some(rlo.into());
     assert_eq!(wire(&bad).unwrap_err().code, "metadata_text");
-    let mut bad = d;
+    let mut bad = d.clone();
     bad.metadata
         .properties
         .insert("title".into(), MetadataValue::String { value: rlo.into() });
@@ -668,4 +668,37 @@ fn imported_v2_metadata_text_keeps_the_front_matter_display_guard() {
     // The producer itself never emits that title.
     let source = format!("---\ntitle: {rlo}\n---\n[go](safe.md)\n");
     assert_eq!(parse(&source).input().metadata.title, None);
+    // Blank default-ignorable values that are not Cf (CORE-003E, D-032), in
+    // the producer and on import; display modifiers stay allowed.
+    for c in [
+        '\u{115f}',
+        '\u{17b5}',
+        '\u{2800}',
+        '\u{3164}',
+        '\u{ffa0}',
+        '\u{e0fff}',
+    ] {
+        let blank = format!("a{c}b");
+        let mut bad = d.clone();
+        bad.metadata.title = Some(blank.clone());
+        assert_eq!(wire(&bad).unwrap_err().code, "metadata_text");
+        let mut bad = d.clone();
+        bad.metadata.properties.insert(
+            "tags".into(),
+            MetadataValue::Strings {
+                value: vec![blank.clone()],
+            },
+        );
+        assert_eq!(wire(&bad).unwrap_err().code, "metadata_text");
+        let source = format!("---\ntitle: {blank}\n---\n[go](safe.md)\n");
+        let parsed = parse(&source);
+        assert_eq!(parsed.input().metadata.title, None);
+        assert!(parsed.input().metadata.properties.is_empty());
+    }
+    let shown = "\u{2764}\u{fe0f} a\u{34f}b \u{1820}\u{180b}";
+    let source = format!("---\ntitle: {shown}\n---\n[go](safe.md)\n");
+    let parsed = parse(&source).into_input();
+    assert_eq!(parsed.metadata.title.as_deref(), Some(shown));
+    let json = serde_json::to_vec(&parsed).unwrap();
+    assert!(v2::Document::from_json(&json, &source, ModelLimits::default()).is_ok());
 }
