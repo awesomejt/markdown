@@ -338,6 +338,13 @@ validates arguments, maps zero limits to defaults and flattens results.
 `max_total_bytes`, `max_file_bytes`, `max_matches_per_file` and
 `max_total_matches`. `snippet_context` is used as given, because zero context
 is meaningful; `MD_CONTENT_DEFAULT_SNIPPET_CONTEXT` (40) is the default.
+`max_file_bytes` defaults to `MD_CONTENT_DEFAULT_MAX_FILE_BYTES` (2 MiB) and
+accepts up to `MD_CONTENT_MAX_FILE_BYTES` (8 MiB). The parse's node and event
+allowance follows it, as the
+[memory guard](../workspace-search/README.md#memory-guard-core-005c)
+describes. CORE-005C changed only that zero default and the allowance, and
+added the header constant. No struct, function or existing constant changed
+(D-022).
 Out-of-range limits, an empty or whitespace-only query (an error here, unlike
 name search, because a workspace pass would otherwise charge budgets for
 files it cannot match) and an invalid path are `MD_ERR_INVALID_ARGUMENT`.
@@ -388,7 +395,10 @@ time and memory are bounded by the 64 MiB path total. A content call holds the f
 `max_matches_per_file` records) and their serialized anchors (up to 1 KiB
 each) before writing, about 10 MiB at the 10,000-match ceiling. There is no
 cancel handle. Each content call is bounded by `max_file_bytes`, and hosts
-cancel by not making the next call.
+cancel by not making the next call. Under the default limits one call's
+counted parse peak stays under 420 MiB for the hostile inputs measured, and
+the 8 MiB maximum can reach about 1,152 MiB. Hosts cap how many calls run at
+once.
 
 ## Host guidance for search calls (CORE-002B)
 
@@ -444,7 +454,11 @@ in practice.
   for four flag sets and three snippet/per-file settings, comparing every
   hit field, snippet byte, anchor byte and the progress after each file.
   Admit-then-search and search-only runs match the Rust sequence through
-  every skip reason and every stop. Hits open into v1 and v2 session
+  every skip reason and every stop. The CORE-005C defaults match too: zero
+  selects the 2 MiB file budget, a hostile storm and an over-allowance table
+  are `PARSE_FAILED`, and the 8 MiB budget searches that table. The C smoke
+  checks that zero skips a file one byte over
+  `MD_CONTENT_DEFAULT_MAX_FILE_BYTES` before reading. Hits open into v1 and v2 session
   snapshots of the same bytes, where the hashes are equal and anchors resolve
   exactly; units index the v1 view. Further tests cover sizing from the
   limits, each array being too small with progress unchanged, every argument

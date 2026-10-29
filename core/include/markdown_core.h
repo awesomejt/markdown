@@ -577,6 +577,7 @@ md_status md_snapshot_read_stats(md_snapshot snapshot, const md_read_options *op
 #define MD_CONTENT_MAX_FILES 1000000u
 #define MD_CONTENT_DEFAULT_MAX_TOTAL_BYTES 268435456u
 #define MD_CONTENT_MAX_TOTAL_BYTES 17179869184u
+#define MD_CONTENT_DEFAULT_MAX_FILE_BYTES 2097152u
 #define MD_CONTENT_MAX_FILE_BYTES 8388608u
 #define MD_CONTENT_DEFAULT_MAX_MATCHES_PER_FILE 100u
 #define MD_CONTENT_MAX_MATCHES_PER_FILE 10000u
@@ -684,7 +685,7 @@ typedef struct md_content_options {
     uint32_t flags;                  /* MD_CONTENT_*; unknown bits are rejected */
     uint64_t max_files;              /* files read, 1..MD_CONTENT_MAX_FILES */
     uint64_t max_total_bytes;        /* bytes read, 1..MD_CONTENT_MAX_TOTAL_BYTES */
-    uint32_t max_file_bytes;         /* larger files are skipped; default and max 8 MiB */
+    uint32_t max_file_bytes;         /* larger files are skipped; default 2 MiB, max 8 MiB */
     uint32_t max_matches_per_file;
     uint32_t max_total_matches;
     uint32_t snippet_context;        /* characters on each side of a match */
