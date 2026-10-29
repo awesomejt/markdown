@@ -1,6 +1,9 @@
 # Workspace search primitives
 
-Status: frozen at the owner-authorized CORE-005B PR #10 merge (`0bf8eb7`).
+Status: frozen at the owner-authorized CORE-005B PR #10 merge (`0bf8eb7`),
+amended by CORE-005C (the [memory guard](#memory-guard-core-005c): a 2 MiB
+default file budget and a node allowance that follows it) and CORE-005D (the
+wider [invisible-name flag](#path-validation)).
 Rust module `markdown_core::workspace`
 ([source](../../core/crates/markdown-core/src/workspace/mod.rs)) implements it
 on top of [document find](../search/README.md) and
@@ -53,13 +56,27 @@ ordinary characters. Windows adapters convert `\` separators to `/` before
 building a path. An adapter skips entries it cannot represent. A rejected name
 is never shown.
 
-Other invisible format characters are accepted, because rejecting them would
-hide real files, but `WorkspacePath::has_invisible()` reports them. It uses the
-Unicode 16.0 General_Category=Cf table shared with
-[front matter](../../docs/Front-Matter.md), except ZWNJ and ZWJ, which emoji,
-Persian and Indic names need. Examples are U+200B ZWSP, U+FEFF, U+2060 and the
-soft hyphen. Such a name can display exactly like another name, so the UI
-should mark it.
+Other invisible characters are accepted, because rejecting them would hide
+real files, but `WorkspacePath::has_invisible()` reports them. A name is never
+rejected or rewritten for them, and keeps its exact text and opaque entry ID.
+The rule flags:
+
+- Unicode 16.0 General_Category=Cf, the table shared with
+  [front matter](../../docs/Front-Matter.md): for example U+200B ZWSP,
+  U+FEFF, U+2060 and the soft hyphen.
+- Unicode 16.0 Default_Ignorable_Code_Point plus U+2800 BRAILLE PATTERN BLANK,
+  the table shared with [v2 URI targets](../../docs/URI-Policy.md). This adds
+  blank characters that are not Cf: the Hangul fillers U+115F, U+1160, U+3164
+  and U+FFA0, U+2800, the Khmer inherent vowels U+17B4 and U+17B5, and
+  unassigned default-ignorable code points.
+
+It exempts ZWNJ and ZWJ, which emoji, Persian and Indic names need, and the
+display modifiers that front matter also keeps: CGJ (U+034F), Mongolian FVS
+1–4 (U+180B–180D, U+180F) and the variation selectors (U+FE00–FE0F,
+U+E0100–E01EF), so `❤️.md` is not flagged. Apart from ZWNJ and ZWJ this is
+the rule front-matter text rejects (D-032). Such a name can display exactly
+like another name, so the UI should mark it. `MD_PATH_INVISIBLE` reports the
+same rule through the C ABI.
 
 ### Shared entry filter
 
@@ -137,10 +154,12 @@ the shape CORE-005B2 needs under [D-022](../../agents/Decisions.md).
 2. `Skipped(TooLarge)` when the file has more than `max_file_bytes`.
 3. Budgets (below) may return `Stopped(reason)`.
 4. `Skipped(InvalidUtf8)` for invalid UTF-8. A BOM is handled by the parser.
-5. Bounded v1 parse with the default `ParseLimits`, with `max_source_bytes`
-   set to `max_file_bytes`. A `ParseError` (nesting, node, event or text
-   limit) is `Skipped(ParseFailed)`, because a document the reader cannot open
-   is not searched. Cancellation is honoured.
+5. Bounded v1 parse (see [text index](#a-text-index-independent-of-the-model-version)).
+   `max_source_bytes` is `max_file_bytes`, and the node and event limits
+   follow it ([memory guard](#memory-guard-core-005c)). Depth and copied
+   text keep the reader's defaults. A `ParseError` (nesting, node, event or
+   text limit) is `Skipped(ParseFailed)`: a file the bounded parse cannot
+   hold is not searched. Cancellation is honoured.
 6. [Document find](../search/README.md) with the query, `case_sensitive`,
    `whole_word` and `max_matches = min(max_matches_per_file, remaining total)`.
    Matching, visible text, Unicode rules and source mapping are exactly those
@@ -210,7 +229,7 @@ as U+FFFD. Format characters are dropped, as find skips them.
 | --- | --- | --- | --- |
 | `max_files` | 10,000 | 1..=1,000,000 | `Stop(Files)` at the next admission |
 | `max_total_bytes` | 256 MiB | 1..=16 GiB | `Stop(Bytes)` when a file would exceed it |
-| `max_file_bytes` | 8 MiB | 1..=8 MiB (reader parse ceiling) | `Skip(TooLarge)`; the search continues |
+| `max_file_bytes` | 2 MiB | 1..=8 MiB (reader parse ceiling) | `Skip(TooLarge)`; the search continues |
 | `max_matches_per_file` | 100 | 1..=10,000 | File `truncated`; counted in `files_truncated` |
 | `max_total_matches` | 2,000 | 1..=100,000 | `Stop(Matches)` once reached |
 | `snippet_context` | 40 chars | 0..=200 | |
@@ -233,7 +252,82 @@ cannot overflow (CORE-005B2).
 `max_total_matches` hits, each up to a snippet (≤ 656 characters) plus an
 anchor (about 200 bytes). With defaults, that is about 2,000 × 3 KiB. Per-call
 working memory is the file's bytes (copied once into the snapshot source),
-its bounded parse model and find's O(query) scanner.
+its bounded parse model and find's O(query) scanner. The
+[memory guard](#memory-guard-core-005c) bounds the parse.
+
+### Memory guard (CORE-005C)
+
+The parse dominates a call's working memory, and its peak depends on the
+file's structure, not only its size. Two terms set it. The upstream
+pulldown-cmark first pass builds one tree item per block and inline token
+before the model builder sees an event, so the node limit cannot stop it. Its
+growth peaks at up to 144 bytes per source byte when nearly every byte is a
+token. The model then costs a few hundred bytes per node. At the reader's
+8 MiB ceiling and 1,000,000 nodes, one hostile file peaks at about 1,152 MiB
+([Parser-Budgets.md](../../docs/Parser-Budgets.md)).
+
+Content search therefore bounds both terms:
+
+- **File budget.** `max_file_bytes` defaults to 2 MiB, which bounds the
+  upstream term to 288 MiB.
+- **Node allowance.** The parse allows `max_file_bytes / 4` nodes, at least
+  65,536 and at most the reader's 1,000,000, and twice as many events (the
+  reader's ratio). The 2 MiB default allows 524,288 nodes and 1,048,576
+  events. A larger budget raises the allowance, and the 8 MiB maximum
+  restores the reader's limits exactly. The 65,536 floor keeps small file
+  budgets from rejecting small dense files.
+
+A file over the allowance is `Skipped(ParseFailed)`, which every host and the
+C ABI already count. A new skip reason would change the ABI's progress
+struct, which D-022 forbids. Explicit caller limits are unchanged: a host may
+still choose up to 8 MiB per file and accept the reader's cost.
+
+**Measured bound.** `tests/content_budgets.rs` counts the live-heap peak of
+one `search` call under the default limits. Ten hostile constructs filled to
+2 MiB peak between 207.7 and 334.4 MiB; repeated inline math (`$a$`) is the
+highest. Each is `ParseFailed` and is charged to the file and byte budgets.
+The budget is 420 MiB, about 1.25 times that. The same constructs peak at up
+to about 460 MiB at 2 MiB with the reader's node limit. The counted sizes are
+the same in debug and release on 64-bit hosts. This bounds one call, not the
+application: hosts that search in parallel multiply it, so they cap
+concurrency, and each platform's 001B measures its own resident cost.
+
+**No false positives on the measured documents.** At the default budget,
+these are searched in full: the prose profile and the delimiter-storm
+profile, a data table, a changelog, a checklist and a link list, all filled
+to 2 MiB. Their peaks are 71 to 176 MiB. The repository's own documents reach
+at most about 127,000 nodes per MiB, and the generated changelog, the densest
+legitimate input measured, about 255,000. The allowance is 262,144 per MiB
+at the full budget, so headroom is small only for files that are near 2 MiB
+and that dense.
+
+**Known false positives.** Narrow tables (about 375,000 nodes per MiB, such
+as two short columns) over about 1.4 MiB exceed the allowance. The reader
+opens them, and a host that passes the 8 MiB budget searches them. The UI
+should report `ParseFailed` skips as files too complex to search, not as
+broken files.
+
+**Why no delimiter-density check.** The cost follows tokens and nodes, not
+emphasis delimiters. Soft breaks, list items, headings, table cells, links
+and autolinks each reach about 250 to 400 MiB at 2 MiB under the reader's
+limits, as delimiter storms do. A byte-class heuristic would either miss those or
+re-implement the parser's own counting. The parser's node and event limits
+count exactly and stop early. The remaining upstream term is bounded by the
+file budget.
+
+### A text index independent of the model version
+
+Content search is a text index. It always parses with v1, whatever model
+the host's sessions request. This is deliberate (owner decision on review G4,
+2026-10-28). Find's visible text, and so every match and source range, is
+the same under v1 and v2 (the [find](../search/README.md) parity tests).
+V2 adds link, resource and URI-target semantics, capabilities and
+diagnostics, which search neither uses nor reports, and its parse is never
+cheaper. Hits carry `source` ranges and anchors that resolve against a
+snapshot of either model. Richer semantics come from the document session
+when the user opens a hit. `unit` is a v1 node index,
+so v2 hosts navigate by `source` or `anchor`
+([C ABI](../ffi/README.md#workspace-search-core-005b2)).
 
 ### Cancellation
 
@@ -273,8 +367,10 @@ covers:
 
 - Path validation for every error kind, including the bidi marks; the size
   and depth bounds; POSIX characters (backslash, colon); and errors that carry
-  no path text. Invisible format characters are flagged, while ZWJ and ZWNJ
-  names are not.
+  no path text. Invisible format characters and blank default-ignorable
+  characters (Hangul fillers, U+2800) are flagged without being rewritten,
+  while ZWJ, ZWNJ and display-modifier names are not (CORE-005D, with FFI
+  parity).
 - Classification, including case, a leading dot and double extensions, and
   hidden detection.
 - Name ranks, order, highlight ranges, filters, case sensitivity, matches
@@ -296,6 +392,13 @@ covers:
   the PR #10 review probe.
 - Pre-cancelled and concurrent cancellation, with progress left unchanged.
 - A deterministic repeated run over the corpus as a workspace.
+- The CORE-005C memory guard (`tests/content_budgets.rs`, its own test
+  binary with a counting allocator): hostile constructs within the heap
+  budget and with their accounting, legitimate dense documents searched at
+  the default budget, the TooLarge skip of a 5 MiB file and its search at
+  the largest budget, the narrow-table false positive at the default
+  allowance and the node floor for small budgets. The C ABI tests check the
+  same defaults and outcomes against the Rust API.
 - 4,096 deterministic generated markup-heavy inputs (300,000 run locally on
   2026-10-28) checking find parity and snippet invariants. Set
   `WORKSPACE_CASES` for more.
@@ -307,6 +410,7 @@ Name search over 100,000 paths of about 28 bytes took 13 ms. A 5 MiB file of the
 same dense prose exceeded the then 250,000-node parse ceiling and was skipped
 as `ParseFailed`. CORE-003B4 raised the default to 1,000,000 nodes (D-024) and
 measured the parser in [Parser-Budgets.md](../../docs/Parser-Budgets.md).
+Under CORE-005C defaults, such a file is now `TooLarge`.
 Workspace throughput budgets belong to the native 002C phases.
 
 ## Decided follow-up and open proposals

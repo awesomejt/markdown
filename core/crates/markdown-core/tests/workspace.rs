@@ -43,6 +43,13 @@ fn md(id: u64) -> WorkspaceEntry {
 fn query(text: &str) -> ContentQuery {
     ContentQuery::new(text, ContentOptions::default()).unwrap()
 }
+/// The reader's parse ceiling, which callers may choose over the default.
+fn largest_file() -> ContentLimits {
+    ContentLimits {
+        max_file_bytes: MAX_FILE_BYTES,
+        ..ContentLimits::default()
+    }
+}
 fn with_limits(text: &str, limits: ContentLimits) -> ContentQuery {
     ContentQuery::new(
         text,
@@ -174,16 +181,32 @@ fn invisible_format_characters_are_flagged_not_rejected() {
         "a\u{FEFF}.md",
         "a\u{2060}b.md",
         "soft\u{AD}hyphen.md",
+        // Blank default-ignorable characters that are not Cf.
+        "\u{115F}.md",
+        "a\u{1160}.md",
+        "dir\u{3164}/a.md",
+        "a\u{FFA0}.md",
+        "braille\u{2800}blank.md",
+        "khmer\u{17B4}.md",
+        "a\u{FFF0}.md",
+        "a\u{E0080}.md",
     ] {
         let path = WorkspacePath::new(invisible).unwrap();
         assert!(path.has_invisible(), "{invisible:?}");
+        assert_eq!(path.as_str(), invisible, "never rewritten");
     }
-    // ZWJ emoji and ZWNJ (Persian, Indic) names are ordinary.
+    // ZWJ emoji, ZWNJ (Persian, Indic) and display modifiers are ordinary.
     for visible in [
         "emoji/👩\u{200D}💻.md",
         "\u{645}\u{6CC}\u{200C}\u{62E}\u{648}\u{627}\u{647}\u{645}.md",
         "plain.md",
         "Cafe\u{301}.md",
+        "love\u{2764}\u{FE0F}.md",
+        "\u{845B}\u{E0100}.md",
+        "\u{1820}\u{180B}.md",
+        "\u{5D0}\u{5B8}\u{34F}\u{5B7}.md",
+        "\u{1100}\u{1161}.md",
+        "\u{2801}.md",
     ] {
         assert!(
             !WorkspacePath::new(visible).unwrap().has_invisible(),
@@ -593,13 +616,15 @@ fn snippets_handle_dense_overlapping_and_clipped_matches() {
     assert!(s.trailing_more);
     assert!(s.text.starts_with("lead x"));
 
-    // Snippets stay bounded inside one very large paragraph.
+    // Snippets stay bounded inside one very large paragraph, above the
+    // default file budget.
     let big = format!(
         "{}needle{}",
         "word ".repeat(400_000),
         " tail".repeat(400_000)
     );
-    let found = one(&big, "needle");
+    let q = with_limits("needle", largest_file());
+    let found = hits(search(&q, &mut ContentProgress::default(), &md(1), &big));
     let s = &found.hits[0].snippet;
     assert!(s.text.chars().count() <= 2 * DEFAULT_SNIPPET_CONTEXT + "needle".len());
     assert!(s.leading_more && s.trailing_more);
@@ -980,6 +1005,7 @@ fn cancellation_returns_nothing_and_keeps_progress() {
 
     // Concurrent cancellation of a large file: either a full result or
     // `Cancelled` with untouched progress, never a partial result.
+    let q = with_limits("needle", largest_file());
     let big: Arc<str> = Arc::from(format!("{}needle", "word ".repeat(1_500_000)));
     for delay in [0u64, 1, 5] {
         let token = CancellationToken::new();

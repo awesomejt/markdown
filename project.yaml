@@ -1,14 +1,14 @@
 contract_version: project-state/v1
-revision: 594
-project: &id002
+revision: 606
+project: &id003
   concurrency_limit: 1
   created_at: '2026-10-24T23:34:09.871478+00:00'
   project_ref: markdown-native
   status: active
-  updated_at: '2026-10-29T04:38:34.004409+00:00'
+  updated_at: '2026-10-29T14:16:37.642802+00:00'
   workflow_id: native-app-development
   workflow_version: '2'
-phases: &id004
+phases: &id005
   - completed_at: '2026-10-26T20:35:28.515785+00:00'
     completion_pass_ref: 768b1f15-0468-440e-894f-5462d1c717db
     evidence:
@@ -23,7 +23,7 @@ phases: &id004
     started_at: '2026-10-24T23:34:09.871478+00:00'
     status: completed
     version: 2
-  - &id003
+  - &id004
     completed_at: null
     completion_pass_ref: null
     evidence: {}
@@ -220,7 +220,8 @@ tasks:
     title: Accept implementation baseline
     updated_at: '2026-10-26T20:35:27.978177+00:00'
     validation_expectations: Owner-accepted decision record backed by all feasibility evidence.
-  - active_pass_ref: null
+  - &id057
+    active_pass_ref: null
     blockers: []
     completed_at: null
     created_at: '2026-10-24T23:34:33.514867+00:00'
@@ -860,7 +861,7 @@ tasks:
     created_at: '2026-10-26T20:27:26.453195+00:00'
     updated_at: '2026-10-27T22:26:02.577208+00:00'
     completed_at: '2026-10-27T22:26:02.577208+00:00'
-  - &id026
+  - &id015
     id: 3830e4e9-eaae-4bb2-90e2-b21ac69ef490
     task_key: MAC-001A
     title: 'MAC native: Native launch/window/commands, build instructions and native CI smoke'
@@ -884,7 +885,7 @@ tasks:
     created_at: '2026-10-26T20:27:26.866081+00:00'
     updated_at: '2026-10-29T02:16:05.091087+00:00'
     completed_at: null
-  - &id027
+  - &id016
     id: 48dad44a-1ef5-44e6-b6a6-d471e4df28e0
     task_key: LNX-001A
     title: 'LNX native: Native launch/window/commands, build instructions and native CI smoke'
@@ -908,7 +909,7 @@ tasks:
     created_at: '2026-10-26T20:27:27.282765+00:00'
     updated_at: '2026-10-29T02:16:05.558873+00:00'
     completed_at: null
-  - &id028
+  - &id017
     id: 68c3e783-a238-4097-860a-a2a919ce18aa
     task_key: WIN-001A
     title: 'WIN native: Native launch/window/commands, build instructions and native CI smoke'
@@ -932,7 +933,7 @@ tasks:
     created_at: '2026-10-26T20:27:27.714644+00:00'
     updated_at: '2026-10-29T02:16:06.037022+00:00'
     completed_at: null
-  - &id029
+  - &id018
     id: f4de6b40-7de3-45a0-9252-8e1b79378aee
     task_key: MAC-001B
     title: 'MAC native: Native facade adapter and local core package'
@@ -959,7 +960,7 @@ tasks:
     created_at: '2026-10-26T20:27:28.136806+00:00'
     updated_at: '2026-10-29T02:16:06.506678+00:00'
     completed_at: null
-  - &id030
+  - &id019
     id: 1640f71f-aa13-44fe-8a16-4a87fdd9582b
     task_key: LNX-001B
     title: 'LNX native: Native facade adapter and local core package'
@@ -986,7 +987,7 @@ tasks:
     created_at: '2026-10-26T20:27:28.562944+00:00'
     updated_at: '2026-10-29T02:16:06.975392+00:00'
     completed_at: null
-  - &id031
+  - &id020
     id: b15b9818-0bbc-4081-b4ab-d6b284bd44b8
     task_key: WIN-001B
     title: 'WIN native: Native facade adapter and local core package'
@@ -1013,7 +1014,7 @@ tasks:
     created_at: '2026-10-26T20:27:28.995061+00:00'
     updated_at: '2026-10-29T02:16:07.443340+00:00'
     completed_at: null
-  - &id032
+  - &id021
     id: 74757c17-25e5-42a0-bdd4-1e99f1be797d
     task_key: MAC-001C
     title: 'MAC native: File open/association, permission capability and errors'
@@ -1035,7 +1036,7 @@ tasks:
     created_at: '2026-10-26T20:27:29.436614+00:00'
     updated_at: '2026-10-29T02:16:07.912499+00:00'
     completed_at: null
-  - &id033
+  - &id022
     id: b4fab97a-a429-42af-818a-811fdd2d0d8a
     task_key: LNX-001C
     title: 'LNX native: File open/association, permission capability and errors'
@@ -1057,7 +1058,7 @@ tasks:
     created_at: '2026-10-26T20:27:29.872196+00:00'
     updated_at: '2026-10-29T02:16:08.379079+00:00'
     completed_at: null
-  - &id034
+  - &id023
     id: 205b667b-5e55-4abb-8ce7-d705e6c1c2c0
     task_key: WIN-001C
     title: 'WIN native: File open/association, permission capability and errors'
@@ -1079,7 +1080,7 @@ tasks:
     created_at: '2026-10-26T20:27:30.310198+00:00'
     updated_at: '2026-10-29T02:16:08.852054+00:00'
     completed_at: null
-  - &id035
+  - &id024
     id: d1511def-de5a-4970-a929-61f6229a14ca
     task_key: MAC-001D
     title: 'MAC native: Headings/prose/lists/links/code, outline and basic selection'
@@ -1101,7 +1102,7 @@ tasks:
     created_at: '2026-10-26T20:27:30.751597+00:00'
     updated_at: '2026-10-29T02:16:09.320795+00:00'
     completed_at: null
-  - &id036
+  - &id025
     id: 22cbed0e-6fa3-450d-9dbf-9ef6e43f2ee9
     task_key: LNX-001D
     title: 'LNX native: Headings/prose/lists/links/code, outline and basic selection'
@@ -1123,7 +1124,7 @@ tasks:
     created_at: '2026-10-26T20:27:31.199464+00:00'
     updated_at: '2026-10-29T02:16:09.786278+00:00'
     completed_at: null
-  - &id037
+  - &id026
     id: 2cffeb46-9f11-449f-8597-5250e02fb1c2
     task_key: WIN-001D
     title: 'WIN native: Headings/prose/lists/links/code, outline and basic selection'
@@ -1145,7 +1146,7 @@ tasks:
     created_at: '2026-10-26T20:27:31.652658+00:00'
     updated_at: '2026-10-29T02:16:10.247765+00:00'
     completed_at: null
-  - &id038
+  - &id027
     id: fc3ff3bf-e0ae-4d4b-bd88-ae1f768431b3
     task_key: MAC-001E
     title: 'MAC native: Tables/task lists/images and resource policy'
@@ -1167,7 +1168,7 @@ tasks:
     created_at: '2026-10-26T20:27:32.105611+00:00'
     updated_at: '2026-10-29T02:16:10.716235+00:00'
     completed_at: null
-  - &id039
+  - &id028
     id: ae4d3668-a02d-41b5-a259-63b4416dad8b
     task_key: LNX-001E
     title: 'LNX native: Tables/task lists/images and resource policy'
@@ -1189,7 +1190,7 @@ tasks:
     created_at: '2026-10-26T20:27:32.570237+00:00'
     updated_at: '2026-10-29T02:16:11.193965+00:00'
     completed_at: null
-  - &id040
+  - &id029
     id: 5bd12d3e-f7a8-41fd-a887-a8b4183e9890
     task_key: WIN-001E
     title: 'WIN native: Tables/task lists/images and resource policy'
@@ -1211,7 +1212,7 @@ tasks:
     created_at: '2026-10-26T20:27:33.039868+00:00'
     updated_at: '2026-10-29T02:16:11.659425+00:00'
     completed_at: null
-  - &id041
+  - &id030
     id: 4d40535e-b3fb-4b9c-9c8f-c782045458a5
     task_key: MAC-001F
     title: 'MAC native: Document find, theme and text controls'
@@ -1233,7 +1234,7 @@ tasks:
     created_at: '2026-10-26T20:27:33.505865+00:00'
     updated_at: '2026-10-29T02:16:12.127178+00:00'
     completed_at: null
-  - &id042
+  - &id031
     id: 1ff3b387-6d0d-408f-a329-5c154fea1126
     task_key: LNX-001F
     title: 'LNX native: Document find, theme and text controls'
@@ -1255,7 +1256,7 @@ tasks:
     created_at: '2026-10-26T20:27:33.972293+00:00'
     updated_at: '2026-10-29T02:16:12.592420+00:00'
     completed_at: null
-  - &id043
+  - &id032
     id: f52ec302-4df5-4a47-a627-e1c48d25feab
     task_key: WIN-001F
     title: 'WIN native: Document find, theme and text controls'
@@ -1277,7 +1278,7 @@ tasks:
     created_at: '2026-10-26T20:27:34.441294+00:00'
     updated_at: '2026-10-29T02:16:13.057493+00:00'
     completed_at: null
-  - &id044
+  - &id033
     id: b14e09db-c306-4208-a38a-9282137b0a79
     task_key: MAC-001G
     title: 'MAC native: Large-document layout, global selection and accessibility'
@@ -1299,7 +1300,7 @@ tasks:
     created_at: '2026-10-26T20:27:34.917830+00:00'
     updated_at: '2026-10-29T02:16:13.528289+00:00'
     completed_at: null
-  - &id045
+  - &id034
     id: bd69e601-a4d2-469c-9334-3648a0b75640
     task_key: LNX-001G
     title: 'LNX native: Large-document layout, global selection and accessibility'
@@ -1321,7 +1322,7 @@ tasks:
     created_at: '2026-10-26T20:27:35.393660+00:00'
     updated_at: '2026-10-29T02:16:13.996534+00:00'
     completed_at: null
-  - &id046
+  - &id035
     id: 35bb5a1b-3eec-44c3-b149-73b037c4f30d
     task_key: WIN-001G
     title: 'WIN native: Large-document layout, global selection and accessibility'
@@ -1343,7 +1344,7 @@ tasks:
     created_at: '2026-10-26T20:27:35.875046+00:00'
     updated_at: '2026-10-29T02:16:14.466750+00:00'
     completed_at: null
-  - &id047
+  - &id036
     id: dd9edd33-6bf2-4100-add9-c370294dd1a0
     task_key: MAC-001H
     title: 'MAC native: External refresh, anchors and reading restoration'
@@ -1365,7 +1366,7 @@ tasks:
     created_at: '2026-10-26T20:27:36.358182+00:00'
     updated_at: '2026-10-29T02:16:14.929109+00:00'
     completed_at: null
-  - &id048
+  - &id037
     id: 83d1a575-8746-40fa-8af5-d2299f064e6e
     task_key: LNX-001H
     title: 'LNX native: External refresh, anchors and reading restoration'
@@ -1387,7 +1388,7 @@ tasks:
     created_at: '2026-10-26T20:27:36.844145+00:00'
     updated_at: '2026-10-29T02:16:15.391594+00:00'
     completed_at: null
-  - &id001
+  - &id038
     id: 4f59ed47-c146-4610-83d1-05d1a8e503bd
     task_key: WIN-001H
     title: 'WIN native: External refresh, anchors and reading restoration'
@@ -1409,7 +1410,7 @@ tasks:
     created_at: '2026-10-26T20:27:37.345562+00:00'
     updated_at: '2026-10-29T02:16:15.854568+00:00'
     completed_at: null
-  - &id049
+  - &id039
     id: c0b96200-63b0-4c5e-ba44-7ad2af237969
     task_key: MAC-001I
     title: 'MAC native: Local development artifact, license inventory and relocated launch'
@@ -1431,7 +1432,7 @@ tasks:
     created_at: '2026-10-26T20:27:37.852631+00:00'
     updated_at: '2026-10-29T02:16:16.331150+00:00'
     completed_at: null
-  - &id050
+  - &id040
     id: 5f484073-f083-404e-bb0d-47cdc3531582
     task_key: LNX-001I
     title: 'LNX native: Local development artifact, license inventory and relocated launch'
@@ -1453,7 +1454,7 @@ tasks:
     created_at: '2026-10-26T20:27:38.351267+00:00'
     updated_at: '2026-10-29T02:16:16.797868+00:00'
     completed_at: null
-  - &id007
+  - &id041
     id: 60153c41-1692-4e54-ab8c-b336189a2dfc
     task_key: WIN-001I
     title: 'WIN native: Local development artifact, license inventory and relocated launch'
@@ -1475,7 +1476,7 @@ tasks:
     created_at: '2026-10-26T20:27:38.850099+00:00'
     updated_at: '2026-10-29T02:16:17.265192+00:00'
     completed_at: null
-  - &id008
+  - &id042
     id: a8f5c6e5-6b96-4df0-8cef-92aa70977a80
     task_key: LNX-001D1
     title: 'LNX native early accessibility gate: Prove native document/heading semantics, off-screen heading
@@ -1659,7 +1660,7 @@ tasks:
     created_at: '2026-10-28T02:19:37.120025+00:00'
     updated_at: '2026-10-28T04:04:24.241513+00:00'
     completed_at: '2026-10-28T04:04:24.241513+00:00'
-  - &id015
+  - &id002
     id: 5e897dd7-6ac0-4e9d-b304-e657f9366dd4
     task_key: CORE-002B
     title: 'Shared: import-policy parity (v1 intents, v1/v2 metadata); FFI host guidance'
@@ -1690,7 +1691,7 @@ tasks:
     created_at: '2026-10-28T16:44:00.754613+00:00'
     updated_at: '2026-10-28T21:42:26.158713+00:00'
     completed_at: '2026-10-28T21:42:26.158713+00:00'
-  - &id051
+  - &id043
     id: 32a35c65-0b20-405b-aebd-99a80276bed7
     task_key: CORE-005C
     title: 'Shared: Workspace content-search memory guard'
@@ -1713,14 +1714,13 @@ tasks:
       bound; skip/stop accounting tests in Rust and FFI parity; corpus prose and table profiles still
       searchable (no false-positive skip); text-index model note in the spec; full tools/check.py all
       and hosted CI; review and approved merge (clean Grok review or owner, D-029).
-    status: pending
+    status: completed
     active_pass_ref: null
     blockers: []
     created_at: '2026-10-28T16:44:18.439162+00:00'
-    updated_at: '2026-10-29T02:16:18.194411+00:00'
-    completed_at: null
-  - &id005
-    id: 0be1a8ee-d8c7-4794-8eaf-3b18e571a07d
+    updated_at: '2026-10-29T08:07:51.554077+00:00'
+    completed_at: '2026-10-29T08:07:51.554077+00:00'
+  - id: 0be1a8ee-d8c7-4794-8eaf-3b18e571a07d
     task_key: DOC-001
     title: Agent-facing docs cleanup
     description: Holistic CORE review F5, Grok G5 and Codex C6 (docs/reviews/), owner-accepted 2026-10-28;
@@ -1745,7 +1745,7 @@ tasks:
     created_at: '2026-10-28T16:44:19.292706+00:00'
     updated_at: '2026-10-28T20:26:32.972439+00:00'
     completed_at: '2026-10-28T20:26:32.972439+00:00'
-  - &id018
+  - &id007
     id: 1cf1a432-bfba-454c-b1db-48ec27fd9325
     task_key: CORE-003C
     title: 'Shared: v2 corpus conformance assertions'
@@ -1769,7 +1769,7 @@ tasks:
     created_at: '2026-10-28T17:41:45.435227+00:00'
     updated_at: '2026-10-29T01:25:04.260461+00:00'
     completed_at: '2026-10-29T01:25:04.260461+00:00'
-  - &id025
+  - &id014
     id: c3e29b62-9c15-4368-95c4-96d2017a222b
     task_key: CORE-003D
     title: 'Shared: bare GFM autolinks'
@@ -1791,13 +1791,13 @@ tasks:
       and policy tests; mutation and pathological cases (long URL-like runs, many www. prefixes) within
       budgets; goldens regenerated deliberately with a reviewed diff; full tools/check.py all and hosted
       CI; review and approved merge (clean Grok review or owner, D-029).
-    status: pending
+    status: completed
     active_pass_ref: null
     blockers: []
     created_at: '2026-10-28T17:41:45.890318+00:00'
-    updated_at: '2026-10-29T02:16:18.657856+00:00'
-    completed_at: null
-  - &id052
+    updated_at: '2026-10-29T07:18:05.424447+00:00'
+    completed_at: '2026-10-29T07:18:05.424447+00:00'
+  - &id044
     id: e6afb0f8-8e4a-42e1-9411-873786ec06be
     task_key: CORE-005D
     title: 'Shared: wider invisible-filename warnings'
@@ -1816,13 +1816,13 @@ tasks:
     validation_expectations: Rust and FFI flag parity tests for each added character and the ZWJ/ZWNJ
       exemptions; no name rejected; full tools/check.py all and hosted CI; review and approved merge (clean
       Grok review or owner, D-029).
-    status: pending
+    status: completed
     active_pass_ref: null
     blockers: []
     created_at: '2026-10-28T17:41:46.352006+00:00'
-    updated_at: '2026-10-29T02:16:19.122084+00:00'
-    completed_at: null
-  - &id053
+    updated_at: '2026-10-29T09:15:45.100137+00:00'
+    completed_at: '2026-10-29T09:15:45.100137+00:00'
+  - &id045
     id: d8202834-1854-4cf2-b0be-2faa8b0fc5ab
     task_key: HARD-001
     title: 'Shared: release hardening (fuzzing, sanitizers, advisories)'
@@ -1846,7 +1846,7 @@ tasks:
     created_at: '2026-10-28T17:41:46.822899+00:00'
     updated_at: '2026-10-29T02:16:19.583766+00:00'
     completed_at: null
-  - &id011
+  - &id046
     id: 57ba8c76-f253-4304-b070-e7808cb7a0ae
     task_key: CORE-003E
     title: Front-matter invisible-character parity
@@ -1868,13 +1868,13 @@ tasks:
       validation), allowance regression for variation selectors/CGJ, goldens unchanged or regenerated
       with a reviewed diff, tools/check.py all passes, decision recorded, one branch/PR with Grok review
       via the grok CLI and approved merge (clean Grok review or owner, D-029).
-    status: pending
+    status: completed
     active_pass_ref: null
     blockers: []
     created_at: '2026-10-28T20:25:19.128636+00:00'
-    updated_at: '2026-10-29T02:16:20.055312+00:00'
-    completed_at: null
-  - &id019
+    updated_at: '2026-10-29T14:16:37.642802+00:00'
+    completed_at: '2026-10-29T14:16:37.642802+00:00'
+  - &id008
     id: 290c8bc2-8e6b-44c9-8031-aa30defbd9dd
     task_key: TOOL-002
     title: 'CI speed-up: Rust cache, PR/main check tiers, skip core for state-only PR pushes'
@@ -1903,7 +1903,7 @@ tasks:
     created_at: '2026-10-28T21:59:54.119955+00:00'
     updated_at: '2026-10-28T22:40:22.865018+00:00'
     completed_at: '2026-10-28T22:40:22.865018+00:00'
-  - &id054
+  - &id047
     id: e8a88736-97a1-41bb-aa5a-2ae8d422b2b0
     task_key: TOOL-003
     title: Whitespace check on a new branch's first push covers only its new commits
@@ -2315,27 +2315,24 @@ relationships:
   - predecessor_task_ref: 5bd12d3e-f7a8-41fd-a887-a8b4183e9890
     successor_task_ref: f52ec302-4df5-4a47-a627-e1c48d25feab
     relationship: blocks
-  - &id009
-    predecessor_task_ref: 110601df-889c-46f1-b76e-d7542f66ebf1
+  - predecessor_task_ref: 110601df-889c-46f1-b76e-d7542f66ebf1
     successor_task_ref: 5e897dd7-6ac0-4e9d-b304-e657f9366dd4
     relationship: blocks
-  - &id012
-    predecessor_task_ref: e6afb0f8-8e4a-42e1-9411-873786ec06be
+  - predecessor_task_ref: e6afb0f8-8e4a-42e1-9411-873786ec06be
     successor_task_ref: 57ba8c76-f253-4304-b070-e7808cb7a0ae
     relationship: blocks
-  - &id013
-    predecessor_task_ref: 57ba8c76-f253-4304-b070-e7808cb7a0ae
+  - predecessor_task_ref: 57ba8c76-f253-4304-b070-e7808cb7a0ae
     successor_task_ref: db740a43-d5ce-4730-86b0-b30557061ad9
     relationship: blocks
-  - &id020
+  - &id009
     predecessor_task_ref: 290c8bc2-8e6b-44c9-8031-aa30defbd9dd
     successor_task_ref: 1cf1a432-bfba-454c-b1db-48ec27fd9325
     relationship: blocks
-  - &id055
+  - &id048
     predecessor_task_ref: 1cf1a432-bfba-454c-b1db-48ec27fd9325
     successor_task_ref: e8a88736-97a1-41bb-aa5a-2ae8d422b2b0
     relationship: blocks
-  - &id056
+  - &id049
     predecessor_task_ref: e8a88736-97a1-41bb-aa5a-2ae8d422b2b0
     successor_task_ref: c3e29b62-9c15-4368-95c4-96d2017a222b
     relationship: blocks
@@ -4789,8 +4786,7 @@ passes:
     completed_at: '2026-10-28T16:10:27.723516+00:00'
     lease_expires_at: null
     lease_version: 1
-  - &id006
-    id: 79aafc2f-3028-45dc-b73f-52843882bf46
+  - id: 79aafc2f-3028-45dc-b73f-52843882bf46
     sequence: 61
     task_ref: 0aeb0130-32f9-412e-b8d1-84a06f47994d
     phase_ref: f1e4c757-a3fc-4cfd-810b-4cbed98586c8
@@ -4831,8 +4827,7 @@ passes:
     completed_at: '2026-10-28T16:10:51.032288+00:00'
     lease_expires_at: null
     lease_version: 1
-  - &id010
-    id: c38091e9-96d1-4fa0-8b4d-59415f036178
+  - id: c38091e9-96d1-4fa0-8b4d-59415f036178
     sequence: 62
     task_ref: 0be1a8ee-d8c7-4794-8eaf-3b18e571a07d
     phase_ref: f1e4c757-a3fc-4cfd-810b-4cbed98586c8
@@ -4871,8 +4866,7 @@ passes:
     completed_at: '2026-10-28T20:06:27.485113+00:00'
     lease_expires_at: null
     lease_version: 1
-  - &id014
-    id: 6ba823dc-fdcf-4a25-9eef-6a9e45ad04e8
+  - id: 6ba823dc-fdcf-4a25-9eef-6a9e45ad04e8
     sequence: 63
     task_ref: 0be1a8ee-d8c7-4794-8eaf-3b18e571a07d
     phase_ref: f1e4c757-a3fc-4cfd-810b-4cbed98586c8
@@ -4908,7 +4902,7 @@ passes:
     completed_at: '2026-10-28T20:26:32.972439+00:00'
     lease_expires_at: null
     lease_version: 1
-  - &id016
+  - &id001
     id: 9b4306c6-1fe8-4dab-a94e-ac0c86bc5953
     sequence: 64
     task_ref: 5e897dd7-6ac0-4e9d-b304-e657f9366dd4
@@ -4953,7 +4947,7 @@ passes:
     completed_at: '2026-10-28T21:13:04.347285+00:00'
     lease_expires_at: null
     lease_version: 1
-  - &id017
+  - &id006
     id: 6ba5ed6e-9434-440f-bdfe-7252d7fb17b6
     sequence: 65
     task_ref: 5e897dd7-6ac0-4e9d-b304-e657f9366dd4
@@ -4988,7 +4982,7 @@ passes:
     completed_at: '2026-10-28T21:42:26.158713+00:00'
     lease_expires_at: null
     lease_version: 1
-  - &id021
+  - &id010
     id: ebf7576c-0ed9-40de-a90d-f8e9a0e22dc2
     sequence: 66
     task_ref: 290c8bc2-8e6b-44c9-8031-aa30defbd9dd
@@ -5029,7 +5023,7 @@ passes:
     completed_at: '2026-10-28T22:13:30.469163+00:00'
     lease_expires_at: null
     lease_version: 1
-  - &id022
+  - &id011
     id: 01b01520-8720-4724-a1fd-bb4cc0ac28b4
     sequence: 67
     task_ref: 290c8bc2-8e6b-44c9-8031-aa30defbd9dd
@@ -5069,7 +5063,7 @@ passes:
     completed_at: '2026-10-28T22:40:22.865018+00:00'
     lease_expires_at: null
     lease_version: 1
-  - &id023
+  - &id012
     id: 928f93c4-ab6a-481b-90f6-dfddf1b9152c
     sequence: 68
     task_ref: 1cf1a432-bfba-454c-b1db-48ec27fd9325
@@ -5110,7 +5104,7 @@ passes:
     completed_at: '2026-10-29T00:03:52.373596+00:00'
     lease_expires_at: null
     lease_version: 1
-  - &id024
+  - &id013
     id: f331044b-5a9e-463d-bedc-f7c41e348e3b
     sequence: 69
     task_ref: 1cf1a432-bfba-454c-b1db-48ec27fd9325
@@ -5150,7 +5144,7 @@ passes:
     completed_at: '2026-10-29T01:25:04.260461+00:00'
     lease_expires_at: null
     lease_version: 1
-  - &id057
+  - &id050
     id: 331b164b-e0b6-4de6-8827-455f06caa445
     sequence: 70
     task_ref: e8a88736-97a1-41bb-aa5a-2ae8d422b2b0
@@ -5171,7 +5165,7 @@ passes:
     completed_at: '2026-10-29T04:38:33.068146+00:00'
     lease_expires_at: null
     lease_version: 1
-  - &id058
+  - &id051
     id: 92244dd4-4eaf-40a1-9080-69a50d69e2ea
     sequence: 71
     task_ref: e8a88736-97a1-41bb-aa5a-2ae8d422b2b0
@@ -5209,432 +5203,214 @@ passes:
     completed_at: '2026-10-29T04:38:34.004409+00:00'
     lease_expires_at: null
     lease_version: 1
+  - &id052
+    id: 8437df3b-ba2b-42a7-9b9e-b68b34d8bdb5
+    sequence: 72
+    task_ref: c3e29b62-9c15-4368-95c4-96d2017a222b
+    phase_ref: f1e4c757-a3fc-4cfd-810b-4cbed98586c8
+    actor: claude-macos
+    status: completed
+    outcome: partial
+    objective: Add one bounded shared pass for bare GFM autolinks (http(s)://, www., email) with exact
+      spans, URI policy, v2 provenance and budgets.
+    summary: 'CORE-003D on feat/core-003d-bare-gfm-autolinks (head 93b43dc), PR 24 into develop: shared
+      bare GFM autolink pass (http(s)://, www., email) over exact-source text runs, v1 and v2, v2 provenance
+      via the same detector, fixture with v1/v2 goldens, tests, hostile storms, Parsing.md and D-031.
+      Three Grok reviews (cap reached): review 1 and 2 serious findings fixed; review 3 (5693756676) reports
+      three: trailing _ (matches cmark-gfm, proposed reject), email scan skipping a later scheme (minor
+      fix), deferred $ refund under buffering (real EventLimit regression, fix proposed).'
+    handoff: 'Review cap reached on PR 24. Wait for the owner''s decision on Grok review 5693756676: proposed
+      reject finding 1 (GitHub-consistent), fix 2 (resume after @) and 3 (credit $ refunds while buffering,
+      reconcile at flush, add a dense-dollar single-paragraph regression). Then resume CORE-003D, close
+      out on the branch and merge into develop per the owner''s answer. Also record the deferred process
+      option (required status check on main) in TODO.md at closeout.'
+    validation_result:
+      checks:
+        - tools/check.py all passed on macOS 27.0.1 with rustc 1.99.1 at 93b43dc
+        - hosted CI green on PR 24 at 93b43dc
+        - release hostile autolink storms each about 110 ms or less
+      pending:
+        - owner decision after the three-review cap
+        - closeout and merge into develop
+    evidence:
+      pr: https://github.com/awesomejt/markdown/pull/24
+      head: 93b43dc
+      reviews: 5693247737, 5693470058, 5693756676
+    participants: []
+    blocker: null
+    execution_record: {}
+    started_at: '2026-10-29T04:53:42.477655+00:00'
+    last_heartbeat_at: '2026-10-29T05:04:54.546873+00:00'
+    completed_at: '2026-10-29T06:35:00.866041+00:00'
+    lease_expires_at: null
+    lease_version: 2
+  - &id053
+    id: 7b2319c5-e1bb-48d0-91e0-0c2cd7e67f41
+    sequence: 73
+    task_ref: c3e29b62-9c15-4368-95c4-96d2017a222b
+    phase_ref: f1e4c757-a3fc-4cfd-810b-4cbed98586c8
+    actor: claude-macos
+    status: completed
+    outcome: completed
+    objective: Record the owner's approval of PR 24 and close out CORE-003D.
+    summary: 'CORE-003D delivered in PR 24: one shared bare GFM autolink pass (http(s)://, www., email;
+      cmark-gfm rules) over exact-source text runs, in v1 and v2 (D-031), proved by the v2 provenance
+      pass through the same detector; specs/parsing/autolinks fixture with v1/v2 goldens, tests, hostile
+      storms, Parsing.md. Three Grok reviews (cap): rounds 1-2 fixed; round 3 owner-dispositioned: trailing
+      underscore rejected as GitHub-consistent, email resume and buffered dollar refund fixed with regressions.'
+    handoff: None
+    validation_result:
+      checks:
+        - tools/check.py all passed on macOS 27.0.1 with rustc 1.99.1
+        - hosted CI green on PR 24 at 93b43dc; final head checked before merge
+        - release hostile autolink storms about 110 ms or less
+        - 'mutations: proof facts disabled fails four v2 tests; buffered refund disabled fails the dollar
+          regression'
+      pending: []
+    evidence:
+      pr: https://github.com/awesomejt/markdown/pull/24
+      reviews: 5693247737, 5693470058, 5693756676
+      approval: owner approved fix-and-merge 2026-10-29 after the review cap
+    participants: []
+    blocker: null
+    execution_record: {}
+    started_at: '2026-10-29T07:18:04.930487+00:00'
+    last_heartbeat_at: null
+    completed_at: '2026-10-29T07:18:05.424447+00:00'
+    lease_expires_at: null
+    lease_version: 1
+  - &id054
+    id: 973b7e7e-77d4-47b3-861e-da04576758d3
+    sequence: 74
+    task_ref: 32a35c65-0b20-405b-aebd-99a80276bed7
+    phase_ref: f1e4c757-a3fc-4cfd-810b-4cbed98586c8
+    actor: claude-macos
+    status: completed
+    outcome: completed
+    objective: 'Bound workspace content-search per-file memory: lower the default per-file size and/or
+      add a typed delimiter-density admission skip, prove it with a counted heap budget and Rust/FFI parity,
+      and document the model-independent text index.'
+    summary: 'CORE-005C delivered in PR 25: content search defaults max_file_bytes to 2 MiB (range 1..=8
+      MiB unchanged) and parses with a node allowance of max_file_bytes/4 clamped to 65,536..=1,000,000
+      and twice that in events, so the 8 MiB maximum restores the reader''s limits. Measured cost follows
+      tokens and nodes, not delimiters, so a delimiter-density heuristic was rejected with evidence. Over-allowance
+      files reuse ParseFailed; C ABI changes only the zero default plus header constant MD_CONTENT_DEFAULT_MAX_FILE_BYTES
+      (D-022). Spec documents the guard, the narrow-table false positive and content search as a model-independent
+      text index (G4).'
+    handoff: None
+    validation_result:
+      checks:
+        - tools/check.py all passed on macOS 27.0.1 with rustc 1.99.1
+        - hosted CI green on PR 25 at 378068a (macOS, Linux, Windows core; common; changes)
+        - 'tests/content_budgets.rs: ten hostile 2 MiB constructs peak 207.7-334.4 MiB under a 420 MiB
+          counted budget, all ParseFailed and charged; six legitimate 2 MiB documents searched (71-176
+          MiB); counted peaks identical in debug and release'
+        - FFI parity test content_memory_guard_defaults_match_the_rust_api, constant parity, C smoke default
+          TooLarge admission
+      pending: []
+    evidence:
+      pr: https://github.com/awesomejt/markdown/pull/25
+      reviewed_head: 378068ad93476fde27f77d25812cfa486b5f0002
+      review: https://github.com/awesomejt/markdown/pull/25#pullrequestreview-5694547912
+      approval: Grok review 5694547912 with no high or critical finding (D-029); its one low suggestion
+        fixed in 3a40ad3-equivalent comment trim
+    participants: []
+    blocker: null
+    execution_record: {}
+    started_at: '2026-10-29T07:28:32.472684+00:00'
+    last_heartbeat_at: '2026-10-29T07:43:22.728792+00:00'
+    completed_at: '2026-10-29T08:07:51.554077+00:00'
+    lease_expires_at: null
+    lease_version: 2
+  - &id055
+    id: cff54011-8beb-45bd-8de3-99e88afc30f6
+    sequence: 75
+    task_ref: e6afb0f8-8e4a-42e1-9411-873786ec06be
+    phase_ref: f1e4c757-a3fc-4cfd-810b-4cbed98586c8
+    actor: claude-macos
+    status: completed
+    outcome: completed
+    objective: Widen WorkspacePath::has_invisible() to flag non-Cf blank characters (Hangul fillers, U+2800
+      and the other Default_Ignorable values from the shared v2 table) while keeping ZWJ/ZWNJ and the
+      display-modifier allowance; Rust/FFI parity tests; update the workspace-search spec.
+    summary: 'CORE-005D delivered in PR 26: WorkspacePath::has_invisible() flags Cf or Unicode 16.0 Default_Ignorable_Code_Point
+      plus U+2800 (Hangul fillers U+115F, U+1160, U+3164, U+FFA0, U+2800, Khmer U+17B4/17B5, unassigned
+      default-ignorables), exempting ZWJ/ZWNJ and the display modifiers (CGJ, Mongolian FVS 1-4, variation
+      selectors). Names are never rejected or rewritten. The Default_Ignorable table moved from model-v2-gated
+      v2.rs into metadata.rs (invisible_character, display_modifier) and is shared with v2 URI denial,
+      which is unchanged. MD_PATH_INVISIBLE follows the same rule with no ABI change. Workspace-search
+      spec and URI policy updated.'
+    handoff: None
+    validation_result:
+      checks:
+        - tools/check.py all passed on macOS 27.0.1 with rustc 1.99.1
+        - hosted CI green on PR 26 at 9d34d3e (macOS, Linux, Windows core; common; changes)
+        - 'markdown-core tests/workspace.rs: each added character flagged and not rewritten; ZWJ, ZWNJ,
+          VS16, ideographic VS, Mongolian FVS, CGJ, Hangul syllable and U+2801 not flagged'
+        - 'markdown-ffi classify_path_matches_the_rust_rules: Rust/FFI parity over the new cases plus
+          byte-level U+3164, U+2800 and VS16 checks'
+      pending: []
+    evidence:
+      pr: https://github.com/awesomejt/markdown/pull/26
+      reviewed_head: 9d34d3e8a92bcee93cc747ad7551e42b170406b2
+      review: https://github.com/awesomejt/markdown/pull/26#pullrequestreview-5695320966
+      approval: Grok review 5695320966 with no high or critical finding (D-029); its one low doc suggestion
+        fixed in d87988d. A first Grok run found no issues but posted no review, so it was re-run to record
+        one.
+    participants: []
+    blocker: null
+    execution_record: {}
+    started_at: '2026-10-29T08:40:08.970646+00:00'
+    last_heartbeat_at: null
+    completed_at: '2026-10-29T09:15:45.100137+00:00'
+    lease_expires_at: null
+    lease_version: 1
+  - &id056
+    id: 9d43e1cb-c873-428e-bba1-cb69ef2f9d11
+    sequence: 76
+    task_ref: 57ba8c76-f253-4304-b070-e7808cb7a0ae
+    phase_ref: f1e4c757-a3fc-4cfd-810b-4cbed98586c8
+    actor: claude-macos
+    status: completed
+    outcome: completed
+    objective: Reject non-Cf invisible characters (Hangul fillers, U+2800 and the other Unicode 16.0 Default_Ignorable
+      values from the shared table) in front-matter title, keys and string/list values, in the producer
+      and shared validate_structure (v1, v2, from_json), keeping the variation-selector/FVS/CGJ display
+      allowance; tests, docs, specs and decision.
+    summary: 'CORE-003E delivered in PR 27 (D-032): front-matter titles, keys and string/list values reject
+      controls, Cf and Unicode 16.0 Default_Ignorable_Code_Point plus U+2800 (Hangul fillers U+115F, U+1160,
+      U+3164, U+FFA0, U+2800, Khmer U+17B4/17B5, unassigned default-ignorables) except the display modifiers
+      (CGJ, Mongolian FVS 1-4, variation selectors). One predicate, metadata::hidden_character, serves
+      the producer (atomic front_matter_unsupported), shared validate_structure for v1/v2 from_json (metadata_text/metadata_key)
+      and WorkspacePath::has_invisible (still exempting ZWNJ/ZWJ, unchanged behavior). Goldens unchanged.
+      Front-Matter.md, model v1/v2 specs and workspace-search spec updated. CORE-FIX is complete.'
+    handoff: None
+    validation_result:
+      checks:
+        - tools/check.py all passed on macOS 27.0.1 with rustc 1.99.1
+        - hosted CI green on PR 27 at 8c5d718 (macOS, Linux, Windows core; common; changes)
+        - 'markdown-core tests/metadata.rs: blank_invisible_values_are_rejected_atomically (14 code points;
+          plain, quoted, JSON, escaped, flow and block list) and display_modifiers_stay_allowed_in_metadata_text'
+        - 'markdown-core tests/model_v1.rs and tests/v2.rs: import rejection over the new ranges, v2 producer
+          refusal, and the display-modifier allowance through producer and from_json'
+        - tests/workspace.rs and markdown-ffi path parity unchanged and passing; no golden or fixture
+          changed
+      pending: []
+    evidence:
+      pr: https://github.com/awesomejt/markdown/pull/27
+      reviewed_head: 8c5d718be5051f56f507b46572cedc2e51f209ed
+      review: https://github.com/awesomejt/markdown/pull/27#pullrequestreview-5699201634
+      approval: Grok review 5699201634 with no findings (0 bugs, suggestions or nits); D-029 standing
+        approval to merge into develop. D-032 accepted with it.
+    participants: []
+    blocker: null
+    execution_record: {}
+    started_at: '2026-10-29T14:00:20.300680+00:00'
+    last_heartbeat_at: null
+    completed_at: '2026-10-29T14:16:37.642802+00:00'
+    lease_expires_at: null
+    lease_version: 1
 idempotency:
-  6af6d048-892c-4c5e-bcb3-619c46d7c19b:
-    fingerprint: 0b1abdc8d3e976b85b457a92073b0b24182a9e9e07189687526263e13b5e1bf2
-    response:
-      contract_version: project-state/v1
-      operation: update_task
-      revision: 495
-      data:
-        task: *id001
-      snapshot:
-        contract_version: project-state/v1
-        snapshot_at: '2026-10-28T18:56:23.303905+00:00'
-        revision: 495
-        project: *id002
-        current_phase: *id003
-        phases: *id004
-        active_tasks: []
-        working_tasks_without_active_lease: []
-        active_passes: []
-        stale_passes: []
-        blocked_tasks: []
-        eligible_tasks:
-          - *id005
-        latest_pass: *id006
-        queue_counts:
-          by_status:
-            completed: 30
-            pending: 57
-          total: 87
-          active_passes: 0
-          stale_passes: 0
-          eligible: 1
-          blocked: 0
-        warnings: []
-        recommended_action: select_new_task
-  76013502-4bcc-46f4-9a35-aa37f907fe90:
-    fingerprint: 83059483636546fc8b6b384b0ad1faab9d29d036d54708f211a56de9834cae69
-    response:
-      contract_version: project-state/v1
-      operation: update_task
-      revision: 496
-      data:
-        task: *id007
-      snapshot:
-        contract_version: project-state/v1
-        snapshot_at: '2026-10-28T18:56:23.757955+00:00'
-        revision: 496
-        project: *id002
-        current_phase: *id003
-        phases: *id004
-        active_tasks: []
-        working_tasks_without_active_lease: []
-        active_passes: []
-        stale_passes: []
-        blocked_tasks: []
-        eligible_tasks:
-          - *id005
-        latest_pass: *id006
-        queue_counts:
-          by_status:
-            completed: 30
-            pending: 57
-          total: 87
-          active_passes: 0
-          stale_passes: 0
-          eligible: 1
-          blocked: 0
-        warnings: []
-        recommended_action: select_new_task
-  9754ddb1-8d69-47d6-bd06-0502dd15b8d8:
-    fingerprint: 9d432e5cd5e82faab42ac3eeb274c55be398c470b35b0f3dcee0f45083d8fd67
-    response:
-      contract_version: project-state/v1
-      operation: update_task
-      revision: 497
-      data:
-        task: *id008
-      snapshot:
-        contract_version: project-state/v1
-        snapshot_at: '2026-10-28T18:56:24.209727+00:00'
-        revision: 497
-        project: *id002
-        current_phase: *id003
-        phases: *id004
-        active_tasks: []
-        working_tasks_without_active_lease: []
-        active_passes: []
-        stale_passes: []
-        blocked_tasks: []
-        eligible_tasks:
-          - *id005
-        latest_pass: *id006
-        queue_counts:
-          by_status:
-            completed: 30
-            pending: 57
-          total: 87
-          active_passes: 0
-          stale_passes: 0
-          eligible: 1
-          blocked: 0
-        warnings: []
-        recommended_action: select_new_task
-  B4B1E8D0-69A3-406E-BD59-537BCF5D092F:
-    fingerprint: 56c710cec3b64f6587db4ef95194e117b3eeb8127e9edd5c288335c09b5f1135
-    response:
-      contract_version: project-state/v1
-      operation: add_dependency
-      revision: 498
-      data:
-        relationship: *id009
-      snapshot:
-        contract_version: project-state/v1
-        snapshot_at: '2026-10-28T18:59:24.755424+00:00'
-        revision: 498
-        project: *id002
-        current_phase: *id003
-        phases: *id004
-        active_tasks: []
-        working_tasks_without_active_lease: []
-        active_passes: []
-        stale_passes: []
-        blocked_tasks: []
-        eligible_tasks:
-          - *id005
-        latest_pass: *id006
-        queue_counts:
-          by_status:
-            completed: 30
-            pending: 57
-          total: 87
-          active_passes: 0
-          stale_passes: 0
-          eligible: 1
-          blocked: 0
-        warnings: []
-        recommended_action: select_new_task
-  77e8b3d1-8995-468a-a012-3968796b55b4:
-    fingerprint: b101943f0c4def217c25b2c4b66691861aa2a7307ec14af6e75fdbac4fe7d089
-    response:
-      contract_version: project-state/v1
-      operation: start_pass
-      revision: 499
-      data:
-        pass: *id010
-        task: *id005
-      snapshot:
-        contract_version: project-state/v1
-        snapshot_at: '2026-10-28T20:00:04.772680+00:00'
-        revision: 499
-        project: *id002
-        current_phase: *id003
-        phases: *id004
-        active_tasks:
-          - *id005
-        working_tasks_without_active_lease: []
-        active_passes:
-          - *id010
-        stale_passes: []
-        blocked_tasks: []
-        eligible_tasks: []
-        latest_pass: *id010
-        queue_counts:
-          by_status:
-            completed: 30
-            pending: 56
-            working: 1
-          total: 87
-          active_passes: 1
-          stale_passes: 0
-          eligible: 0
-          blocked: 0
-        warnings: []
-        recommended_action: resume_active
-  e0b92d9b-8c80-4eae-925f-12a6334e5727:
-    fingerprint: bb24f2a893f5b4e9642f5a746ea54f51f543f5d3567b528f56fdc5e69b104504
-    response:
-      contract_version: project-state/v1
-      operation: finish_pass
-      revision: 500
-      data:
-        pass: *id010
-        task: *id005
-      snapshot:
-        contract_version: project-state/v1
-        snapshot_at: '2026-10-28T20:06:27.485125+00:00'
-        revision: 500
-        project: *id002
-        current_phase: *id003
-        phases: *id004
-        active_tasks: []
-        working_tasks_without_active_lease:
-          - *id005
-        active_passes: []
-        stale_passes: []
-        blocked_tasks: []
-        eligible_tasks: []
-        latest_pass: *id010
-        queue_counts:
-          by_status:
-            completed: 30
-            pending: 56
-            working: 1
-          total: 87
-          active_passes: 0
-          stale_passes: 0
-          eligible: 0
-          blocked: 0
-        warnings: []
-        recommended_action: recover_stale_task
-  a9c0dce0-5e85-40a1-9907-403622f36815:
-    fingerprint: 65bae10b621e7b2d898b8ca5bc0b5356c1ba296cb7a248785fbb147a9ebbe8f2
-    response:
-      contract_version: project-state/v1
-      operation: create_task
-      revision: 501
-      data:
-        task: *id011
-      snapshot:
-        contract_version: project-state/v1
-        snapshot_at: '2026-10-28T20:25:19.128816+00:00'
-        revision: 501
-        project: *id002
-        current_phase: *id003
-        phases: *id004
-        active_tasks: []
-        working_tasks_without_active_lease:
-          - *id005
-        active_passes: []
-        stale_passes: []
-        blocked_tasks: []
-        eligible_tasks:
-          - *id011
-        latest_pass: *id010
-        queue_counts:
-          by_status:
-            completed: 30
-            pending: 57
-            working: 1
-          total: 88
-          active_passes: 0
-          stale_passes: 0
-          eligible: 1
-          blocked: 0
-        warnings: []
-        recommended_action: recover_stale_task
-  1e55a7a7-3b1e-47f0-81a5-3875c5677191:
-    fingerprint: e1722f5693cf83a0aa0cc924b72782f0f878c11a3049d2a2784206d253cdfe1a
-    response:
-      contract_version: project-state/v1
-      operation: add_dependency
-      revision: 502
-      data:
-        relationship: *id012
-      snapshot:
-        contract_version: project-state/v1
-        snapshot_at: '2026-10-28T20:25:19.609210+00:00'
-        revision: 502
-        project: *id002
-        current_phase: *id003
-        phases: *id004
-        active_tasks: []
-        working_tasks_without_active_lease:
-          - *id005
-        active_passes: []
-        stale_passes: []
-        blocked_tasks: []
-        eligible_tasks: []
-        latest_pass: *id010
-        queue_counts:
-          by_status:
-            completed: 30
-            pending: 57
-            working: 1
-          total: 88
-          active_passes: 0
-          stale_passes: 0
-          eligible: 0
-          blocked: 0
-        warnings: []
-        recommended_action: recover_stale_task
-  c062050a-327a-4f0d-b48f-e72a8780edca:
-    fingerprint: 7f56e3346d959a7549654ce149e2283893774082583f853ff98744cabb7dc115
-    response:
-      contract_version: project-state/v1
-      operation: add_dependency
-      revision: 503
-      data:
-        relationship: *id013
-      snapshot:
-        contract_version: project-state/v1
-        snapshot_at: '2026-10-28T20:25:20.086862+00:00'
-        revision: 503
-        project: *id002
-        current_phase: *id003
-        phases: *id004
-        active_tasks: []
-        working_tasks_without_active_lease:
-          - *id005
-        active_passes: []
-        stale_passes: []
-        blocked_tasks: []
-        eligible_tasks: []
-        latest_pass: *id010
-        queue_counts:
-          by_status:
-            completed: 30
-            pending: 57
-            working: 1
-          total: 88
-          active_passes: 0
-          stale_passes: 0
-          eligible: 0
-          blocked: 0
-        warnings: []
-        recommended_action: recover_stale_task
-  17d47fbd-5170-427d-b0e6-cfaabd169647:
-    fingerprint: f652aa1094664d93d0e1773b6345e88e32498b37fb958e20cd9940772007f9c2
-    response:
-      contract_version: project-state/v1
-      operation: remove_dependency
-      revision: 504
-      data:
-        relationship:
-          predecessor_task_ref: e6afb0f8-8e4a-42e1-9411-873786ec06be
-          successor_task_ref: db740a43-d5ce-4730-86b0-b30557061ad9
-          relationship: blocks
-      snapshot:
-        contract_version: project-state/v1
-        snapshot_at: '2026-10-28T20:25:20.561180+00:00'
-        revision: 504
-        project: *id002
-        current_phase: *id003
-        phases: *id004
-        active_tasks: []
-        working_tasks_without_active_lease:
-          - *id005
-        active_passes: []
-        stale_passes: []
-        blocked_tasks: []
-        eligible_tasks: []
-        latest_pass: *id010
-        queue_counts:
-          by_status:
-            completed: 30
-            pending: 57
-            working: 1
-          total: 88
-          active_passes: 0
-          stale_passes: 0
-          eligible: 0
-          blocked: 0
-        warnings: []
-        recommended_action: recover_stale_task
-  17edb729-62cf-4b27-9a02-1d5286f8c6d0:
-    fingerprint: 71770fb20127c8575509521916802a9b775425c35c8219c965cd1310e04f0989
-    response:
-      contract_version: project-state/v1
-      operation: start_pass
-      revision: 505
-      data:
-        pass: *id014
-        task: *id005
-      snapshot:
-        contract_version: project-state/v1
-        snapshot_at: '2026-10-28T20:26:22.537910+00:00'
-        revision: 505
-        project: *id002
-        current_phase: *id003
-        phases: *id004
-        active_tasks:
-          - *id005
-        working_tasks_without_active_lease: []
-        active_passes:
-          - *id014
-        stale_passes: []
-        blocked_tasks: []
-        eligible_tasks: []
-        latest_pass: *id014
-        queue_counts:
-          by_status:
-            completed: 30
-            pending: 57
-            working: 1
-          total: 88
-          active_passes: 1
-          stale_passes: 0
-          eligible: 0
-          blocked: 0
-        warnings: []
-        recommended_action: resume_active
-  2af1a743-6a77-4623-878f-0fe321c0670b:
-    fingerprint: 6b46e8e720c1fae1d952911c537114f5038fc899c941d3c36bfed4f71dfffd0b
-    response:
-      contract_version: project-state/v1
-      operation: finish_pass
-      revision: 506
-      data:
-        pass: *id014
-        task: *id005
-      snapshot:
-        contract_version: project-state/v1
-        snapshot_at: '2026-10-28T20:26:32.972453+00:00'
-        revision: 506
-        project: *id002
-        current_phase: *id003
-        phases: *id004
-        active_tasks: []
-        working_tasks_without_active_lease: []
-        active_passes: []
-        stale_passes: []
-        blocked_tasks: []
-        eligible_tasks:
-          - *id015
-        latest_pass: *id014
-        queue_counts:
-          by_status:
-            completed: 31
-            pending: 57
-          total: 88
-          active_passes: 0
-          stale_passes: 0
-          eligible: 1
-          blocked: 0
-        warnings: []
-        recommended_action: select_new_task
   b4665a0e-2fce-4fad-91d4-e015a2e9d9d6:
     fingerprint: 6f85ec689bc7c05c2e219ee6aa71aeb5450d6e41991f3755924fc05bc196077c
     response:
@@ -5642,24 +5418,24 @@ idempotency:
       operation: start_pass
       revision: 507
       data:
-        pass: *id016
-        task: *id015
+        pass: *id001
+        task: *id002
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-28T20:57:49.601918+00:00'
         revision: 507
-        project: *id002
-        current_phase: *id003
-        phases: *id004
+        project: *id003
+        current_phase: *id004
+        phases: *id005
         active_tasks:
-          - *id015
+          - *id002
         working_tasks_without_active_lease: []
         active_passes:
-          - *id016
+          - *id001
         stale_passes: []
         blocked_tasks: []
         eligible_tasks: []
-        latest_pass: *id016
+        latest_pass: *id001
         queue_counts:
           by_status:
             completed: 31
@@ -5679,23 +5455,23 @@ idempotency:
       operation: finish_pass
       revision: 508
       data:
-        pass: *id016
-        task: *id015
+        pass: *id001
+        task: *id002
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-28T21:13:04.347299+00:00'
         revision: 508
-        project: *id002
-        current_phase: *id003
-        phases: *id004
+        project: *id003
+        current_phase: *id004
+        phases: *id005
         active_tasks: []
         working_tasks_without_active_lease:
-          - *id015
+          - *id002
         active_passes: []
         stale_passes: []
         blocked_tasks: []
         eligible_tasks: []
-        latest_pass: *id016
+        latest_pass: *id001
         queue_counts:
           by_status:
             completed: 31
@@ -5715,24 +5491,24 @@ idempotency:
       operation: start_pass
       revision: 509
       data:
-        pass: *id017
-        task: *id015
+        pass: *id006
+        task: *id002
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-28T21:42:06.111644+00:00'
         revision: 509
-        project: *id002
-        current_phase: *id003
-        phases: *id004
+        project: *id003
+        current_phase: *id004
+        phases: *id005
         active_tasks:
-          - *id015
+          - *id002
         working_tasks_without_active_lease: []
         active_passes:
-          - *id017
+          - *id006
         stale_passes: []
         blocked_tasks: []
         eligible_tasks: []
-        latest_pass: *id017
+        latest_pass: *id006
         queue_counts:
           by_status:
             completed: 31
@@ -5752,23 +5528,23 @@ idempotency:
       operation: finish_pass
       revision: 510
       data:
-        pass: *id017
-        task: *id015
+        pass: *id006
+        task: *id002
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-28T21:42:26.158727+00:00'
         revision: 510
-        project: *id002
-        current_phase: *id003
-        phases: *id004
+        project: *id003
+        current_phase: *id004
+        phases: *id005
         active_tasks: []
         working_tasks_without_active_lease: []
         active_passes: []
         stale_passes: []
         blocked_tasks: []
         eligible_tasks:
-          - *id018
-        latest_pass: *id017
+          - *id007
+        latest_pass: *id006
         queue_counts:
           by_status:
             completed: 32
@@ -5787,23 +5563,23 @@ idempotency:
       operation: create_task
       revision: 511
       data:
-        task: *id019
+        task: *id008
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-28T21:59:54.120234+00:00'
         revision: 511
-        project: *id002
-        current_phase: *id003
-        phases: *id004
+        project: *id003
+        current_phase: *id004
+        phases: *id005
         active_tasks: []
         working_tasks_without_active_lease: []
         active_passes: []
         stale_passes: []
         blocked_tasks: []
         eligible_tasks:
-          - *id018
-          - *id019
-        latest_pass: *id017
+          - *id007
+          - *id008
+        latest_pass: *id006
         queue_counts:
           by_status:
             completed: 32
@@ -5822,22 +5598,22 @@ idempotency:
       operation: add_dependency
       revision: 512
       data:
-        relationship: *id020
+        relationship: *id009
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-28T21:59:54.407370+00:00'
         revision: 512
-        project: *id002
-        current_phase: *id003
-        phases: *id004
+        project: *id003
+        current_phase: *id004
+        phases: *id005
         active_tasks: []
         working_tasks_without_active_lease: []
         active_passes: []
         stale_passes: []
         blocked_tasks: []
         eligible_tasks:
-          - *id019
-        latest_pass: *id017
+          - *id008
+        latest_pass: *id006
         queue_counts:
           by_status:
             completed: 32
@@ -5856,24 +5632,24 @@ idempotency:
       operation: start_pass
       revision: 513
       data:
-        pass: *id021
-        task: *id019
+        pass: *id010
+        task: *id008
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-28T21:59:59.902040+00:00'
         revision: 513
-        project: *id002
-        current_phase: *id003
-        phases: *id004
+        project: *id003
+        current_phase: *id004
+        phases: *id005
         active_tasks:
-          - *id019
+          - *id008
         working_tasks_without_active_lease: []
         active_passes:
-          - *id021
+          - *id010
         stale_passes: []
         blocked_tasks: []
         eligible_tasks: []
-        latest_pass: *id021
+        latest_pass: *id010
         queue_counts:
           by_status:
             completed: 32
@@ -5893,23 +5669,23 @@ idempotency:
       operation: finish_pass
       revision: 514
       data:
-        pass: *id021
-        task: *id019
+        pass: *id010
+        task: *id008
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-28T22:13:30.469175+00:00'
         revision: 514
-        project: *id002
-        current_phase: *id003
-        phases: *id004
+        project: *id003
+        current_phase: *id004
+        phases: *id005
         active_tasks: []
         working_tasks_without_active_lease:
-          - *id019
+          - *id008
         active_passes: []
         stale_passes: []
         blocked_tasks: []
         eligible_tasks: []
-        latest_pass: *id021
+        latest_pass: *id010
         queue_counts:
           by_status:
             completed: 32
@@ -5929,24 +5705,24 @@ idempotency:
       operation: start_pass
       revision: 515
       data:
-        pass: *id022
-        task: *id019
+        pass: *id011
+        task: *id008
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-28T22:35:44.256413+00:00'
         revision: 515
-        project: *id002
-        current_phase: *id003
-        phases: *id004
+        project: *id003
+        current_phase: *id004
+        phases: *id005
         active_tasks:
-          - *id019
+          - *id008
         working_tasks_without_active_lease: []
         active_passes:
-          - *id022
+          - *id011
         stale_passes: []
         blocked_tasks: []
         eligible_tasks: []
-        latest_pass: *id022
+        latest_pass: *id011
         queue_counts:
           by_status:
             completed: 32
@@ -5966,23 +5742,23 @@ idempotency:
       operation: finish_pass
       revision: 516
       data:
-        pass: *id022
-        task: *id019
+        pass: *id011
+        task: *id008
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-28T22:40:22.865031+00:00'
         revision: 516
-        project: *id002
-        current_phase: *id003
-        phases: *id004
+        project: *id003
+        current_phase: *id004
+        phases: *id005
         active_tasks: []
         working_tasks_without_active_lease: []
         active_passes: []
         stale_passes: []
         blocked_tasks: []
         eligible_tasks:
-          - *id018
-        latest_pass: *id022
+          - *id007
+        latest_pass: *id011
         queue_counts:
           by_status:
             completed: 33
@@ -6001,24 +5777,24 @@ idempotency:
       operation: start_pass
       revision: 517
       data:
-        pass: *id023
-        task: *id018
+        pass: *id012
+        task: *id007
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-28T23:57:53.639465+00:00'
         revision: 517
-        project: *id002
-        current_phase: *id003
-        phases: *id004
+        project: *id003
+        current_phase: *id004
+        phases: *id005
         active_tasks:
-          - *id018
+          - *id007
         working_tasks_without_active_lease: []
         active_passes:
-          - *id023
+          - *id012
         stale_passes: []
         blocked_tasks: []
         eligible_tasks: []
-        latest_pass: *id023
+        latest_pass: *id012
         queue_counts:
           by_status:
             completed: 33
@@ -6038,23 +5814,23 @@ idempotency:
       operation: finish_pass
       revision: 518
       data:
-        pass: *id023
-        task: *id018
+        pass: *id012
+        task: *id007
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-29T00:03:52.373611+00:00'
         revision: 518
-        project: *id002
-        current_phase: *id003
-        phases: *id004
+        project: *id003
+        current_phase: *id004
+        phases: *id005
         active_tasks: []
         working_tasks_without_active_lease:
-          - *id018
+          - *id007
         active_passes: []
         stale_passes: []
         blocked_tasks: []
         eligible_tasks: []
-        latest_pass: *id023
+        latest_pass: *id012
         queue_counts:
           by_status:
             completed: 33
@@ -6074,24 +5850,24 @@ idempotency:
       operation: start_pass
       revision: 519
       data:
-        pass: *id024
-        task: *id018
+        pass: *id013
+        task: *id007
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-29T01:24:49.286853+00:00'
         revision: 519
-        project: *id002
-        current_phase: *id003
-        phases: *id004
+        project: *id003
+        current_phase: *id004
+        phases: *id005
         active_tasks:
-          - *id018
+          - *id007
         working_tasks_without_active_lease: []
         active_passes:
-          - *id024
+          - *id013
         stale_passes: []
         blocked_tasks: []
         eligible_tasks: []
-        latest_pass: *id024
+        latest_pass: *id013
         queue_counts:
           by_status:
             completed: 33
@@ -6111,23 +5887,23 @@ idempotency:
       operation: finish_pass
       revision: 520
       data:
-        pass: *id024
-        task: *id018
+        pass: *id013
+        task: *id007
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-29T01:25:04.260477+00:00'
         revision: 520
-        project: *id002
-        current_phase: *id003
-        phases: *id004
+        project: *id003
+        current_phase: *id004
+        phases: *id005
         active_tasks: []
         working_tasks_without_active_lease: []
         active_passes: []
         stale_passes: []
         blocked_tasks: []
         eligible_tasks:
-          - *id025
-        latest_pass: *id024
+          - *id014
+        latest_pass: *id013
         queue_counts:
           by_status:
             completed: 34
@@ -6146,22 +5922,22 @@ idempotency:
       operation: update_task
       revision: 521
       data:
-        task: *id026
+        task: *id015
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-29T01:54:21.776813+00:00'
         revision: 521
-        project: *id002
-        current_phase: *id003
-        phases: *id004
+        project: *id003
+        current_phase: *id004
+        phases: *id005
         active_tasks: []
         working_tasks_without_active_lease: []
         active_passes: []
         stale_passes: []
         blocked_tasks: []
         eligible_tasks:
-          - *id025
-        latest_pass: *id024
+          - *id014
+        latest_pass: *id013
         queue_counts:
           by_status:
             completed: 34
@@ -6180,22 +5956,22 @@ idempotency:
       operation: update_task
       revision: 522
       data:
-        task: *id027
+        task: *id016
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-29T01:54:22.254047+00:00'
         revision: 522
-        project: *id002
-        current_phase: *id003
-        phases: *id004
+        project: *id003
+        current_phase: *id004
+        phases: *id005
         active_tasks: []
         working_tasks_without_active_lease: []
         active_passes: []
         stale_passes: []
         blocked_tasks: []
         eligible_tasks:
-          - *id025
-        latest_pass: *id024
+          - *id014
+        latest_pass: *id013
         queue_counts:
           by_status:
             completed: 34
@@ -6214,22 +5990,22 @@ idempotency:
       operation: update_task
       revision: 523
       data:
-        task: *id028
+        task: *id017
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-29T01:54:22.724372+00:00'
         revision: 523
-        project: *id002
-        current_phase: *id003
-        phases: *id004
+        project: *id003
+        current_phase: *id004
+        phases: *id005
         active_tasks: []
         working_tasks_without_active_lease: []
         active_passes: []
         stale_passes: []
         blocked_tasks: []
         eligible_tasks:
-          - *id025
-        latest_pass: *id024
+          - *id014
+        latest_pass: *id013
         queue_counts:
           by_status:
             completed: 34
@@ -6248,22 +6024,22 @@ idempotency:
       operation: update_task
       revision: 524
       data:
-        task: *id029
+        task: *id018
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-29T01:54:23.197732+00:00'
         revision: 524
-        project: *id002
-        current_phase: *id003
-        phases: *id004
+        project: *id003
+        current_phase: *id004
+        phases: *id005
         active_tasks: []
         working_tasks_without_active_lease: []
         active_passes: []
         stale_passes: []
         blocked_tasks: []
         eligible_tasks:
-          - *id025
-        latest_pass: *id024
+          - *id014
+        latest_pass: *id013
         queue_counts:
           by_status:
             completed: 34
@@ -6282,22 +6058,22 @@ idempotency:
       operation: update_task
       revision: 525
       data:
-        task: *id030
+        task: *id019
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-29T01:54:23.669005+00:00'
         revision: 525
-        project: *id002
-        current_phase: *id003
-        phases: *id004
+        project: *id003
+        current_phase: *id004
+        phases: *id005
         active_tasks: []
         working_tasks_without_active_lease: []
         active_passes: []
         stale_passes: []
         blocked_tasks: []
         eligible_tasks:
-          - *id025
-        latest_pass: *id024
+          - *id014
+        latest_pass: *id013
         queue_counts:
           by_status:
             completed: 34
@@ -6316,22 +6092,22 @@ idempotency:
       operation: update_task
       revision: 526
       data:
-        task: *id031
+        task: *id020
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-29T01:54:24.144502+00:00'
         revision: 526
-        project: *id002
-        current_phase: *id003
-        phases: *id004
+        project: *id003
+        current_phase: *id004
+        phases: *id005
         active_tasks: []
         working_tasks_without_active_lease: []
         active_passes: []
         stale_passes: []
         blocked_tasks: []
         eligible_tasks:
-          - *id025
-        latest_pass: *id024
+          - *id014
+        latest_pass: *id013
         queue_counts:
           by_status:
             completed: 34
@@ -6350,22 +6126,22 @@ idempotency:
       operation: update_task
       revision: 527
       data:
-        task: *id032
+        task: *id021
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-29T01:54:24.616806+00:00'
         revision: 527
-        project: *id002
-        current_phase: *id003
-        phases: *id004
+        project: *id003
+        current_phase: *id004
+        phases: *id005
         active_tasks: []
         working_tasks_without_active_lease: []
         active_passes: []
         stale_passes: []
         blocked_tasks: []
         eligible_tasks:
-          - *id025
-        latest_pass: *id024
+          - *id014
+        latest_pass: *id013
         queue_counts:
           by_status:
             completed: 34
@@ -6384,22 +6160,22 @@ idempotency:
       operation: update_task
       revision: 528
       data:
-        task: *id033
+        task: *id022
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-29T01:54:25.092324+00:00'
         revision: 528
-        project: *id002
-        current_phase: *id003
-        phases: *id004
+        project: *id003
+        current_phase: *id004
+        phases: *id005
         active_tasks: []
         working_tasks_without_active_lease: []
         active_passes: []
         stale_passes: []
         blocked_tasks: []
         eligible_tasks:
-          - *id025
-        latest_pass: *id024
+          - *id014
+        latest_pass: *id013
         queue_counts:
           by_status:
             completed: 34
@@ -6418,22 +6194,22 @@ idempotency:
       operation: update_task
       revision: 529
       data:
-        task: *id034
+        task: *id023
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-29T01:54:25.569883+00:00'
         revision: 529
-        project: *id002
-        current_phase: *id003
-        phases: *id004
+        project: *id003
+        current_phase: *id004
+        phases: *id005
         active_tasks: []
         working_tasks_without_active_lease: []
         active_passes: []
         stale_passes: []
         blocked_tasks: []
         eligible_tasks:
-          - *id025
-        latest_pass: *id024
+          - *id014
+        latest_pass: *id013
         queue_counts:
           by_status:
             completed: 34
@@ -6452,22 +6228,22 @@ idempotency:
       operation: update_task
       revision: 530
       data:
-        task: *id035
+        task: *id024
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-29T01:54:26.041267+00:00'
         revision: 530
-        project: *id002
-        current_phase: *id003
-        phases: *id004
+        project: *id003
+        current_phase: *id004
+        phases: *id005
         active_tasks: []
         working_tasks_without_active_lease: []
         active_passes: []
         stale_passes: []
         blocked_tasks: []
         eligible_tasks:
-          - *id025
-        latest_pass: *id024
+          - *id014
+        latest_pass: *id013
         queue_counts:
           by_status:
             completed: 34
@@ -6486,22 +6262,22 @@ idempotency:
       operation: update_task
       revision: 531
       data:
-        task: *id036
+        task: *id025
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-29T01:54:26.512082+00:00'
         revision: 531
-        project: *id002
-        current_phase: *id003
-        phases: *id004
+        project: *id003
+        current_phase: *id004
+        phases: *id005
         active_tasks: []
         working_tasks_without_active_lease: []
         active_passes: []
         stale_passes: []
         blocked_tasks: []
         eligible_tasks:
-          - *id025
-        latest_pass: *id024
+          - *id014
+        latest_pass: *id013
         queue_counts:
           by_status:
             completed: 34
@@ -6520,22 +6296,22 @@ idempotency:
       operation: update_task
       revision: 532
       data:
-        task: *id037
+        task: *id026
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-29T01:54:26.981758+00:00'
         revision: 532
-        project: *id002
-        current_phase: *id003
-        phases: *id004
+        project: *id003
+        current_phase: *id004
+        phases: *id005
         active_tasks: []
         working_tasks_without_active_lease: []
         active_passes: []
         stale_passes: []
         blocked_tasks: []
         eligible_tasks:
-          - *id025
-        latest_pass: *id024
+          - *id014
+        latest_pass: *id013
         queue_counts:
           by_status:
             completed: 34
@@ -6554,22 +6330,22 @@ idempotency:
       operation: update_task
       revision: 533
       data:
-        task: *id038
+        task: *id027
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-29T01:54:27.458397+00:00'
         revision: 533
-        project: *id002
-        current_phase: *id003
-        phases: *id004
+        project: *id003
+        current_phase: *id004
+        phases: *id005
         active_tasks: []
         working_tasks_without_active_lease: []
         active_passes: []
         stale_passes: []
         blocked_tasks: []
         eligible_tasks:
-          - *id025
-        latest_pass: *id024
+          - *id014
+        latest_pass: *id013
         queue_counts:
           by_status:
             completed: 34
@@ -6588,22 +6364,22 @@ idempotency:
       operation: update_task
       revision: 534
       data:
-        task: *id039
+        task: *id028
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-29T01:54:27.924666+00:00'
         revision: 534
-        project: *id002
-        current_phase: *id003
-        phases: *id004
+        project: *id003
+        current_phase: *id004
+        phases: *id005
         active_tasks: []
         working_tasks_without_active_lease: []
         active_passes: []
         stale_passes: []
         blocked_tasks: []
         eligible_tasks:
-          - *id025
-        latest_pass: *id024
+          - *id014
+        latest_pass: *id013
         queue_counts:
           by_status:
             completed: 34
@@ -6622,22 +6398,22 @@ idempotency:
       operation: update_task
       revision: 535
       data:
-        task: *id040
+        task: *id029
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-29T01:54:28.391219+00:00'
         revision: 535
-        project: *id002
-        current_phase: *id003
-        phases: *id004
+        project: *id003
+        current_phase: *id004
+        phases: *id005
         active_tasks: []
         working_tasks_without_active_lease: []
         active_passes: []
         stale_passes: []
         blocked_tasks: []
         eligible_tasks:
-          - *id025
-        latest_pass: *id024
+          - *id014
+        latest_pass: *id013
         queue_counts:
           by_status:
             completed: 34
@@ -6656,22 +6432,22 @@ idempotency:
       operation: update_task
       revision: 536
       data:
-        task: *id041
+        task: *id030
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-29T01:54:28.859006+00:00'
         revision: 536
-        project: *id002
-        current_phase: *id003
-        phases: *id004
+        project: *id003
+        current_phase: *id004
+        phases: *id005
         active_tasks: []
         working_tasks_without_active_lease: []
         active_passes: []
         stale_passes: []
         blocked_tasks: []
         eligible_tasks:
-          - *id025
-        latest_pass: *id024
+          - *id014
+        latest_pass: *id013
         queue_counts:
           by_status:
             completed: 34
@@ -6690,22 +6466,22 @@ idempotency:
       operation: update_task
       revision: 537
       data:
-        task: *id042
+        task: *id031
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-29T01:54:29.328075+00:00'
         revision: 537
-        project: *id002
-        current_phase: *id003
-        phases: *id004
+        project: *id003
+        current_phase: *id004
+        phases: *id005
         active_tasks: []
         working_tasks_without_active_lease: []
         active_passes: []
         stale_passes: []
         blocked_tasks: []
         eligible_tasks:
-          - *id025
-        latest_pass: *id024
+          - *id014
+        latest_pass: *id013
         queue_counts:
           by_status:
             completed: 34
@@ -6724,22 +6500,22 @@ idempotency:
       operation: update_task
       revision: 538
       data:
-        task: *id043
+        task: *id032
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-29T01:54:29.793021+00:00'
         revision: 538
-        project: *id002
-        current_phase: *id003
-        phases: *id004
+        project: *id003
+        current_phase: *id004
+        phases: *id005
         active_tasks: []
         working_tasks_without_active_lease: []
         active_passes: []
         stale_passes: []
         blocked_tasks: []
         eligible_tasks:
-          - *id025
-        latest_pass: *id024
+          - *id014
+        latest_pass: *id013
         queue_counts:
           by_status:
             completed: 34
@@ -6758,22 +6534,22 @@ idempotency:
       operation: update_task
       revision: 539
       data:
-        task: *id044
+        task: *id033
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-29T01:54:30.273758+00:00'
         revision: 539
-        project: *id002
-        current_phase: *id003
-        phases: *id004
+        project: *id003
+        current_phase: *id004
+        phases: *id005
         active_tasks: []
         working_tasks_without_active_lease: []
         active_passes: []
         stale_passes: []
         blocked_tasks: []
         eligible_tasks:
-          - *id025
-        latest_pass: *id024
+          - *id014
+        latest_pass: *id013
         queue_counts:
           by_status:
             completed: 34
@@ -6792,22 +6568,22 @@ idempotency:
       operation: update_task
       revision: 540
       data:
-        task: *id045
+        task: *id034
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-29T01:54:30.743308+00:00'
         revision: 540
-        project: *id002
-        current_phase: *id003
-        phases: *id004
+        project: *id003
+        current_phase: *id004
+        phases: *id005
         active_tasks: []
         working_tasks_without_active_lease: []
         active_passes: []
         stale_passes: []
         blocked_tasks: []
         eligible_tasks:
-          - *id025
-        latest_pass: *id024
+          - *id014
+        latest_pass: *id013
         queue_counts:
           by_status:
             completed: 34
@@ -6826,22 +6602,22 @@ idempotency:
       operation: update_task
       revision: 541
       data:
-        task: *id046
+        task: *id035
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-29T01:54:31.207215+00:00'
         revision: 541
-        project: *id002
-        current_phase: *id003
-        phases: *id004
+        project: *id003
+        current_phase: *id004
+        phases: *id005
         active_tasks: []
         working_tasks_without_active_lease: []
         active_passes: []
         stale_passes: []
         blocked_tasks: []
         eligible_tasks:
-          - *id025
-        latest_pass: *id024
+          - *id014
+        latest_pass: *id013
         queue_counts:
           by_status:
             completed: 34
@@ -6860,22 +6636,22 @@ idempotency:
       operation: update_task
       revision: 542
       data:
-        task: *id047
+        task: *id036
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-29T01:54:31.671306+00:00'
         revision: 542
-        project: *id002
-        current_phase: *id003
-        phases: *id004
+        project: *id003
+        current_phase: *id004
+        phases: *id005
         active_tasks: []
         working_tasks_without_active_lease: []
         active_passes: []
         stale_passes: []
         blocked_tasks: []
         eligible_tasks:
-          - *id025
-        latest_pass: *id024
+          - *id014
+        latest_pass: *id013
         queue_counts:
           by_status:
             completed: 34
@@ -6894,22 +6670,22 @@ idempotency:
       operation: update_task
       revision: 543
       data:
-        task: *id048
+        task: *id037
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-29T01:54:32.138242+00:00'
         revision: 543
-        project: *id002
-        current_phase: *id003
-        phases: *id004
+        project: *id003
+        current_phase: *id004
+        phases: *id005
         active_tasks: []
         working_tasks_without_active_lease: []
         active_passes: []
         stale_passes: []
         blocked_tasks: []
         eligible_tasks:
-          - *id025
-        latest_pass: *id024
+          - *id014
+        latest_pass: *id013
         queue_counts:
           by_status:
             completed: 34
@@ -6928,22 +6704,22 @@ idempotency:
       operation: update_task
       revision: 544
       data:
-        task: *id001
+        task: *id038
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-29T01:54:32.612454+00:00'
         revision: 544
-        project: *id002
-        current_phase: *id003
-        phases: *id004
+        project: *id003
+        current_phase: *id004
+        phases: *id005
         active_tasks: []
         working_tasks_without_active_lease: []
         active_passes: []
         stale_passes: []
         blocked_tasks: []
         eligible_tasks:
-          - *id025
-        latest_pass: *id024
+          - *id014
+        latest_pass: *id013
         queue_counts:
           by_status:
             completed: 34
@@ -6962,22 +6738,22 @@ idempotency:
       operation: update_task
       revision: 545
       data:
-        task: *id049
+        task: *id039
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-29T01:54:33.079739+00:00'
         revision: 545
-        project: *id002
-        current_phase: *id003
-        phases: *id004
+        project: *id003
+        current_phase: *id004
+        phases: *id005
         active_tasks: []
         working_tasks_without_active_lease: []
         active_passes: []
         stale_passes: []
         blocked_tasks: []
         eligible_tasks:
-          - *id025
-        latest_pass: *id024
+          - *id014
+        latest_pass: *id013
         queue_counts:
           by_status:
             completed: 34
@@ -6996,22 +6772,22 @@ idempotency:
       operation: update_task
       revision: 546
       data:
-        task: *id050
+        task: *id040
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-29T01:54:33.544819+00:00'
         revision: 546
-        project: *id002
-        current_phase: *id003
-        phases: *id004
+        project: *id003
+        current_phase: *id004
+        phases: *id005
         active_tasks: []
         working_tasks_without_active_lease: []
         active_passes: []
         stale_passes: []
         blocked_tasks: []
         eligible_tasks:
-          - *id025
-        latest_pass: *id024
+          - *id014
+        latest_pass: *id013
         queue_counts:
           by_status:
             completed: 34
@@ -7030,22 +6806,22 @@ idempotency:
       operation: update_task
       revision: 547
       data:
-        task: *id007
+        task: *id041
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-29T01:54:34.010303+00:00'
         revision: 547
-        project: *id002
-        current_phase: *id003
-        phases: *id004
+        project: *id003
+        current_phase: *id004
+        phases: *id005
         active_tasks: []
         working_tasks_without_active_lease: []
         active_passes: []
         stale_passes: []
         blocked_tasks: []
         eligible_tasks:
-          - *id025
-        latest_pass: *id024
+          - *id014
+        latest_pass: *id013
         queue_counts:
           by_status:
             completed: 34
@@ -7064,22 +6840,22 @@ idempotency:
       operation: update_task
       revision: 548
       data:
-        task: *id008
+        task: *id042
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-29T01:54:34.476792+00:00'
         revision: 548
-        project: *id002
-        current_phase: *id003
-        phases: *id004
+        project: *id003
+        current_phase: *id004
+        phases: *id005
         active_tasks: []
         working_tasks_without_active_lease: []
         active_passes: []
         stale_passes: []
         blocked_tasks: []
         eligible_tasks:
-          - *id025
-        latest_pass: *id024
+          - *id014
+        latest_pass: *id013
         queue_counts:
           by_status:
             completed: 34
@@ -7098,22 +6874,22 @@ idempotency:
       operation: update_task
       revision: 549
       data:
-        task: *id051
+        task: *id043
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-29T01:54:34.946571+00:00'
         revision: 549
-        project: *id002
-        current_phase: *id003
-        phases: *id004
+        project: *id003
+        current_phase: *id004
+        phases: *id005
         active_tasks: []
         working_tasks_without_active_lease: []
         active_passes: []
         stale_passes: []
         blocked_tasks: []
         eligible_tasks:
-          - *id025
-        latest_pass: *id024
+          - *id014
+        latest_pass: *id013
         queue_counts:
           by_status:
             completed: 34
@@ -7132,22 +6908,22 @@ idempotency:
       operation: update_task
       revision: 550
       data:
-        task: *id025
+        task: *id014
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-29T01:54:35.423313+00:00'
         revision: 550
-        project: *id002
-        current_phase: *id003
-        phases: *id004
+        project: *id003
+        current_phase: *id004
+        phases: *id005
         active_tasks: []
         working_tasks_without_active_lease: []
         active_passes: []
         stale_passes: []
         blocked_tasks: []
         eligible_tasks:
-          - *id025
-        latest_pass: *id024
+          - *id014
+        latest_pass: *id013
         queue_counts:
           by_status:
             completed: 34
@@ -7166,22 +6942,22 @@ idempotency:
       operation: update_task
       revision: 551
       data:
-        task: *id052
+        task: *id044
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-29T01:54:35.891379+00:00'
         revision: 551
-        project: *id002
-        current_phase: *id003
-        phases: *id004
+        project: *id003
+        current_phase: *id004
+        phases: *id005
         active_tasks: []
         working_tasks_without_active_lease: []
         active_passes: []
         stale_passes: []
         blocked_tasks: []
         eligible_tasks:
-          - *id025
-        latest_pass: *id024
+          - *id014
+        latest_pass: *id013
         queue_counts:
           by_status:
             completed: 34
@@ -7200,22 +6976,22 @@ idempotency:
       operation: update_task
       revision: 552
       data:
-        task: *id053
+        task: *id045
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-29T01:54:36.357050+00:00'
         revision: 552
-        project: *id002
-        current_phase: *id003
-        phases: *id004
+        project: *id003
+        current_phase: *id004
+        phases: *id005
         active_tasks: []
         working_tasks_without_active_lease: []
         active_passes: []
         stale_passes: []
         blocked_tasks: []
         eligible_tasks:
-          - *id025
-        latest_pass: *id024
+          - *id014
+        latest_pass: *id013
         queue_counts:
           by_status:
             completed: 34
@@ -7234,22 +7010,22 @@ idempotency:
       operation: update_task
       revision: 553
       data:
-        task: *id011
+        task: *id046
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-29T01:54:36.821556+00:00'
         revision: 553
-        project: *id002
-        current_phase: *id003
-        phases: *id004
+        project: *id003
+        current_phase: *id004
+        phases: *id005
         active_tasks: []
         working_tasks_without_active_lease: []
         active_passes: []
         stale_passes: []
         blocked_tasks: []
         eligible_tasks:
-          - *id025
-        latest_pass: *id024
+          - *id014
+        latest_pass: *id013
         queue_counts:
           by_status:
             completed: 34
@@ -7268,22 +7044,22 @@ idempotency:
       operation: update_task
       revision: 554
       data:
-        task: *id026
+        task: *id015
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-29T02:16:05.091261+00:00'
         revision: 554
-        project: *id002
-        current_phase: *id003
-        phases: *id004
+        project: *id003
+        current_phase: *id004
+        phases: *id005
         active_tasks: []
         working_tasks_without_active_lease: []
         active_passes: []
         stale_passes: []
         blocked_tasks: []
         eligible_tasks:
-          - *id025
-        latest_pass: *id024
+          - *id014
+        latest_pass: *id013
         queue_counts:
           by_status:
             completed: 34
@@ -7302,22 +7078,22 @@ idempotency:
       operation: update_task
       revision: 555
       data:
-        task: *id027
+        task: *id016
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-29T02:16:05.559038+00:00'
         revision: 555
-        project: *id002
-        current_phase: *id003
-        phases: *id004
+        project: *id003
+        current_phase: *id004
+        phases: *id005
         active_tasks: []
         working_tasks_without_active_lease: []
         active_passes: []
         stale_passes: []
         blocked_tasks: []
         eligible_tasks:
-          - *id025
-        latest_pass: *id024
+          - *id014
+        latest_pass: *id013
         queue_counts:
           by_status:
             completed: 34
@@ -7336,22 +7112,22 @@ idempotency:
       operation: update_task
       revision: 556
       data:
-        task: *id028
+        task: *id017
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-29T02:16:06.037180+00:00'
         revision: 556
-        project: *id002
-        current_phase: *id003
-        phases: *id004
+        project: *id003
+        current_phase: *id004
+        phases: *id005
         active_tasks: []
         working_tasks_without_active_lease: []
         active_passes: []
         stale_passes: []
         blocked_tasks: []
         eligible_tasks:
-          - *id025
-        latest_pass: *id024
+          - *id014
+        latest_pass: *id013
         queue_counts:
           by_status:
             completed: 34
@@ -7370,22 +7146,22 @@ idempotency:
       operation: update_task
       revision: 557
       data:
-        task: *id029
+        task: *id018
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-29T02:16:06.506861+00:00'
         revision: 557
-        project: *id002
-        current_phase: *id003
-        phases: *id004
+        project: *id003
+        current_phase: *id004
+        phases: *id005
         active_tasks: []
         working_tasks_without_active_lease: []
         active_passes: []
         stale_passes: []
         blocked_tasks: []
         eligible_tasks:
-          - *id025
-        latest_pass: *id024
+          - *id014
+        latest_pass: *id013
         queue_counts:
           by_status:
             completed: 34
@@ -7404,22 +7180,22 @@ idempotency:
       operation: update_task
       revision: 558
       data:
-        task: *id030
+        task: *id019
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-29T02:16:06.975559+00:00'
         revision: 558
-        project: *id002
-        current_phase: *id003
-        phases: *id004
+        project: *id003
+        current_phase: *id004
+        phases: *id005
         active_tasks: []
         working_tasks_without_active_lease: []
         active_passes: []
         stale_passes: []
         blocked_tasks: []
         eligible_tasks:
-          - *id025
-        latest_pass: *id024
+          - *id014
+        latest_pass: *id013
         queue_counts:
           by_status:
             completed: 34
@@ -7438,22 +7214,22 @@ idempotency:
       operation: update_task
       revision: 559
       data:
-        task: *id031
+        task: *id020
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-29T02:16:07.443502+00:00'
         revision: 559
-        project: *id002
-        current_phase: *id003
-        phases: *id004
+        project: *id003
+        current_phase: *id004
+        phases: *id005
         active_tasks: []
         working_tasks_without_active_lease: []
         active_passes: []
         stale_passes: []
         blocked_tasks: []
         eligible_tasks:
-          - *id025
-        latest_pass: *id024
+          - *id014
+        latest_pass: *id013
         queue_counts:
           by_status:
             completed: 34
@@ -7472,22 +7248,22 @@ idempotency:
       operation: update_task
       revision: 560
       data:
-        task: *id032
+        task: *id021
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-29T02:16:07.912672+00:00'
         revision: 560
-        project: *id002
-        current_phase: *id003
-        phases: *id004
+        project: *id003
+        current_phase: *id004
+        phases: *id005
         active_tasks: []
         working_tasks_without_active_lease: []
         active_passes: []
         stale_passes: []
         blocked_tasks: []
         eligible_tasks:
-          - *id025
-        latest_pass: *id024
+          - *id014
+        latest_pass: *id013
         queue_counts:
           by_status:
             completed: 34
@@ -7506,22 +7282,22 @@ idempotency:
       operation: update_task
       revision: 561
       data:
-        task: *id033
+        task: *id022
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-29T02:16:08.379237+00:00'
         revision: 561
-        project: *id002
-        current_phase: *id003
-        phases: *id004
+        project: *id003
+        current_phase: *id004
+        phases: *id005
         active_tasks: []
         working_tasks_without_active_lease: []
         active_passes: []
         stale_passes: []
         blocked_tasks: []
         eligible_tasks:
-          - *id025
-        latest_pass: *id024
+          - *id014
+        latest_pass: *id013
         queue_counts:
           by_status:
             completed: 34
@@ -7540,22 +7316,22 @@ idempotency:
       operation: update_task
       revision: 562
       data:
-        task: *id034
+        task: *id023
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-29T02:16:08.852252+00:00'
         revision: 562
-        project: *id002
-        current_phase: *id003
-        phases: *id004
+        project: *id003
+        current_phase: *id004
+        phases: *id005
         active_tasks: []
         working_tasks_without_active_lease: []
         active_passes: []
         stale_passes: []
         blocked_tasks: []
         eligible_tasks:
-          - *id025
-        latest_pass: *id024
+          - *id014
+        latest_pass: *id013
         queue_counts:
           by_status:
             completed: 34
@@ -7574,22 +7350,22 @@ idempotency:
       operation: update_task
       revision: 563
       data:
-        task: *id035
+        task: *id024
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-29T02:16:09.320971+00:00'
         revision: 563
-        project: *id002
-        current_phase: *id003
-        phases: *id004
+        project: *id003
+        current_phase: *id004
+        phases: *id005
         active_tasks: []
         working_tasks_without_active_lease: []
         active_passes: []
         stale_passes: []
         blocked_tasks: []
         eligible_tasks:
-          - *id025
-        latest_pass: *id024
+          - *id014
+        latest_pass: *id013
         queue_counts:
           by_status:
             completed: 34
@@ -7608,22 +7384,22 @@ idempotency:
       operation: update_task
       revision: 564
       data:
-        task: *id036
+        task: *id025
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-29T02:16:09.786451+00:00'
         revision: 564
-        project: *id002
-        current_phase: *id003
-        phases: *id004
+        project: *id003
+        current_phase: *id004
+        phases: *id005
         active_tasks: []
         working_tasks_without_active_lease: []
         active_passes: []
         stale_passes: []
         blocked_tasks: []
         eligible_tasks:
-          - *id025
-        latest_pass: *id024
+          - *id014
+        latest_pass: *id013
         queue_counts:
           by_status:
             completed: 34
@@ -7642,22 +7418,22 @@ idempotency:
       operation: update_task
       revision: 565
       data:
-        task: *id037
+        task: *id026
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-29T02:16:10.247937+00:00'
         revision: 565
-        project: *id002
-        current_phase: *id003
-        phases: *id004
+        project: *id003
+        current_phase: *id004
+        phases: *id005
         active_tasks: []
         working_tasks_without_active_lease: []
         active_passes: []
         stale_passes: []
         blocked_tasks: []
         eligible_tasks:
-          - *id025
-        latest_pass: *id024
+          - *id014
+        latest_pass: *id013
         queue_counts:
           by_status:
             completed: 34
@@ -7676,22 +7452,22 @@ idempotency:
       operation: update_task
       revision: 566
       data:
-        task: *id038
+        task: *id027
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-29T02:16:10.716393+00:00'
         revision: 566
-        project: *id002
-        current_phase: *id003
-        phases: *id004
+        project: *id003
+        current_phase: *id004
+        phases: *id005
         active_tasks: []
         working_tasks_without_active_lease: []
         active_passes: []
         stale_passes: []
         blocked_tasks: []
         eligible_tasks:
-          - *id025
-        latest_pass: *id024
+          - *id014
+        latest_pass: *id013
         queue_counts:
           by_status:
             completed: 34
@@ -7710,22 +7486,22 @@ idempotency:
       operation: update_task
       revision: 567
       data:
-        task: *id039
+        task: *id028
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-29T02:16:11.194140+00:00'
         revision: 567
-        project: *id002
-        current_phase: *id003
-        phases: *id004
+        project: *id003
+        current_phase: *id004
+        phases: *id005
         active_tasks: []
         working_tasks_without_active_lease: []
         active_passes: []
         stale_passes: []
         blocked_tasks: []
         eligible_tasks:
-          - *id025
-        latest_pass: *id024
+          - *id014
+        latest_pass: *id013
         queue_counts:
           by_status:
             completed: 34
@@ -7744,22 +7520,22 @@ idempotency:
       operation: update_task
       revision: 568
       data:
-        task: *id040
+        task: *id029
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-29T02:16:11.659615+00:00'
         revision: 568
-        project: *id002
-        current_phase: *id003
-        phases: *id004
+        project: *id003
+        current_phase: *id004
+        phases: *id005
         active_tasks: []
         working_tasks_without_active_lease: []
         active_passes: []
         stale_passes: []
         blocked_tasks: []
         eligible_tasks:
-          - *id025
-        latest_pass: *id024
+          - *id014
+        latest_pass: *id013
         queue_counts:
           by_status:
             completed: 34
@@ -7778,22 +7554,22 @@ idempotency:
       operation: update_task
       revision: 569
       data:
-        task: *id041
+        task: *id030
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-29T02:16:12.127346+00:00'
         revision: 569
-        project: *id002
-        current_phase: *id003
-        phases: *id004
+        project: *id003
+        current_phase: *id004
+        phases: *id005
         active_tasks: []
         working_tasks_without_active_lease: []
         active_passes: []
         stale_passes: []
         blocked_tasks: []
         eligible_tasks:
-          - *id025
-        latest_pass: *id024
+          - *id014
+        latest_pass: *id013
         queue_counts:
           by_status:
             completed: 34
@@ -7812,22 +7588,22 @@ idempotency:
       operation: update_task
       revision: 570
       data:
-        task: *id042
+        task: *id031
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-29T02:16:12.592577+00:00'
         revision: 570
-        project: *id002
-        current_phase: *id003
-        phases: *id004
+        project: *id003
+        current_phase: *id004
+        phases: *id005
         active_tasks: []
         working_tasks_without_active_lease: []
         active_passes: []
         stale_passes: []
         blocked_tasks: []
         eligible_tasks:
-          - *id025
-        latest_pass: *id024
+          - *id014
+        latest_pass: *id013
         queue_counts:
           by_status:
             completed: 34
@@ -7846,22 +7622,22 @@ idempotency:
       operation: update_task
       revision: 571
       data:
-        task: *id043
+        task: *id032
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-29T02:16:13.057674+00:00'
         revision: 571
-        project: *id002
-        current_phase: *id003
-        phases: *id004
+        project: *id003
+        current_phase: *id004
+        phases: *id005
         active_tasks: []
         working_tasks_without_active_lease: []
         active_passes: []
         stale_passes: []
         blocked_tasks: []
         eligible_tasks:
-          - *id025
-        latest_pass: *id024
+          - *id014
+        latest_pass: *id013
         queue_counts:
           by_status:
             completed: 34
@@ -7880,22 +7656,22 @@ idempotency:
       operation: update_task
       revision: 572
       data:
-        task: *id044
+        task: *id033
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-29T02:16:13.528449+00:00'
         revision: 572
-        project: *id002
-        current_phase: *id003
-        phases: *id004
+        project: *id003
+        current_phase: *id004
+        phases: *id005
         active_tasks: []
         working_tasks_without_active_lease: []
         active_passes: []
         stale_passes: []
         blocked_tasks: []
         eligible_tasks:
-          - *id025
-        latest_pass: *id024
+          - *id014
+        latest_pass: *id013
         queue_counts:
           by_status:
             completed: 34
@@ -7914,22 +7690,22 @@ idempotency:
       operation: update_task
       revision: 573
       data:
-        task: *id045
+        task: *id034
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-29T02:16:13.996694+00:00'
         revision: 573
-        project: *id002
-        current_phase: *id003
-        phases: *id004
+        project: *id003
+        current_phase: *id004
+        phases: *id005
         active_tasks: []
         working_tasks_without_active_lease: []
         active_passes: []
         stale_passes: []
         blocked_tasks: []
         eligible_tasks:
-          - *id025
-        latest_pass: *id024
+          - *id014
+        latest_pass: *id013
         queue_counts:
           by_status:
             completed: 34
@@ -7948,22 +7724,22 @@ idempotency:
       operation: update_task
       revision: 574
       data:
-        task: *id046
+        task: *id035
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-29T02:16:14.466925+00:00'
         revision: 574
-        project: *id002
-        current_phase: *id003
-        phases: *id004
+        project: *id003
+        current_phase: *id004
+        phases: *id005
         active_tasks: []
         working_tasks_without_active_lease: []
         active_passes: []
         stale_passes: []
         blocked_tasks: []
         eligible_tasks:
-          - *id025
-        latest_pass: *id024
+          - *id014
+        latest_pass: *id013
         queue_counts:
           by_status:
             completed: 34
@@ -7982,22 +7758,22 @@ idempotency:
       operation: update_task
       revision: 575
       data:
-        task: *id047
+        task: *id036
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-29T02:16:14.929283+00:00'
         revision: 575
-        project: *id002
-        current_phase: *id003
-        phases: *id004
+        project: *id003
+        current_phase: *id004
+        phases: *id005
         active_tasks: []
         working_tasks_without_active_lease: []
         active_passes: []
         stale_passes: []
         blocked_tasks: []
         eligible_tasks:
-          - *id025
-        latest_pass: *id024
+          - *id014
+        latest_pass: *id013
         queue_counts:
           by_status:
             completed: 34
@@ -8016,22 +7792,22 @@ idempotency:
       operation: update_task
       revision: 576
       data:
-        task: *id048
+        task: *id037
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-29T02:16:15.391757+00:00'
         revision: 576
-        project: *id002
-        current_phase: *id003
-        phases: *id004
+        project: *id003
+        current_phase: *id004
+        phases: *id005
         active_tasks: []
         working_tasks_without_active_lease: []
         active_passes: []
         stale_passes: []
         blocked_tasks: []
         eligible_tasks:
-          - *id025
-        latest_pass: *id024
+          - *id014
+        latest_pass: *id013
         queue_counts:
           by_status:
             completed: 34
@@ -8050,22 +7826,22 @@ idempotency:
       operation: update_task
       revision: 577
       data:
-        task: *id001
+        task: *id038
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-29T02:16:15.854718+00:00'
         revision: 577
-        project: *id002
-        current_phase: *id003
-        phases: *id004
+        project: *id003
+        current_phase: *id004
+        phases: *id005
         active_tasks: []
         working_tasks_without_active_lease: []
         active_passes: []
         stale_passes: []
         blocked_tasks: []
         eligible_tasks:
-          - *id025
-        latest_pass: *id024
+          - *id014
+        latest_pass: *id013
         queue_counts:
           by_status:
             completed: 34
@@ -8084,22 +7860,22 @@ idempotency:
       operation: update_task
       revision: 578
       data:
-        task: *id049
+        task: *id039
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-29T02:16:16.331328+00:00'
         revision: 578
-        project: *id002
-        current_phase: *id003
-        phases: *id004
+        project: *id003
+        current_phase: *id004
+        phases: *id005
         active_tasks: []
         working_tasks_without_active_lease: []
         active_passes: []
         stale_passes: []
         blocked_tasks: []
         eligible_tasks:
-          - *id025
-        latest_pass: *id024
+          - *id014
+        latest_pass: *id013
         queue_counts:
           by_status:
             completed: 34
@@ -8118,22 +7894,22 @@ idempotency:
       operation: update_task
       revision: 579
       data:
-        task: *id050
+        task: *id040
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-29T02:16:16.798046+00:00'
         revision: 579
-        project: *id002
-        current_phase: *id003
-        phases: *id004
+        project: *id003
+        current_phase: *id004
+        phases: *id005
         active_tasks: []
         working_tasks_without_active_lease: []
         active_passes: []
         stale_passes: []
         blocked_tasks: []
         eligible_tasks:
-          - *id025
-        latest_pass: *id024
+          - *id014
+        latest_pass: *id013
         queue_counts:
           by_status:
             completed: 34
@@ -8152,22 +7928,22 @@ idempotency:
       operation: update_task
       revision: 580
       data:
-        task: *id007
+        task: *id041
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-29T02:16:17.265367+00:00'
         revision: 580
-        project: *id002
-        current_phase: *id003
-        phases: *id004
+        project: *id003
+        current_phase: *id004
+        phases: *id005
         active_tasks: []
         working_tasks_without_active_lease: []
         active_passes: []
         stale_passes: []
         blocked_tasks: []
         eligible_tasks:
-          - *id025
-        latest_pass: *id024
+          - *id014
+        latest_pass: *id013
         queue_counts:
           by_status:
             completed: 34
@@ -8186,22 +7962,22 @@ idempotency:
       operation: update_task
       revision: 581
       data:
-        task: *id008
+        task: *id042
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-29T02:16:17.731014+00:00'
         revision: 581
-        project: *id002
-        current_phase: *id003
-        phases: *id004
+        project: *id003
+        current_phase: *id004
+        phases: *id005
         active_tasks: []
         working_tasks_without_active_lease: []
         active_passes: []
         stale_passes: []
         blocked_tasks: []
         eligible_tasks:
-          - *id025
-        latest_pass: *id024
+          - *id014
+        latest_pass: *id013
         queue_counts:
           by_status:
             completed: 34
@@ -8220,22 +7996,22 @@ idempotency:
       operation: update_task
       revision: 582
       data:
-        task: *id051
+        task: *id043
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-29T02:16:18.194588+00:00'
         revision: 582
-        project: *id002
-        current_phase: *id003
-        phases: *id004
+        project: *id003
+        current_phase: *id004
+        phases: *id005
         active_tasks: []
         working_tasks_without_active_lease: []
         active_passes: []
         stale_passes: []
         blocked_tasks: []
         eligible_tasks:
-          - *id025
-        latest_pass: *id024
+          - *id014
+        latest_pass: *id013
         queue_counts:
           by_status:
             completed: 34
@@ -8254,22 +8030,22 @@ idempotency:
       operation: update_task
       revision: 583
       data:
-        task: *id025
+        task: *id014
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-29T02:16:18.658017+00:00'
         revision: 583
-        project: *id002
-        current_phase: *id003
-        phases: *id004
+        project: *id003
+        current_phase: *id004
+        phases: *id005
         active_tasks: []
         working_tasks_without_active_lease: []
         active_passes: []
         stale_passes: []
         blocked_tasks: []
         eligible_tasks:
-          - *id025
-        latest_pass: *id024
+          - *id014
+        latest_pass: *id013
         queue_counts:
           by_status:
             completed: 34
@@ -8288,22 +8064,22 @@ idempotency:
       operation: update_task
       revision: 584
       data:
-        task: *id052
+        task: *id044
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-29T02:16:19.122262+00:00'
         revision: 584
-        project: *id002
-        current_phase: *id003
-        phases: *id004
+        project: *id003
+        current_phase: *id004
+        phases: *id005
         active_tasks: []
         working_tasks_without_active_lease: []
         active_passes: []
         stale_passes: []
         blocked_tasks: []
         eligible_tasks:
-          - *id025
-        latest_pass: *id024
+          - *id014
+        latest_pass: *id013
         queue_counts:
           by_status:
             completed: 34
@@ -8322,22 +8098,22 @@ idempotency:
       operation: update_task
       revision: 585
       data:
-        task: *id053
+        task: *id045
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-29T02:16:19.583924+00:00'
         revision: 585
-        project: *id002
-        current_phase: *id003
-        phases: *id004
+        project: *id003
+        current_phase: *id004
+        phases: *id005
         active_tasks: []
         working_tasks_without_active_lease: []
         active_passes: []
         stale_passes: []
         blocked_tasks: []
         eligible_tasks:
-          - *id025
-        latest_pass: *id024
+          - *id014
+        latest_pass: *id013
         queue_counts:
           by_status:
             completed: 34
@@ -8356,22 +8132,22 @@ idempotency:
       operation: update_task
       revision: 586
       data:
-        task: *id011
+        task: *id046
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-29T02:16:20.055467+00:00'
         revision: 586
-        project: *id002
-        current_phase: *id003
-        phases: *id004
+        project: *id003
+        current_phase: *id004
+        phases: *id005
         active_tasks: []
         working_tasks_without_active_lease: []
         active_passes: []
         stale_passes: []
         blocked_tasks: []
         eligible_tasks:
-          - *id025
-        latest_pass: *id024
+          - *id014
+        latest_pass: *id013
         queue_counts:
           by_status:
             completed: 34
@@ -8390,23 +8166,23 @@ idempotency:
       operation: create_task
       revision: 587
       data:
-        task: *id054
+        task: *id047
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-29T02:54:04.797101+00:00'
         revision: 587
-        project: *id002
-        current_phase: *id003
-        phases: *id004
+        project: *id003
+        current_phase: *id004
+        phases: *id005
         active_tasks: []
         working_tasks_without_active_lease: []
         active_passes: []
         stale_passes: []
         blocked_tasks: []
         eligible_tasks:
-          - *id025
-          - *id054
-        latest_pass: *id024
+          - *id014
+          - *id047
+        latest_pass: *id013
         queue_counts:
           by_status:
             completed: 34
@@ -8425,23 +8201,23 @@ idempotency:
       operation: add_dependency
       revision: 588
       data:
-        relationship: *id055
+        relationship: *id048
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-29T02:54:05.275138+00:00'
         revision: 588
-        project: *id002
-        current_phase: *id003
-        phases: *id004
+        project: *id003
+        current_phase: *id004
+        phases: *id005
         active_tasks: []
         working_tasks_without_active_lease: []
         active_passes: []
         stale_passes: []
         blocked_tasks: []
         eligible_tasks:
-          - *id025
-          - *id054
-        latest_pass: *id024
+          - *id014
+          - *id047
+        latest_pass: *id013
         queue_counts:
           by_status:
             completed: 34
@@ -8460,22 +8236,22 @@ idempotency:
       operation: add_dependency
       revision: 589
       data:
-        relationship: *id056
+        relationship: *id049
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-29T02:54:05.743695+00:00'
         revision: 589
-        project: *id002
-        current_phase: *id003
-        phases: *id004
+        project: *id003
+        current_phase: *id004
+        phases: *id005
         active_tasks: []
         working_tasks_without_active_lease: []
         active_passes: []
         stale_passes: []
         blocked_tasks: []
         eligible_tasks:
-          - *id054
-        latest_pass: *id024
+          - *id047
+        latest_pass: *id013
         queue_counts:
           by_status:
             completed: 34
@@ -8502,17 +8278,17 @@ idempotency:
         contract_version: project-state/v1
         snapshot_at: '2026-10-29T02:54:06.228581+00:00'
         revision: 590
-        project: *id002
-        current_phase: *id003
-        phases: *id004
+        project: *id003
+        current_phase: *id004
+        phases: *id005
         active_tasks: []
         working_tasks_without_active_lease: []
         active_passes: []
         stale_passes: []
         blocked_tasks: []
         eligible_tasks:
-          - *id054
-        latest_pass: *id024
+          - *id047
+        latest_pass: *id013
         queue_counts:
           by_status:
             completed: 34
@@ -8531,24 +8307,24 @@ idempotency:
       operation: start_pass
       revision: 591
       data:
-        pass: *id057
-        task: *id054
+        pass: *id050
+        task: *id047
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-29T02:54:25.050811+00:00'
         revision: 591
-        project: *id002
-        current_phase: *id003
-        phases: *id004
+        project: *id003
+        current_phase: *id004
+        phases: *id005
         active_tasks:
-          - *id054
+          - *id047
         working_tasks_without_active_lease: []
         active_passes:
-          - *id057
+          - *id050
         stale_passes: []
         blocked_tasks: []
         eligible_tasks: []
-        latest_pass: *id057
+        latest_pass: *id050
         queue_counts:
           by_status:
             completed: 34
@@ -8574,17 +8350,17 @@ idempotency:
         contract_version: project-state/v1
         snapshot_at: '2026-10-29T04:38:33.068153+00:00'
         revision: 592
-        project: *id002
-        current_phase: *id003
-        phases: *id004
+        project: *id003
+        current_phase: *id004
+        phases: *id005
         active_tasks: []
         working_tasks_without_active_lease:
-          - *id054
+          - *id047
         active_passes: []
         stale_passes: []
         blocked_tasks: []
         eligible_tasks: []
-        latest_pass: *id057
+        latest_pass: *id050
         queue_counts:
           by_status:
             completed: 34
@@ -8604,24 +8380,24 @@ idempotency:
       operation: start_pass
       revision: 593
       data:
-        pass: *id058
-        task: *id054
+        pass: *id051
+        task: *id047
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-29T04:38:33.536809+00:00'
         revision: 593
-        project: *id002
-        current_phase: *id003
-        phases: *id004
+        project: *id003
+        current_phase: *id004
+        phases: *id005
         active_tasks:
-          - *id054
+          - *id047
         working_tasks_without_active_lease: []
         active_passes:
-          - *id058
+          - *id051
         stale_passes: []
         blocked_tasks: []
         eligible_tasks: []
-        latest_pass: *id058
+        latest_pass: *id051
         queue_counts:
           by_status:
             completed: 34
@@ -8641,27 +8417,460 @@ idempotency:
       operation: finish_pass
       revision: 594
       data:
-        pass: *id058
-        task: *id054
+        pass: *id051
+        task: *id047
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-10-29T04:38:34.004422+00:00'
         revision: 594
-        project: *id002
-        current_phase: *id003
-        phases: *id004
+        project: *id003
+        current_phase: *id004
+        phases: *id005
         active_tasks: []
         working_tasks_without_active_lease: []
         active_passes: []
         stale_passes: []
         blocked_tasks: []
         eligible_tasks:
-          - *id025
-        latest_pass: *id058
+          - *id014
+        latest_pass: *id051
         queue_counts:
           by_status:
             completed: 35
             pending: 55
+          total: 90
+          active_passes: 0
+          stale_passes: 0
+          eligible: 1
+          blocked: 0
+        warnings: []
+        recommended_action: select_new_task
+  1dfa5be0-fa7b-4a59-8080-09d26f21a7b0:
+    fingerprint: b85c39ad930cf47773249c06e96d1a73fc05ca6bd0a658ea5f80928db0c1e276
+    response:
+      contract_version: project-state/v1
+      operation: start_pass
+      revision: 595
+      data:
+        pass: *id052
+        task: *id014
+      snapshot:
+        contract_version: project-state/v1
+        snapshot_at: '2026-10-29T04:53:42.477683+00:00'
+        revision: 595
+        project: *id003
+        current_phase: *id004
+        phases: *id005
+        active_tasks:
+          - *id014
+        working_tasks_without_active_lease: []
+        active_passes:
+          - *id052
+        stale_passes: []
+        blocked_tasks: []
+        eligible_tasks: []
+        latest_pass: *id052
+        queue_counts:
+          by_status:
+            completed: 35
+            pending: 54
+            working: 1
+          total: 90
+          active_passes: 1
+          stale_passes: 0
+          eligible: 0
+          blocked: 0
+        warnings: []
+        recommended_action: resume_active
+  241920d3-4101-4677-b14d-ca3fcf840ccb:
+    fingerprint: aa614c87337d96c270dae9972270e7e0fea7aaeb4b6f4408ee16735fc23e296d
+    response:
+      contract_version: project-state/v1
+      operation: heartbeat_pass
+      revision: 596
+      data:
+        pass: *id052
+      snapshot:
+        contract_version: project-state/v1
+        snapshot_at: '2026-10-29T05:04:54.546885+00:00'
+        revision: 596
+        project: *id003
+        current_phase: *id004
+        phases: *id005
+        active_tasks:
+          - *id014
+        working_tasks_without_active_lease: []
+        active_passes:
+          - *id052
+        stale_passes: []
+        blocked_tasks: []
+        eligible_tasks: []
+        latest_pass: *id052
+        queue_counts:
+          by_status:
+            completed: 35
+            pending: 54
+            working: 1
+          total: 90
+          active_passes: 1
+          stale_passes: 0
+          eligible: 0
+          blocked: 0
+        warnings: []
+        recommended_action: resume_active
+  34c436bf-c305-47e2-8ed7-5efbadddb256:
+    fingerprint: daf3f5bb217c90ec016578bd08ac8900025806320b947ebf3c2099e609df9763
+    response:
+      contract_version: project-state/v1
+      operation: finish_pass
+      revision: 597
+      data:
+        pass: *id052
+        task: *id014
+      snapshot:
+        contract_version: project-state/v1
+        snapshot_at: '2026-10-29T06:35:00.866055+00:00'
+        revision: 597
+        project: *id003
+        current_phase: *id004
+        phases: *id005
+        active_tasks: []
+        working_tasks_without_active_lease:
+          - *id014
+        active_passes: []
+        stale_passes: []
+        blocked_tasks: []
+        eligible_tasks: []
+        latest_pass: *id052
+        queue_counts:
+          by_status:
+            completed: 35
+            pending: 54
+            working: 1
+          total: 90
+          active_passes: 0
+          stale_passes: 0
+          eligible: 0
+          blocked: 0
+        warnings: []
+        recommended_action: recover_stale_task
+  a38f6b25-f789-4982-92aa-98ec36c18f14:
+    fingerprint: ca31fb6343968d724ae919e6f5dc22a19b32249ad03507c38bfdac66b408e835
+    response:
+      contract_version: project-state/v1
+      operation: start_pass
+      revision: 598
+      data:
+        pass: *id053
+        task: *id014
+      snapshot:
+        contract_version: project-state/v1
+        snapshot_at: '2026-10-29T07:18:04.930519+00:00'
+        revision: 598
+        project: *id003
+        current_phase: *id004
+        phases: *id005
+        active_tasks:
+          - *id014
+        working_tasks_without_active_lease: []
+        active_passes:
+          - *id053
+        stale_passes: []
+        blocked_tasks: []
+        eligible_tasks: []
+        latest_pass: *id053
+        queue_counts:
+          by_status:
+            completed: 35
+            pending: 54
+            working: 1
+          total: 90
+          active_passes: 1
+          stale_passes: 0
+          eligible: 0
+          blocked: 0
+        warnings: []
+        recommended_action: resume_active
+  f87d277b-0df9-4112-b856-189e1ec741d7:
+    fingerprint: 630a9663e8383dc59eaede3bff696deb0deedfc3a5b900b30d93313105f4cc40
+    response:
+      contract_version: project-state/v1
+      operation: finish_pass
+      revision: 599
+      data:
+        pass: *id053
+        task: *id014
+      snapshot:
+        contract_version: project-state/v1
+        snapshot_at: '2026-10-29T07:18:05.424460+00:00'
+        revision: 599
+        project: *id003
+        current_phase: *id004
+        phases: *id005
+        active_tasks: []
+        working_tasks_without_active_lease: []
+        active_passes: []
+        stale_passes: []
+        blocked_tasks: []
+        eligible_tasks:
+          - *id043
+        latest_pass: *id053
+        queue_counts:
+          by_status:
+            completed: 36
+            pending: 54
+          total: 90
+          active_passes: 0
+          stale_passes: 0
+          eligible: 1
+          blocked: 0
+        warnings: []
+        recommended_action: select_new_task
+  c42d1b5e-e34e-404f-a110-e5904fc412c1:
+    fingerprint: c663b538171b6b9f0aca0087b9280561a1a4e6d94bf6c115097cb06d7a295d8b
+    response:
+      contract_version: project-state/v1
+      operation: start_pass
+      revision: 600
+      data:
+        pass: *id054
+        task: *id043
+      snapshot:
+        contract_version: project-state/v1
+        snapshot_at: '2026-10-29T07:28:32.472717+00:00'
+        revision: 600
+        project: *id003
+        current_phase: *id004
+        phases: *id005
+        active_tasks:
+          - *id043
+        working_tasks_without_active_lease: []
+        active_passes:
+          - *id054
+        stale_passes: []
+        blocked_tasks: []
+        eligible_tasks: []
+        latest_pass: *id054
+        queue_counts:
+          by_status:
+            completed: 36
+            pending: 53
+            working: 1
+          total: 90
+          active_passes: 1
+          stale_passes: 0
+          eligible: 0
+          blocked: 0
+        warnings: []
+        recommended_action: resume_active
+  989ae11a-8985-49a4-a219-b4520f721884:
+    fingerprint: 9e6e4f3f26a5be3288adb65583c7601abc79e04edae30484cbc03339a6f48c69
+    response:
+      contract_version: project-state/v1
+      operation: heartbeat_pass
+      revision: 601
+      data:
+        pass: *id054
+      snapshot:
+        contract_version: project-state/v1
+        snapshot_at: '2026-10-29T07:43:22.728807+00:00'
+        revision: 601
+        project: *id003
+        current_phase: *id004
+        phases: *id005
+        active_tasks:
+          - *id043
+        working_tasks_without_active_lease: []
+        active_passes:
+          - *id054
+        stale_passes: []
+        blocked_tasks: []
+        eligible_tasks: []
+        latest_pass: *id054
+        queue_counts:
+          by_status:
+            completed: 36
+            pending: 53
+            working: 1
+          total: 90
+          active_passes: 1
+          stale_passes: 0
+          eligible: 0
+          blocked: 0
+        warnings: []
+        recommended_action: resume_active
+  4b44d540-e04d-4612-b514-8ad433af4dde:
+    fingerprint: ca3c9c5fbf12549f3302c114b05eaf293260f0997f197bddd1fb8f92706e5a8f
+    response:
+      contract_version: project-state/v1
+      operation: finish_pass
+      revision: 602
+      data:
+        pass: *id054
+        task: *id043
+      snapshot:
+        contract_version: project-state/v1
+        snapshot_at: '2026-10-29T08:07:51.554090+00:00'
+        revision: 602
+        project: *id003
+        current_phase: *id004
+        phases: *id005
+        active_tasks: []
+        working_tasks_without_active_lease: []
+        active_passes: []
+        stale_passes: []
+        blocked_tasks: []
+        eligible_tasks:
+          - *id044
+        latest_pass: *id054
+        queue_counts:
+          by_status:
+            completed: 37
+            pending: 53
+          total: 90
+          active_passes: 0
+          stale_passes: 0
+          eligible: 1
+          blocked: 0
+        warnings: []
+        recommended_action: select_new_task
+  5fc76be0-4888-47a3-8263-b43222f26fc1:
+    fingerprint: 5d830d2c3b0ea0cd409acd8539f2c6303835ca1ce976992714b328d16943dd9b
+    response:
+      contract_version: project-state/v1
+      operation: start_pass
+      revision: 603
+      data:
+        pass: *id055
+        task: *id044
+      snapshot:
+        contract_version: project-state/v1
+        snapshot_at: '2026-10-29T08:40:08.970675+00:00'
+        revision: 603
+        project: *id003
+        current_phase: *id004
+        phases: *id005
+        active_tasks:
+          - *id044
+        working_tasks_without_active_lease: []
+        active_passes:
+          - *id055
+        stale_passes: []
+        blocked_tasks: []
+        eligible_tasks: []
+        latest_pass: *id055
+        queue_counts:
+          by_status:
+            completed: 37
+            pending: 52
+            working: 1
+          total: 90
+          active_passes: 1
+          stale_passes: 0
+          eligible: 0
+          blocked: 0
+        warnings: []
+        recommended_action: resume_active
+  1dafa512-dabe-4dd7-b0b2-c0ced2851845:
+    fingerprint: e8a3a3b54cf64336a22f13e67bbd7846bc3c9e35cf6cc935e99a381b11e9b442
+    response:
+      contract_version: project-state/v1
+      operation: finish_pass
+      revision: 604
+      data:
+        pass: *id055
+        task: *id044
+      snapshot:
+        contract_version: project-state/v1
+        snapshot_at: '2026-10-29T09:15:45.100152+00:00'
+        revision: 604
+        project: *id003
+        current_phase: *id004
+        phases: *id005
+        active_tasks: []
+        working_tasks_without_active_lease: []
+        active_passes: []
+        stale_passes: []
+        blocked_tasks: []
+        eligible_tasks:
+          - *id046
+        latest_pass: *id055
+        queue_counts:
+          by_status:
+            completed: 38
+            pending: 52
+          total: 90
+          active_passes: 0
+          stale_passes: 0
+          eligible: 1
+          blocked: 0
+        warnings: []
+        recommended_action: select_new_task
+  7d1f0b52-3e8a-4c61-9f2e-0a5c3b7e9d41:
+    fingerprint: 7af4bbbc4347e47f2769a4a760dd5b72f7bd2c7e2be09b754245c95836641bb3
+    response:
+      contract_version: project-state/v1
+      operation: start_pass
+      revision: 605
+      data:
+        pass: *id056
+        task: *id046
+      snapshot:
+        contract_version: project-state/v1
+        snapshot_at: '2026-10-29T14:00:20.300718+00:00'
+        revision: 605
+        project: *id003
+        current_phase: *id004
+        phases: *id005
+        active_tasks:
+          - *id046
+        working_tasks_without_active_lease: []
+        active_passes:
+          - *id056
+        stale_passes: []
+        blocked_tasks: []
+        eligible_tasks: []
+        latest_pass: *id056
+        queue_counts:
+          by_status:
+            completed: 38
+            pending: 51
+            working: 1
+          total: 90
+          active_passes: 1
+          stale_passes: 0
+          eligible: 0
+          blocked: 0
+        warnings: []
+        recommended_action: resume_active
+  b3e6a1c9-52d4-4f0e-8a17-6c2d9e4f7a83:
+    fingerprint: 42e007438f6b132a58e085dea99d2393c4798d40cf98557b29c1baa51c5c5d5b
+    response:
+      contract_version: project-state/v1
+      operation: finish_pass
+      revision: 606
+      data:
+        pass: *id056
+        task: *id046
+      snapshot:
+        contract_version: project-state/v1
+        snapshot_at: '2026-10-29T14:16:37.642816+00:00'
+        revision: 606
+        project: *id003
+        current_phase: *id004
+        phases: *id005
+        active_tasks: []
+        working_tasks_without_active_lease: []
+        active_passes: []
+        stale_passes: []
+        blocked_tasks: []
+        eligible_tasks:
+          - *id057
+        latest_pass: *id056
+        queue_counts:
+          by_status:
+            completed: 39
+            pending: 51
           total: 90
           active_passes: 0
           stale_passes: 0

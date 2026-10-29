@@ -319,35 +319,10 @@ fn denied(reason: Denial) -> Target {
 fn unsafe_text(s: &str) -> bool {
     s.chars().any(|c| {
         crate::metadata::unsafe_character(c)
-            || invisible_target_character(c)
+            // Targets deny display modifiers too (docs/URI-Policy.md).
+            || crate::metadata::invisible_character(c)
             || (c.is_whitespace() && c != ' ')
     })
-}
-// Unicode 16.0 Default_Ignorable_Code_Point plus U+2800 BRAILLE PATTERN BLANK.
-// Copyright (c) 2024 Unicode, Inc. Source/provenance and Unicode-3.0 notice:
-// docs/URI-Policy.md and licenses/Unicode-3.0.txt. Targets only: display text
-// keeps variation selectors, Mongolian FVS and CGJ (docs/Front-Matter.md).
-fn invisible_target_character(c: char) -> bool {
-    matches!(c as u32,
-        0xAD |
-        0x34F |
-        0x61C |
-        0x115F..=0x1160 |
-        0x17B4..=0x17B5 |
-        0x180B..=0x180F |
-        0x200B..=0x200F |
-        0x202A..=0x202E |
-        0x2060..=0x206F |
-        0x2800 |
-        0x3164 |
-        0xFE00..=0xFE0F |
-        0xFEFF |
-        0xFFA0 |
-        0xFFF0..=0xFFF8 |
-        0x1BCA0..=0x1BCA3 |
-        0x1D173..=0x1D17A |
-        0xE0000..=0xE0FFF
-    )
 }
 fn decode(s: &str) -> Option<String> {
     let b = s.as_bytes();

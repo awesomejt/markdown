@@ -1,7 +1,7 @@
 # Agent Session and Platform Handoff
 
-Updated: 2026-10-28, review cap and branch settings on `main` (after PR #23).
-Source baseline: `develop`, fast-forwarded to that `main` commit. Preserve intended source, lock/spec/golden
+Updated: 2026-10-29, CORE-003E closeout (PR #27).
+Source baseline: `develop` after the PR #27 merge. Preserve intended source, lock/spec/golden
 files, docs and state together. Never transfer caches, environments, build
 products, private runtime state or user documents.
 
@@ -38,13 +38,31 @@ in order before any platform phase. Their scope is in
 - **Done:** TOOL-003, first-push whitespace check,
   [PR #23](https://github.com/awesomejt/markdown/pull/23). Two deferred
   findings are in TODO.md.
-- **Current:** CORE-003D (bare GFM autolinks), the only eligible task. Start
-  its pass on a branch from `develop`, and target its PR at `develop`. The
-  strengthened v2 conformance checks the change.
-- **Then:** CORE-005C, CORE-005D and CORE-003E. Their end is the first
-  milestone review (`review/core-fix` into `main`). Then the CORE-001 to
-  CORE-006 aggregates. Each host's chain in `desktop-apps` starts after
-  CORE-006 (D-027). Do not select platform tasks before then.
+- **Done:** CORE-003D, bare GFM autolinks (D-031),
+  [PR #24](https://github.com/awesomejt/markdown/pull/24), merged into
+  `develop` after the three-review cap with the owner's approval.
+- **Done:** CORE-005C, the content-search memory guard,
+  [PR #25](https://github.com/awesomejt/markdown/pull/25), merged into
+  `develop` on a clean Grok review (D-029). The default file budget is
+  2 MiB, and the node allowance follows it; see the
+  [workspace-search spec](specs/workspace-search/README.md#memory-guard-core-005c).
+- **Done:** CORE-005D, wider invisible-filename warnings,
+  [PR #26](https://github.com/awesomejt/markdown/pull/26), merged into
+  `develop` on a clean Grok review (D-029). File names now flag Cf plus
+  Default_Ignorable and U+2800, except ZWJ/ZWNJ and display modifiers; the
+  shared tables live in `metadata.rs`.
+- **Done:** CORE-003E, front-matter invisible-character parity,
+  [PR #27](https://github.com/awesomejt/markdown/pull/27), merged into
+  `develop` on a clean Grok review (D-029). Front-matter text now rejects
+  the blank default-ignorable values and U+2800 too, keeping the display
+  modifiers (D-032). `metadata::hidden_character` is the one shared guard.
+- **Current:** CORE-FIX is complete, so the first milestone review is due
+  (D-030): confirm `develop` is green with no task PR waiting, cut
+  `review/core-fix` from it, and open the review PR into `main` with the
+  review packet. Only the owner merges it. Work continues on `develop`
+  meanwhile with CORE-001, the first CORE-001 to CORE-006 aggregate. Each
+  host's chain in `desktop-apps` starts after CORE-006 (D-027). Do not select
+  platform tasks before then.
 
 Inspect state before any pass, following AGENT_WORKFLOW.md:
 

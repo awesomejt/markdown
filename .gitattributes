@@ -2,4 +2,5 @@
 /fixtures/** -text
 /specs/semantic-model/v1/fixtures/*.source.txt -text whitespace=-blank-at-eol,cr-at-eol
 /specs/parsing/basic/*.source.txt -text
+/specs/parsing/autolinks/*.source.txt -text
 /specs/semantic-model/v2/fixtures/*.source.txt -text

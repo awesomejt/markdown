@@ -73,7 +73,9 @@ CORE-003B4 adds `tests/conformance.rs` against the generated
 contract with `python tools/generate_conformance.py` after changing fixture
 expectations. It also adds `tests/hostile.rs` (corpus-seeded mutation;
 `MD_FUZZ_CASES` raises the default of 4,000) and `tests/budgets.rs` (counted
-heap budgets, plus time guards in release). Re-measure named-host numbers with
+heap budgets, plus time guards in release). CORE-005C adds
+`tests/content_budgets.rs`, the counted content-search memory guard.
+Re-measure named-host numbers with
 `cargo run --release --locked --features model-v2 --example parse_budget 11`
 (add `-- --cancel` for cancellation latency); see [Parser-Budgets.md](Parser-Budgets.md).
 These suites do not prove native UI conformance. Regenerate the schema deliberately with:

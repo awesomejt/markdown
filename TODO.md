@@ -49,8 +49,9 @@ core alone.
 The shared-core reviews (PR #16) are merged. The current work is the
 [CORE-FIX phase](#core-fix-phase-shared-core-review-follow-ups): DOC-001,
 CORE-002B, TOOL-002 and CORE-003C merged in PRs #17 to #21, the D-029 and
-D-030 workflow changes in PR #22 and on `main`, and TOOL-003 in PR #23. CORE-003D is next, on a branch
-from `develop`; the end of CORE-FIX is the first milestone review. Inspect
+D-030 workflow changes in PR #22 and on `main`, TOOL-003 in PR #23, CORE-003D in PR #24, CORE-005C in PR #25, CORE-005D in PR #26 and CORE-003E in PR #27 (D-032).
+CORE-FIX is complete: the first milestone review (`review/core-fix`, D-030) is
+due, and CORE-001 is next on `develop`. Inspect
 state and `HANDOFF.md` before any pass. Scoped commits, pushes, PR updates and
 review requests are authorized; a Grok review with no serious finding approves
 a merge into `develop` (D-029); only the owner merges into `main` (D-030);
@@ -308,7 +309,9 @@ is one feature branch and PR under
      properties also reject or diagnose blank or invisible characters that
      are not Cf: the Hangul fillers, U+2800 and other default-ignorable
      values. Keep the variation-selector and CGJ display allowance.
-   - Reuse the v2 and CORE-005D tables with provenance. Apply the rule in the
+   - Reuse the shared tables with provenance: since CORE-005D,
+     `metadata::invisible_character` (Default_Ignorable plus U+2800) and
+     `metadata::display_modifier` sit beside `unsafe_character`. Apply the rule in the
      producer and in shared `validate_structure`, so v1, v2 and `from_json`
      keep the parity CORE-002B establishes.
    - Acceptance: v1 and v2 tests for each new range and for the allowance,
@@ -428,6 +431,14 @@ when it is resolved.
   - Output is decoded as strict UTF-8, so an inherited non-UTF-8 problem line
     raises `UnicodeDecodeError`. Read bytes, or decode with
     `errors="surrogateescape"`.
+
+## Process options under consideration
+
+Harder gates the owner deferred on 2026-10-28 to see how the D-030 workflow
+works first. Revisit at the first milestone review (the end of CORE-FIX).
+
+- Require the `Checks / complete` status in `main`'s branch protection. It is
+  off so a stuck check cannot block a milestone merge.
 
 ## Dependency summary
 

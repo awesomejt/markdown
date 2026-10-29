@@ -316,7 +316,8 @@ fn content_options(options: &md_content_options) -> Result<ContentOptions, md_st
                 options.max_total_bytes,
                 MD_CONTENT_DEFAULT_MAX_TOTAL_BYTES,
             ),
-            max_file_bytes: or_default(options.max_file_bytes, MD_CONTENT_MAX_FILE_BYTES) as usize,
+            max_file_bytes: or_default(options.max_file_bytes, MD_CONTENT_DEFAULT_MAX_FILE_BYTES)
+                as usize,
             max_matches_per_file: or_default(
                 options.max_matches_per_file,
                 MD_CONTENT_DEFAULT_MAX_MATCHES_PER_FILE,

@@ -457,6 +457,64 @@ fn decoded_and_literal_control_format_values_are_rejected_atomically() {
     }
 }
 
+// Non-Cf default-ignorable values and U+2800 (CORE-003E, D-032): the Hangul
+// fillers, Khmer inherent vowels, unassigned default-ignorables and tags-block
+// gaps. The display modifiers stay allowed.
+const BLANK_INVISIBLE: [u32; 14] = [
+    0x115f, 0x1160, 0x17b4, 0x17b5, 0x2065, 0x2800, 0x3164, 0xffa0, 0xfff0, 0xfff8, 0xe0000,
+    0xe0002, 0xe0080, 0xe0fff,
+];
+const DISPLAY_MODIFIERS: [u32; 8] = [
+    0x34f, 0x180b, 0x180d, 0x180f, 0xfe00, 0xfe0f, 0xe0100, 0xe01ef,
+];
+
+#[test]
+fn blank_invisible_values_are_rejected_atomically() {
+    for code in BLANK_INVISIBLE {
+        let c = char::from_u32(code).unwrap();
+        let encoded = serde_json::to_string(&format!("before{c}after")).unwrap();
+        let escaped = format!("\"before\\u{code:04x}after\"");
+        for value in [
+            encoded.clone(),
+            format!("[{encoded}]"),
+            format!("before{c}after"),
+            format!("'before{c}after'"),
+            format!("'{c}'"),
+        ] {
+            rejected(
+                &format!("title: legitimate\nunsafe: {value}"),
+                "front_matter_unsupported",
+            );
+            rejected(&format!("title: {value}"), "front_matter_unsupported");
+        }
+        if code <= 0xffff {
+            rejected(&format!("title: {escaped}"), "front_matter_unsupported");
+        }
+        rejected(
+            &format!("tags:\n  - fine\n  - before{c}after"),
+            "front_matter_unsupported",
+        );
+    }
+}
+
+#[test]
+fn display_modifiers_stay_allowed_in_metadata_text() {
+    for code in DISPLAY_MODIFIERS {
+        let c = char::from_u32(code).unwrap();
+        let value = format!("a{c}b");
+        let doc = parse(&wrapped(&format!(
+            "title: {value}\ntags: [{}]",
+            serde_json::to_string(&value).unwrap()
+        )));
+        assert!(doc.input().diagnostics.is_empty(), "{code:x}");
+        assert_eq!(doc.input().metadata.title.as_deref(), Some(value.as_str()));
+        assert_eq!(
+            doc.input().metadata.properties["tags"],
+            MetadataValue::Strings { value: vec![value] }
+        );
+    }
+}
+
 #[test]
 fn iso_dates_and_datetimes_remain_literal_strings() {
     for value in [

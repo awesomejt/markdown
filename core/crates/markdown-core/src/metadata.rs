@@ -22,7 +22,7 @@ struct Context<'a> {
 }
 impl Context<'_> {
     fn own(&mut self, value: &str) -> Result<String, Error> {
-        if value.chars().any(unsafe_character) {
+        if value.chars().any(hidden_character) {
             return Err(Error::Unsupported);
         }
         *self.copied = self
@@ -334,6 +334,52 @@ pub(crate) fn unsafe_character(c: char) -> bool {
             0xE0001 |
             0xE0020..=0xE007F
         )
+}
+
+// Unicode 16.0 Default_Ignorable_Code_Point plus U+2800 BRAILLE PATTERN BLANK.
+// Copyright (c) 2024 Unicode, Inc. Source/provenance and Unicode-3.0 notice:
+// docs/URI-Policy.md and licenses/Unicode-3.0.txt. URI targets deny all of it;
+// front matter rejects and file names flag it except display modifiers.
+pub(crate) fn invisible_character(c: char) -> bool {
+    matches!(c as u32,
+        0xAD |
+        0x34F |
+        0x61C |
+        0x115F..=0x1160 |
+        0x17B4..=0x17B5 |
+        0x180B..=0x180F |
+        0x200B..=0x200F |
+        0x202A..=0x202E |
+        0x2060..=0x206F |
+        0x2800 |
+        0x3164 |
+        0xFE00..=0xFE0F |
+        0xFEFF |
+        0xFFA0 |
+        0xFFF0..=0xFFF8 |
+        0x1BCA0..=0x1BCA3 |
+        0x1D173..=0x1D17A |
+        0xE0000..=0xE0FFF
+    )
+}
+
+// Default-ignorable values that display text needs: CGJ, Mongolian FVS 1-4
+// and the variation selectors (emoji presentation, ideographic variants).
+pub(crate) fn display_modifier(c: char) -> bool {
+    matches!(c as u32,
+        0x34F |
+        0x180B..=0x180D |
+        0x180F |
+        0xFE00..=0xFE0F |
+        0xE0100..=0xE01EF
+    )
+}
+
+// The display-text guard (D-032): controls, Cf, and the blank default-ignorable
+// values such as Hangul fillers and U+2800, except the display modifiers.
+// Front-matter values reject it; file names flag it (minus ZWNJ/ZWJ).
+pub(crate) fn hidden_character(c: char) -> bool {
+    unsafe_character(c) || (invisible_character(c) && !display_modifier(c))
 }
 
 // Deliberate literal ISO subset: calendar date, optionally time and zone.

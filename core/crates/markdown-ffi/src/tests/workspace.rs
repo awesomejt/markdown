@@ -311,7 +311,10 @@ fn core_options(options: &md_content_options) -> ws::ContentOptions {
         limits: ws::ContentLimits {
             max_files: or(options.max_files, ws::DEFAULT_MAX_FILES),
             max_total_bytes: or(options.max_total_bytes, ws::DEFAULT_MAX_TOTAL_BYTES),
-            max_file_bytes: or(options.max_file_bytes.into(), ws::MAX_FILE_BYTES as u64) as usize,
+            max_file_bytes: or(
+                options.max_file_bytes.into(),
+                ws::DEFAULT_MAX_FILE_BYTES as u64,
+            ) as usize,
             max_matches_per_file: or(
                 options.max_matches_per_file.into(),
                 ws::DEFAULT_MAX_MATCHES_PER_FILE as u64,
@@ -455,6 +458,18 @@ fn classify_path_matches_the_rust_rules() {
         "zw\u{200B}sp.md",
         "\u{FEFF}bom.md",
         "family\u{200D}emoji.md",
+        "zwnj\u{200C}.md",
+        "\u{115F}.md",
+        "a\u{1160}.md",
+        "dir\u{3164}/a.md",
+        "a\u{FFA0}.md",
+        "braille\u{2800}.md",
+        "khmer\u{17B4}.md",
+        "a\u{E0080}.md",
+        "love\u{2764}\u{FE0F}.md",
+        "\u{845B}\u{E0100}.md",
+        "\u{1820}\u{180B}.md",
+        "cgj\u{34F}.md",
         "back\\slash:colon.md",
         "",
         "/abs.md",
@@ -528,6 +543,16 @@ fn classify_path_matches_the_rust_rules() {
     assert_eq!(
         classify(b"zw\xE2\x80\x8Bsp.md").flags,
         MD_PATH_MARKDOWN | MD_PATH_INVISIBLE
+    );
+    // Hangul filler and braille blank are flagged; emoji VS16 is not.
+    for blank in [&b"\xE3\x85\xA4.md"[..], b"\xE2\xA0\x80.md"] {
+        let info = classify(blank);
+        assert_eq!(info.error, MD_PATH_VALID);
+        assert_eq!(info.flags, MD_PATH_MARKDOWN | MD_PATH_INVISIBLE);
+    }
+    assert_eq!(
+        classify(b"\xE2\x9D\xA4\xEF\xB8\x8F.md").flags,
+        MD_PATH_MARKDOWN
     );
     assert_eq!(classify(&[]).error, MD_PATH_EMPTY);
 
@@ -1174,6 +1199,65 @@ fn content_admission_skips_stops_and_budgets_match_the_rust_api() {
 }
 
 #[test]
+fn content_memory_guard_defaults_match_the_rust_api() {
+    // CORE-005C: zero selects the 2 MiB file budget and its node allowance.
+    let len = MD_CONTENT_DEFAULT_MAX_FILE_BYTES as usize;
+    let storm = "$a$ ".repeat(len / 4).into_bytes();
+    // About 700,000 nodes: over the default allowance, within the reader's.
+    let table = format!(
+        "|k|v|\n|-|-|\n{}\nneedle\n",
+        "| key1 | 42 |\n".repeat(139_000)
+    );
+    let prose = "A plain paragraph of prose.\n\n".repeat(len / 2 / 29) + "needle\n";
+    let big = vec![b'a'; len + 1];
+    let files: [(&str, &[u8]); 4] = [
+        ("storm.md", &storm),
+        ("table.md", table.as_bytes()),
+        ("prose.md", prose.as_bytes()),
+        ("big.md", &big),
+    ];
+    let (mut accounting, mut rust) = (progress(), ws::ContentProgress::default());
+    for (path, content) in files {
+        assert!(content.len() <= len || path == "big.md");
+        assert_content_parity(
+            "needle",
+            &content_opts(0),
+            path,
+            content,
+            &mut accounting,
+            &mut rust,
+        );
+    }
+    assert_eq!(
+        (
+            accounting.files_read,
+            accounting.files_matched,
+            accounting.skipped_parse_failed,
+            accounting.skipped_too_large
+        ),
+        (3, 1, 2, 1)
+    );
+    // The largest file budget restores the reader's limits.
+    let largest = md_content_options {
+        max_file_bytes: MD_CONTENT_MAX_FILE_BYTES,
+        ..content_opts(0)
+    };
+    let (mut accounting, mut rust) = (progress(), ws::ContentProgress::default());
+    for (path, content) in &files[1..] {
+        assert_content_parity(
+            "needle",
+            &largest,
+            path,
+            content,
+            &mut accounting,
+            &mut rust,
+        );
+    }
+    assert_eq!((accounting.files_read, accounting.files_matched), (3, 2));
+    assert_eq!(accounting.skipped_parse_failed, 0);
+}
+
+#[test]
 fn content_search_buffer_sizing_from_limits_and_too_small_arrays() {
     let content = "alpha one\n\nalpha two *alpha* three\n\n- alpha\n".repeat(10);
     let options = md_content_options {
@@ -1655,6 +1739,10 @@ fn abi_constants_equal_the_core_constants() {
         ws::DEFAULT_MAX_TOTAL_BYTES
     );
     assert_eq!(MD_CONTENT_MAX_TOTAL_BYTES, ws::MAX_TOTAL_BYTES);
+    assert_eq!(
+        MD_CONTENT_DEFAULT_MAX_FILE_BYTES as usize,
+        ws::DEFAULT_MAX_FILE_BYTES
+    );
     assert_eq!(MD_CONTENT_MAX_FILE_BYTES as usize, ws::MAX_FILE_BYTES);
     assert_eq!(
         MD_CONTENT_DEFAULT_MAX_MATCHES_PER_FILE as usize,
