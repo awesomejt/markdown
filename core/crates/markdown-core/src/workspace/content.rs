@@ -371,13 +371,10 @@ impl ContentQuery {
     }
 }
 
-/// The bounded parse for one file. Parse memory grows by a few hundred bytes
-/// per model node, so the node and event allowances follow the file budget
-/// instead of the reader's fixed 1,000,000 nodes: `max_file_bytes / 4` nodes,
-/// at least [`MIN_NODES`] and at most the reader's limit, and twice as many
-/// events (the reader's ratio). The 2 MiB default allows 524,288 nodes; the
-/// densest legitimate inputs measured need up to about 255,000 per MiB. A
-/// file over the allowance is `ParseFailed`, like any other parse limit.
+/// The bounded parse for one file. Parse memory grows with the node count, so
+/// the node and event allowances follow the file budget rather than the
+/// reader's fixed limits; specs/workspace-search/README.md (memory guard) has
+/// the rule and its measurements.
 fn parse_limits(max_file_bytes: usize) -> ParseLimits {
     let mut limits = ParseLimits::default();
     let nodes = (max_file_bytes / BYTES_PER_NODE).clamp(MIN_NODES, limits.model.max_nodes);
