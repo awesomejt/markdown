@@ -30,7 +30,7 @@ read.
   CORE-005D, then CORE-003E (owner-added from the PR #17 review). The CORE-001 to CORE-006 aggregates follow and close on shared
   acceptance. HARD-001 sits between DESK-001 and DESK-002.
 - DOC-001, CORE-002B, TOOL-002 (CI tiers, D-028) and CORE-003C (v2 corpus
-  conformance) merged in PRs #17 to #21, TOOL-003 in #23. Now: CORE-003D. See
+  conformance) merged in PRs #17 to #21, TOOL-003 in #23, CORE-003D (bare autolinks, D-031) in #24. Now: CORE-005C. See
   [HANDOFF.md](HANDOFF.md) and [TODO.md](TODO.md).
 - Workflow: task PRs target `develop` and merge on a Grok review with no
   serious finding (D-029). `main` takes only owner-approved milestone reviews

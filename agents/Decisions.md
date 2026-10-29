@@ -654,7 +654,7 @@ tags, signing and publishing still need explicit approval.
 
 **Date:** 2026-10-28
 
-**Status:** proposed in CORE-003D; accepted on approved merge
+**Status:** accepted 2026-10-29 (owner approved the PR #24 merge)
 
 **Context:** R1.2 requires GFM autolinks, and the owner decided to implement
 them in the shared core (D-026, Codex C3). pulldown-cmark 0.13.5 detects only
