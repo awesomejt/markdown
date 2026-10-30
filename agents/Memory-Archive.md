@@ -1176,3 +1176,19 @@ The next task was CORE-005; its search/read acceptance is now closed in PR #37.
   at `68cb794` had 0 blockers, 1 low wording concern and 2 nits, all fixed at
   `6bd6cd5` and exempt from re-review under step 7. One review, no re-review
   requested, all threads resolved, no findings deferred. No live lease remains.
+
+## CORE-006 closeout handoff (2026-10-30)
+
+- **Done:** CORE-006 in [PR #38](https://github.com/awesomejt/markdown/pull/38):
+  [facade acceptance](../docs/Core-Facade-Acceptance.md), existing ABI v1 zero
+  content-budget change from 8 to 2 MiB documented, shared/native evidence
+  boundaries reconciled. No runtime/header/schema/golden/dependency change.
+  Local `tools/check.py all` and staged common checks passed on macOS
+  27.0.1/Rust 1.99.1. Fresh
+  [three-OS debug and all-feature release CI](https://github.com/awesomejt/markdown/actions/runs/41024924816)
+  passed at `4339669265c139fa493d4e73623ad9a9c278e503`; macOS/Linux compiled
+  C smoke passed, Windows MSVC smoke remains WIN-001B.
+  [Grok review](https://github.com/awesomejt/markdown/pull/38#pullrequestreview-5709806212)
+  at that head had 0 blockers, 0 concerns and 2 nits. Both are addressed in
+  the closeout: explicit all-feature-only release scope and committed run/head
+  evidence. One review, no re-review needed, no findings deferred.

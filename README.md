@@ -23,8 +23,10 @@ hand-written [C ABI](specs/ffi/README.md). Aggregate acceptance evidence is
 linked from [HANDOFF.md](HANDOFF.md) and [Architecture.md](docs/Architecture.md).
 
 The active phase is **desktop-apps**: each host begins its own native walking
-skeleton (D-027), with MAC-001A next on macOS. Native consumer packages,
-accessibility and performance still require platform evidence; the core alone
+skeleton (D-027). The [macOS AppKit shell](apps/macos/README.md) now provides
+native windows/commands and a debug/release CI smoke; MAC-001B is next for its
+core adapter. Native consumer packages, accessibility and performance still
+require platform evidence; the core alone
 delivers no working reader UI. The closed shared track also reaches the next
 owner-reviewed milestone into `main` (D-030). The accepted
 [implementation baseline](docs/Implementation-Baseline.md) and

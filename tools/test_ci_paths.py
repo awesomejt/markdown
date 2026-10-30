@@ -1,8 +1,13 @@
 """Guard against skipping a host affected by a shared or native change."""
 import io
 import json
+import os
+from pathlib import Path
+import subprocess
 import unittest
 from unittest import mock
+
+import yaml
 
 from ci_paths import checks_green, classify, decide
 
@@ -19,6 +24,11 @@ class HostSelectionTests(unittest.TestCase):
                          dict(linux=True, windows=False, macos=False))
         self.assertEqual(classify(["apps/ios/App.swift"]),
                          dict(linux=False, windows=False, macos=True))
+        for path in ("apps/macos/Sources/Markdown/MarkdownApp.swift",
+                     "apps/macos/Package.swift", "apps/macos/Info.plist",
+                     "apps/macos/tools/check.py"):
+            self.assertEqual(classify([path]),
+                             dict(linux=False, windows=False, macos=True), path)
 
     def test_docs_only_and_manual_runs(self):
         self.assertFalse(any(classify(["docs/Product.md"]).values()))
@@ -66,6 +76,29 @@ class HostSelectionTests(unittest.TestCase):
                 self.assertEqual(checks_green("abc", env), expected)
         with mock.patch("ci_paths.urllib.request.urlopen", side_effect=AssertionError("no token")):
             self.assertFalse(checks_green("abc", {}))
+
+
+class CompletionGateTests(unittest.TestCase):
+    def test_native_result_is_required_only_when_selected(self):
+        workflow = yaml.safe_load((Path(__file__).resolve().parents[1]
+                                   / ".github/workflows/ci.yml").read_text())
+        job = workflow["jobs"]["complete"]
+        self.assertIn("macos-native", job["needs"])
+        # A later successful command must not mask any rejected gate state.
+        gate = job["steps"][0]["run"] + "\ntrue\n"
+        green = dict(CHANGES="success", COMMON="success", CORE="success",
+                     MACOS_SELECTED="true", MACOS_NATIVE="success")
+        cases = [({}, True), ({"MACOS_SELECTED": "false", "MACOS_NATIVE": "skipped"}, True),
+                 ({"MACOS_SELECTED": "", "MACOS_NATIVE": "skipped"}, False)]
+        for result in ("failure", "cancelled", "skipped", ""):
+            cases.append(({"MACOS_NATIVE": result}, False))
+        for name in ("CHANGES", "COMMON", "CORE"):
+            cases.append(({name: "failure"}, False))
+        for overrides, passed in cases:
+            with self.subTest(overrides=overrides):
+                result = subprocess.run(["bash", "-c", gate],
+                                        env={**os.environ, **green, **overrides})
+                self.assertEqual(result.returncode == 0, passed)
 
 
 if __name__ == "__main__":

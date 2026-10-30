@@ -96,13 +96,37 @@ jobs:
       - run: python tools/check.py core-extended
         if: needs.changes.outputs[matrix.host] == 'true' && (github.event_name != 'pull_request' || github.base_ref == 'main')
 
+  macos-native:
+    needs: changes
+    if: needs.changes.outputs.macos == 'true'
+    runs-on: xcode-27
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - run: sw_vers && xcodebuild -version && swift --version
+      - run: python3 apps/macos/tools/check.py
+
   complete:
     if: always()
-    needs: [changes, common, core]
+    needs: [changes, common, core, macos-native]
     runs-on: ubuntu-latest
     steps:
       - env:
           CHANGES: ${{ needs.changes.result }}
           COMMON: ${{ needs.common.result }}
           CORE: ${{ needs.core.result }}
-        run: test "$CHANGES" = success && test "$COMMON" = success && test "$CORE" = success
+          MACOS_SELECTED: ${{ needs.changes.outputs.macos }}
+          MACOS_NATIVE: ${{ needs.macos-native.result }}
+        run: |
+          set -e
+          test "$CHANGES" = success
+          test "$COMMON" = success
+          test "$CORE" = success
+          if [ "$MACOS_SELECTED" = true ]; then
+            test "$MACOS_NATIVE" = success
+          else
+            test "$MACOS_SELECTED" = false
+            test "$MACOS_NATIVE" = skipped
+          fi

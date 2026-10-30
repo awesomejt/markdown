@@ -1,15 +1,15 @@
 # Agent Session and Platform Handoff
 
-Updated: 2026-10-30 (America/Denver), after CORE-006 (PR #38).
-Source baseline: `develop` after PR #38; reviewed/release-validated head
-`4339669`, followed by the state/docs closeout. Preserve intended source, lock/spec/golden
+Updated: 2026-10-30 (America/Denver), after MAC-001A (PR #39).
+Source baseline: `develop` after PR #39; reviewed head `d57667a`, validated
+review fixes `1d818e4`, followed by one state/docs closeout. Preserve intended source, lock/spec/golden
 files, docs and state together. Never transfer caches, environments, build
 products, private runtime state or user documents.
 
 Older per-phase handoffs and the feasibility host notes are in
 [the memory archive](agents/Memory-Archive.md).
 
-## Resume here — after the CORE-FIX milestone
+## Resume here — desktop foundations
 
 CORE-FIX (PRs #17 to #27) is merged into `main` through the first milestone
 review, [PR #28](https://github.com/awesomejt/markdown/pull/28), tagged
@@ -38,24 +38,33 @@ done list is in [the memory archive](agents/Memory-Archive.md#handoffmd-phase-ha
   reference-syntax regressions and v1-workspace/v2-find boundaries. Detailed
   validation and review disposition are in the pass record and archive.
 - **Done:** CORE-006 in [PR #38](https://github.com/awesomejt/markdown/pull/38):
-  [facade acceptance](docs/Core-Facade-Acceptance.md), existing ABI v1 zero
-  content-budget change from 8 to 2 MiB documented, shared/native evidence
-  boundaries reconciled. No runtime/header/schema/golden/dependency change.
-  Local `tools/check.py all` and staged common checks passed on macOS
-  27.0.1/Rust 1.99.1. Fresh
-  [three-OS debug and all-feature release CI](https://github.com/awesomejt/markdown/actions/runs/41024924816)
-  passed at `4339669265c139fa493d4e73623ad9a9c278e503`; macOS/Linux compiled
-  C smoke passed, Windows MSVC smoke remains WIN-001B.
-  [Grok review](https://github.com/awesomejt/markdown/pull/38#pullrequestreview-5709806212)
-  at that head had 0 blockers, 0 concerns and 2 nits. Both are addressed in
-  the closeout: explicit all-feature-only release scope and committed run/head
-  evidence. One review, no re-review needed, no findings deferred.
+  [facade acceptance](docs/Core-Facade-Acceptance.md), ABI v1 default-change
+  history and fresh three-OS release checks. `portable-core` is complete.
+- **Done:** MAC-001A in [PR #39](https://github.com/awesomejt/markdown/pull/39):
+  [native AppKit shell](apps/macos/README.md), standard window/menu/keyboard
+  lifecycle, SwiftPM development bundle and required `macos-native` CI on
+  `xcode-27`. Bundle ID: `io.github.awesomejt.markdown`. No core link yet.
+  Local native debug/release smoke, full `tools/check.py all`, final common/
+  gate checks and visible native UI checks passed. Fixed-head
+  [CI run 41087967326](https://github.com/awesomejt/markdown/actions/runs/41087967326)
+  at `1d818e4eee73862e7b8d50ed1c5780c9b45bb37b` includes the actual macOS 27
+  native debug/release job; exact results are in the completion pass.
+  [Grok review](https://github.com/awesomejt/markdown/pull/39#pullrequestreview-5715121608)
+  at `d57667a` had 0 blockers, 2 soft CI concerns and 3 nits, all addressed at
+  `1d818e4`: runner proof/maintenance, bounded AppKit transition polling,
+  timeout diagnostics, plain gate checks and the GitHub-owned development ID.
+  One review, no re-review required for those non-serious fixes, all threads
+  resolved, no findings deferred.
 - **Next:** `portable-core` is complete and `desktop-apps` is active.
-  MAC-001A is dependency-ready on this Mac; WIN-001A/LNX-001A start on their
-  hosts. Native 001B packages retain their model-v2, memory and consumer gates.
+  MAC-001B is next on this Mac: native model-v2 facade adapter, release-mode
+  package consumption, lifecycle/error/cancellation/version checks and measured
+  encode/retained/session memory with a host source bound. WIN-001A/LNX-001A
+  start on their hosts; their chains remain independent.
   The shared-core milestone boundary is reached. Per MEMORY.md, Claude writes
   the combined packet for CORE-001–CORE-006 (plus CORE-003F since `m-core-fix`),
-  then Grok/Codex add independent reviews on `review/<milestone>`. Follow D-030
+  including MAC-001A if freezing current `develop`; name the exact snapshot and
+  every task it contains. Grok/Codex then add independent reviews on
+  `review/<milestone>`. Follow D-030
   to freeze green `develop` with no task PR waiting and open the milestone PR;
   only the owner merges into `main`. No milestone review branch/PR is created
   by this task closeout; hand off packet preparation to Claude.
