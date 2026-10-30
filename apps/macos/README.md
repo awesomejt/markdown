@@ -104,9 +104,10 @@ accessibility element continuous across the whole document. The
   Sidebar (Control-Command-S) toggles it, and Edit → Copy/Select All work on
   the document.
 
-Heading-level accessibility roles, find, text size and theme controls,
-document-wide performance budgets and reading-position restoration remain
-MAC-001F to MAC-001H work.
+Find, text size and appearance are described in
+[a later section](#find-text-size-and-appearance-mac-001f). Heading-level
+accessibility roles, document-wide performance budgets and reading-position
+restoration remain MAC-001G and MAC-001H work.
 
 ## Tables, task lists and images (MAC-001E)
 
@@ -160,6 +161,66 @@ MAC-001F to MAC-001H work.
   This build is not sandboxed. A sandboxed build's single-file grant does not
   cover sibling images (capability matrix CAP-04), so it would need the
   folder grant from MAC-002A. Images are read again on every reload.
+
+## Find, text size and appearance (MAC-001F)
+
+- **Find.** Edit → Find → Find… (Command-F) shows a find bar above the
+  document: a search field, previous and next buttons, the match status
+  (“3 of 12”, “Not found”), Match Case, Whole Words and Done. Find Next
+  (Command-G), Find Previous (Shift-Command-G) and Use Selection for Find
+  (Command-E) are in the same menu. In the field, Return goes to the next
+  match, Shift-Return to the previous one, and Escape closes the bar. Find
+  Next and Find Previous show the bar if it is hidden, because the bar is
+  what dismisses the highlights.
+- **The core searches, not the attributed text.** The window calls
+  `md_snapshot_find` through `CoreSession.find`
+  ([adapter](../../docs/macOS-Core-Integration.md#package-and-ownership)),
+  off the main thread and only for the snapshot generation on screen. Typing
+  starts a new search and only the newest result is shown, so a slow search
+  never replaces a newer one. The core stops at 10,000 matches, shown as
+  “10,000+”. A query over 4,096 bytes shows “Search text is too long”.
+- **Exact highlighting.** The renderer records where each node's display
+  text lands in the rendered string. Core match segments are UTF-8 ranges
+  in that display text, so they convert to exact UTF-16 ranges, including
+  across emphasis and links, in code spans and blocks, table cells, alt text
+  and raw HTML source. A break or an image attachment is highlighted whole.
+  Mapping runs off the main thread.
+- **Highlights and the current match.** Highlights are TextKit 2 rendering
+  attributes, so the text storage never changes and copied text carries no
+  highlight. The current match is drawn in the system find colour with dark
+  text, the other matches more lightly. While the find field has the focus,
+  the current match is highlighted but not selected, because the inactive
+  selection would draw over it. When the document has the focus, or the bar
+  closes, the current match becomes the selection, so Copy and VoiceOver
+  follow it. Each new search result is announced to VoiceOver (“3 of 12”).
+- **Navigation.** A search starts at the selection. Next and previous wrap
+  around the document and continue from the current match until the reader
+  moves the selection. They count matches, not source offsets (specs/search).
+  A reloaded document is searched again.
+- **Unicode.** Matching follows the [core rules](../../specs/search/README.md#matching-rules):
+  simple case folding (ẞ matches ß but not “ss”, and the final sigma matches
+  σ), no Unicode normalization, no match inside a combining sequence or emoji
+  ZWJ sequence, whole words that treat each ideograph as a word, and logical
+  order for right-to-left text. An NFC “café” does not match the decomposed
+  spelling, which is how the generated prose profile spells it.
+- **Text size.** View → Actual Size (Command-0), Make Text Bigger (Command-+)
+  and Make Text Smaller (Command-−) step through nine sizes from 75% to 250%.
+  Fonts and every text metric (indents, spacing, table columns) scale; images
+  keep their pixel size. A change re-renders off the main thread and keeps
+  the top line, the selection and the find highlights. Images are read again.
+- **Appearance.** View → Appearance → System, Light or Dark sets the
+  application appearance. Rendered colours are dynamic, so open documents
+  follow without re-rendering.
+- **Settings.** Markdown → Settings… (Command-comma) has an Appearance pop-up
+  and a Text size slider. Both settings apply to every window at once and
+  are stored in user defaults under the bundle ID (`appearance`,
+  `textScale`). Missing or invalid values fall back to System and 100%. The
+  app smoke keeps settings in memory and never writes user defaults.
+
+Limits: find is literal (no regular expressions) and not
+normalization-insensitive; that needs the open core proposal in
+specs/search. The outline is not searched. Text size is app-wide, not per
+window.
 
 ## Build and launch
 
@@ -247,6 +308,14 @@ Its rich-block part opens a document whose sibling image loads through the
 app's real resource adapter, while a remote image and a `../` image are
 refused; the task marker and tab-separated table rows are checked on TextKit 2.
 Copy is written to a private pasteboard, never the user's clipboard.
+Its MAC-001F part searches a Unicode document through the real find bar and
+menu commands: case folding, NFC and NFD spellings, an emoji sequence, CJK
+and right-to-left text, the match status, Find Next and Previous with
+wrapping, Return and Escape in the field, Match Case, Use Selection for Find
+and the current match becoming the selection. It then checks Make Text
+Bigger/Smaller and Actual Size (the text re-renders and keeps the
+selection), each appearance reaching the window, and the Settings window
+following and changing both settings, which a new preferences reader sees.
 `MarkdownRenderTests` render every semantic corpus case and compare its
 outline levels, titles and anchors with the frozen expectations, check each
 heading's rendered range, link policy on the GFM tour, inert unsafe content,
@@ -258,7 +327,16 @@ is tab-separated), table edge cases, task markers, the image policy (each
 denial reason, one read per distinct path, no loader call for remote or
 denied targets, width fitting on a real view) and the image budgets
 (header pixel limit, forged dimensions, downsampling, count and decoded-memory
-limits, cancellation). `MarkdownDocumentTests` checks resource containment:
+limits, cancellation). MAC-001F's `FindTests` map core matches for every kind
+of display text (inline markup, entities, code spans and blocks, soft and
+hard breaks, alt text, raw HTML, table cells, headings) after astral,
+combining, emoji and right-to-left text; check navigation wrapping, the text
+size steps and scaled fonts, indents and tab stops; check highlights,
+current-match selection and a text size change on a real TextKit 2 view; and
+time find over the generated profiles. `MarkdownCoreTests` check find over
+the current snapshot: superseded and unpublished generations, the Unicode
+rules, truncation, an over-long query, cancellation before the worker runs,
+a closed session and zero live handles. `MarkdownDocumentTests` checks resource containment:
 subfolders, `./`/`../` within the folder, literal `%` names, escaping `../`,
 escaping and in-folder symlinks, absolute paths, missing files, SVG and
 non-image types, folders, FIFOs, the size limit and denied permission.
@@ -307,6 +385,13 @@ be cancelled and its runner configuration fixed.
    appearance, click outline rows and use the arrow keys in the outline,
    click “the table section”, drag a selection across several blocks and
    paste it into a text editor, and press Control-Command-S twice.
+8. In the same document press Command-F and type `table`. Confirm the
+   highlights, the status, Return and Shift-Return, Command-G and
+   Shift-Command-G, Match Case and Whole Words, then Escape. Select a word
+   and press Command-E. Press Command-+, Command-− and Command-0, choose View
+   → Appearance → Dark, Light and System, and open Settings with
+   Command-comma. Quit and relaunch to confirm the settings persist. With
+   VoiceOver already on, confirm that a search announces its result.
 
 Inspect the empty-state text/window/menu roles using macOS accessibility
 tooling. Full VoiceOver document reading, large documents, mixed displays,
@@ -378,3 +463,32 @@ quarter of a second; MAC-001G owns large-document layout budgets. The
 interactive steps in manual check 7 were not performed by the agent (no
 Accessibility or Screen Recording grant); the smoke covers them through the
 same controls.
+
+## MAC-001F local evidence
+
+Checked on 2026-10-30 on the same Mac (Apple M5 Max, macOS 27.0.1, Xcode
+27.1, Swift 6.4): `apps/macos/tools/check.py` passed in debug and release,
+each with 13 `MarkdownRenderTests`, 6 `FindTests`, 8 `MarkdownDocumentTests`
+and 11 `MarkdownCoreTests`, strict format, warnings as errors and both
+relocated bundle smokes including the find, text size, appearance and
+Settings checks. Offscreen snapshots of highlights (light and dark, 100% and
+150%) and of the window with its find bar were inspected. Release timings
+from `FindTests` (core find on the worker and mapping off the main thread;
+highlighting and revealing the last match on it):
+
+| Profile and query | Matches | Core find | Mapping | Highlight and reveal last |
+| --- | ---: | ---: | ---: | ---: |
+| Prose 5 MiB, decomposed `café` | 10,000+ | 56.1 ms | 0.9 ms | 44.0 ms |
+| Prose 5 MiB, `native text layout` | 10,000+ | 45.6 ms | 3.9 ms | 41.7 ms |
+| Long lines 1 MiB, `xxxxxxxx` | 10,000+ | 1.3 ms | 0.3 ms | 26.5 ms |
+| Delimiter storm 1 MiB, `a` | 10,000+ | 7.8 ms | 0.2 ms | 27.9 ms |
+
+These are single in-process samples, not presented-frame budgets. One find
+call stays well under 100 ms on the largest accepted document and runs off
+the main thread, so the uncancellable call needs no cancellable ABI variant
+(CORE-002B host guidance). Highlighting all 10,000 matches on the main
+thread takes about 40 ms; MAC-001G owns interaction budgets. Release prose
+5 MiB rendering, which now records each node's text range, took 586–592 ms
+in three runs (MAC-001E: about 580 ms). Manual check 8 and VoiceOver
+announcements were not performed by the agent (no Accessibility or Screen
+Recording grant); the smoke covers the same controls.

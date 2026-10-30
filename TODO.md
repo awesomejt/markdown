@@ -358,7 +358,9 @@ Not in CORE-FIX, kept where they belong:
   retained-RSS cost for one document and for repeated documents on its host,
   and on Windows makes the MSVC C smoke a required CI step. If 001F measures
   real latency from the search calls that can't be cancelled (F4), add
-  cancellable variants under D-022.
+  cancellable variants under D-022. MAC-001F measured 46–56 ms for a release
+  find over the 5 MiB prose profile, run off the main thread, so macOS needs
+  none; WIN-001F and LNX-001F measure their own hosts.
 - **HARD-001 — Release hardening (F7, G6, C7).** Follows DESK-001 and blocks
   DESK-002. Coverage-guided fuzzing of the parser, the model decoder and the
   safe FFI inputs (with valid backing buffers), sanitizer runs where
