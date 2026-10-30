@@ -164,6 +164,11 @@ and outcome codes, panic containment and a bulk read-only snapshot view of
 fixed-size records plus one string table, owned by the snapshot handle.
 Native consumers are validated in each platform's 001B phase.
 
+[CORE-006 acceptance](Core-Facade-Acceptance.md) maps the shared facade criteria
+to exported-function, release-mode and staged C-host checks, records the
+earlier ABI v1 content-budget default change, and preserves native package
+consumers and host performance as separate 001B evidence.
+
 The Linux Rust host consumes the same public C facade as the other apps;
 it does not depend on the core's internal Rust models or lifetimes.
 
