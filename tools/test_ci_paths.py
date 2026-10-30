@@ -84,7 +84,8 @@ class CompletionGateTests(unittest.TestCase):
                                    / ".github/workflows/ci.yml").read_text())
         job = workflow["jobs"]["complete"]
         self.assertIn("macos-native", job["needs"])
-        gate = job["steps"][0]["run"]
+        # A later successful command must not mask any rejected gate state.
+        gate = job["steps"][0]["run"] + "\ntrue\n"
         green = dict(CHANGES="success", COMMON="success", CORE="success",
                      MACOS_SELECTED="true", MACOS_NATIVE="success")
         cases = [({}, True), ({"MACOS_SELECTED": "false", "MACOS_NATIVE": "skipped"}, True),

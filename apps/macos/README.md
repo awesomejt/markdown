@@ -14,7 +14,13 @@ Silicon (D-018); other OS versions and architectures are not claimed.
 ## Build and launch
 
 Use Xcode 27 with the macOS 27 SDK and Swift 6. The package has no third-party
-dependencies. From the repository root:
+dependencies.
+
+The development bundle ID is `io.github.awesomejt.markdown`, under the
+repository owner's GitHub namespace. No released identity or user-data
+migration exists yet; signing and distribution identity review remain later work.
+
+From the repository root:
 
 ```sh
 swift build --package-path apps/macos --configuration debug -Xswiftc -warnings-as-errors
@@ -65,6 +71,14 @@ select the job; app-only macOS paths select only macOS host work. Common
 regressions exercise the gate's actual shell command for failed/cancelled/
 skipped native results and earlier failed jobs.
 
+If GitHub retires or renames the preview image, check the linked official image
+list and update `runs-on` to its available macOS 27/Apple Silicon replacement
+(for example `macos-27` only once GitHub lists it). Update these instructions
+and obtain a fresh hosted debug/release smoke before merging that change.
+Do not lower the deployment target or bypass the native gate. A job timeout
+does not bound runner queue time; a job stuck waiting for a retired label must
+be cancelled and its runner configuration fixed.
+
 ## Manual shell check
 
 1. Launch the development bundle above and confirm the Markdown window and
@@ -97,3 +111,8 @@ The installed actionlint version does not yet recognize the official preview
 `xcode-27` label. Workflow lint passed with only that exact unknown-label
 diagnostic suppressed; actual hosted execution remains the required evidence.
 CI and review disposition are recorded in the task PR and completion pass.
+
+The first hosted [native job](https://github.com/awesomejt/markdown/actions/runs/41086966487/job/124170589212)
+passed debug/release at `d57667a558c262484061f616661a34e0c6d1043e` on
+`xcode-27-arm64`: macOS 27.0.1, Xcode 27.1 and Swift 6.4. This confirms the
+preview label was available; it does not guarantee future label availability.

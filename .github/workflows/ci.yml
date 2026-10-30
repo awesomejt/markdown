@@ -127,5 +127,6 @@ jobs:
           if [ "$MACOS_SELECTED" = true ]; then
             test "$MACOS_NATIVE" = success
           else
-            test "$MACOS_SELECTED" = false && test "$MACOS_NATIVE" = skipped
+            test "$MACOS_SELECTED" = false
+            test "$MACOS_NATIVE" = skipped
           fi

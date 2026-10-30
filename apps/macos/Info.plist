@@ -5,7 +5,7 @@
     <key>CFBundleDevelopmentRegion</key><string>en</string>
     <key>CFBundleDisplayName</key><string>Markdown</string>
     <key>CFBundleExecutable</key><string>Markdown</string>
-    <key>CFBundleIdentifier</key><string>dev.markdown.reader</string>
+    <key>CFBundleIdentifier</key><string>io.github.awesomejt.markdown</string>
     <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
     <key>CFBundleName</key><string>Markdown</string>
     <key>CFBundlePackageType</key><string>APPL</string>
