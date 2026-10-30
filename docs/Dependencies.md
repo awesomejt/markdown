@@ -142,8 +142,9 @@ This adds no Cargo package and does not alter the reviewed dependency graph.
 
 MAC-001A's [SwiftPM AppKit shell](../apps/macos/Package.swift) has no external
 Swift package dependencies. It uses the Apple system frameworks and Swift
-runtime supplied by the selected Xcode/macOS SDK; no Rust core is linked until
-MAC-001B. The app source uses the repository's Apache-2.0 license.
+runtime supplied by the selected Xcode/macOS SDK. MAC-001B statically links
+the existing model-v2 Rust graph through a local header/archive package; it
+adds no Rust or Swift dependency. The app source uses the repository's Apache-2.0 license.
 
 | Tool/graph | Pin | Policy boundary |
 | --- | --- | --- |

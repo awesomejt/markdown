@@ -163,6 +163,9 @@ exact struct-size negotiation, explicit v1/v2 model selection, typed status
 and outcome codes, panic containment and a bulk read-only snapshot view of
 fixed-size records plus one string table, owned by the snapshot handle.
 Native consumers are validated in each platform's 001B phase.
+The [macOS consumer](macOS-Core-Integration.md) copies the v2 flat values into
+Swift-owned storage, uses bounded worker admission and records host limits,
+encode/copy costs and the still-open repeated-load RSS risk.
 
 [CORE-006 acceptance](Core-Facade-Acceptance.md) maps the shared facade criteria
 to exported-function, release-mode and staged C-host checks, records the

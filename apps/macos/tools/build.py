@@ -1,15 +1,23 @@
 #!/usr/bin/env python3
 """Build with SwiftPM and assemble a local, unsigned development .app."""
 import argparse
+import json
 from pathlib import Path
 import shutil
 import subprocess
+
+from package_core import prepare_core
 
 APP_ROOT = Path(__file__).resolve().parents[1]
 REPO_ROOT = APP_ROOT.parents[1]
 
 
-def build(configuration: str) -> Path:
+def build(configuration: str, *, prepared: bool = False) -> Path:
+    if not prepared:
+        prepare_core(configuration)
+    manifest = json.loads((APP_ROOT / "CorePackage/manifest.json").read_text())
+    if manifest["configuration"] != configuration:
+        raise SystemExit("prepare the matching core profile before the Swift build")
     command = ["swift", "build", "--package-path", str(APP_ROOT),
                "--configuration", configuration, "-Xswiftc", "-warnings-as-errors"]
     subprocess.run(command, check=True)
