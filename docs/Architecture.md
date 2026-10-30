@@ -111,6 +111,11 @@ budgets into the semantic layer; they receive values and diagnostics back.
    resolved against the new snapshot; node IDs are snapshot-local
    ([session contract](../specs/session/README.md)).
 
+[CORE-004 acceptance](Core-Session-Acceptance.md) maps the shared session
+criteria to publication, cancellation, change, lifetime and anchor tests. It
+separates those checks from native watcher ordering and UI presentation, and
+records the limits of the race and model-version coverage.
+
 ## Native rendering
 
 Do not represent a large document as one monolithic attributed string or one
