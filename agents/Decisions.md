@@ -740,7 +740,7 @@ sees every one at the next milestone review.
 
 **Date:** 2026-10-30
 
-**Status:** proposed; accepted with the merge approval of its PR (D-029)
+**Status:** accepted 2026-10-30 (Grok review of PR #32 with no serious finding, D-029)
 
 **Context:** The CORE-FIX milestone review (M1; Claude, Grok and Codex) found
 that the D-032 guard rejects ZWNJ and ZWJ, which are Cf. A front-matter title
