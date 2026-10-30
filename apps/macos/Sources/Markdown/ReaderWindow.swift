@@ -19,6 +19,7 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
   private var renderRequest: UInt64 = 0
   /// The title of the presented document, once its text is shown.
   private(set) var documentTitle: String?
+  private var shownCapability: DocumentCapability?
 
   init() {
     let window = NSWindow(
@@ -96,8 +97,8 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
     case .empty:
       showStatus("No document open", nil, title: "Markdown", url: nil)
     case .loading(let capability):
-      // Keep the previous text visible while reloading the same document.
-      if documentTitle == nil {
+      // Keep the previous text visible only while reloading the same document.
+      if capability != shownCapability {
         showStatus("Loading…", nil, title: capability.displayName, url: capability.url)
       }
     case .loaded(let loaded):
@@ -135,6 +136,7 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
 
   private func install(_ rendered: RenderedDocument, title: String, _ loaded: LoadedDocument) {
     documentTitle = title
+    shownCapability = loaded.capability
     surface.show(rendered)
     outline.show(rendered.headings)
     surface.scrollView.isHidden = false
@@ -145,6 +147,7 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
 
   private func showStatus(_ primary: String, _ secondary: String?, title: String, url: URL?) {
     documentTitle = nil
+    shownCapability = nil
     surface.show(nil)
     outline.show([])
     surface.scrollView.isHidden = true
@@ -192,6 +195,10 @@ final class OutlineController: NSViewController, NSTableViewDataSource, NSTableV
     table.rowSizeStyle = .default
     table.allowsEmptySelection = true
     table.dataSource = self
+    // Selection changes only fire for a new row; a click on the selected row
+    // must still navigate back to its heading.
+    table.target = self
+    table.action = #selector(rowClicked(_:))
     table.delegate = self
     table.setAccessibilityIdentifier("document-outline")
     table.setAccessibilityLabel("Outline")
@@ -230,6 +237,11 @@ final class OutlineController: NSViewController, NSTableViewDataSource, NSTableV
       ?? OutlineCell(identifier: identifier)
     cell.configure(headings[row])
     return cell
+  }
+
+  @objc private func rowClicked(_ sender: Any?) {
+    guard headings.indices.contains(table.clickedRow) else { return }
+    onSelect?(table.clickedRow)
   }
 
   func tableViewSelectionDidChange(_ notification: Notification) {

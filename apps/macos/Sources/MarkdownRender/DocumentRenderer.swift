@@ -30,7 +30,10 @@ public enum LinkDestination: Sendable, Equatable {
   }
 
   public init?(link url: URL) {
-    if url.scheme == nil, url.host == nil, url.path.isEmpty, let fragment = url.fragment {
+    // Decode the fragment: GitHub-style anchors keep non-ASCII letters.
+    if url.scheme == nil, url.host == nil, url.path.isEmpty,
+      let fragment = url.fragment(percentEncoded: false)
+    {
       self = .fragment(fragment)
     } else if let scheme = url.scheme?.lowercased(), Self.externalSchemes.contains(scheme) {
       self = .external(url)
@@ -145,7 +148,7 @@ private struct Builder {
 
   init(document: CoreDocument) { self.document = document }
 
-  private var length: Int { output.length }
+  var length: Int { output.length }
 
   private func node(_ index: Int) throws -> md_node {
     guard document.nodes.indices.contains(index) else { throw CoreError.invalidSnapshot }
@@ -184,8 +187,10 @@ private struct Builder {
       try paragraph(context) { try $0.inlines(of: node, font: Font()) }
     case MD_NODE_HEADING:
       let level = Int(node.value)
-      let start = length
+      var start = length
       try paragraph(context, spacingBefore: level <= 2 ? 10 : 6) { builder in
+        // After any list or footnote marker, so the range is the heading text.
+        start = builder.length
         try builder.inlines(of: node, font: Font(bold: true, size: RenderStyle.headingSize(level)))
       }
       headingRanges[index] = NSRange(location: start, length: max(length - 1 - start, 0))

@@ -212,6 +212,17 @@ struct RenderTests {
     #expect(tip == "Image not shown")
   }
 
+  @Test func nonASCIIAnchorsAndListHeadings() async throws {
+    let rendered = try await Self.render("# Café\n\n[back](#café)\n\n- ## Listed\n")
+    let link: URL? = Self.attribute(.link, of: "back", in: rendered)
+    let destination = link.flatMap(LinkDestination.init(link:))
+    #expect(destination == .fragment("café"))
+    #expect(rendered.heading(anchor: "café") != nil)
+    // A heading that opens a list item excludes the item's marker.
+    let text = rendered.text.string as NSString
+    #expect(rendered.headings.map { text.substring(with: $0.range) } == ["Café", "Listed"])
+  }
+
   @Test func renderingIsCancellable() async throws {
     var markdown = ""
     for index in 0..<20_000 { markdown += "Paragraph \(index) with *emphasis*.\n\n" }

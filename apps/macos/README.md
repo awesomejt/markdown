@@ -92,13 +92,14 @@ accessibility element continuous across the whole document. The
   unsupported syntax stay inert, secondary-coloured source text. No
   attachment, image or remote resource is loaded.
 - Links follow the core's v2 classification. A fragment link to a heading
-  anchor scrolls to that heading; a missing anchor beeps. An `http`, `https`
+  anchor (including non-ASCII anchors such as `#café`) scrolls to that heading; a missing anchor beeps. An `http`, `https`
   or `mailto` link the core marks external opens with the system handler.
   Links to other files need a folder grant (MAC-002A) and denied links
   (unsafe schemes, invalid URIs) carry no link at all: they are dotted and
   explain themselves in a tooltip.
 - The sidebar outline lists every heading from the core's outline, indented
-  by level. Clicking a row or moving through it with the arrow keys scrolls
+  by level. Clicking a row (again, to return to it) or moving through it with
+  the arrow keys scrolls
   that heading to the top and selects it, so keyboard and accessibility focus
   follow. Link navigation selects the matching outline row. View → Show/Hide
   Sidebar (Control-Command-S) toggles it, and Edit → Copy/Select All work on
@@ -293,7 +294,7 @@ distributed.
 ## MAC-001D local evidence
 
 Checked on 2026-10-30 on the same Mac (macOS 27.0.1, Xcode 27.1, Swift 6.4):
-`apps/macos/tools/check.py` passed in debug and release, with 7
+`apps/macos/tools/check.py` passed in debug and release, with 8
 `MarkdownRenderTests`, 7 `MarkdownDocumentTests` and 10 `MarkdownCoreTests`
 in each and both relocated bundle smokes including the reading checks.
 Offscreen snapshots of the GFM tour were inspected in light and dark
