@@ -19,7 +19,12 @@ def prepare_core(configuration="debug"):
         raise ValueError("configuration")
     if os.uname().machine != "arm64":
         raise SystemExit("This development package is validated only on Apple Silicon")
-    env = dict(os.environ, MACOSX_DEPLOYMENT_TARGET="27.0", RUSTFLAGS="-C panic=unwind")
+    flags = (os.environ.get("RUSTFLAGS", "") + " -C panic=unwind").strip()
+    env = dict(os.environ, MACOSX_DEPLOYMENT_TARGET="27.0", RUSTFLAGS=flags)
+    if "CARGO_ENCODED_RUSTFLAGS" in env:
+        encoded = env["CARGO_ENCODED_RUSTFLAGS"]
+        arguments = encoded.split("\x1f") if encoded else []
+        env["CARGO_ENCODED_RUSTFLAGS"] = "\x1f".join(arguments + ["-C", "panic=unwind"])
     compiler = subprocess.check_output(["rustc", "--version"], env=env, text=True).strip()
     pinned = tomllib.loads((REPO_ROOT / "rust-toolchain.toml").read_text())["toolchain"]["channel"]
     if compiler.split()[1] != pinned:

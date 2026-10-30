@@ -55,7 +55,10 @@ One serial worker runs submission copying, parse, encode, Swift value copying
 and model destruction. At most two parse calls are admitted globally (one
 running, one queued); further calls fail with `CoreError.busy` rather than
 retaining an unbounded queue of source buffers. Task cancellation is sticky
-before job installation and uses a lock around job cancel/release. `close()`
+before job installation and uses a lock around job cancel/release. Cancelling
+a queued call immediately releases its admission slot and owned input, so a
+replacement can enter before the worker runs. Running calls retain their slot
+until cleanup finishes. `close()`
 detaches/cancels promptly, awaits worker destruction, and shares completion
 across concurrent close callers; deinit schedules a fallback cleanup. Callers
 should explicitly await close. MAC-001C still owns permission checks, bounded

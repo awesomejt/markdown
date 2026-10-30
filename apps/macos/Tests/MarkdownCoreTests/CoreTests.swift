@@ -200,6 +200,39 @@ struct CoreTests {
     return files
   }
 
+  @Test func queuedCancellationAdmitsReplacementBeforeWorkerRuns() async throws {
+    let session = try CoreSession(documentID: "queued-replacement")
+    let barrier = DispatchSemaphore(value: 0)
+    CoreRuntime.worker.async { _ = barrier.wait(timeout: .now() + 10) }
+    defer { barrier.signal() }
+    func waitForPending(_ count: Int) async throws {
+      let deadline = ContinuousClock.now.advanced(by: .seconds(2))
+      while CoreRuntime.admission.pending != count && ContinuousClock.now < deadline {
+        try await Task.sleep(for: .milliseconds(1))
+      }
+      try #require(CoreRuntime.admission.pending == count)
+    }
+    let first = Task { try await session.parse(Data("first".utf8)) }
+    try await waitForPending(1)
+    let queued = Task { try await session.parse(Data("cancelled".utf8)) }
+    try await waitForPending(2)
+    queued.cancel()
+    queued.cancel()
+    try await waitForPending(1)
+    do {
+      _ = try await queued.value
+      Issue.record("cancelled queued request returned")
+    } catch is CancellationError {}
+    let replacement = Task { try await session.parse(Data("replacement".utf8)) }
+    try await waitForPending(2)
+    barrier.signal()
+    #expect(try await first.value.outcome == .published)
+    #expect(try await replacement.value.outcome == .published)
+    #expect(CoreRuntime.admission.pending == 0)
+    try await session.close()
+    #expect(try CoreRuntime.liveHandles() == CoreHandleCounts(sessions: 0, jobs: 0, snapshots: 0))
+  }
+
   @Test func queuedWorkIsBounded() async throws {
     let session = try CoreSession(documentID: "admission")
 

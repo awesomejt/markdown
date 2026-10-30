@@ -1,5 +1,6 @@
-import Foundation
 // swift-tools-version: 6.0
+
+import Foundation
 import PackageDescription
 
 let coreLibraryPath = URL(fileURLWithPath: #filePath).deletingLastPathComponent()

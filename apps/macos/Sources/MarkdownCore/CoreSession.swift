@@ -107,16 +107,16 @@ public final class CoreSession: @unchecked Sendable {
   public func parse(_ source: Data, revisionToken: String? = nil) async throws -> CoreResult {
     try Task.checkCancellation()
     try CoreRuntime.admission.reserve()
-    defer { CoreRuntime.admission.release() }
-    let request = Request()
+    let request = Request(source: source, token: revisionToken)
     return try await withTaskCancellationHandler {
-      try Task.checkCancellation()
-      return try await withCheckedThrowingContinuation { continuation in
+      try await withCheckedThrowingContinuation { continuation in
+        guard request.installContinuation(continuation) else { return }
         CoreRuntime.worker.async {
+          guard let input = request.beginWork() else { return }
           let result = Result {
-            try autoreleasepool { try self.run(source, revisionToken, request) }
+            try autoreleasepool { try self.run(input.0, input.1, request) }
           }
-          continuation.resume(with: result)
+          request.complete(result)
         }
       }
     } onCancel: {
@@ -141,7 +141,7 @@ public final class CoreSession: @unchecked Sendable {
         }
       }
     }
-    request.install(job)
+    request.installJob(job)
     defer { request.release() }
     var result = md_job_result()
     result.struct_size = UInt32(MemoryLayout<md_job_result>.size)
@@ -183,17 +183,50 @@ public final class CoreSession: @unchecked Sendable {
   }
 }
 
-/// The lock prevents a cancellation callback from using an already released job.
+/// Queued cancellation clears this request's input and releases admission before
+/// the worker reaches its lightweight tombstone. Running work keeps its slot
+/// until completion. All terminal paths resume/release exactly once.
 private final class Request: @unchecked Sendable {
+  private enum Phase { case queued, running, finished }
   private let lock = NSLock()
+  private var phase: Phase = .queued
+  private var source: Data?
+  private var token: String?
+  private var continuation: CheckedContinuation<CoreResult, Error>?
   private var cancelled = false
   private var job: md_job = 0
+
+  init(source: Data, token: String?) {
+    self.source = source
+    self.token = token
+  }
+
+  func installContinuation(_ callback: CheckedContinuation<CoreResult, Error>) -> Bool {
+    let installed = lock.withLock {
+      guard phase != .finished else { return false }
+      continuation = callback
+      return true
+    }
+    if !installed { callback.resume(throwing: CancellationError()) }
+    return installed
+  }
+
+  func beginWork() -> (Data, String?)? {
+    lock.withLock {
+      guard phase == .queued, let source else { return nil }
+      let input = (source, token)
+      self.source = nil
+      token = nil
+      phase = .running
+      return input
+    }
+  }
 
   func checkCancellation() throws {
     if lock.withLock({ cancelled }) { throw CancellationError() }
   }
 
-  func install(_ value: md_job) {
+  func installJob(_ value: md_job) {
     lock.withLock {
       job = value
       if cancelled { _ = md_job_cancel(job) }
@@ -201,10 +234,21 @@ private final class Request: @unchecked Sendable {
   }
 
   func cancel() {
-    lock.withLock {
+    let callback: CheckedContinuation<CoreResult, Error>? = lock.withLock {
       cancelled = true
-      if job != 0 { _ = md_job_cancel(job) }
+      if phase == .queued {
+        phase = .finished
+        source = nil
+        token = nil
+        let callback = continuation
+        continuation = nil
+        CoreRuntime.admission.release()
+        return callback
+      }
+      if phase == .running && job != 0 { _ = md_job_cancel(job) }
+      return nil
     }
+    callback?.resume(throwing: CancellationError())
   }
 
   func release() {
@@ -212,5 +256,18 @@ private final class Request: @unchecked Sendable {
       _ = md_job_release(job)
       job = 0
     }
+  }
+
+  func complete(_ result: Result<CoreResult, Error>) {
+    let delivery: (CheckedContinuation<CoreResult, Error>?, Result<CoreResult, Error>) =
+      lock.withLock {
+        precondition(phase == .running)
+        phase = .finished
+        let callback = continuation
+        continuation = nil
+        CoreRuntime.admission.release()
+        return (callback, cancelled ? .failure(CancellationError()) : result)
+      }
+    delivery.0?.resume(with: delivery.1)
   }
 }
