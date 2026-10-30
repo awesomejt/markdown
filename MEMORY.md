@@ -38,10 +38,15 @@ read.
   CORE-006 documented the ABI v1 zero content-budget change from 8 to 2 MiB
   and passed fresh all-feature release CI on all three OSes. Native packages
   remain platform 001B work; each 001B sets a session memory bound. The next
-  Mac task is MAC-001A. `main` now requires the
+  Mac task is MAC-001B. `main` now requires the
   `Checks / complete` status (M4, 2026-10-29). See [HANDOFF.md](HANDOFF.md) and
   [TODO.md](TODO.md#core-fix-milestone-follow-ups). HARD-001 sits between
   DESK-001 and DESK-002.
+- MAC-001A (PR #39) adds the AppKit window/menu/lifecycle shell, SwiftPM
+  development bundle and required path-filtered macOS 27 native CI smoke.
+  The development bundle ID is `io.github.awesomejt.markdown`; no external
+  Swift packages or core link yet. MAC-001B is next: model-v2 C ABI package,
+  native lifecycle/errors/cancellation and measured encode/session/RSS bounds.
 - Workflow: task PRs target `develop` and merge on a Grok review with no
   serious finding (D-029). `main` takes only owner-approved milestone reviews
   from `review/<milestone>`, tagged `m-<milestone>` (D-030). The shared-core
