@@ -54,7 +54,8 @@ PR #24, CORE-005C in PR #25, CORE-005D in PR #26 and CORE-003E in PR #27
 (D-032). The owner merged the first milestone review (PR #28) into `main`,
 tagged `m-core-fix`. Its first [follow-up](#core-fix-milestone-follow-ups),
 CORE-003F, merged in PR #32 (D-034); CORE-001 closed in PR #33 with both
-TOOL-003 findings fixed and hosted three-OS CI green. CORE-002 is next on `develop`. Inspect
+TOOL-003 findings fixed and hosted three-OS CI green. CORE-002 closed in PR #34
+with [model acceptance](docs/Core-Model-Acceptance.md); CORE-003 is next on `develop`. Inspect
 state and `HANDOFF.md` before any pass. Scoped commits, pushes, PR updates and
 review requests are authorized; a Grok review with no serious finding approves
 a merge into `develop` (D-029); only the owner merges into `main` (D-030);

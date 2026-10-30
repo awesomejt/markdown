@@ -56,6 +56,11 @@ for reference provenance and typed URI targets. Root/default v1 APIs and its
 frozen schema stay supported; new adapters explicitly opt into v2 and future
 facade negotiation. This is additive, not an implicit model-version migration.
 
+[CORE-002 acceptance](Core-Model-Acceptance.md) maps the aggregate model
+criteria to the delivered contracts, tests and source-bound goldens. It records
+D-021's snapshot-local MVP identity policy alongside the frozen model text;
+native adapters use session anchors for position across revisions.
+
 ## Core responsibilities
 
 - Validate bounded UTF-8 input and parse the accepted Markdown dialect.

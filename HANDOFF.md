@@ -1,7 +1,7 @@
 # Agent Session and Platform Handoff
 
-Updated: 2026-10-29 (America/Denver), after CORE-001 (PR #33).
-Source baseline: `develop` after PR #33; validated code `29b87d4`. Preserve intended source, lock/spec/golden
+Updated: 2026-10-29 (America/Denver), after CORE-002 (PR #34).
+Source baseline: `develop` after PR #34; acceptance head `453f183`, model baseline `0270e6b`. Preserve intended source, lock/spec/golden
 files, docs and state together. Never transfer caches, environments, build
 products, private runtime state or user documents.
 
@@ -22,14 +22,20 @@ done list is in [the memory archive](agents/Memory-Archive.md#handoffmd-phase-ha
   and values allow ZWNJ/ZWJ between visible characters and subdivision-flag
   tag sequences; keys, bidi controls, LRM and RLM stay rejected.
 - **Done:** CORE-001 in [PR #33](https://github.com/awesomejt/markdown/pull/33):
-  shared workspace/CI acceptance, both TOOL-003 findings and both review nits.
-  Local `tools/check.py all` passed on macOS 27.0.1 with Rust 1.99.1;
-  [hosted CI](https://github.com/awesomejt/markdown/actions/runs/40991275826)
-  passed on macOS, Linux and Windows at `29b87d4`.
-  [Grok review](https://github.com/awesomejt/markdown/pull/33#pullrequestreview-5707355475)
-  at `0440908` had no serious finding; both nits were fixed at `29b87d4`,
-  exempt from re-review under step 7. No live pass or lease remains.
-- **Next:** CORE-002, then the CORE-003 to CORE-006 aggregates. CORE-006 also records the 8 to
+  shared workspace/CI acceptance and both TOOL-003 findings.
+- **Done:** CORE-002 in [PR #34](https://github.com/awesomejt/markdown/pull/34):
+  [aggregate model acceptance](docs/Core-Model-Acceptance.md), with frozen
+  schemas/goldens unchanged and D-021's snapshot-local MVP identity explicit.
+  Local `tools/check.py all` passed on macOS 27.0.1 with Rust 1.99.1 at
+  source baseline `0270e6b`; common checks passed for the acceptance docs.
+  [PR CI](https://github.com/awesomejt/markdown/actions/runs/40993369885)
+  passed at `453f183`.
+  [Grok review](https://github.com/awesomejt/markdown/pull/34#pullrequestreview-5707501199)
+  at that head had no serious finding; the sole link-anchor nit is fixed in
+  the closeout commit and exempt from re-review under step 7. A second review
+  submission only corrects the suggestion's line range; no re-review was
+  requested. No live pass or lease remains.
+- **Next:** CORE-003, then the CORE-004 to CORE-006 aggregates. CORE-006 also records the 8 to
   2 MiB content-search default change in the FFI spec. Each host's chain in
   `desktop-apps` starts after CORE-006 (D-027); do not select platform tasks
   before then.
