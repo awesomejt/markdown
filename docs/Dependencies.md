@@ -140,6 +140,11 @@ This adds no Cargo package and does not alter the reviewed dependency graph.
 
 ## Development tooling and feasibility
 
+MAC-001A's [SwiftPM AppKit shell](../apps/macos/Package.swift) has no external
+Swift package dependencies. It uses the Apple system frameworks and Swift
+runtime supplied by the selected Xcode/macOS SDK; no Rust core is linked until
+MAC-001B. The app source uses the repository's Apache-2.0 license.
+
 | Tool/graph | Pin | Policy boundary |
 | --- | --- | --- |
 | Rust, rustfmt, Clippy | rust-toolchain.toml: 1.99.1 | Build toolchain, not an app dependency |

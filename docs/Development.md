@@ -132,7 +132,11 @@ link cases have regression tests.
 
 Actions use pinned source commits, read-only contents permission and no retained
 checkout credentials. No deploy, signing, release or automatic merge is present.
-Native app build jobs are added in MAC/LNX/WIN-001A when those apps exist;
+MAC-001A adds the path-filtered `macos-native` job on `xcode-27`, with Swift
+format/concurrency checks and assembled AppKit bundle smoke in debug/release.
+The completion gate requires it whenever macOS is selected; an unselected
+native job may be skipped. See [the Mac build/check instructions](../apps/macos/README.md).
+Linux/Windows native build jobs are added in their 001A tasks when those apps exist;
 running a portable Rust suite on a hosted runner does not prove native UI,
 minimum-OS packaging, accessibility or performance acceptance.
 
