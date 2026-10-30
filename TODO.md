@@ -56,7 +56,8 @@ tagged `m-core-fix`. Its first [follow-up](#core-fix-milestone-follow-ups),
 CORE-003F, merged in PR #32 (D-034); CORE-001 closed in PR #33 with both
 TOOL-003 findings fixed and hosted three-OS CI green. CORE-002 closed in PR #34
 with [model acceptance](docs/Core-Model-Acceptance.md). CORE-003 closed in PR #35
-with [parsing/safety acceptance](docs/Core-Parser-Acceptance.md); CORE-004 is next on `develop`. Inspect
+with [parsing/safety acceptance](docs/Core-Parser-Acceptance.md). CORE-004 closed
+in PR #36 with [session acceptance](docs/Core-Session-Acceptance.md); CORE-005 is next on `develop`. Inspect
 state and `HANDOFF.md` before any pass. Scoped commits, pushes, PR updates and
 review requests are authorized; a Grok review with no serious finding approves
 a merge into `develop` (D-029); only the owner merges into `main` (D-030);

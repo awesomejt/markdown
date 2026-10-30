@@ -36,7 +36,9 @@ read.
   PR #34 on [model acceptance](docs/Core-Model-Acceptance.md), with the
   frozen contracts unchanged and D-021's identity policy explicit. CORE-003
   closed in PR #35 with [parser/safety acceptance](docs/Core-Parser-Acceptance.md)
-  and fresh named-Mac benchmarks; runtime behavior is unchanged. CORE-004 is next;
+  and fresh named-Mac benchmarks; runtime behavior is unchanged. CORE-004
+  closed in PR #36 with [session acceptance](docs/Core-Session-Acceptance.md),
+  including explicit race-coverage and adapter-ordering limits. CORE-005 is next;
   CORE-006 records the 2 MiB content-search default change; each
   001B sets a session memory bound. `main` now requires the
   `Checks / complete` status (M4, 2026-10-29). See [HANDOFF.md](HANDOFF.md) and
