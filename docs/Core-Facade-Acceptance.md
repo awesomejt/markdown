@@ -60,8 +60,16 @@ CORE-006 requires fresh hosted release-mode Rust/FFI lifecycle, error,
 cancellation and version tests on macOS, Linux and Windows. A normal task PR
 uses the faster tier, so the existing `Checks` workflow is also dispatched
 manually at this task's branch head: manual events select every host and run
-both `core` and `core-extended`. Exact head, workflow URL and actual results
-are recorded in the PR and pass before acceptance is completed.
+both `core` and `core-extended`. Release evidence is the all-feature build;
+default-feature-only release is not a separately tested configuration.
+
+Local `all` and staged `common` checks passed. Fresh hosted
+[Checks run 41024924816](https://github.com/awesomejt/markdown/actions/runs/41024924816)
+passed at `4339669265c139fa493d4e73623ad9a9c278e503` on all three OSes,
+including both tiers and the final `complete` gate. The release logs confirm
+lifecycle, errors, cancellation, version/model negotiation, panic containment
+and content-budget regressions; the macOS/Linux compiled C smoke also passed.
+The completion pass records this run and the actual PR review disposition.
 
 The compiled C smoke is required on macOS/Linux, including release. Windows
 runs Rust export and header-constant checks; its MSVC/import-library C smoke

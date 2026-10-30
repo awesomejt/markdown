@@ -26,11 +26,13 @@ linear shared track, then one independent chain per host (D-027; see the
 [dependency summary](#dependency-summary)). ADV-005 carries deferred engine
 work after DESK-002.
 
-## Current phase: portable core (shared track)
+## Current phase: desktop apps
 
-The gate is complete; the small child tasks are materialized in project state.
-`portable-core` now holds only shared work. It completes when CORE-006 closes,
-which activates `desktop-apps` and the platform chains.
+The shared `portable-core` phase is complete through CORE-006 (PR #38).
+`desktop-apps` is active and each platform chain begins at its 001A task.
+MAC-001A is next on macOS. The shared-core milestone boundary is reached:
+Claude prepares the combined packet for the owner under D-030; only the owner
+merges that milestone into `main`.
 CORE-001A infrastructure, CORE-002A semantic v1 and CORE-003A basic parsing are
 merged. CORE-003B1 adds [bounded typed front matter](docs/Front-Matter.md).
 CORE-003B2 adds [opt-in v2 provenance/URI targets](specs/semantic-model/v2/README.md)
@@ -59,7 +61,10 @@ with [model acceptance](docs/Core-Model-Acceptance.md). CORE-003 closed in PR #3
 with [parsing/safety acceptance](docs/Core-Parser-Acceptance.md). CORE-004 closed
 in PR #36 with [session acceptance](docs/Core-Session-Acceptance.md). CORE-005
 closed in PR #37 with [search/read acceptance](docs/Core-Search-Acceptance.md)
-and explicit reference-syntax boundaries. CORE-006 is next on `develop`. Inspect
+and explicit reference-syntax boundaries. CORE-006 closed in PR #38 with
+[facade acceptance](docs/Core-Facade-Acceptance.md), the ABI v1 default-change
+history and fresh three-OS all-feature release CI. The desktop chains are
+eligible; MAC-001A is next on this Mac. Inspect
 state and `HANDOFF.md` before any pass. Scoped commits, pushes, PR updates and
 review requests are authorized; a Grok review with no serious finding approves
 a merge into `develop` (D-029); only the owner merges into `main` (D-030);

@@ -498,6 +498,8 @@ in practice.
   handles. The smoke also `_Static_assert`s every D-022 size constant.
 - `tools/check.py core` runs the default and all-feature debug configurations;
   `core-extended` adds model-v2-only debug and all-feature release tests.
+  Release evidence covers the all-feature build; default-feature-only release
+  is not a separately tested configuration.
   `all` runs both tiers locally. Push/manual CI runs both tiers on selected
   hosts; task PR CI normally runs only `core`. The checks require the C smoke on macOS/Linux.
   Windows runs the Rust tests and constant check but skips the C smoke until

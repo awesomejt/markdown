@@ -8,7 +8,8 @@ read.
 
 ## Current posture
 
-- Phase: `portable-core`, the shared track (GATE-001 approved, D-018).
+- Phase: `desktop-apps`; the portable-core shared track is complete through
+  CORE-006 (GATE-001 approved, D-018). Native chains are now eligible (D-027).
 - Product: local-first, read-only native Markdown reader. Windows, macOS and
   Linux desktop apps come first; iOS and iPadOS follow once the desktop
   contracts are stable.
@@ -31,20 +32,22 @@ read.
   into `main` through the first milestone review, PR #28, tagged
   `m-core-fix`. Its three reviews (Claude, Grok, Codex) found no blocking
   defect. CORE-003F merged in PR #32 (D-034 amends D-032). The CORE-001
-  through CORE-005 aggregates closed in PRs #33 to #37; their acceptance
-  evidence is linked from [HANDOFF.md](HANDOFF.md). CORE-005 added explicit
-  reference-syntax regressions: the accepted v1 workspace index need not
-  reproduce v2 document-find results; runtime behavior is unchanged.
-  CORE-006 is next.
-  CORE-006 records the 2 MiB content-search default change; each
-  001B sets a session memory bound. `main` now requires the
+  through CORE-006 aggregates closed in PRs #33 to #38; their acceptance
+  evidence is linked from [HANDOFF.md](HANDOFF.md). CORE-005 pinned existing
+  reference-syntax differences between the v1 workspace index and v2 find.
+  CORE-006 documented the ABI v1 zero content-budget change from 8 to 2 MiB
+  and passed fresh all-feature release CI on all three OSes. Native packages
+  remain platform 001B work; each 001B sets a session memory bound. The next
+  Mac task is MAC-001A. `main` now requires the
   `Checks / complete` status (M4, 2026-10-29). See [HANDOFF.md](HANDOFF.md) and
   [TODO.md](TODO.md#core-fix-milestone-follow-ups). HARD-001 sits between
   DESK-001 and DESK-002.
 - Workflow: task PRs target `develop` and merge on a Grok review with no
   serious finding (D-029). `main` takes only owner-approved milestone reviews
-  from `review/<milestone>`, tagged `m-<milestone>` (D-030). The next
-  milestone is the closed CORE-001 to CORE-006 aggregates, or the cap.
+  from `review/<milestone>`, tagged `m-<milestone>` (D-030). The shared-core
+  milestone boundary is reached: CORE-001 through CORE-006 are closed.
+  Hand off the combined packet to Claude, then owner review; task completion
+  does not approve a merge into `main`.
 - Milestone reviews: Claude writes the packet; Grok and Codex add independent
   reviews in `docs/reviews/` on the review branch, not normal PR reviews.
 - Grok reviews come from its GitHub integration (D-033): creating a PR starts
