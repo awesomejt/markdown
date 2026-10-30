@@ -51,6 +51,15 @@ public final class DocumentLoader {
   /// The core session's recorded availability for the current document.
   public var coreAvailability: CoreAvailability? { try? session?.availability() }
 
+  /// Find in the presented snapshot. Fails with `CoreError.superseded` once
+  /// the session has moved past `generation`, and `closed` without a session.
+  public func find(_ query: String, options: CoreFindOptions, generation: UInt64)
+    async throws -> CoreFindResult
+  {
+    guard let session else { throw CoreError.closed }
+    return try await session.find(query, options: options, generation: generation)
+  }
+
   public var isLoading: Bool {
     if case .loading = state { return true }
     return false

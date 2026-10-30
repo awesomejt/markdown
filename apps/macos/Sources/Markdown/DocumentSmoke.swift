@@ -112,6 +112,7 @@ enum DocumentSmoke {
     note("reload/revocation/generations checked")
     try await reading(delegate: delegate, file: file, check: check)
     try await richBlocks(delegate: delegate, directory: directory, file: file, check: check)
+    try await ReadingControlsSmoke.run(delegate: delegate, file: file, check: check)
 
     for window in delegate.windows.map(\.window) { window?.performClose(nil) }
     try await waitUntil("closed documents release native sessions") {
@@ -268,7 +269,7 @@ struct SmokeFailure: Error, CustomStringConvertible {
   let description: String
 }
 
-private func requireValue<T>(_ value: T?, _ name: String) throws -> T {
+func requireValue<T>(_ value: T?, _ name: String) throws -> T {
   guard let value else { throw SmokeFailure(description: "missing \(name)") }
   return value
 }

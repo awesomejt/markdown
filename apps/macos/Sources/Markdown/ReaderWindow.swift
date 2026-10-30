@@ -4,13 +4,27 @@ import MarkdownDocument
 import MarkdownRender
 
 /// One document window: an outline sidebar beside the TextKit 2 reading
-/// surface, with a centred status label for the empty, loading and error states.
+/// surface and its find bar, with a centred status label for the empty,
+/// loading and error states.
 @MainActor
 final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenuItemValidation {
   var onClose: ((ReaderWindowController) -> Void)?
   let loader = DocumentLoader()
   let surface = ReaderSurface()
   let outline = OutlineController()
+  let findBar = FindBar()
+  let preferences: ReaderPreferences
+  /// The matches for the find bar's current query, options and document.
+  private(set) var findMatches: FindMatches?
+  private var findKey: FindKey?
+  private var findTask: Task<Void, Never>?
+  private var findRequest: UInt64 = 0
+  /// The document selection when the current match was shown; navigation
+  /// continues from that match until the reader moves the selection.
+  private var selectionAtMatch: NSRange?
+  /// The reading surface starts below the safe area, or below a visible find bar.
+  private var surfaceTop: NSLayoutConstraint!
+  private var surfaceBelowFindBar: NSLayoutConstraint!
   private let split = NSSplitViewController()
   private let status = NSTextField(labelWithString: "No document open")
   private let detail = NSTextField(wrappingLabelWithString: "")
@@ -21,7 +35,8 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
   private(set) var documentTitle: String?
   private var shownCapability: DocumentCapability?
 
-  init() {
+  init(preferences: ReaderPreferences) {
+    self.preferences = preferences
     let window = NSWindow(
       contentRect: NSRect(x: 0, y: 0, width: 900, height: 640),
       styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
@@ -49,10 +64,15 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
     let content = NSView()
     surface.scrollView.translatesAutoresizingMaskIntoConstraints = false
     surface.scrollView.isHidden = true
+    findBar.translatesAutoresizingMaskIntoConstraints = false
+    findBar.isHidden = true
     content.addSubview(surface.scrollView)
+    content.addSubview(findBar)
     content.addSubview(statusStack)
     NSLayoutConstraint.activate([
-      surface.scrollView.topAnchor.constraint(equalTo: content.safeAreaLayoutGuide.topAnchor),
+      findBar.topAnchor.constraint(equalTo: content.safeAreaLayoutGuide.topAnchor),
+      findBar.leadingAnchor.constraint(equalTo: content.leadingAnchor),
+      findBar.trailingAnchor.constraint(equalTo: content.trailingAnchor),
       surface.scrollView.bottomAnchor.constraint(equalTo: content.bottomAnchor),
       surface.scrollView.leadingAnchor.constraint(equalTo: content.leadingAnchor),
       surface.scrollView.trailingAnchor.constraint(equalTo: content.trailingAnchor),
@@ -69,6 +89,10 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
     split.addSplitViewItem(sidebar)
     split.addSplitViewItem(NSSplitViewItem(viewController: documentController))
     split.splitView.autosaveName = nil
+    surfaceTop = surface.scrollView.topAnchor.constraint(
+      equalTo: content.safeAreaLayoutGuide.topAnchor)
+    surfaceBelowFindBar = surface.scrollView.topAnchor.constraint(equalTo: findBar.bottomAnchor)
+    surfaceTop.isActive = true
     window.contentViewController = split
     window.setContentSize(NSSize(width: 900, height: 640))
     window.center()
@@ -77,6 +101,9 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
     outline.onSelect = { [weak self] index in self?.surface.reveal(heading: index) }
     surface.onNavigate = { [weak self] index in self?.outline.select(index) }
     loader.onChange = { [weak self] state in self?.present(state) }
+    findBar.onSearch = { [weak self] in self?.search(then: nil) }
+    findBar.onNavigate = { [weak self] backwards in self?.step(backwards: backwards) }
+    findBar.onClose = { [weak self] in self?.closeFindBar() }
   }
 
   required init?(coder: NSCoder) {
@@ -110,14 +137,15 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
 
   /// Build the attributed text off the main actor; only the newest request
   /// installs its result, so a slow render never replaces newer content.
-  private func render(_ loaded: LoadedDocument) {
+  private func render(_ loaded: LoadedDocument, restyle: Bool = false) {
     let id = renderRequest
     let document = loaded.document
     let capability = loaded.capability
+    let scale = preferences.textScale
     let work = Task.detached(priority: .userInitiated) {
       // Resolving the folder touches the filesystem, so it stays off the main thread.
       let images = Self.imageLoader(DocumentResources(document: capability))
-      return try DocumentRenderer.render(document, images: images)
+      return try DocumentRenderer.render(document, images: images, scale: scale)
     }
     renderTask = Task { [weak self] in
       // Cancelling the window's task (a newer state, or close) stops the render.
@@ -129,6 +157,8 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
       guard let self, id == self.renderRequest else { return }
       self.renderTask = nil
       switch result {
+      case .success(let rendered) where restyle:
+        self.surface.restyle(rendered)
       case .success(let rendered):
         self.install(rendered, title: document.title ?? loaded.capability.displayName, loaded)
       case .failure:
@@ -166,9 +196,27 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
     statusStack.isHidden = true
     window?.title = loaded.capability.displayName
     window?.representedURL = loaded.capability.url
+    // A reloaded document gets a new snapshot: search it again.
+    findMatches = nil
+    findKey = nil
+    if !findBar.isHidden { search(then: nil) }
+  }
+
+  /// Re-render the presented document at the current text size, keeping the
+  /// reading position, selection and find highlights.
+  func applyTextScale() {
+    guard case .loaded(let loaded) = loader.state else { return }
+    let restyle =
+      renderTask == nil && loaded.capability == shownCapability
+      && surface.document?.generation == loaded.document.generation
+    renderRequest &+= 1
+    renderTask?.cancel()
+    renderTask = nil
+    render(loaded, restyle: restyle)
   }
 
   private func showStatus(_ primary: String, _ secondary: String?, title: String, url: URL?) {
+    closeFindBar()
     documentTitle = nil
     shownCapability = nil
     surface.show(nil)
@@ -187,11 +235,212 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
   }
 
   func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
-    if menuItem.action == #selector(reloadDocument(_:)) { return loader.capability != nil }
-    return true
+    switch menuItem.action {
+    case #selector(reloadDocument(_:)): loader.capability != nil
+    case #selector(showFindBar(_:)), #selector(findNextMatch(_:)),
+      #selector(findPreviousMatch(_:)):
+      surface.document != nil && !surface.scrollView.isHidden
+    case #selector(useSelectionForFind(_:)):
+      surface.document != nil && surface.textView.selectedRange().length > 0
+    default: true
+    }
+  }
+
+  // MARK: Find
+
+  /// The query, options and snapshot a set of matches belongs to.
+  private struct FindKey: Equatable {
+    let query: String
+    let options: CoreFindOptions
+    let generation: UInt64
+  }
+
+  var isFindBarVisible: Bool { !findBar.isHidden }
+
+  /// Show or hide the bar; the reading surface moves below it, keeping its frame.
+  private func setFindBarVisible(_ visible: Bool) {
+    guard visible == findBar.isHidden else { return }
+    findBar.isHidden = !visible
+    surfaceTop.isActive = !visible
+    surfaceBelowFindBar.isActive = visible
+  }
+
+  @objc func showFindBar(_ sender: Any?) {
+    guard surface.document != nil else { return }
+    setFindBarVisible(true)
+    window?.makeFirstResponder(findBar.field)
+    findBar.field.selectText(nil)
+    if findMatches == nil, !findBar.query.isEmpty { search(then: nil) }
+  }
+
+  @objc func findNextMatch(_ sender: Any?) { step(backwards: false) }
+  @objc func findPreviousMatch(_ sender: Any?) { step(backwards: true) }
+
+  /// Search for the selected text, keeping the focus in the document.
+  @objc func useSelectionForFind(_ sender: Any?) {
+    let selection = surface.textView.selectedRange()
+    guard surface.document != nil, selection.length > 0 else { return }
+    findBar.field.stringValue = (surface.textView.string as NSString).substring(with: selection)
+    setFindBarVisible(true)
+    search(then: nil)
+  }
+
+  /// Hide the bar and its highlights; the current match becomes the selection.
+  func closeFindBar() {
+    findRequest &+= 1
+    findTask?.cancel()
+    findTask = nil
+    if !findBar.isHidden, let current = surface.currentMatch,
+      surface.matches.indices.contains(current)
+    {
+      surface.textView.setSelectedRange(surface.matches[current])
+    }
+    findMatches = nil
+    findKey = nil
+    selectionAtMatch = nil
+    surface.highlight([])
+    guard !findBar.isHidden else { return }
+    let refocus = window?.firstResponder === findBar.field.currentEditor()
+    setFindBarVisible(false)
+    findBar.status.stringValue = ""
+    if refocus || window?.firstResponder == nil { window?.makeFirstResponder(surface.textView) }
+  }
+
+  /// Whether a find request is still running.
+  var isFinding: Bool { findTask != nil }
+
+  /// Go to the next or previous match from the current match or selection,
+  /// wrapping around the document; search first if the query changed.
+  private func step(backwards: Bool) {
+    guard surface.document != nil else { return }
+    if findBar.query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+      showFindBar(nil)
+      return
+    }
+    // Highlights are only shown with the bar that can dismiss them.
+    setFindBarVisible(true)
+    guard let matches = findMatches, findKey == currentFindKey else {
+      search(then: backwards)
+      return
+    }
+    guard !matches.ranges.isEmpty else {
+      NSSound.beep()
+      return
+    }
+    let selection = surface.textView.selectedRange()
+    let index: Int?
+    if let current = surface.currentMatch, matches.ranges.indices.contains(current),
+      selection == selectionAtMatch
+    {
+      index = matches.index(after: current, backwards: backwards)
+    } else if backwards {
+      index = matches.index(before: selection.location)
+    } else {
+      index = matches.index(atOrAfter: selection.location)
+    }
+    guard let index else { return }
+    showMatch(index)
+    showFindStatus(matches.status(current: index), announce: false)
+  }
+
+  /// Show a match, selecting it unless the find field has the focus.
+  private func showMatch(_ index: Int) {
+    let editing = findBar.field.currentEditor() != nil
+    surface.showMatch(index, select: !editing)
+    selectionAtMatch = surface.textView.selectedRange()
+  }
+
+  private var currentFindKey: FindKey? {
+    surface.document.map {
+      FindKey(query: findBar.query, options: findBar.options, generation: $0.generation)
+    }
+  }
+
+  /// Run the find bar's query in the core, off the main thread. Only the
+  /// newest request presents; `direction` steps once the matches arrive
+  /// (nil shows the first match at or after the selection).
+  private func search(then direction: Bool?) {
+    findRequest &+= 1
+    let id = findRequest
+    findTask?.cancel()
+    findTask = nil
+    guard let rendered = surface.document, let key = currentFindKey else { return }
+    if key.query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+      findMatches = nil
+      findKey = nil
+      selectionAtMatch = nil
+      surface.highlight([])
+      showFindStatus("", announce: false)
+      return
+    }
+    let loader = loader
+    findTask = Task { [weak self] in
+      let outcome: Result<FindMatches, any Error>
+      do {
+        let result = try await loader.find(
+          key.query, options: key.options, generation: key.generation)
+        // Mapping walks long text nodes, so it stays off the main thread too.
+        outcome = .success(await Task.detached { rendered.matches(for: result) }.value)
+      } catch {
+        outcome = .failure(error)
+      }
+      guard let self, id == self.findRequest else { return }
+      self.findTask = nil
+      switch outcome {
+      case .success(let matches):
+        self.presentMatches(matches, key, then: direction)
+      case .failure(CoreError.queryTooLong):
+        self.clearMatches("Search text is too long")
+      case .failure(is CancellationError), .failure(CoreError.superseded),
+        .failure(CoreError.closed):
+        // A newer document or a closing window replaces this search.
+        break
+      case .failure:
+        self.clearMatches("Find is unavailable")
+      }
+    }
+  }
+
+  private func presentMatches(_ matches: FindMatches, _ key: FindKey, then direction: Bool?) {
+    findMatches = matches
+    findKey = key
+    surface.highlight(matches.ranges)
+    if let direction {
+      step(backwards: direction)
+      return
+    }
+    let selection = surface.textView.selectedRange()
+    guard let index = matches.index(atOrAfter: selection.location) else {
+      showFindStatus(matches.status(current: nil), announce: true)
+      return
+    }
+    showMatch(index)
+    showFindStatus(matches.status(current: index), announce: true)
+  }
+
+  private func clearMatches(_ message: String) {
+    findMatches = nil
+    findKey = nil
+    selectionAtMatch = nil
+    surface.highlight([])
+    showFindStatus(message, announce: true)
+  }
+
+  /// Show the match status, and announce a new search's result to VoiceOver.
+  private func showFindStatus(_ text: String, announce: Bool) {
+    findBar.status.stringValue = text
+    guard announce, !text.isEmpty, let window else { return }
+    NSAccessibility.post(
+      element: window, notification: .announcementRequested,
+      userInfo: [
+        .announcement: text, .priority: NSAccessibilityPriorityLevel.medium.rawValue,
+      ])
   }
 
   func windowWillClose(_ notification: Notification) {
+    findRequest &+= 1
+    findTask?.cancel()
+    findTask = nil
     renderRequest &+= 1
     renderTask?.cancel()
     renderTask = nil

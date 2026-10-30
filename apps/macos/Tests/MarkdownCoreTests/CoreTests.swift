@@ -260,4 +260,83 @@ struct CoreTests {
     #expect(CoreRuntime.admission.pending == 0)
     try await session.close()
   }
+
+  /// Find runs over the session's current snapshot, only for the generation
+  /// the caller presents, and follows the core's Unicode rules (MAC-001F).
+  @Test func findOverCurrentSnapshot() async throws {
+    let session = try CoreSession(documentID: "find")
+    let source =
+      "# Straße\n\nCafé and cafe\u{301} and CAFÉ.\n\nσοφός ΣΟΦΌΣ\n\n"
+      + "👨\u{200D}👩\u{200D}👧 family, 我中文好 and עברית.\n\n`code café` and **caf**é\n"
+    let bytes = Array(source.utf8)
+    let first = try await session.parse(Data(bytes))
+    let generation = first.generation
+    func find(_ query: String, _ options: CoreFindOptions = CoreFindOptions()) async throws
+      -> [String]
+    {
+      let result = try await session.find(query, options: options, generation: generation)
+      #expect(result.generation == generation)
+      for match in result.matches {
+        #expect(!match.segments.isEmpty && match.segments.upperBound <= result.segments.count)
+      }
+      return result.matches.map {
+        String(
+          decoding: bytes[Int($0.source.lowerBound)..<Int($0.source.upperBound)], as: UTF8.self)
+      }
+    }
+    // Case folding without normalization: NFD café is a different string.
+    #expect(try await find("café") == ["Café", "CAFÉ", "café", "caf**é"])
+    #expect(try await find("café", CoreFindOptions(caseSensitive: true)) == ["café", "caf**é"])
+    #expect(try await find("cafe\u{301}") == ["cafe\u{301}"])
+    #expect(try await find("cafe").isEmpty, "no match inside a combining sequence")
+    #expect(try await find("STRAẞE") == ["Straße"])
+    #expect(try await find("STRASSE").isEmpty, "simple folding only")
+    #expect(try await find("σοφός") == ["σοφός", "ΣΟΦΌΣ"])
+    #expect(try await find("👨").isEmpty, "no match inside a ZWJ sequence")
+    #expect(try await find("👨\u{200D}👩\u{200D}👧") == ["👨\u{200D}👩\u{200D}👧"])
+    #expect(try await find("中文", CoreFindOptions(wholeWord: true)) == ["中文"])
+    #expect(try await find("עברית") == ["עברית"])
+    #expect(try await find("caf", CoreFindOptions(wholeWord: true)).isEmpty)
+    #expect(try await find("  ").isEmpty)
+    let limited = try await session.find(
+      "caf", options: CoreFindOptions(maxMatches: 2), generation: generation)
+    #expect(limited.matches.count == 2 && limited.truncated)
+    do {
+      _ = try await session.find(String(repeating: "a", count: 4097), generation: generation)
+      Issue.record("over-long query accepted")
+    } catch CoreError.queryTooLong {}
+    do {
+      _ = try await session.find("café", generation: generation + 1)
+      Issue.record("unpublished generation searched")
+    } catch CoreError.superseded {}
+
+    // A newer snapshot supersedes the old generation.
+    let second = try await session.parse(Data("café again\n".utf8))
+    #expect(second.generation > generation)
+    do {
+      _ = try await session.find("café", generation: generation)
+      Issue.record("superseded generation searched")
+    } catch CoreError.superseded {}
+    let current = try await session.find("café", generation: second.generation)
+    #expect(current.matches.count == 1)
+
+    // A find cancelled while queued behind other work never runs.
+    let barrier = DispatchSemaphore(value: 0)
+    CoreRuntime.worker.async { barrier.wait() }
+    let queued = Task { try await session.find("café", generation: second.generation) }
+    try await Task.sleep(for: .milliseconds(20))
+    queued.cancel()
+    barrier.signal()
+    do {
+      _ = try await queued.value
+      Issue.record("cancelled find returned")
+    } catch is CancellationError {}
+
+    try await session.close()
+    do {
+      _ = try await session.find("café", generation: second.generation)
+      Issue.record("closed session searched")
+    } catch CoreError.closed {}
+    #expect(try CoreRuntime.liveHandles() == CoreHandleCounts(sessions: 0, jobs: 0, snapshots: 0))
+  }
 }

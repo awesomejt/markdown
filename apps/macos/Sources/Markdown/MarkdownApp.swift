@@ -2,6 +2,7 @@ import AppKit
 import Darwin
 import MarkdownCore
 import MarkdownDocument
+import MarkdownRender
 import UniformTypeIdentifiers
 
 @main
@@ -22,16 +23,76 @@ enum MarkdownApp {
 }
 
 @MainActor
-final class AppDelegate: NSObject, NSApplicationDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
   private(set) var windows: [ReaderWindowController] = []
   private let smokeTest: Bool
+  let preferences: ReaderPreferences
+  private(set) var settings: SettingsWindowController?
 
   init(smokeTest: Bool) {
     self.smokeTest = smokeTest
+    // The smoke never reads or writes the user's settings.
+    preferences = ReaderPreferences(
+      store: smokeTest ? MemoryPreferenceStore() : UserDefaults.standard)
+    appliedScale = preferences.textScale
+    super.init()
+    preferences.onChange = { [weak self] in self?.preferencesChanged() }
   }
 
   func applicationWillFinishLaunching(_ notification: Notification) {
+    NSApp.appearance = preferences.appearance.appearance
     installMenus()
+  }
+
+  /// The text size the windows were last rendered at.
+  private var appliedScale: CGFloat
+
+  private func preferencesChanged() {
+    NSApp.appearance = preferences.appearance.appearance
+    settings?.refresh()
+    let scale = preferences.textScale
+    guard scale != appliedScale else { return }
+    appliedScale = scale
+    for window in windows { window.applyTextScale() }
+  }
+
+  @objc func showSettings(_ sender: Any?) {
+    let controller = settings ?? SettingsWindowController(preferences: preferences)
+    settings = controller
+    controller.showWindow(sender)
+    controller.window?.makeKeyAndOrderFront(sender)
+  }
+
+  @objc func setAppearance(_ sender: NSMenuItem) {
+    guard let value = sender.representedObject as? String,
+      let appearance = ReaderPreferences.Appearance(rawValue: value)
+    else { return }
+    preferences.appearance = appearance
+  }
+
+  @objc func makeTextBigger(_ sender: Any?) {
+    if let scale = TextScale.larger(preferences.textScale) { preferences.textScale = scale }
+  }
+
+  @objc func makeTextSmaller(_ sender: Any?) {
+    if let scale = TextScale.smaller(preferences.textScale) { preferences.textScale = scale }
+  }
+
+  @objc func makeTextActualSize(_ sender: Any?) {
+    preferences.textScale = TextScale.standard
+  }
+
+  func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
+    switch menuItem.action {
+    case #selector(setAppearance(_:)):
+      menuItem.state =
+        menuItem.representedObject as? String == preferences.appearance.rawValue ? .on : .off
+      return true
+    case #selector(makeTextBigger(_:)): return TextScale.larger(preferences.textScale) != nil
+    case #selector(makeTextSmaller(_:)): return TextScale.smaller(preferences.textScale) != nil
+    case #selector(makeTextActualSize(_:)): return preferences.textScale != TextScale.standard
+    default: return true
+    }
   }
 
   func applicationDidFinishLaunching(_ notification: Notification) {
@@ -98,7 +159,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
   @discardableResult
   private func makeWindow(_ sender: Any?) -> ReaderWindowController {
-    let controller = ReaderWindowController()
+    let controller = ReaderWindowController(preferences: preferences)
     controller.onClose = { [weak self] closed in
       self?.windows.removeAll { $0 === closed }
     }
@@ -114,6 +175,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     appMenu.addItem(
       withTitle: "About Markdown",
       action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)), keyEquivalent: "")
+    appMenu.addItem(.separator())
+    let settings = appMenu.addItem(
+      withTitle: "Settings…", action: #selector(showSettings(_:)), keyEquivalent: ",")
+    settings.target = self
     appMenu.addItem(.separator())
     appMenu.addItem(
       withTitle: "Hide Markdown", action: #selector(NSApplication.hide(_:)), keyEquivalent: "h")
@@ -149,6 +214,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     edit.addItem(withTitle: "Copy", action: #selector(NSText.copy(_:)), keyEquivalent: "c")
     edit.addItem(
       withTitle: "Select All", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
+    edit.addItem(.separator())
+    let find = NSMenu(title: "Find")
+    find.addItem(
+      withTitle: "Find…", action: #selector(ReaderWindowController.showFindBar(_:)),
+      keyEquivalent: "f")
+    find.addItem(
+      withTitle: "Find Next", action: #selector(ReaderWindowController.findNextMatch(_:)),
+      keyEquivalent: "g")
+    let previous = find.addItem(
+      withTitle: "Find Previous", action: #selector(ReaderWindowController.findPreviousMatch(_:)),
+      keyEquivalent: "g")
+    previous.keyEquivalentModifierMask = [.command, .shift]
+    find.addItem(
+      withTitle: "Use Selection for Find",
+      action: #selector(ReaderWindowController.useSelectionForFind(_:)), keyEquivalent: "e")
+    add(find, to: edit)
     add(edit, to: bar)
 
     let view = NSMenu(title: "View")
@@ -156,6 +237,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
       withTitle: "Show Sidebar", action: #selector(NSSplitViewController.toggleSidebar(_:)),
       keyEquivalent: "s")
     sidebar.keyEquivalentModifierMask = [.command, .control]
+    view.addItem(.separator())
+    for (title, action, key) in [
+      ("Actual Size", #selector(makeTextActualSize(_:)), "0"),
+      ("Make Text Bigger", #selector(makeTextBigger(_:)), "+"),
+      ("Make Text Smaller", #selector(makeTextSmaller(_:)), "-"),
+    ] {
+      view.addItem(withTitle: title, action: action, keyEquivalent: key).target = self
+    }
+    view.addItem(.separator())
+    let appearance = NSMenu(title: "Appearance")
+    for option in ReaderPreferences.Appearance.allCases {
+      let item = appearance.addItem(
+        withTitle: option.title, action: #selector(setAppearance(_:)), keyEquivalent: "")
+      item.representedObject = option.rawValue
+      item.target = self
+    }
+    add(appearance, to: view)
     add(view, to: bar)
 
     let window = NSMenu(title: "Window")
