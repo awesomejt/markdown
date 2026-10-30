@@ -383,25 +383,40 @@ pub(crate) fn hidden_character(c: char) -> bool {
 }
 
 // Front-matter titles and string/list values (D-034): the display-text guard,
-// except ZWNJ and ZWJ, which Persian, Indic and emoji text need, and the tag
-// characters of a subdivision flag: U+1F3F4, 3 to 7 tag digits or lowercase
-// letters (the length of a CLDR subdivision id), then U+E007F. Keys keep the
-// full guard. Bidi controls, LRM and RLM stay rejected.
+// except ZWNJ and ZWJ between two visible characters, as Persian, Indic and
+// emoji text use them, and the tag characters of a subdivision flag: U+1F3F4,
+// two tag lowercase letters (the region), 1 to 4 tag digits or lowercase
+// letters, then U+E007F. Keys keep the full guard. Bidi controls, LRM and RLM
+// stay rejected.
 pub(crate) fn display_text(value: &str) -> bool {
+    let joiner = |c: char| matches!(c, '\u{200C}' | '\u{200D}');
+    let visible = |c: char| !joiner(c) && !c.is_whitespace() && !hidden_character(c);
+    let letter = |t: char| matches!(t, '\u{E0061}'..='\u{E007A}');
     let mut chars = value.chars();
+    let mut after_visible = false;
     while let Some(c) = chars.next() {
-        if c == '\u{1F3F4}' {
+        if joiner(c) {
+            // Never leading, trailing, beside a space or in a run, so a joiner
+            // cannot blank a value or spell a hidden payload on its own.
+            if !after_visible || !chars.clone().next().is_some_and(visible) {
+                return false;
+            }
+        } else if c == '\u{1F3F4}' {
             let rest = chars.as_str();
             let spec = rest
-                .find(|t| !matches!(t, '\u{E0030}'..='\u{E0039}' | '\u{E0061}'..='\u{E007A}'))
+                .find(|t| !letter(t) && !matches!(t, '\u{E0030}'..='\u{E0039}'))
                 .unwrap_or(rest.len());
             // Each tag character is four UTF-8 bytes.
-            if (12..=28).contains(&spec) && rest[spec..].starts_with('\u{E007F}') {
+            if (12..=24).contains(&spec)
+                && rest.chars().take(2).all(letter)
+                && rest[spec..].starts_with('\u{E007F}')
+            {
                 chars = rest[spec + 4..].chars();
             }
-        } else if !matches!(c, '\u{200C}' | '\u{200D}') && hidden_character(c) {
+        } else if hidden_character(c) {
             return false;
         }
+        after_visible = visible(c);
     }
     true
 }

@@ -753,13 +753,17 @@ allowing LRM and RLM; Codex treated the marks as a separate choice.
 One shared predicate, `metadata::display_text`, serves the producer and the
 v1 and v2 `from_json` validation:
 
-- ZWNJ (U+200C) and ZWJ (U+200D) are allowed.
-- Tag characters are allowed only inside a subdivision flag: U+1F3F4, then 3
-  to 7 tag digits or lowercase letters, then U+E007F. That is the shape of a
-  CLDR subdivision id, which covers the flags Unicode recommends (England,
-  Scotland, Wales). Tag characters mirror ASCII, so an unbounded or
-  base-less run could carry hidden text; every other tag character stays
-  rejected.
+- ZWNJ (U+200C) and ZWJ (U+200D) are allowed between two visible,
+  non-space characters, which is how the words and emoji that need them use
+  them. A joiner alone, at either end, beside a space or in a run stays
+  rejected: such a value could look blank, which D-032 prevents, or carry a
+  zero-width payload.
+- Tag characters are allowed only inside a subdivision flag: U+1F3F4, two
+  tag lowercase letters for the region, 1 to 4 tag digits or lowercase
+  letters, then U+E007F. That is the shape of a CLDR subdivision id, which
+  covers the flags Unicode recommends (England, Scotland, Wales). Tag
+  characters mirror ASCII, so the shape bounds hidden text to six characters
+  per flag but does not remove it; every other tag character stays rejected.
 - The bidi embedding, override and isolate controls stay rejected, and so do
   LRM and RLM: a title is isolated display text, and the marks can reorder
   what a reader sees without being visible.
@@ -767,7 +771,7 @@ v1 and v2 `from_json` validation:
   (`metadata_key`); the producer already accepts only ASCII keys.
 
 **Consequences:** Such titles and properties now survive parsing and import
-unchanged. A spoofing name can use a joiner, as file names already can, but
-not a bidi control. File names still flag tag characters, flags included.
+unchanged. A spoofing value can use a joiner between visible characters, as
+file names already can, but not a bidi control. File names still flag tag characters, flags included.
 The frozen corpus and goldens contain none of these characters, so none
 changed.

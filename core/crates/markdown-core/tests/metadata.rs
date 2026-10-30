@@ -518,14 +518,15 @@ fn display_modifiers_stay_allowed_in_metadata_text() {
 
 // Joiners and subdivision flags (CORE-003F, D-034): allowed in titles and
 // string/list values, never in keys; other tag characters stay rejected.
-const JOINED: [&str; 5] = [
+const JOINED: [&str; 6] = [
     "\u{645}\u{6cc}\u{200c}\u{62e}\u{648}\u{627}\u{647}\u{645}",
     "\u{915}\u{94d}\u{200c}\u{937}",
     "\u{915}\u{94d}\u{200d}\u{937}",
     "\u{1f469}\u{200d}\u{1f4bb} dev",
+    "\u{2764}\u{fe0f}\u{200d}\u{1f525}",
     "\u{1f3f4}\u{e0067}\u{e0062}\u{e0073}\u{e0063}\u{e0074}\u{e007f} Scotland",
 ];
-const MALFORMED_TAGS: [&str; 8] = [
+const MALFORMED_TAGS: [&str; 10] = [
     "a\u{e0067}\u{e0062}\u{e007f}",
     "\u{1f3f4}\u{e0067}\u{e0062}\u{e0073}",
     "\u{1f3f4}\u{e0067}\u{e0062}\u{e007f}",
@@ -534,6 +535,19 @@ const MALFORMED_TAGS: [&str; 8] = [
     "\u{1f3f4}\u{e0067}\u{e0020}\u{e0073}\u{e007f}",
     "\u{1f3f4}\u{e0067}\u{e0062}\u{e0073}\u{e007f}\u{e0074}",
     "\u{1f3f4}\u{e007f}",
+    "\u{1f3f4}\u{e0031}\u{e0032}\u{e0033}\u{e007f}",
+    "\u{1f3f4}\u{e0067}\u{e0062}\u{e0061}\u{e0062}\u{e0063}\u{e0064}\u{e0065}\u{e007f}",
+];
+// A joiner must sit between two visible characters: never alone, at an end,
+// beside a space or in a run.
+const LOOSE_JOINERS: [&str; 7] = [
+    "\u{200d}",
+    "\u{200c}\u{200d}",
+    "a\u{200d}",
+    "\u{200c}a",
+    "a\u{200c}\u{200d}b",
+    "a \u{200d}b",
+    "a\u{200c} b",
 ];
 
 #[test]
@@ -555,6 +569,14 @@ fn joiners_and_subdivision_flags_are_allowed_in_metadata_text() {
         rejected(&format!("title: {value}"), "front_matter_unsupported");
         rejected(
             &format!("title: legitimate\ntags: [{json}]"),
+            "front_matter_unsupported",
+        );
+    }
+    for value in LOOSE_JOINERS {
+        let json = serde_json::to_string(value).unwrap();
+        rejected(&format!("title: {json}"), "front_matter_unsupported");
+        rejected(
+            &format!("title: legitimate\ntags:\n  - fine\n  - {json}"),
             "front_matter_unsupported",
         );
     }

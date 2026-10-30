@@ -616,6 +616,8 @@ fn imported_metadata_text_keeps_the_front_matter_display_guard() {
         "a\u{e0067}\u{e0062}\u{e007f}",
         "\u{1f3f4}\u{e0067}\u{e0062}\u{e0073}",
         "\u{1f3f4}\u{e0047}\u{e0042}\u{e0053}\u{e007f}",
+        "\u{200d}",
+        "a\u{200c}\u{200d}b",
         "a\u{200c}\u{200e}b",
         "a\u{200d}\u{2067}b",
     ] {

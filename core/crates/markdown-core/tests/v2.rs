@@ -728,6 +728,8 @@ fn imported_v2_metadata_text_keeps_the_front_matter_display_guard() {
     for value in [
         "a\u{e0067}\u{e0062}\u{e007f}",
         "\u{1f3f4}\u{e0067}\u{e0062}\u{e007f}",
+        "\u{200c}a",
+        "a \u{200d}b",
         "a\u{200c}\u{200f}b",
         "a\u{200d}\u{202d}b",
     ] {
