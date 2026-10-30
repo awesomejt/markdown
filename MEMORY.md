@@ -33,8 +33,8 @@ read.
   defect. Follow-ups: CORE-003F (front-matter ZWNJ/ZWJ allowance, amending
   D-032) is next, before CORE-001; CORE-001 also takes the two TOOL-003
   findings; CORE-006 records the 2 MiB content-search default change; each
-  001B sets a session memory bound. Requiring `Checks / complete` on `main`
-  awaits the owner. See [HANDOFF.md](HANDOFF.md) and
+  001B sets a session memory bound. `main` now requires the
+  `Checks / complete` status (M4, 2026-10-29). See [HANDOFF.md](HANDOFF.md) and
   [TODO.md](TODO.md#core-fix-milestone-follow-ups). HARD-001 sits between
   DESK-001 and DESK-002.
 - Workflow: task PRs target `develop` and merge on a Grok review with no

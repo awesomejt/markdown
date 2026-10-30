@@ -642,7 +642,9 @@ each task. Long-lived branches per phase or platform would conflict on
   settings, so that no branch carried conflicting instructions; both
   allowances have ended.
 - `develop` is the GitHub default branch, and `main` is protected (pull
-  requests only, no force pushes or deletion), applied 2026-10-28.
+  requests only, no force pushes or deletion), applied 2026-10-28. The
+  `Checks / complete` status became required on `main` on 2026-10-29, by
+  owner approval after the CORE-FIX milestone review.
 
 **Consequences:** `main` is always owner-reviewed, and tasks never wait on
 the owner. Problems found at a milestone cost more rework than per-PR review

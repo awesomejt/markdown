@@ -28,8 +28,8 @@ done list is in [the memory archive](agents/Memory-Archive.md#handoffmd-phase-ha
   2 MiB content-search default change in the FFI spec. Each host's chain in
   `desktop-apps` starts after CORE-006 (D-027); do not select platform tasks
   before then.
-- **Owner decision pending:** requiring `Checks / complete` on `main`
-  (milestone M4; all three reviewers recommend it).
+- **Done (milestone M4):** `main` now requires the `complete` check from the
+  `Checks` workflow (owner-approved 2026-10-29).
 - The next milestone is the CORE-001 to CORE-006 aggregates closing, or the
   cap of about 8 task PRs or 2 weeks.
 

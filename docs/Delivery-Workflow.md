@@ -53,7 +53,10 @@ Never commit directly to `main` or `develop`. (On 2026-10-28 the owner allowed
 two one-time direct commits to `main`, to install this workflow and then the
 review cap and branch settings; both allowances have ended.) `develop` is the
 GitHub default branch, and `main` is protected: changes arrive only by pull
-request, and force pushes and deletion are blocked.
+request, the `complete` job of the `Checks` workflow must pass (added
+2026-10-29 after the CORE-FIX milestone review), and force pushes and
+deletion are blocked. The rules apply to admins too, so a stuck check is
+re-run, not bypassed; only the owner may relax the rule.
 
 **Milestones.** Cut a review at the first of these boundaries:
 
