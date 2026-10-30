@@ -1,7 +1,8 @@
 # Agent Session and Platform Handoff
 
-Updated: 2026-10-30 (America/Denver), after CORE-005 (PR #37).
-Source baseline: `develop` after PR #37; reviewed head `68cb794`, validated fixes `6bd6cd5`. Preserve intended source, lock/spec/golden
+Updated: 2026-10-30 (America/Denver), after CORE-006 (PR #38).
+Source baseline: `develop` after PR #38; reviewed/release-validated head
+`4339669`, followed by the state/docs closeout. Preserve intended source, lock/spec/golden
 files, docs and state together. Never transfer caches, environments, build
 products, private runtime state or user documents.
 
@@ -33,26 +34,35 @@ done list is in [the memory archive](agents/Memory-Archive.md#handoffmd-phase-ha
   [session acceptance](docs/Core-Session-Acceptance.md), with explicit race
   coverage, adapter-ordering and memory limits.
 - **Done:** CORE-005 in [PR #37](https://github.com/awesomejt/markdown/pull/37):
-  [search/read acceptance](docs/Core-Search-Acceptance.md), with a regression
-  for full/collapsed/shortcut/image references and corrected parity wording.
-  The accepted v1 workspace index stays unchanged; v2 find need not reproduce
-  a reference-syntax hit. No runtime/limit/ABI/schema/golden change.
-  Focused regression, final `tools/check.py all` and common checks passed on
-  macOS 27.0.1/Rust 1.99.1 after the review fixes.
-  [Fixed-head three-OS CI](https://github.com/awesomejt/markdown/actions/runs/41013505189)
-  passed at `6bd6cd5`.
-  [Grok review](https://github.com/awesomejt/markdown/pull/37#pullrequestreview-5708692468)
-  at `68cb794` had 0 blockers, 1 low wording concern and 2 nits, all fixed at
-  `6bd6cd5` and exempt from re-review under step 7. One review, no re-review
-  requested, all threads resolved, no findings deferred. No live lease remains.
-- **Next:** CORE-006, including shared facade acceptance and the 8 to
-  2 MiB content-search default change in the FFI spec. Each host's chain in
-  `desktop-apps` starts after CORE-006 (D-027); do not select platform tasks
-  before then.
+  [search/read acceptance](docs/Core-Search-Acceptance.md), with explicit
+  reference-syntax regressions and v1-workspace/v2-find boundaries. Detailed
+  validation and review disposition are in the pass record and archive.
+- **Done:** CORE-006 in [PR #38](https://github.com/awesomejt/markdown/pull/38):
+  [facade acceptance](docs/Core-Facade-Acceptance.md), existing ABI v1 zero
+  content-budget change from 8 to 2 MiB documented, shared/native evidence
+  boundaries reconciled. No runtime/header/schema/golden/dependency change.
+  Local `tools/check.py all` and staged common checks passed on macOS
+  27.0.1/Rust 1.99.1. Fresh
+  [three-OS debug and all-feature release CI](https://github.com/awesomejt/markdown/actions/runs/41024924816)
+  passed at `4339669265c139fa493d4e73623ad9a9c278e503`; macOS/Linux compiled
+  C smoke passed, Windows MSVC smoke remains WIN-001B.
+  [Grok review](https://github.com/awesomejt/markdown/pull/38#pullrequestreview-5709806212)
+  at that head had 0 blockers, 0 concerns and 2 nits. Both are addressed in
+  the closeout: explicit all-feature-only release scope and committed run/head
+  evidence. One review, no re-review needed, no findings deferred.
+- **Next:** `portable-core` is complete and `desktop-apps` is active.
+  MAC-001A is dependency-ready on this Mac; WIN-001A/LNX-001A start on their
+  hosts. Native 001B packages retain their model-v2, memory and consumer gates.
+  The shared-core milestone boundary is reached. Per MEMORY.md, Claude writes
+  the combined packet for CORE-001–CORE-006 (plus CORE-003F since `m-core-fix`),
+  then Grok/Codex add independent reviews on `review/<milestone>`. Follow D-030
+  to freeze green `develop` with no task PR waiting and open the milestone PR;
+  only the owner merges into `main`. No milestone review branch/PR is created
+  by this task closeout; hand off packet preparation to Claude.
 - **Done (milestone M4):** `main` now requires the `complete` check from the
   `Checks` workflow (owner-approved 2026-10-29).
-- The next milestone is the CORE-001 to CORE-006 aggregates closing, or the
-  cap of about 8 task PRs or 2 weeks.
+- The next milestone is ready for packet preparation: CORE-001 to CORE-006
+  are closed. No live pass/lease or unowned working task remains.
 
 Inspect state before any pass, following AGENT_WORKFLOW.md:
 

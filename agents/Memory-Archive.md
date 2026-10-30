@@ -1160,3 +1160,19 @@ The next task was CORE-005; its search/read acceptance is now closed in PR #37.
   and fresh named-Mac benchmarks; runtime behavior is unchanged. CORE-004
   closed in PR #36 with [session acceptance](../docs/Core-Session-Acceptance.md),
   including explicit race-coverage and adapter-ordering limits. CORE-005 is next;
+
+## CORE-005 closeout handoff (2026-10-30)
+
+- **Done:** CORE-005 in [PR #37](https://github.com/awesomejt/markdown/pull/37):
+  [search/read acceptance](../docs/Core-Search-Acceptance.md), with a regression
+  for full/collapsed/shortcut/image references and corrected parity wording.
+  The accepted v1 workspace index stays unchanged; v2 find need not reproduce
+  a reference-syntax hit. No runtime/limit/ABI/schema/golden change.
+  Focused regression, final `tools/check.py all` and common checks passed on
+  macOS 27.0.1/Rust 1.99.1 after the review fixes.
+  [Fixed-head three-OS CI](https://github.com/awesomejt/markdown/actions/runs/41013505189)
+  passed at `6bd6cd5`.
+  [Grok review](https://github.com/awesomejt/markdown/pull/37#pullrequestreview-5708692468)
+  at `68cb794` had 0 blockers, 1 low wording concern and 2 nits, all fixed at
+  `6bd6cd5` and exempt from re-review under step 7. One review, no re-review
+  requested, all threads resolved, no findings deferred. No live lease remains.

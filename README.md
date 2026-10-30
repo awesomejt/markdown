@@ -12,21 +12,23 @@ replaced or moved into this repository.
 
 ## Current state
 
-GATE-001 is approved (D-018); **portable-core implementation** has begun.
-CORE-001A's workspace/check/CI scaffold is merged. CORE-002A now defines the
-[v1 semantic model](specs/semantic-model/v1/README.md) and schema/goldens.
-CORE-003A adds [bounded basic parsing](docs/Parsing.md) and conservative safety
-classification. CORE-003B1 adds [bounded typed front matter](docs/Front-Matter.md).
-CORE-003B2 adds opt-in [v2 references and URI targets](specs/semantic-model/v2/README.md)
-while preserving default v1. CORE-004A adds [document sessions](specs/session/README.md)
-with generations, cancellation, external-change state and anchors. CORE-006A
-adds the hand-written [C ABI](specs/ffi/README.md) facade. CORE-005A adds
-[document find and reading metadata](specs/search/README.md). Three reviews of
-the shared core ([reviews](docs/reviews/README.md)) led to the CORE-FIX phase
-(D-026) in [TODO.md](TODO.md). It finishes the shared track before the native
-application shells start (D-027). Native shells remain separate phases; no working reader is delivered by the core alone. The accepted
+GATE-001 is approved (D-018), and the **portable-core phase is complete**
+through CORE-006. The shared Rust implementation provides the
+[v1 semantic model](specs/semantic-model/v1/README.md), opt-in
+[v2 provenance and URI targets](specs/semantic-model/v2/README.md),
+[bounded parsing](docs/Parsing.md), [front matter](docs/Front-Matter.md),
+[document sessions](specs/session/README.md),
+[find and reading metadata](specs/search/README.md), workspace search and the
+hand-written [C ABI](specs/ffi/README.md). Aggregate acceptance evidence is
+linked from [HANDOFF.md](HANDOFF.md) and [Architecture.md](docs/Architecture.md).
+
+The active phase is **desktop-apps**: each host begins its own native walking
+skeleton (D-027), with MAC-001A next on macOS. Native consumer packages,
+accessibility and performance still require platform evidence; the core alone
+delivers no working reader UI. The closed shared track also reaches the next
+owner-reviewed milestone into `main` (D-030). The accepted
 [implementation baseline](docs/Implementation-Baseline.md) and
-[architecture](docs/Architecture.md) preserve the required native evidence.
+[architecture](docs/Architecture.md) preserve those gates.
 
 Run [development checks](docs/Development.md); see
 [dependency/license policy](docs/Dependencies.md). New implementation source
