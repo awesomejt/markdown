@@ -102,6 +102,9 @@ and new dirty lines fail. The pushed branch is named by `GITHUB_REF_NAME`; when
 it is unset or not found, or no other branch exists, the whole tree is checked. Without CHECK_BASE, local/manual runs check the latest commit plus
 staged/unstaged changes. Set `CHECK_BASE=origin/develop` for the full local branch
 range. Untracked files enter the Git whitespace check once staged.
+First-push diffs disable color even when Git configuration forces it. Captured
+output uses UTF-8 with `surrogateescape`, so non-UTF-8 problem content cannot
+abort decoding or hide new whitespace errors.
 `tools/test_project_state.py` remains a separate host setup check requiring the
 installed Codex state backend; CI does not depend on a private user-level skill.
 

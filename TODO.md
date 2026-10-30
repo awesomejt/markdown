@@ -180,7 +180,10 @@ belongs to each platform's 001A and 001B (D-027).
 - **CORE-001 — Scaffold monorepo workspaces and CI.** The accepted core
   workspace, platform-isolated CI definitions, lint/test commands, dependency
   inventory and license checks, passing in hosted CI on all three OSes. Each
-  native shell's CI job is that platform's 001A.
+  native shell's CI job is that platform's 001A. Includes the two TOOL-003
+  deferred findings: first-push whitespace checks must handle forced Git color
+  and non-UTF-8 problem content, with regression tests that still reject new
+  whitespace violations.
 - **CORE-002 — Define semantic document model v1.** Version blocks, inlines,
   spans, stable identity, diagnostics, outline, properties, link/resource
   intents, capabilities, and unsupported-feature nodes with goldens.
