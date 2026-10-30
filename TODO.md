@@ -52,8 +52,8 @@ CORE-002B, TOOL-002 and CORE-003C in PRs #17 to #21, the D-029 and D-030
 workflow changes in PR #22 and on `main`, TOOL-003 in PR #23, CORE-003D in
 PR #24, CORE-005C in PR #25, CORE-005D in PR #26 and CORE-003E in PR #27
 (D-032). The owner merged the first milestone review (PR #28) into `main`,
-tagged `m-core-fix`. Its [follow-ups](#core-fix-milestone-follow-ups) start
-with CORE-003F, which is next on `develop`, before CORE-001. Inspect
+tagged `m-core-fix`. Its first [follow-up](#core-fix-milestone-follow-ups),
+CORE-003F, merged in PR #32 (D-034); CORE-001 is next on `develop`. Inspect
 state and `HANDOFF.md` before any pass. Scoped commits, pushes, PR updates and
 review requests are authorized; a Grok review with no serious finding approves
 a merge into `develop` (D-029); only the owner merges into `main` (D-030);
@@ -354,7 +354,10 @@ The [CORE-FIX milestone review](docs/reviews/README.md) (PR #28, tag
 found a blocking defect. The items they agreed on, or that should be
 addressed later, are recorded here and in state:
 
-- **CORE-003F — Front-matter joiner allowance (M1, all three).** A new task
+- **CORE-003F — Front-matter joiner allowance (M1, all three).** Done in
+  PR #32 (D-034): joiners between visible characters and subdivision flags
+  are allowed in titles and values, not keys; LRM, RLM and bidi controls
+  stay rejected. A new task
   between CORE-003E and CORE-001. Front matter rejects ZWNJ and ZWJ (Cf), so a
   title or value holding either discards the whole map: Persian,
   Arabic-script, Indic and emoji ZWJ titles lose their metadata. File names

@@ -1,6 +1,6 @@
 # Agent Session and Platform Handoff
 
-Updated: 2026-10-29, after the CORE-FIX milestone merge (PR #28, `m-core-fix`).
+Updated: 2026-10-30, after CORE-003F (PR #32, D-034).
 Source baseline: `develop` after the `main` sync. Preserve intended source, lock/spec/golden
 files, docs and state together. Never transfer caches, environments, build
 products, private runtime state or user documents.
@@ -18,12 +18,10 @@ found a blocking defect. The follow-ups are in
 [TODO.md](TODO.md#core-fix-milestone-follow-ups) and in state. The CORE-FIX
 done list is in [the memory archive](agents/Memory-Archive.md#handoffmd-phase-handoff-history).
 
-- **Next:** CORE-003F, the front-matter joiner allowance (milestone M1). Allow
-  ZWNJ and ZWJ in front-matter title and string/list values, not keys, at
-  v1/v2 parity; keep bidi controls rejected; decide emoji tag sequences;
-  record a decision amending D-032. Branch
-  `feat/core-003f-front-matter-joiners` from `develop`.
-- **Then:** CORE-001 (now also fixing the two TOOL-003 deferred findings),
+- **Done:** CORE-003F (milestone M1) in PR #32, D-034: front-matter titles
+  and values allow ZWNJ/ZWJ between visible characters and subdivision-flag
+  tag sequences; keys, bidi controls, LRM and RLM stay rejected.
+- **Next:** CORE-001 (now also fixing the two TOOL-003 deferred findings),
   then the CORE-002 to CORE-006 aggregates. CORE-006 also records the 8 to
   2 MiB content-search default change in the FFI spec. Each host's chain in
   `desktop-apps` starts after CORE-006 (D-027); do not select platform tasks

@@ -30,9 +30,9 @@ read.
   CORE-005C, CORE-005D, CORE-003E; PRs #17 to #27, D-028 to D-032) is merged
   into `main` through the first milestone review, PR #28, tagged
   `m-core-fix`. Its three reviews (Claude, Grok, Codex) found no blocking
-  defect. Follow-ups: CORE-003F (front-matter ZWNJ/ZWJ allowance, amending
-  D-032) is next, before CORE-001; CORE-001 also takes the two TOOL-003
-  findings; CORE-006 records the 2 MiB content-search default change; each
+  defect. Follow-ups: CORE-003F (front-matter joiners and subdivision flags,
+  D-034 amending D-032) merged in PR #32; CORE-001 is next and also takes
+  the two TOOL-003 findings; CORE-006 records the 2 MiB content-search default change; each
   001B sets a session memory bound. `main` now requires the
   `Checks / complete` status (M4, 2026-10-29). See [HANDOFF.md](HANDOFF.md) and
   [TODO.md](TODO.md#core-fix-milestone-follow-ups). HARD-001 sits between
