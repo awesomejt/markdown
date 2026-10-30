@@ -98,7 +98,7 @@ in [MEMORY.md](MEMORY.md), decisions in [agents/Decisions.md](agents/Decisions.m
 and operational task state in `project.yaml`. [AGENT_WORKFLOW.md](AGENT_WORKFLOW.md)
 defines the recovery-safe task loop. From core implementation onward,
 [Delivery workflow](docs/Delivery-Workflow.md) defines small platform-focused
-phases, feature branches, PRs and the `grok` CLI review request.
+phases, feature branches, PRs and the Grok review they start.
 
 ## Relationship to `markdown-viewer`
 

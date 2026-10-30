@@ -83,8 +83,8 @@ Disable Git line-ending conversion for the frozen fixture corpus.
 Starting after GATE-001, divide core and application implementation into bounded
 delivery phases, grouped by platform where possible to support booting between
 hosts. Each phase uses a feature branch and PR. Once ready, request the Grok
-review by running the `grok` CLI (amended 2026-10-28 at the owner's request;
-it was a `/grok review` PR comment), assess the actual review and address
+review (amended 2026-10-28 to the `grok` CLI, then on 2026-10-29 by D-033 to
+the Grok GitHub integration that reviews each new PR), assess the actual review and address
 findings; merge needs owner authorization, which a clean Grok review now
 gives under D-029. Scoped phase commits,
 pushes, PR updates and review requests are authorized as routine steps of this
@@ -583,8 +583,8 @@ after `main` moved, which the repository already allows. Branch and PR sizing
 **Status:** accepted by owner request
 
 **Context:** Every PR waited for an explicit owner merge approval even when
-Grok's review found nothing serious. Grok reviews are now requested through
-the `grok` CLI, which rates findings as fix-now (high or critical) or later
+Grok's review found nothing serious. Grok reviews were then requested through
+the `grok` CLI (since D-033, the Grok GitHub integration), which rates findings as fix-now (high or critical) or later
 (low or nits).
 
 **Decision:** A Grok review with no high or critical finding is the owner's
@@ -702,3 +702,34 @@ existing atomic rejection already keeps the source readable.
 their typed metadata and title and show a `front_matter_unsupported` warning
 instead. The frozen corpus and goldens contain none, so none changed. URI
 targets stay stricter: they also deny the display modifiers.
+
+## D-033 — Grok reviews from GitHub, and unreviewed `patch/` branches
+
+**Date:** 2026-10-29
+
+**Status:** accepted by owner request
+
+**Context:** The `grok` CLI request (D-029) was a workaround until the owner
+connected Grok to GitHub through Cursor. That integration now reviews each new
+PR, and a `/grok review` comment asks for another. The owner set Grok to
+ignore `review/*` and `patch/*` branches. Some PRs need no review at all:
+workflow and documentation changes, administrative records and nit fixes.
+
+**Decision:**
+
+- Drop the `grok` CLI step. Creating a PR starts its Grok review; the runner
+  opens the PR only when it is reviewable, monitors it until Grok's review
+  arrives, and requests later reviews with a `/grok review` comment.
+- The three-review cap (D-029) stays and counts the automatic review.
+- `patch/<short-description>` branches carry changes that need no review:
+  workflow, process and other documentation; project-state, roadmap, handoff
+  and milestone-sync records; and nit fixes that change no behavior. Anything
+  that changes code, tools, CI, specs, fixtures or goldens, or needs an owner
+  decision, uses a reviewed branch.
+- A `patch/` PR merges into `develop` once its required CI passes, which is
+  the approval. `main` still takes only milestone reviews (D-030).
+
+**Consequences:** No local tool is needed to request a review, so any agent
+on any host can run the workflow, but each must poll the PR for the review.
+Unreviewed changes rely on the runner choosing `patch/` honestly; the owner
+sees every one at the next milestone review.

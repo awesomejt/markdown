@@ -71,9 +71,11 @@ hand-edit `project.yaml` or improvise a backend.
 After GATE-001, use the small platform-focused phase catalog in
 [Implementation-Plan.md](docs/Implementation-Plan.md) and the branch/PR lifecycle
 in [Delivery-Workflow.md](docs/Delivery-Workflow.md). Each phase gets a feature
-branch and PR, followed by a Grok review requested through the `grok` CLI.
-Scoped phase commits, pushes, PR updates and review requests are authorized.
-A Grok review with no serious finding approves the merge (D-029); other
+branch and PR; creating the PR starts the Grok review, which the runner
+monitors for, and `/grok review` requests another. Housekeeping goes on a
+`patch/` branch that Grok ignores and green CI merges (D-033). Scoped phase
+commits, pushes, PR updates and review requests are authorized. A Grok
+review with no serious finding approves the merge (D-029); other
 merges, tags, signing, publishing and production deployment require explicit
 owner approval.
 

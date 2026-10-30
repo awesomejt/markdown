@@ -57,7 +57,7 @@ See [Decisions.md](../agents/Decisions.md),
 
 Use the [phase catalog](Implementation-Plan.md) and
 [delivery workflow](Delivery-Workflow.md): one bounded phase per feature branch
-and PR, a Grok review through the `grok` CLI when ready, disposition of feedback,
+and PR, the Grok review that opening the PR starts, disposition of feedback,
 and merge approval: a Grok review with no serious finding (D-029), or the
 owner's. Batch dependency-ready work on the current
 host. Preserve the one-pass limit and all-desktop skeleton/MVP gates.
