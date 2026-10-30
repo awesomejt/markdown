@@ -125,6 +125,8 @@ nonempty `#fragment`, http/https/mailto prefixes with nonempty remainder, or a
 relative destination with no colon, absolute prefix or dot/dot-dot segment.
 Every other link is a denied intent. Images permit only that relative subset;
 remote/absolute/unsafe images remain denied intents with readable alt text.
+V1 still permits credential-bearing HTTP(S) URLs as external link intents;
+v2 rejects credentials, and native hosts request v2 under D-025.
 
 V1 deliberately blocks some legitimate names/URLs (Unicode names/IDNs and
 Unicode fragments, spaces, percent encoding and parent-relative navigation).

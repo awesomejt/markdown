@@ -5,7 +5,8 @@ is already merged: CORE-003A (PR #3), B1 (PR #4), B2/B2F (PR #5), B3 (PR #12),
 B4 (PR #13), C (PR #21), D (PR #24), E (PR #27) and F (PR #32).
 CORE-003B's aggregate closed in PR #14. This acceptance changes no parser
 code, limits, dependencies, schemas, fixtures, goldens or safety policy.
-The CORE-003 pass and PR record review disposition and completion.
+The CORE-003 pass and [PR #35](https://github.com/awesomejt/markdown/pull/35)
+record review disposition and completion.
 
 The delivered behavior is defined by [Parsing.md](Parsing.md),
 [Front-Matter.md](Front-Matter.md), [URI-Policy.md](URI-Policy.md), and the
@@ -70,6 +71,11 @@ approximately 1.1 MB generated link/IDNA workload, not a frozen corpus profile.
 | links-synthetic | v1 | 44.3 | 45.1 | 47.5 | 80.0 |
 | links-synthetic | v2 | 80.1 | 80.9 | 82.6 | 80.0 |
 
+The roughly 1.8-times v2/v1 median ratio on `links-synthetic` matches the
+earlier ratio in [Parser-Budgets.md](Parser-Budgets.md). This workload exercises
+v2 URI/IDNA classification and source-provenance validation; its cost is not
+representative of prose-only input.
+
 The isolated stable toolchain matches the committed Rust pin. The full suite
 includes common/schema/fixture checks, formatting and Clippy, default,
 all-feature and model-v2-only debug tests, all-feature release tests, C ABI
@@ -88,7 +94,8 @@ not establish native UI behavior.
 ## Safety and scope limits
 
 The core never opens files or fetches resources. V1 retains its conservative
-ASCII/inline-intent policy, including credential-bearing external URLs;
+ASCII/inline-intent policy, which still permits credential-bearing HTTP(S)
+URLs as link intents;
 native packages explicitly request v2 under
 [D-025](../agents/Decisions.md#d-025--native-hosts-build-and-request-semantic-model-v2),
 which rejects credentials and proves bounded source provenance. A v2 relative

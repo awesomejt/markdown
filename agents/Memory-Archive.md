@@ -1096,3 +1096,20 @@ the milestone sync, before the subsequent task PRs on `develop`.
   exempt from re-review under step 7. No live pass or lease remains.
 
 The next task was CORE-002; its acceptance is now closed in PR #34.
+
+## Superseded CORE-002 handoff before CORE-003 closeout
+
+- **Done:** CORE-002 in [PR #34](https://github.com/awesomejt/markdown/pull/34):
+  [aggregate model acceptance](../docs/Core-Model-Acceptance.md), with frozen
+  schemas/goldens unchanged and D-021's snapshot-local MVP identity explicit.
+  Local `tools/check.py all` passed on macOS 27.0.1 with Rust 1.99.1 at
+  source baseline `0270e6b`; common checks passed for the acceptance docs.
+  [PR CI](https://github.com/awesomejt/markdown/actions/runs/40993369885)
+  passed at `453f183`.
+  [Grok review](https://github.com/awesomejt/markdown/pull/34#pullrequestreview-5707501199)
+  at that head had no serious finding; the sole link-anchor nit is fixed in
+  the closeout commit and exempt from re-review under step 7. A second review
+  submission only corrects the suggestion's line range; no re-review was
+  requested. No live pass or lease remains.
+
+The next task was CORE-003; its parsing/safety acceptance is now closed in PR #35.
