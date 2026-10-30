@@ -40,14 +40,17 @@ public enum ImageFailure: Error, Sendable, Equatable {
 public typealias ImageLoader = @Sendable (_ path: String, _ limit: Int) throws(ImageFailure) -> Data
 
 /// Per-document image bounds. Decoding is bounded before any pixels exist:
-/// files are size-capped, the declared pixel count is checked from the header,
-/// and the decoded copy is downsampled to `maxPixelSide`.
+/// files are size-capped and the declared pixel count is checked from the
+/// header. Formats ImageIO cannot subsample (PNG, most GIF/TIFF) are decoded in
+/// full before downsampling, so `maxSourcePixels` keeps that transient RGBA
+/// copy within 128 MiB; images decode one at a time. The retained copy is
+/// downsampled to `maxPixelSide`, and `maxDecodedBytes` bounds retained pixels.
 public struct ImageBudget: Sendable {
   public var maxImages = 128
   public var maxFileBytes = 16 * 1024 * 1024
-  public var maxSourcePixels = 40_000_000
+  public var maxSourcePixels = 32 * 1024 * 1024
   public var maxPixelSide = 2048
-  /// Decoded RGBA bytes held by all of one document's images.
+  /// Retained decoded RGBA bytes for all of one document's images.
   public var maxDecodedBytes = 128 * 1024 * 1024
 
   public init() {}

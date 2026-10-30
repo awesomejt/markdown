@@ -113,9 +113,11 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
   private func render(_ loaded: LoadedDocument) {
     let id = renderRequest
     let document = loaded.document
-    let images = Self.imageLoader(DocumentResources(document: loaded.capability))
+    let capability = loaded.capability
     let work = Task.detached(priority: .userInitiated) {
-      try DocumentRenderer.render(document, images: images)
+      // Resolving the folder touches the filesystem, so it stays off the main thread.
+      let images = Self.imageLoader(DocumentResources(document: capability))
+      return try DocumentRenderer.render(document, images: images)
     }
     renderTask = Task { [weak self] in
       // Cancelling the window's task (a newer state, or close) stops the render.

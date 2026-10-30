@@ -140,9 +140,11 @@ MAC-001F to MAC-001H work.
     extension is a raster image type; SVG is refused (ADV-002).
   - `MarkdownRender` decodes in the off-main render. ImageIO identifies the
     content, so SVG or non-image data named `.png` is refused. The pixel
-    count from the header must be at most 40 MP. The decoded copy is
+    count from the header must be at most 32 Mi pixels, so a full decode
+    (ImageIO cannot subsample PNG and most GIF/TIFF) briefly needs at most
+    128 MiB, and images decode one at a time. The retained copy is
     downsampled to at most 2,048 px on its long side. One document holds at
-    most 128 distinct images and 128 MiB of decoded pixels. Each distinct path
+    most 128 distinct images and 128 MiB of retained decoded pixels. Each distinct path
     is read and decoded once per render, and cancellation is checked before
     each image.
   - A loaded image is an inline attachment. It scales down to the line width

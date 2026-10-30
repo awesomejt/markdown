@@ -28,6 +28,7 @@ public struct DocumentResources: Sendable {
   /// The document's folder, with symlinks resolved; nil if it cannot be resolved.
   let root: String?
 
+  /// Resolves the folder through the filesystem; call off the main thread.
   public init(document: DocumentCapability) {
     root = Self.realPath(document.url.deletingLastPathComponent().path)
   }
