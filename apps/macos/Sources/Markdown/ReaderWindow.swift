@@ -113,7 +113,10 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
   private func render(_ loaded: LoadedDocument) {
     let id = renderRequest
     let document = loaded.document
-    let work = Task.detached(priority: .userInitiated) { try DocumentRenderer.render(document) }
+    let images = Self.imageLoader(DocumentResources(document: loaded.capability))
+    let work = Task.detached(priority: .userInitiated) {
+      try DocumentRenderer.render(document, images: images)
+    }
     renderTask = Task { [weak self] in
       // Cancelling the window's task (a newer state, or close) stops the render.
       let result = await withTaskCancellationHandler {
@@ -130,6 +133,24 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
         let error = DocumentError.parseFailed
         self.showStatus(
           error.message, error.recovery, title: loaded.capability.displayName, url: nil)
+      }
+    }
+  }
+
+  /// Images are read only from the document's folder (MAC-001E).
+  nonisolated static func imageLoader(_ resources: DocumentResources) -> ImageLoader {
+    { path, limit throws(ImageFailure) in
+      do throws(ResourceError) {
+        return try resources.readImage(path, limit: limit)
+      } catch {
+        switch error {
+        case .outsideFolder: throw .outsideFolder
+        case .notFound: throw .notFound
+        case .permissionDenied: throw .permissionDenied
+        case .notRegularFile, .unsupportedType: throw .unsupportedType
+        case .tooLarge: throw .tooLarge
+        case .unreadable: throw .undecodable
+        }
       }
     }
   }

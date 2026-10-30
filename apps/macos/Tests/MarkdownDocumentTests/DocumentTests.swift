@@ -241,6 +241,73 @@ struct DocumentTests {
     try #require(process.terminationStatus == 0, "hdiutil \(arguments[0]) failed")
   }
 
+  /// Images resolve inside the document's folder only, through symlinks, and
+  /// must be regular raster image files within the size limit (MAC-001E).
+  @Test func resourcesStayInTheDocumentFolder() throws {
+    let manager = FileManager.default
+    let folder = directory.appendingPathComponent("docs")
+    try manager.createDirectory(
+      at: folder.appendingPathComponent("img"), withIntermediateDirectories: true)
+    let document = folder.appendingPathComponent("readme.md")
+    try Data("# R\n".utf8).write(to: document)
+    let png = Data([0x89, 0x50, 0x4E, 0x47])
+    try png.write(to: folder.appendingPathComponent("img/a.png"))
+    try png.write(to: folder.appendingPathComponent("literal%2e.png"))
+    try png.write(to: directory.appendingPathComponent("outside.png"))
+    try Data("<svg/>".utf8).write(to: folder.appendingPathComponent("vector.svg"))
+    try Data("text".utf8).write(to: folder.appendingPathComponent("notes.txt"))
+    try manager.createDirectory(
+      at: folder.appendingPathComponent("folder.png"), withIntermediateDirectories: false)
+    #expect(mkfifo(folder.appendingPathComponent("pipe.png").path, 0o600) == 0)
+    try manager.createSymbolicLink(
+      at: folder.appendingPathComponent("escape.png"),
+      withDestinationURL: directory.appendingPathComponent("outside.png"))
+    try manager.createSymbolicLink(
+      at: folder.appendingPathComponent("inside.png"),
+      withDestinationURL: folder.appendingPathComponent("img/a.png"))
+    try manager.createSymbolicLink(
+      at: folder.appendingPathComponent("up"), withDestinationURL: directory)
+    let large = folder.appendingPathComponent("large.png")
+    #expect(manager.createFile(atPath: large.path, contents: nil))
+    let handle = try FileHandle(forWritingTo: large)
+    try handle.truncate(atOffset: 101)
+    try handle.close()
+
+    let resources = DocumentResources(
+      document: try DocumentCapability(granted: document, securityScoped: false))
+    func read(_ path: String) -> Result<Data, ResourceError> {
+      Result { () throws(ResourceError) in try resources.readImage(path, limit: 100) }
+    }
+    #expect(try read("img/a.png").get() == png)
+    #expect(try read("./img/../img/a.png").get() == png)
+    #expect(try read("inside.png").get() == png)
+    // The core's path is decoded exactly once; a literal percent stays literal.
+    #expect(try read("literal%2e.png").get() == png)
+    #expect(read("literal..png") == .failure(.notFound))
+    let expected: [(String, ResourceError)] = [
+      ("../outside.png", .outsideFolder),
+      ("escape.png", .outsideFolder),
+      ("up/outside.png", .outsideFolder),
+      ("/etc/hosts", .outsideFolder),
+      ("..", .outsideFolder),
+      ("missing.png", .notFound),
+      ("vector.svg", .unsupportedType),
+      ("notes.txt", .unsupportedType),
+      ("folder.png", .notRegularFile),
+      ("pipe.png", .notRegularFile),
+      ("large.png", .tooLarge(limit: 100)),
+    ]
+    for (path, error) in expected {
+      #expect(read(path) == .failure(error), "\(path)")
+    }
+    if getuid() != 0 {
+      let denied = folder.appendingPathComponent("img/a.png")
+      #expect(chmod(denied.path, 0) == 0)
+      #expect(read("img/a.png") == .failure(.permissionDenied))
+      #expect(chmod(denied.path, 0o644) == 0)
+    }
+  }
+
   @Test func messagesNameNoPath() {
     let errors: [DocumentError] = [
       .notFound, .volumeUnavailable, .permissionDenied, .accessRevoked,

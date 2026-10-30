@@ -52,6 +52,8 @@ public struct RenderedDocument: @unchecked Sendable {
   public let generation: UInt64
   public let text: NSAttributedString
   public let headings: [RenderedHeading]
+  /// Every image in document order, loaded or shown as its alt text.
+  public let images: [RenderedImage]
 
   /// The first heading with this anchor, as GitHub resolves duplicate slugs.
   public func heading(anchor: String) -> RenderedHeading? {
@@ -60,12 +62,16 @@ public struct RenderedDocument: @unchecked Sendable {
 }
 
 /// Converts the owned model-v2 snapshot into one TextKit 2 attributed string
-/// (MAC-001D). Headings, prose, lists, quotes, links and code are styled;
-/// tables, images, task markers, alerts and footnotes get plain readable
-/// fallbacks until MAC-001E. Raw HTML and unsupported syntax stay inert text.
+/// (MAC-001D, MAC-001E). Headings, prose, lists, task items, quotes, links,
+/// code and tables are styled. Local images are read through `images` under
+/// the core's resource policy and `budget`; without a loader, and for remote
+/// or denied targets, an image shows its alt text. Alerts and footnotes get
+/// plain readable fallbacks. Raw HTML and unsupported syntax stay inert text.
 public enum DocumentRenderer {
-  public static func render(_ document: CoreDocument) throws -> RenderedDocument {
-    var builder = Builder(document: document)
+  public static func render(
+    _ document: CoreDocument, images: ImageLoader? = nil, budget: ImageBudget = ImageBudget()
+  ) throws -> RenderedDocument {
+    var builder = Builder(document: document, images: ImageCache(loader: images, budget: budget))
     for root in document.roots { try builder.block(Int(root), context: .root) }
     builder.trimTrailingNewline()
     var headings: [RenderedHeading] = []
@@ -78,7 +84,7 @@ public enum DocumentRenderer {
     }
     return RenderedDocument(
       generation: document.generation, text: builder.output.copy() as! NSAttributedString,
-      headings: headings)
+      headings: headings, images: builder.images)
   }
 }
 
@@ -88,6 +94,11 @@ enum RenderStyle {
   static let bodySize: CGFloat = 14
   static let indent: CGFloat = 24
   static let markerWidth: CGFloat = 20
+  /// Space between a table cell's text and its rules.
+  static let cellPadding: CGFloat = 8
+  static let rowPadding: CGFloat = 4
+  /// Wider cells overflow their column rather than widen the whole table.
+  static let maxColumnWidth: CGFloat = 360
 
   static func headingSize(_ level: Int) -> CGFloat {
     [28, 22, 18, 16, 14, 13][min(max(level, 1), 6) - 1]
@@ -100,6 +111,7 @@ private struct Context {
   var tight = false
   /// The list marker the next paragraph of a fresh item starts with.
   var marker: String?
+  var markerColor = NSColor.labelColor
 
   static let root = Context()
 }
@@ -143,10 +155,15 @@ private struct Builder {
   let document: CoreDocument
   let output = NSMutableAttributedString()
   private let cache = AttributeCache()
+  private let imageCache: ImageCache
   var headingRanges: [Int: NSRange] = [:]
+  var images: [RenderedImage] = []
   private var visited = 0
 
-  init(document: CoreDocument) { self.document = document }
+  init(document: CoreDocument, images: ImageCache) {
+    self.document = document
+    imageCache = images
+  }
 
   var length: Int { output.length }
 
@@ -248,12 +265,14 @@ private struct Builder {
       var inner = context
       inner.indent += RenderStyle.indent
       inner.tight = node.flags & UInt32(MD_NODE_TIGHT) != 0
-      var marker = ordered ? "\(number)." : "•"
+      inner.marker = ordered ? "\(number)." : "•"
+      inner.markerColor = .labelColor
       if item.flags & UInt32(MD_NODE_HAS_CHECKED) != 0 {
-        marker = item.flags & UInt32(MD_NODE_CHECKED) != 0 ? "☑" : "☐"
+        let checked = item.flags & UInt32(MD_NODE_CHECKED) != 0
+        inner.marker = checked ? "☑" : "☐"
+        inner.markerColor = checked ? .controlAccentColor : .secondaryLabelColor
       }
       number &+= 1
-      inner.marker = marker
       let blocks = try children(item)
       if blocks.isEmpty {
         try paragraph(inner) { _ in }
@@ -284,15 +303,70 @@ private struct Builder {
     }
   }
 
+  /// One paragraph per row. Cells are separated by tabs, so a copied table
+  /// pastes as tab-separated text; tab stops follow each column's measured
+  /// width and alignment, and a leading tab aligns a centred or right first
+  /// column.
   private mutating func table(_ node: md_node, context: Context) throws {
+    let alignments = (0..<Int(node.aux_count)).map { column in
+      let index = Int(node.aux) + column
+      return document.alignments.indices.contains(index)
+        ? Int(document.alignments[index]) : MD_ALIGN_NONE
+    }
+    let leading = alignments.first.map { $0 == MD_ALIGN_CENTER || $0 == MD_ALIGN_RIGHT } ?? false
+    var rows: [(range: NSRange, header: Bool)] = []
+    var widths = [CGFloat](repeating: 0, count: alignments.count)
     for rowIndex in try children(node) {
+      try tick()
       let row = try self.node(rowIndex)
       let header = row.flags & UInt32(MD_NODE_HEADER) != 0
-      try paragraph(context) { builder in
-        for (column, cellIndex) in try builder.children(row).enumerated() {
-          if column > 0 { builder.append("\t", font: Font()) }
-          try builder.inlines(of: try builder.node(cellIndex), font: Font(bold: header))
-        }
+      let start = length
+      for (column, cellIndex) in try children(row).enumerated() {
+        if column > 0 || leading { append("\t", font: Font()) }
+        let cellStart = length
+        try inlines(of: try self.node(cellIndex), font: Font(bold: header))
+        let width = output.attributedSubstring(from: NSRange(cellStart..<length)).boundingRect(
+          with: CGSize(width: CGFloat.greatestFiniteMagnitude, height: .greatestFiniteMagnitude),
+          options: [.usesLineFragmentOrigin]
+        ).width.rounded(.up)
+        if column >= widths.count { widths.append(0) }
+        widths[column] = max(widths[column], min(width, RenderStyle.maxColumnWidth))
+      }
+      append("\n", font: Font())
+      rows.append((NSRange(start..<length), header))
+    }
+    let pad = RenderStyle.cellPadding
+    var edges = [context.indent]
+    var tabs: [NSTextTab] = []
+    for (column, width) in widths.enumerated() {
+      let left = edges[column]
+      let alignment = column < alignments.count ? alignments[column] : MD_ALIGN_NONE
+      switch alignment {
+      case MD_ALIGN_CENTER:
+        tabs.append(NSTextTab(textAlignment: .center, location: left + pad + width / 2))
+      case MD_ALIGN_RIGHT:
+        tabs.append(NSTextTab(textAlignment: .right, location: left + pad + width))
+      default: tabs.append(NSTextTab(textAlignment: .left, location: left + pad))
+      }
+      edges.append(left + width + 2 * pad)
+    }
+    var body = 0
+    for (index, row) in rows.enumerated() {
+      let style = NSMutableParagraphStyle()
+      style.tabStops = tabs
+      style.firstLineHeadIndent = leading ? context.indent : context.indent + pad
+      style.headIndent = context.indent + pad
+      style.paragraphSpacingBefore = RenderStyle.rowPadding
+      // The last row keeps the block gap below the table.
+      style.paragraphSpacing = index == rows.count - 1 ? 10 : RenderStyle.rowPadding
+      output.addAttribute(.paragraphStyle, value: style, range: row.range)
+      if !row.header { body += 1 }
+      let grid = TableRowStyle(
+        edges: edges, header: row.header, first: index == 0, shaded: !row.header && body % 2 == 0,
+        padding: RenderStyle.rowPadding)
+      output.addAttribute(.tableRow, value: grid, range: row.range)
+      if context.quoted {
+        output.addAttribute(.foregroundColor, value: NSColor.secondaryLabelColor, range: row.range)
       }
     }
   }
@@ -306,7 +380,7 @@ private struct Builder {
     let start = length
     var head = context.indent
     if let marker = context.marker {
-      append(marker + "\t", font: Font())
+      append(marker + "\t", font: Font(), color: context.markerColor)
       head = context.indent - RenderStyle.markerWidth
     }
     try body(&self)
@@ -383,12 +457,7 @@ private struct Builder {
     case MD_NODE_LINK:
       try link(node, font: font)
     case MD_NODE_IMAGE:
-      var inner = font
-      inner.italic = true
-      let alt = try document.string(node.text)
-      let start = length
-      append(alt.isEmpty ? "[image]" : "[\(alt)]", font: inner, color: .secondaryLabelColor)
-      output.addAttribute(.toolTip, value: "Image not shown", range: NSRange(start..<length))
+      try image(node, font: font)
     case MD_NODE_FOOTNOTE_REFERENCE:
       let start = length
       append("[\(try document.string(node.text))]", font: Font(size: font.size * 0.75))
@@ -431,6 +500,42 @@ private struct Builder {
         .underlineStyle,
         value: NSUnderlineStyle.single.rawValue | NSUnderlineStyle.patternDot.rawValue,
         range: range)
+    }
+  }
+
+  /// A local image the core allows is read and decoded once per render; any
+  /// other image, or one that fails, shows its alt text and the reason.
+  private mutating func image(_ node: md_node, font: Font) throws {
+    let alt = try document.string(node.text)
+    var result: Result<CGImage, ImageFailure> = .failure(.blocked)
+    if document.resources.indices.contains(Int(node.aux)) {
+      let intent = document.resources[Int(node.aux)]
+      switch Int(intent.target_kind) {
+      case MD_TARGET_REQUIRES_CAPABILITY:
+        try Task.checkCancellation()
+        result = imageCache.image(path: try document.string(intent.target))
+      case MD_TARGET_DENIED where Int(intent.denial) == MD_DENIAL_REMOTE_RESOURCE:
+        result = .failure(.remote)
+      default: break
+      }
+    }
+    let start = length
+    switch result {
+    case .success(let image):
+      let attachment = NSMutableAttributedString(
+        attachment: ImageAttachment(image: image, description: alt.isEmpty ? "Image" : alt))
+      attachment.addAttributes(
+        cache.attributes(font, .labelColor), range: NSRange(0..<attachment.length))
+      output.append(attachment)
+      let tip = node.flags & UInt32(MD_NODE_HAS_TITLE) != 0 ? try document.string(node.extra) : alt
+      if !tip.isEmpty { output.addAttribute(.toolTip, value: tip, range: NSRange(start..<length)) }
+      images.append(RenderedImage(range: NSRange(start..<length), failure: nil))
+    case .failure(let failure):
+      var inner = font
+      inner.italic = true
+      append(alt.isEmpty ? "[image]" : "[\(alt)]", font: inner, color: .secondaryLabelColor)
+      output.addAttribute(.toolTip, value: failure.message, range: NSRange(start..<length))
+      images.append(RenderedImage(range: NSRange(start..<length), failure: failure))
     }
   }
 

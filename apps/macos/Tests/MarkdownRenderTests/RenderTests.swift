@@ -1,7 +1,10 @@
 import AppKit
 import Foundation
+import ImageIO
 import MarkdownCore
 import Testing
+import UniformTypeIdentifiers
+import zlib
 
 @testable import MarkdownRender
 
@@ -297,6 +300,265 @@ struct RenderTests {
     #expect(copied?.hasPrefix("Start\nto end and site\nSection 0\n") == true)
   }
 
+  /// A real view in an offscreen window, laid out with `rendered`.
+  private static func surface(_ rendered: RenderedDocument, width: CGFloat = 700) -> (
+    NSWindow, ReaderSurface
+  ) {
+    let window = NSWindow(
+      contentRect: NSRect(x: 0, y: 0, width: width, height: 500), styleMask: [.titled],
+      backing: .buffered, defer: false)
+    let surface = ReaderSurface()
+    surface.scrollView.frame = window.contentView!.bounds
+    surface.scrollView.autoresizingMask = [.width, .height]
+    window.contentView!.addSubview(surface.scrollView)
+    surface.show(rendered)
+    window.contentView!.layoutSubtreeIfNeeded()
+    return (window, surface)
+  }
+
+  /// Tables keep their alignment on TextKit 2: one paragraph per row, measured
+  /// tab stops, a grid-drawing fragment, and tab-separated copy.
+  @Test func tablesAlignAndCopy() async throws {
+    let source = try Data(
+      contentsOf: try Self.root.appendingPathComponent("fixtures/markdown/foundation/gfm-tour.md"))
+    let rendered = try DocumentRenderer.render(try await Self.parse(source))
+    let text = rendered.text.string as NSString
+    let rows = ["Name\tType\tScore", "Alpha\tstring\t10", "Beta\tnumber\t200", "Gamma\tboolean\t3"]
+    #expect(text.range(of: rows.joined(separator: "\n")).location != NSNotFound)
+    #expect(Self.traits(of: "Score", in: rendered).contains(.bold))
+    #expect(!Self.traits(of: "Gamma", in: rendered).contains(.bold))
+    let style: NSParagraphStyle? = Self.attribute(.paragraphStyle, of: "Alpha", in: rendered)
+    #expect(style?.tabStops.map(\.alignment) == [.left, .center, .right])
+    let header: TableRowStyle? = Self.attribute(.tableRow, of: "Name", in: rendered)
+    let body: TableRowStyle? = Self.attribute(.tableRow, of: "Beta", in: rendered)
+    #expect(header?.header == true && header?.first == true)
+    #expect(body?.header == false && body?.shaded == true && body?.edges.count == 4)
+
+    let (window, surface) = Self.surface(rendered)
+    _ = window
+    #expect(surface.textView.textLayoutManager != nil)
+    var fragments = 0
+    let layout = try #require(surface.textView.textLayoutManager)
+    layout.enumerateTextLayoutFragments(
+      from: layout.documentRange.location, options: [.ensuresLayout]
+    ) {
+      if let row = $0 as? TableRowFragment {
+        fragments += 1
+        #expect(row.gridRect.width > 0 && row.renderingSurfaceBounds.contains(row.gridRect))
+      }
+      return true
+    }
+    #expect(fragments == 4)
+    // Right-aligned scores share a right edge; centred types share a centre;
+    // each row is one line.
+    func frame(_ string: String) throws -> NSRect {
+      try #require(surface.frame(of: text.range(of: string)))
+    }
+    let scores = try ["Score", "\t10", "200", "\t3"].map { try frame($0).maxX }
+    #expect(scores.allSatisfy { abs($0 - scores[0]) < 1 })
+    let types = try ["Type", "string", "number", "boolean"].map { try frame($0).midX }
+    #expect(types.allSatisfy { abs($0 - types[0]) < 1 })
+    #expect(try frame("Name").minX == frame("Gamma").minX)
+    #expect(try frame("Score").maxX < frame("Name").minX + 400)
+
+    let span = text.range(of: rows.joined(separator: "\n"))
+    surface.textView.setSelectedRange(span)
+    let pasteboard = NSPasteboard(name: NSPasteboard.Name("markdown-render-\(UUID().uuidString)"))
+    defer { pasteboard.releaseGlobally() }
+    #expect(
+      surface.textView.writeSelection(
+        to: pasteboard, types: surface.textView.writablePasteboardTypes))
+    #expect(pasteboard.string(forType: .string) == rows.joined(separator: "\n"))
+  }
+
+  @Test func tableEdgeCases() async throws {
+    // A right-aligned first column leads with a tab; a short row keeps its
+    // cells; a table inside a quote is indented with it.
+    let rendered = try await Self.render(
+      "| # | Item |\n| -: | --- |\n| 1 | one |\n| 22 |\n\n> | q |\n> | - |\n> | x |\n")
+    let text = rendered.text.string
+    // GFM pads the short row with an empty cell.
+    #expect(text.hasPrefix("\t#\tItem\n\t1\tone\n\t22\t\n"))
+    let first: NSParagraphStyle? = Self.attribute(.paragraphStyle, of: "\t1", in: rendered)
+    #expect(first?.tabStops.first?.alignment == .right)
+    let quoted: TableRowStyle? = Self.attribute(.tableRow, of: "x", in: rendered)
+    let plain: TableRowStyle? = Self.attribute(.tableRow, of: "one", in: rendered)
+    #expect((quoted?.edges.first ?? 0) > (plain?.edges.first ?? 0))
+  }
+
+  @Test func taskMarkers() async throws {
+    let rendered = try await Self.render("- [x] done\n- [ ] open\n- plain\n")
+    #expect(rendered.text.string == "☑\tdone\n☐\topen\n•\tplain")
+    let done: NSColor? = Self.attribute(.foregroundColor, of: "☑", in: rendered)
+    let open: NSColor? = Self.attribute(.foregroundColor, of: "☐", in: rendered)
+    #expect(done == .controlAccentColor && open == .secondaryLabelColor)
+    let item: NSColor? = Self.attribute(.foregroundColor, of: "done", in: rendered)
+    #expect(item == .labelColor)
+  }
+
+  /// A PNG of `width` by `height` pixels.
+  private static func png(width: Int, height: Int) throws -> Data {
+    let context = try #require(
+      CGContext(
+        data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0,
+        space: CGColorSpace(name: CGColorSpace.sRGB)!,
+        bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
+    context.setFillColor(CGColor(red: 0.2, green: 0.4, blue: 0.8, alpha: 1))
+    context.fill(CGRect(x: 0, y: 0, width: width, height: height))
+    let image = try #require(context.makeImage())
+    let data = NSMutableData()
+    let destination = try #require(
+      CGImageDestinationCreateWithData(data, UTType.png.identifier as CFString, 1, nil))
+    CGImageDestinationAddImage(destination, image, nil)
+    #expect(CGImageDestinationFinalize(destination))
+    return data as Data
+  }
+
+  /// A small PNG whose header claims `width` by `height` pixels.
+  private static func pngClaiming(width: UInt32, height: UInt32) throws -> Data {
+    var data = try png(width: 4, height: 4)
+    // IHDR data starts at byte 16; its CRC covers the type and data (12..<29).
+    withUnsafeBytes(of: width.bigEndian) { data.replaceSubrange(16..<20, with: $0) }
+    withUnsafeBytes(of: height.bigEndian) { data.replaceSubrange(20..<24, with: $0) }
+    let crc = data[12..<29].withUnsafeBytes {
+      UInt32(crc32(0, $0.bindMemory(to: UInt8.self).baseAddress, 17))
+    }
+    withUnsafeBytes(of: crc.bigEndian) { data.replaceSubrange(29..<33, with: $0) }
+    return data
+  }
+
+  /// Local images load through the injected loader; remote, denied, missing,
+  /// SVG and corrupt images show their alt text with the reason.
+  @Test func imagesFollowResourcePolicy() async throws {
+    let picture = try Self.png(width: 1600, height: 800)
+    let requests = Requests()
+    let loader: ImageLoader = { path, limit throws(ImageFailure) in
+      requests.append(path)
+      #expect(limit == ImageBudget().maxFileBytes)
+      switch path {
+      case "img/pic.png", "dir name/é.png": return picture
+      case "vector.svg": throw .unsupportedType
+      case "disguised.png": return Data("<svg xmlns='http://www.w3.org/2000/svg'/>".utf8)
+      case "corrupt.png": return Data("not an image".utf8)
+      case "../up.png": throw .outsideFolder
+      default: throw .notFound
+      }
+    }
+    let markdown = """
+      # Images
+
+      ![a picture](img/pic.png "The title") and again ![again](img/pic.png)
+
+      ![spaced](<dir name/é.png>) ![remote](https://example.com/x.png) ![data](data:image/png;base64,AA==)
+
+      ![](missing.png) ![up](../up.png) ![svg](vector.svg) ![disguised](disguised.png) ![bad](corrupt.png) ![frag](#images)
+
+      [![linked](img/pic.png)](https://example.com/)
+      """
+    let document = try await Self.parse(Data(markdown.utf8))
+    let rendered = try DocumentRenderer.render(document, images: loader)
+    // Each distinct path is read once; remote and denied targets never reach the loader.
+    #expect(
+      requests.values == [
+        "img/pic.png", "dir name/é.png", "missing.png", "../up.png", "vector.svg",
+        "disguised.png", "corrupt.png",
+      ])
+    let text = rendered.text.string as NSString
+    #expect(
+      rendered.images.map(\.failure) == [
+        nil, nil, nil, .remote, .blocked, .notFound, .outsideFolder, .unsupportedType,
+        .undecodable, .undecodable, .blocked, nil,
+      ])
+    for image in rendered.images {
+      let tip = rendered.text.attribute(.toolTip, at: image.range.location, effectiveRange: nil)
+      if let failure = image.failure {
+        #expect(tip as? String == failure.message)
+        #expect(!rendered.text.containsAttachments(in: image.range))
+      } else {
+        let attachment = try #require(
+          rendered.text.attribute(.attachment, at: image.range.location, effectiveRange: nil)
+            as? ImageAttachment)
+        #expect(attachment.naturalSize == CGSize(width: 1600, height: 800))
+        #expect(text.substring(with: image.range) == "\u{FFFC}")
+      }
+    }
+    let first = try #require(
+      rendered.text.attribute(
+        .attachment, at: rendered.images[0].range.location, effectiveRange: nil)
+        as? ImageAttachment)
+    #expect(first.image?.accessibilityDescription == "a picture")
+    let title = rendered.text.attribute(
+      .toolTip, at: rendered.images[0].range.location, effectiveRange: nil)
+    #expect(title as? String == "The title")
+    #expect(text.substring(with: rendered.images[5].range) == "[image]")
+    #expect(text.substring(with: rendered.images[3].range) == "[remote]")
+    // A linked image keeps the link.
+    let link = rendered.text.attribute(
+      .link, at: rendered.images[11].range.location, effectiveRange: nil)
+    #expect((link as? URL)?.absoluteString == "https://example.com/")
+
+    // Without a loader nothing is read and local images keep their alt text.
+    let plain = try DocumentRenderer.render(document)
+    #expect(!plain.text.containsAttachments)
+    #expect(plain.images[0].failure == .notLoaded)
+
+    // On a real view the image scales down to the line width, never up.
+    let (window, surface) = Self.surface(rendered, width: 500)
+    _ = window
+    let frame = try #require(surface.frame(of: rendered.images[0].range))
+    let line = surface.textView.textContainer!.size.width
+    #expect(frame.width <= line && frame.width > 200)
+    #expect(abs(frame.width / frame.height - 2) < 0.05)
+    #expect(
+      ImageAttachment.fitted(CGSize(width: 40, height: 20), width: 500).size
+        == CGSize(width: 40, height: 20))
+  }
+
+  /// Decoding is bounded: oversized pixel counts are refused from the header,
+  /// decoded copies are downsampled, and the per-document budgets hold.
+  @Test func imageBudgetsBoundDecoding() async throws {
+    let small = try Self.png(width: 64, height: 64)
+    let huge = try Self.pngClaiming(width: 50_000, height: 50_000)
+    let wide = try Self.png(width: 4000, height: 100)
+    let images: [String: Data] = ["huge.png": huge, "wide.png": wide]
+    let loader: ImageLoader = { path, _ in images[path] ?? small }
+    var markdown = "![h](huge.png) ![w](wide.png)\n\n"
+    for index in 0..<6 { markdown += "![\(index)](i\(index).png) " }
+    let document = try await Self.parse(Data(markdown.utf8))
+    var budget = ImageBudget()
+    budget.maxImages = 5
+    let rendered = try DocumentRenderer.render(document, images: loader, budget: budget)
+    // The forged header is refused before any pixels are allocated.
+    let bomb = try #require(rendered.images.first?.failure)
+    #expect(bomb == .tooLarge || bomb == .undecodable)
+    #expect(
+      rendered.images.dropFirst().map(\.failure) == [nil, nil, nil, nil, .limit, .limit, .limit])
+    var pixels = ImageBudget()
+    pixels.maxSourcePixels = 4000 * 100 - 1
+    let refused = try DocumentRenderer.render(document, images: loader, budget: pixels)
+    #expect(refused.images[1].failure == .tooLarge && refused.images[2].failure == nil)
+    // Decoded memory: two small images fit, the wide one and the rest do not.
+    var memory = ImageBudget()
+    memory.maxDecodedBytes = 64 * 64 * 4 * 2
+    let bounded = try DocumentRenderer.render(document, images: loader, budget: memory)
+    #expect(
+      bounded.images.dropFirst().map(\.failure) == [
+        .limit, nil, nil, .limit, .limit, .limit, .limit,
+      ])
+    let wideImage = try #require(
+      rendered.text.attribute(
+        .attachment, at: rendered.images[1].range.location, effectiveRange: nil)
+        as? ImageAttachment)
+    #expect(wideImage.naturalSize.width == 2048)
+    #expect(wideImage.naturalSize.height < 60)
+    // Rendering with images is still cancellable.
+    let task = Task.detached {
+      withUnsafeCurrentTask { $0?.cancel() }
+      return try DocumentRenderer.render(document, images: loader)
+    }
+    await #expect(throws: CancellationError.self) { try await task.value }
+  }
+
   /// The generated performance profiles render, install and navigate to their
   /// last heading on TextKit 2. Timings are printed as evidence, not asserted.
   @Test func performanceProfilesRenderAndNavigate() async throws {
@@ -335,6 +597,14 @@ struct RenderTests {
     let (seconds, attoseconds) = duration.components
     return String(format: "%.1fms", Double(seconds) * 1000 + Double(attoseconds) / 1e15)
   }
+}
+
+/// Records loader calls from the render thread.
+private final class Requests: @unchecked Sendable {
+  private let lock = NSLock()
+  private var paths: [String] = []
+  func append(_ path: String) { lock.withLock { paths.append(path) } }
+  var values: [String] { lock.withLock { paths } }
 }
 
 extension NSRange {
