@@ -25,9 +25,7 @@ enum ShellSmoke {
       try check(
         first.isVisible && first.styleMask.contains(.resizable), "visible resizable native window")
       try check(
-        first.contentView?.subviews.contains {
-          $0.accessibilityIdentifier() == "empty-document-label"
-        } == true,
+        first.contentView.map { contains($0, identifier: "document-status-label") } == true,
         "accessible native empty state")
       note("launch/window checked")
       let new = try item("File", "New Window", key: "n")
@@ -57,11 +55,14 @@ enum ShellSmoke {
         delegate.windows.count == 1 && !reopened.isMiniaturized && reopened.isVisible
       }
       note("minimize/restore checked")
+      try await DocumentSmoke.run(delegate: delegate, check: check)
       _ = try item("Window", "Zoom", key: "")
       _ = try item("Markdown", "About Markdown", key: "")
       _ = try item("Markdown", "Hide Markdown", key: "h")
       let quit = try item("Markdown", "Quit Markdown", key: "q")
-      note("pass (bundle, event loop, windows, commands, close/reopen, minimize, ownership)")
+      note(
+        "pass (bundle, event loop, windows, commands, close/reopen, minimize, ownership, documents)"
+      )
       try check(NSApp.sendAction(quit.action!, to: NSApp, from: quit), "Quit command routes")
     } catch {
       FileHandle.standardError.write(Data("shell-smoke: FAIL: \(error)\n".utf8))
@@ -75,6 +76,11 @@ enum ShellSmoke {
       try await Task.sleep(for: .milliseconds(50))
     }
     try check(condition(), message)
+  }
+
+  private static func contains(_ view: NSView, identifier: String) -> Bool {
+    view.accessibilityIdentifier() == identifier
+      || view.subviews.contains { contains($0, identifier: identifier) }
   }
 
   private static func note(_ message: String) {
