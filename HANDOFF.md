@@ -1,8 +1,8 @@
 # Agent Session and Platform Handoff
 
-Updated: 2026-10-30 (America/Denver), after MAC-001C (PR #41).
-Source baseline: `develop` after PR #41; reviewed head `8b44d4f`,
-validated fix head `b5da5b6`, followed by one state/docs closeout.
+Updated: 2026-10-30 (America/Denver), after MAC-001D (PR #42).
+Source baseline: `develop` after PR #42; reviewed head `f5cca9f`,
+validated fix head `5fcb25d`, followed by one state/docs closeout.
 Preserve intended source, lock/spec/golden files, docs and state together. Never transfer caches, environments, build
 products, private runtime state or user documents.
 
@@ -67,10 +67,26 @@ done list is in [the memory archive](agents/Memory-Archive.md#handoffmd-phase-ha
   at `8b44d4f` found 0 blockers, 2 concerns and 2 nits. Both concerns and one
   nit were fixed at `b5da5b6` without re-review (none was high or critical).
   The dedup nit is deferred in TODO.md. One review was used.
+- **Done:** MAC-001D in [PR #42](https://github.com/awesomejt/markdown/pull/42):
+  [TextKit 2 rendering, outline sidebar and navigation](apps/macos/README.md#reading-documents-mac-001d).
+  A new `MarkdownRender` target renders off the main thread (newest render
+  wins, cancellable). Debug and release native checks each passed 8 render,
+  7 document and 10 core tests, plus both relocated bundle smokes with reading
+  checks. All 8 corpus outlines match their expectations. Release 5 MiB prose
+  renders in about 540 ms off-main and installs in 15.6 ms; installing the
+  1 MiB long-line profile blocks the main thread for about 246 ms (MAC-001G).
+  [Grok review 1](https://github.com/awesomejt/markdown/pull/42#pullrequestreview-5718332317)
+  at `f5cca9f` found 0 blockers, 2 concerns and 2 nits; all four were fixed at
+  `5fcb25d` without re-review (none was high or critical). One review was used.
+  Its review threads have replies but were left unresolved: the agent's
+  permission classifier blocked resolving them. Fixed-head CI
+  [41124510842](https://github.com/awesomejt/markdown/actions/runs/41124510842)
+  passed on its third attempt. The first two hit a hosted-runner rustup
+  `cargo-fmt` conflict, and dispatched `develop` runs flaked in MAC-001C
+  checks; see the TODO.md hosted `macos-native` flakiness entry.
 - **Next:** `portable-core` is complete and `desktop-apps` is active.
-  MAC-001D is next on this Mac: headings, prose, lists, links, code, the
-  outline and basic selection on TextKit 2, with semantic corpus and
-  navigation checks. The Mac 001A–001C walking skeleton is a D-030 milestone
+  MAC-001E is next on this Mac: tables, task lists, images and resource
+  policy, with rich-block and denied/unsafe-resource checks. The Mac 001A–001C walking skeleton is a D-030 milestone
   boundary (rule 3). WIN-001A/LNX-001A start on their hosts; their chains
   remain independent.
   The shared-core milestone boundary is reached. Per MEMORY.md, Claude writes

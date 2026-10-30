@@ -38,7 +38,7 @@ read.
   CORE-006 documented the ABI v1 zero content-budget change from 8 to 2 MiB
   and passed fresh all-feature release CI on all three OSes. Native packages
   remain platform 001B work; each 001B sets a session memory bound. The next
-  Mac task is MAC-001D. `main` now requires the
+  Mac task is MAC-001E. `main` now requires the
   `Checks / complete` status (M4, 2026-10-29). See [HANDOFF.md](HANDOFF.md) and
   [TODO.md](TODO.md#core-fix-milestone-follow-ups). HARD-001 sits between
   DESK-001 and DESK-002.
@@ -56,7 +56,14 @@ read.
   are distinguished), serial coordinated bounded reads and a per-window
   newest-request-only loader that records failed reads in the core session.
   `NSFileCoordinator` blocks opening a FIFO, so non-regular items are rejected
-  before coordination. Not sandboxed. No renderer yet: MAC-001D is next.
+  before coordination. Not sandboxed.
+- MAC-001D (PR #42) adds the `MarkdownRender` target: an off-main renderer
+  from the owned v2 snapshot to one attributed string and heading map, shown
+  in one read-only TextKit 2 `NSTextView` (never touch `layoutManager`), with
+  an outline sidebar and fragment/external link navigation. Only fragment and
+  core-external http/https/mailto links get a `.link`. Decode fragments with
+  `url.fragment(percentEncoded: false)`, because anchors keep non-ASCII
+  letters. Tables, images and tasks are plain fallbacks until MAC-001E.
 - Workflow: task PRs target `develop` and merge on a Grok review with no
   serious finding (D-029). `main` takes only owner-approved milestone reviews
   from `review/<milestone>`, tagged `m-<milestone>` (D-030). The shared-core

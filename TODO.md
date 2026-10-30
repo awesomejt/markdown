@@ -35,7 +35,8 @@ native build/check instructions and required macOS 27 debug/release CI.
 MAC-001B closed in PR #40 with the [model-v2 core package/adapter](docs/macOS-Core-Integration.md),
 release consumer tests and measured session/source bounds. MAC-001C closed in
 PR #41 with [file open, typed access errors and generation-safe loading](apps/macos/README.md#opening-documents-mac-001c).
-MAC-001D is next on macOS; repeated-load RSS remains a MAC-001G acceptance gate.
+MAC-001D closed in PR #42 with [TextKit 2 rendering, outline and navigation](apps/macos/README.md#reading-documents-mac-001d).
+MAC-001E is next on macOS; repeated-load RSS remains a MAC-001G acceptance gate.
 The shared-core milestone boundary is reached:
 Claude prepares the combined packet for the owner under D-030; only the owner
 merges that milestone into `main`.
@@ -70,7 +71,7 @@ closed in PR #37 with [search/read acceptance](docs/Core-Search-Acceptance.md)
 and explicit reference-syntax boundaries. CORE-006 closed in PR #38 with
 [facade acceptance](docs/Core-Facade-Acceptance.md), the ABI v1 default-change
 history and fresh three-OS all-feature release CI. The desktop chains are
-eligible; MAC-001A/B/C closed in PRs #39 to #41 and MAC-001D is next on this Mac. Inspect
+eligible; MAC-001A to MAC-001D closed in PRs #39 to #42 and MAC-001E is next on this Mac. Inspect
 state and `HANDOFF.md` before any pass. Scoped commits, pushes, PR updates and
 review requests are authorized; a Grok review with no serious finding approves
 a merge into `develop` (D-029); only the owner merges into `main` (D-030);
@@ -493,6 +494,20 @@ when it is resolved.
   file identity (`st_dev`/`st_ino` or `fileResourceIdentifier`) along with the
   persistent identity work for recents in MAC-002A, which avoids adding a stat
   on the main thread for every open now.
+
+- **Hosted `macos-native` flakiness (found 2026-10-30 during PR #42), not a
+  review finding:** on the `xcode-27-arm64` image 20261026.0314.1, some
+  runners fail before any project code runs. When `rust-toolchain.toml` adds
+  `rustfmt`, rustup reports `detected conflict: 'bin/cargo-fmt'`. Two
+  dispatched runs of unchanged `develop`
+  ([41125975665](https://github.com/awesomejt/markdown/actions/runs/41125975665))
+  also failed in MAC-001C checks: once a release smoke document load exceeded
+  its 10-second settle deadline, and once `hdiutil` exited 1 in
+  `detachedVolumeIsUnavailable`. All of these passed locally and on other
+  hosted attempts. A reviewed CI/test fix should make the toolchain step
+  tolerate a preinstalled `cargo-fmt` and give the runner-sensitive smoke and
+  disk-image steps diagnostics and bounded retries, before the Mac milestone
+  review.
 
 Before MAC-001C, none were open after CORE-001 (PR #33). The two TOOL-003 findings from PR #23,
 Grok review 5692910610, are resolved: forced color and non-UTF-8 problem
