@@ -8,10 +8,62 @@ a window or restores an existing minimized one. The shell follows system
 appearance and uses a native, accessibility-exposed empty-state label.
 
 MAC-001B adds the model-v2 static core package and owned Swift session adapter.
-The app validates the ABI at startup; it has no document loader, association or
-renderer yet (MAC-001C/001D). See the
+The app validates the ABI at startup. See the
 [core integration evidence and memory limits](../../docs/macOS-Core-Integration.md). The product target remains macOS 27 on Apple
 Silicon (D-018); other OS versions and architectures are not claimed.
+
+## Opening documents (MAC-001C)
+
+File → Open… (Command-O) shows an open panel for Markdown and plain-text
+files, with multiple selection. The bundle declares a Markdown **Viewer**
+document type at `Alternate` rank, and imports `net.daringfireball.markdown`
+(conforming to `public.plain-text`; `.md`/`.markdown`, `text/markdown`).
+Finder, Launch Services and `open -a` deliver URLs to
+`application(_:open:)`. A document already shown is focused, and retried if
+its load failed; otherwise the first empty window is reused, or a new window
+opens. Documents delivered at launch do not add a stray empty window. File → Reload (Command-R) rereads the
+current document. There is still no renderer: until MAC-001D, the window shows
+the document title (or file name), its top-level block, heading and byte
+counts, or the error.
+
+The Foundation-only `MarkdownDocument` target holds the platform side of the
+document flow:
+
+- `DocumentCapability` is one user-granted file URL. Following its
+  symlinks/aliases is the grant; its description is redacted, and the core
+  receives only bytes, a random session document ID and an opaque
+  device/inode/size/mtime revision token, never the path. Security-scoped
+  access is bracketed around each read, so the same code works if a later
+  task enables App Sandbox. This build is not sandboxed.
+- Reads run one at a time on a serial queue, off the main thread, through a
+  coordinated read (`NSFileCoordinator`, `.withoutChanges`). The item must be
+  a regular file before coordination, because the coordinator itself would
+  block opening a FIFO; `open(O_NONBLOCK)` and `fstat` on the descriptor then
+  guard a swap. Files over the 5 MiB host source bound are rejected from their
+  size, and growth during a read stops at the bound. Reads check cancellation
+  between 256 KiB chunks.
+- Typed errors with a message and a recovery suggestion, naming no path:
+  not found, disk unavailable, permission denied, access revoked, folder or
+  non-regular item, unsupported type (an extension whose type is not plain
+  text), too large, not UTF-8, too complex (core node/event/depth/text
+  limits), busy and unreadable.
+- `DocumentLoader` (main actor, one per window) gives every open or reload a
+  new request number. Only the newest request publishes; an older result,
+  even a completed one, is dropped and counted. Opening a different file
+  replaces the window's core session; closing the window cancels work and
+  awaits native cleanup. A failed read of the current request is recorded
+  in the core session as `Deleted` or `Unreadable` (permission, revoked,
+  busy, I/O), so in-flight work is superseded and status stays truthful.
+  Older requests never record availability, so a late failure cannot
+  supersede a newer successful load.
+- Permission lost after a successful read is reported as **revoked**. A
+  missing file on a volume no longer mounted where it was read is
+  **disk unavailable**, not deleted. Core admission is shared by all windows
+  (one running, one queued); a load waits up to 30 seconds for a slot.
+
+Folder grants, recents, security-scoped bookmarks, external-change watching
+and sandboxed sibling-image access remain MAC-002A, MAC-001H and MAC-001E
+work.
 
 ## Build and launch
 
@@ -84,7 +136,15 @@ consumer parses synthetic input without repository/runtime library dependencies.
 The smoke runs the AppKit event loop and verifies bundle identity, a visible
 resizable window/native empty state, menu shortcuts/actions, a second window,
 close/controller cleanup, last-window close, Dock-reopen delegate behaviour,
-minimize/restore and Quit. Menu actions routed directly to a window do not
+minimize/restore and Quit. Its document part uses synthetic files in a private
+temporary directory: the declared document type, Launch Services delivery
+reusing the empty window, focus instead of a duplicate, typed missing/folder/
+unsupported/oversized/invalid-UTF-8 errors in their own windows, Reload after
+withdrawn and restored permission (with the core session's recorded
+revocation), a slow document replaced before it finishes never being
+presented, and zero native handles after all document windows close.
+`MarkdownDocumentTests` cover the same reader and loader directly, plus a FIFO,
+an exact-bound file, cancellation and a real detached disk image (`hdiutil`). Menu actions routed directly to a window do not
 prove physical keyboard/responder-chain interaction; perform the manual check
 below as well. This is shell acceptance, not renderer, screen-reader,
 startup-to-presented-content, RSS or distribution acceptance.
@@ -116,6 +176,15 @@ be cancelled and its runner configuration fixed.
    window, confirm the app still runs, and reopen from the Dock.
 4. Press Command-Q and relaunch. Confirm one empty window appears.
 
+5. Choose File → Open…, select a Markdown file and confirm its title appears.
+   Open the same file again and confirm its window is focused instead of a
+   duplicate. Open a `.png` and a missing file (for example, delete one after
+   choosing it) and read the error and recovery text.
+6. With Markdown not running, run `open -a build/macos/debug/Markdown.app
+   some.md` and confirm one document window and no extra empty window. Use
+   Finder → Open With to confirm Markdown is listed for `.md` files without
+   becoming the default.
+
 Inspect the empty-state text/window/menu roles using macOS accessibility
 tooling. Full VoiceOver document reading, large documents, mixed displays,
 state restoration and permission recovery remain later native checks. Do not
@@ -146,3 +215,19 @@ The first hosted [native job](https://github.com/awesomejt/markdown/actions/runs
 passed debug/release at `d57667a558c262484061f616661a34e0c6d1043e` on
 `xcode-27-arm64`: macOS 27.0.1, Xcode 27.1 and Swift 6.4. This confirms the
 preview label was available; it does not guarantee future label availability.
+
+## MAC-001C local evidence
+
+Checked on 2026-10-30 on the same Mac (macOS 27.0.1, Xcode 27.1, Swift 6.4):
+`apps/macos/tools/check.py` passed in debug and release, with 6
+`MarkdownDocumentTests` and 10 `MarkdownCoreTests` in each and both relocated
+bundle smokes including the document checks. `open -a` with the debug bundle
+delivered a Markdown file at launch and an invalid-UTF-8 file to the running
+app; the window server listed exactly two windows (one per document, no empty
+launch window). Window titles and contents were not inspected there, because
+the agent shell has no Accessibility or Screen Recording grant; the smoke
+checks them through the same delegate path. `lsregister -dump` showed the
+bundle claiming `net.daringfireball.markdown` as Viewer at Alternate rank,
+so the system default handler was not changed. The interactive open panel
+and Finder Open With remain the manual steps above. Not sandboxed, signed or
+distributed.
