@@ -134,6 +134,8 @@ Actions use pinned source commits, read-only contents permission and no retained
 checkout credentials. No deploy, signing, release or automatic merge is present.
 MAC-001A adds the path-filtered `macos-native` job on `xcode-27`, with Swift
 format/concurrency checks and assembled AppKit bundle smoke in debug/release.
+MAC-001B adds matching model-v2 Rust static packages, native consumer tests,
+archive/profile checks and relocation; see [the integration report](macOS-Core-Integration.md).
 The completion gate requires it whenever macOS is selected; an unselected
 native job may be skipped. See [the Mac build/check instructions](../apps/macos/README.md).
 Linux/Windows native build jobs are added in their 001A tasks when those apps exist;

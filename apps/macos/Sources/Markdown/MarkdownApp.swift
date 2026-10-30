@@ -1,9 +1,15 @@
 import AppKit
+import Darwin
+import MarkdownCore
 
 @main
 enum MarkdownApp {
   @MainActor
   static func main() {
+    do { try CoreRuntime.validate() } catch {
+      FileHandle.standardError.write(Data("Core initialization failed: \(error)\n".utf8))
+      exit(EXIT_FAILURE)
+    }
     let app = NSApplication.shared
     let delegate = AppDelegate(smokeTest: CommandLine.arguments.contains("--smoke-test"))
     app.setActivationPolicy(.regular)

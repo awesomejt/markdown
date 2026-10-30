@@ -1192,3 +1192,34 @@ The next task was CORE-005; its search/read acceptance is now closed in PR #37.
   at that head had 0 blockers, 0 concerns and 2 nits. Both are addressed in
   the closeout: explicit all-feature-only release scope and committed run/head
   evidence. One review, no re-review needed, no findings deferred.
+
+## MAC-001A posture superseded by MAC-001B (2026-10-30)
+
+- MAC-001A (PR #39) adds the AppKit window/menu/lifecycle shell, SwiftPM
+  development bundle and required path-filtered macOS 27 native CI smoke.
+  The development bundle ID is `io.github.awesomejt.markdown`; no external
+  Swift packages or core link yet. MAC-001B is next: model-v2 C ABI package,
+  native lifecycle/errors/cancellation and measured encode/session/RSS bounds.
+
+- Repeated native-only 5 MiB parses on the Mac grew RSS to about 583 MiB
+  after twenty loads with zero native owners and no leaked bytes. It looks
+  like macOS allocator retention; Linux/glibc stays flat. No acceptable
+  repeated-session budget is established.
+
+## MAC-001A closeout handoff archived after MAC-001B (2026-10-30)
+
+- **Done:** MAC-001A in [PR #39](https://github.com/awesomejt/markdown/pull/39):
+  [native AppKit shell](../apps/macos/README.md), standard window/menu/keyboard
+  lifecycle, SwiftPM development bundle and required `macos-native` CI on
+  `xcode-27`. Bundle ID: `io.github.awesomejt.markdown`. No core link yet.
+  Local native debug/release smoke, full `tools/check.py all`, final common/
+  gate checks and visible native UI checks passed. Fixed-head
+  [CI run 41087967326](https://github.com/awesomejt/markdown/actions/runs/41087967326)
+  at `1d818e4eee73862e7b8d50ed1c5780c9b45bb37b` includes the actual macOS 27
+  native debug/release job; exact results are in the completion pass.
+  [Grok review](https://github.com/awesomejt/markdown/pull/39#pullrequestreview-5715121608)
+  at `d57667a` had 0 blockers, 2 soft CI concerns and 3 nits, all addressed at
+  `1d818e4`: runner proof/maintenance, bounded AppKit transition polling,
+  timeout diagnostics, plain gate checks and the GitHub-owned development ID.
+  One review, no re-review required for those non-serious fixes, all threads
+  resolved, no findings deferred.

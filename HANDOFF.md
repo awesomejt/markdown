@@ -1,9 +1,9 @@
 # Agent Session and Platform Handoff
 
-Updated: 2026-10-30 (America/Denver), after MAC-001A (PR #39).
-Source baseline: `develop` after PR #39; reviewed head `d57667a`, validated
-review fixes `1d818e4`, followed by one state/docs closeout. Preserve intended source, lock/spec/golden
-files, docs and state together. Never transfer caches, environments, build
+Updated: 2026-10-30 (America/Denver), after MAC-001B (PR #40).
+Source baseline: `develop` after PR #40; reviewed head `be4010e`,
+validated test-nit head `eef0b48`, followed by one state/docs closeout.
+Preserve intended source, lock/spec/golden files, docs and state together. Never transfer caches, environments, build
 products, private runtime state or user documents.
 
 Older per-phase handoffs and the feasibility host notes are in
@@ -41,28 +41,32 @@ done list is in [the memory archive](agents/Memory-Archive.md#handoffmd-phase-ha
   [facade acceptance](docs/Core-Facade-Acceptance.md), ABI v1 default-change
   history and fresh three-OS release checks. `portable-core` is complete.
 - **Done:** MAC-001A in [PR #39](https://github.com/awesomejt/markdown/pull/39):
-  [native AppKit shell](apps/macos/README.md), standard window/menu/keyboard
-  lifecycle, SwiftPM development bundle and required `macos-native` CI on
-  `xcode-27`. Bundle ID: `io.github.awesomejt.markdown`. No core link yet.
-  Local native debug/release smoke, full `tools/check.py all`, final common/
-  gate checks and visible native UI checks passed. Fixed-head
-  [CI run 41087967326](https://github.com/awesomejt/markdown/actions/runs/41087967326)
-  at `1d818e4eee73862e7b8d50ed1c5780c9b45bb37b` includes the actual macOS 27
-  native debug/release job; exact results are in the completion pass.
-  [Grok review](https://github.com/awesomejt/markdown/pull/39#pullrequestreview-5715121608)
-  at `d57667a` had 0 blockers, 2 soft CI concerns and 3 nits, all addressed at
-  `1d818e4`: runner proof/maintenance, bounded AppKit transition polling,
-  timeout diagnostics, plain gate checks and the GitHub-owned development ID.
-  One review, no re-review required for those non-serious fixes, all threads
-  resolved, no findings deferred.
+  native AppKit window/menu/lifecycle shell and required macOS 27 CI smoke.
+  Detailed closeout evidence is in the memory archive and pass record.
+- **Done:** MAC-001B in [PR #40](https://github.com/awesomejt/markdown/pull/40):
+  [model-v2 static package and Swift adapter](docs/macOS-Core-Integration.md),
+  ABI negotiation, owned snapshot copies, bounded worker/admission, prompt
+  queued cancellation and shared async cleanup. Matching debug/release tests
+  (10 each), relocated AppKit bundles/release consumer, local full portable
+  suite and common checks passed on Apple M5 Max/arm64, macOS 27.0.1/Xcode 27.1.
+  [Fixed-head native/three-OS CI](https://github.com/awesomejt/markdown/actions/runs/41103418470)
+  passed at `eef0b48c1890886a2b501f24d0e0e789563ecd32`.
+  [Grok review 2](https://github.com/awesomejt/markdown/pull/40#pullrequestreview-5716513463)
+  at `be4010e9fc813db7eddd4cec4390ef264a4a3b20` confirms review-1 fixes, with no blocker/concern.
+  Its sole test nit was fixed at `eef0b48` without re-review.
+  Two reviews used; all findings addressed and threads resolved.
+  Host source limit is 5 MiB; dense 8 MiB default/session and 5 MiB host
+  peak RSS are 577.9/361.8 MiB. Repeated 5 MiB loads retain up to 1,698.1 MiB
+  RSS after 20 sessions despite zero native handles and no leak found.
+  MAC-001G must resolve or obtain owner disposition before aggregate acceptance.
 - **Next:** `portable-core` is complete and `desktop-apps` is active.
-  MAC-001B is next on this Mac: native model-v2 facade adapter, release-mode
-  package consumption, lifecycle/error/cancellation/version checks and measured
-  encode/retained/session memory with a host source bound. WIN-001A/LNX-001A
+  MAC-001C is next on this Mac: file open/association, permission capabilities
+  and errors, generation-safe off-thread loading and revoked/unavailable-file
+  checks. Use the adapter and measured bounds from MAC-001B. WIN-001A/LNX-001A
   start on their hosts; their chains remain independent.
   The shared-core milestone boundary is reached. Per MEMORY.md, Claude writes
   the combined packet for CORE-001–CORE-006 (plus CORE-003F since `m-core-fix`),
-  including MAC-001A if freezing current `develop`; name the exact snapshot and
+  including MAC-001A/B if freezing current `develop`; name the exact snapshot and
   every task it contains. Grok/Codex then add independent reviews on
   `review/<milestone>`. Follow D-030
   to freeze green `develop` with no task PR waiting and open the milestone PR;
@@ -88,8 +92,10 @@ On the Mac, Homebrew `python3` lacks PyYAML, so use
 carry the accepted stack and conditions. Prototype reports are dated
 evidence, not production contracts. Preserve these open items:
 
-- Mac repeated-session RSS retention (about 583 MiB after twenty 5 MiB
-  parses, with no leak found).
+- Mac repeated-session RSS retention: current release consumer reaches
+  1,698.1 MiB after twenty 5 MiB loads with zero native handles and no leak
+  found. MAC-001G must resolve or obtain owner disposition; the source/queue
+  limits do not establish a whole-app RSS budget.
 - Windows Narrator reading each row twice, and whole-tree UIA searches that
   time out at 5 MiB.
 - Linux Orca H heading navigation, and the LNX-001D1 accessibility gate.

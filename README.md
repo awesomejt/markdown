@@ -24,9 +24,12 @@ linked from [HANDOFF.md](HANDOFF.md) and [Architecture.md](docs/Architecture.md)
 
 The active phase is **desktop-apps**: each host begins its own native walking
 skeleton (D-027). The [macOS AppKit shell](apps/macos/README.md) now provides
-native windows/commands and a debug/release CI smoke; MAC-001B is next for its
-core adapter. Native consumer packages, accessibility and performance still
-require platform evidence; the core alone
+native windows/commands, a matching model-v2 static core package and an owned
+Swift adapter with debug/release consumer CI.
+[Mac integration measurements and limits](docs/macOS-Core-Integration.md) are
+recorded; repeated-load RSS remains an open MAC-001G gate. MAC-001C is next
+for file access and background loading. Accessibility and whole-app performance
+still require platform evidence; the core alone
 delivers no working reader UI. The closed shared track also reaches the next
 owner-reviewed milestone into `main` (D-030). The accepted
 [implementation baseline](docs/Implementation-Baseline.md) and

@@ -38,15 +38,19 @@ read.
   CORE-006 documented the ABI v1 zero content-budget change from 8 to 2 MiB
   and passed fresh all-feature release CI on all three OSes. Native packages
   remain platform 001B work; each 001B sets a session memory bound. The next
-  Mac task is MAC-001B. `main` now requires the
+  Mac task is MAC-001C. `main` now requires the
   `Checks / complete` status (M4, 2026-10-29). See [HANDOFF.md](HANDOFF.md) and
   [TODO.md](TODO.md#core-fix-milestone-follow-ups). HARD-001 sits between
   DESK-001 and DESK-002.
-- MAC-001A (PR #39) adds the AppKit window/menu/lifecycle shell, SwiftPM
-  development bundle and required path-filtered macOS 27 native CI smoke.
-  The development bundle ID is `io.github.awesomejt.markdown`; no external
-  Swift packages or core link yet. MAC-001B is next: model-v2 C ABI package,
-  native lifecycle/errors/cancellation and measured encode/session/RSS bounds.
+- MAC-001A/B (PRs #39/#40) provide the AppKit shell and matching local
+  model-v2 static package/Swift owned-value adapter, required debug/release
+  consumer CI and explicit per-call bounds: source 5 MiB, nodes 500k, events
+  1M, text 16 MiB, copied payload 128 MiB; one worker/two admitted calls.
+  Queued cancellation promptly clears owned input/admission; concurrent close
+  awaits shared worker cleanup. Bundle ID: `io.github.awesomejt.markdown`.
+  [Measurements](docs/macOS-Core-Integration.md) leave repeated-load RSS open
+  for MAC-001G before skeleton acceptance. MAC-001C is next: file capabilities,
+  generation-safe background loading and access errors. No reader UI yet.
 - Workflow: task PRs target `develop` and merge on a Grok review with no
   serious finding (D-029). `main` takes only owner-approved milestone reviews
   from `review/<milestone>`, tagged `m-<milestone>` (D-030). The shared-core
@@ -170,10 +174,14 @@ read.
 - Feasibility FFI and local package consumption pass on Windows, macOS, and
   Linux, but production ABI stability, clean deployment, platform packages and
   Apple XCFramework concerns remain open.
-- Repeated native-only 5 MiB parses on the Mac grew RSS to about 583 MiB
-  after twenty loads with zero native owners and no leaked bytes. It looks
-  like macOS allocator retention; Linux/glibc stays flat. No acceptable
-  repeated-session budget is established.
+- MAC-001B release consumer repeats retained 112.2 MiB RSS after the first
+  5 MiB document and 1,698.1 MiB after twenty sessions, despite zero native
+  handles, live malloc about 5.1–5.2 MiB and a separate zero-leak diagnostic.
+  The host bound is 5 MiB source; dense 8 MiB core/default and 5 MiB host
+  sessions peak at 577.9/361.8 MiB process RSS before NodeLimit, distinct
+  from the older counted-heap metric below. No whole-app memory acceptance
+  is claimed: MAC-001G must resolve or obtain owner disposition before the
+  skeleton aggregate. See the current integration report for methodology.
 - Dense token input at the 8 MiB source ceiling peaks at about 1,152 MiB
   before the node limit stops it (D-024): pulldown-cmark's first pass costs
   up to 144 bytes per source byte, and the model a few hundred per node.

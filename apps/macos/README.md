@@ -7,14 +7,21 @@ Closing the last window keeps the app running; reopening from the Dock creates
 a window or restores an existing minimized one. The shell follows system
 appearance and uses a native, accessibility-exposed empty-state label.
 
-There is no document loader, file association, core adapter or renderer yet.
-Those begin in MAC-001B/001C/001D. The product target remains macOS 27 on Apple
+MAC-001B adds the model-v2 static core package and owned Swift session adapter.
+The app validates the ABI at startup; it has no document loader, association or
+renderer yet (MAC-001C/001D). See the
+[core integration evidence and memory limits](../../docs/macOS-Core-Integration.md). The product target remains macOS 27 on Apple
 Silicon (D-018); other OS versions and architectures are not claimed.
 
 ## Build and launch
 
-Use Xcode 27 with the macOS 27 SDK and Swift 6. The package has no third-party
-dependencies.
+Use Xcode 27 with the macOS 27 SDK, Swift 6 and the pinned Rust toolchain.
+There are no external Swift packages; Rust dependencies remain the reviewed
+core graph. On the current Mac, first set the isolated Rust environment from
+[Development.md](../../docs/Development.md).
+On that isolated installation, prefix the Python commands below with
+`RUSTUP_TOOLCHAIN=stable` after verifying it reports the repository's pinned
+Rust version. The package tool rejects a compiler version mismatch.
 
 The development bundle ID is `io.github.awesomejt.markdown`, under the
 repository owner's GitHub namespace. No released identity or user-data
@@ -23,16 +30,29 @@ migration exists yet; signing and distribution identity review remain later work
 From the repository root:
 
 ```sh
-swift build --package-path apps/macos --configuration debug -Xswiftc -warnings-as-errors
 python3 apps/macos/tools/build.py --configuration debug
 open build/macos/debug/Markdown.app
 ```
 
-The native `swift build` command compiles the executable. The Python assembly
-step repeats that incremental build and copies the executable plus checked-in
-Info.plist into `build/macos/debug/Markdown.app`. Use `--configuration release`
-for a release development bundle. Generated files stay under ignored `build/`
-and `apps/macos/.build/`. To open the package in Xcode, open `Package.swift`.
+The build tool prepares `markdown-ffi` with `model-v2` and `panic=unwind`, stages
+its selected profile in ignored `CorePackage/`, invokes native SwiftPM and
+assembles the app under `build/macos/`. Use `--configuration release` for the
+release app. The public header and archive hashes/profile are recorded in the
+package manifest; the module fingerprint forces rebuilds when the archive changes.
+The selected static library is linked into the executable, with no Rust dylib
+at runtime. Both supported build configurations target macOS 27/arm64.
+
+The underlying native commands remain available:
+
+```sh
+python3 apps/macos/tools/package_core.py --configuration debug
+swift build --package-path apps/macos --configuration debug -Xswiftc -warnings-as-errors
+```
+
+Prepare the **matching** profile before running Swift directly or opening
+`Package.swift` in Xcode. Do not stage debug and link release, or vice versa.
+Only one `libmarkdown_ffi.a` is staged at a time. Source/package build outputs
+stay ignored; no binary, generated header or environment is committed.
 
 These are local development bundles, without Developer ID signing,
 notarization, sandbox entitlements, installer or distribution approval. The
@@ -45,14 +65,21 @@ replaces its generated bundle and does not install or register file types.
 Run on a logged-in macOS graphical session:
 
 ```sh
-python3 apps/macos/tools/check.py
+.build/feas004-venv/bin/python apps/macos/tools/check.py
 ```
 
+Use a Python environment with the root fixture-tool requirements installed
+(the existing Mac environment above is suitable; a fresh environment follows
+[Development.md](../../docs/Development.md)). The suite generates the frozen
+performance inputs, prepares each Rust profile, runs Swift package tests against
+the staged artifact, and verifies its actual fingerprint and configuration.
 It runs `swift format lint --strict`, builds debug/release with warnings as
 errors and Swift 6 concurrency checking, validates Info.plist, then launches
 each **assembled bundle executable** with `--smoke-test`. Each child has a
 30-second timeout and must emit its success marker and exit zero through the
-native Quit action. No success marker or a timeout fails the check.
+native Quit action. No success marker or a timeout fails the check. The relocated
+app is launched with loader overrides removed, and a relocated standalone release
+consumer parses synthetic input without repository/runtime library dependencies.
 
 The smoke runs the AppKit event loop and verifies bundle identity, a visible
 resizable window/native empty state, menu shortcuts/actions, a second window,
@@ -110,6 +137,9 @@ not a claim of a physical Dock-icon click. No user accessibility setting changed
 The installed actionlint version does not yet recognize the official preview
 `xcode-27` label. Workflow lint passed with only that exact unknown-label
 diagnostic suppressed; actual hosted execution remains the required evidence.
+MAC-001B consumer/cost/RSS evidence is in
+[the integration report](../../docs/macOS-Core-Integration.md). Repeated-load
+RSS remains unresolved; per-call limits are not a whole-app memory budget.
 CI and review disposition are recorded in the task PR and completion pass.
 
 The first hosted [native job](https://github.com/awesomejt/markdown/actions/runs/41086966487/job/124170589212)
