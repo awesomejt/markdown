@@ -1113,3 +1113,21 @@ The next task was CORE-002; its acceptance is now closed in PR #34.
   requested. No live pass or lease remains.
 
 The next task was CORE-003; its parsing/safety acceptance is now closed in PR #35.
+
+## Superseded CORE-003 handoff before CORE-004 closeout
+
+- **Done:** CORE-003 in [PR #35](https://github.com/awesomejt/markdown/pull/35):
+  [parsing/safety acceptance](../docs/Core-Parser-Acceptance.md), covering corpus,
+  malformed/safety, generated/hostile inputs and parser budgets, with no
+  runtime/policy/limit/schema/golden change. Full local `tools/check.py all`
+  passed on Apple M5 Max/macOS 27.0.1 with Rust 1.99.1 at baseline `cfe3e31`.
+  Fresh 11-run release benchmarks and common documentation checks passed.
+  [PR CI](https://github.com/awesomejt/markdown/actions/runs/40994659002)
+  passed at `97d8888`.
+  [Grok review](https://github.com/awesomejt/markdown/pull/35#pullrequestreview-5707583058)
+  at that head had no serious finding. Both documentation nits are fixed in
+  the closeout: explicit v1 credential allowance and the v2 link-heavy
+  benchmark cost. They need no re-review under step 7; no findings deferred.
+  No live pass or lease remains.
+
+The next task was CORE-004; its session acceptance is now closed in PR #36.

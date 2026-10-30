@@ -7,7 +7,8 @@ the later test-lifetime correction in CORE-003B4 (PR #13). The
 [implementation](../core/crates/markdown-core/src/session/mod.rs) remain
 unchanged. This acceptance changes no runtime behavior, dependency, model
 artifact, ABI or limit. Review disposition and completion live in the PR
-and CORE-004 pass record in `project.yaml`.
+and CORE-004 pass record in `project.yaml`. The acceptance PR is
+[PR #36](https://github.com/awesomejt/markdown/pull/36).
 
 ## Acceptance coverage
 
