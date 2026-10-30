@@ -27,8 +27,9 @@ skeleton (D-027). The [macOS AppKit shell](apps/macos/README.md) now provides
 native windows/commands, a matching model-v2 static core package and an owned
 Swift adapter with debug/release consumer CI.
 [Mac integration measurements and limits](docs/macOS-Core-Integration.md) are
-recorded; repeated-load RSS remains an open MAC-001G gate. MAC-001C is next
-for file access and background loading. Accessibility and whole-app performance
+recorded; repeated-load RSS remains an open MAC-001G gate. MAC-001C added file
+access and background loading, and MAC-001D renders headings, prose, lists,
+links and code on TextKit 2 with an outline sidebar. Accessibility and whole-app performance
 still require platform evidence; the core alone
 delivers no working reader UI. The closed shared track also reaches the next
 owner-reviewed milestone into `main` (D-030). The accepted
