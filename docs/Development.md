@@ -104,7 +104,8 @@ staged/unstaged changes. Set `CHECK_BASE=origin/develop` for the full local bran
 range. Untracked files enter the Git whitespace check once staged.
 First-push diffs disable color even when Git configuration forces it. Captured
 output uses UTF-8 with `surrogateescape`, so non-UTF-8 problem content cannot
-abort decoding or hide new whitespace errors.
+abort decoding or hide new whitespace errors. Diagnostics escape invalid bytes
+in filenames so they remain printable even on strict UTF-8 output.
 `tools/test_project_state.py` remains a separate host setup check requiring the
 installed Codex state backend; CI does not depend on a private user-level skill.
 

@@ -47,7 +47,10 @@ def new_branch_whitespace(*, cwd=None) -> None:
                  if not line.startswith("+") and (m := PROBLEM.match(line))}
         common = found if common is None else {k: v for k, v in common.items() if k in found}
     if common:
-        print("\n".join(common.values()))
+        # Keep exact surrogateescaped keys for comparison; escape bytes only
+        # when reporting paths, since stdout may reject lone surrogates.
+        diagnostic = "\n".join(common.values()).encode("utf-8", "surrogateescape")
+        print(diagnostic.decode("utf-8", "backslashreplace"))
         raise subprocess.CalledProcessError(2, ["git", "diff", "--check", "(new lines)"])
 
 

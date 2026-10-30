@@ -1,4 +1,5 @@
 """Exercise real Git changes and common inline-link edge cases from PR review."""
+import io
 import os
 from pathlib import Path
 import subprocess
@@ -254,18 +255,22 @@ class GitChecks(unittest.TestCase):
         for setting in ("color.ui", "color.diff"):
             with self.subTest(setting=setting):
                 self.git("config", setting, "always")
-                self.check_review()
-                self.git("config", "--unset", setting)
+                try:
+                    self.check_review()
+                finally:
+                    self.git("config", "--unset", setting)
 
     def test_forced_color_still_rejects_new_whitespace(self):
         self.new_branch(dirty=True)
         for setting in ("color.ui", "color.diff"):
             with self.subTest(setting=setting):
                 self.git("config", setting, "always")
-                with self.assertRaises(subprocess.CalledProcessError) as error:
-                    self.check_review()
-                self.assertEqual(error.exception.returncode, 2)
-                self.git("config", "--unset", setting)
+                try:
+                    with self.assertRaises(subprocess.CalledProcessError) as error:
+                        self.check_review()
+                    self.assertEqual(error.exception.returncode, 2)
+                finally:
+                    self.git("config", "--unset", setting)
 
     def test_non_utf8_problem_content_is_not_decoded_strictly(self):
         self.remote_main()
@@ -284,6 +289,25 @@ class GitChecks(unittest.TestCase):
         with self.assertRaises(subprocess.CalledProcessError) as error:
             self.check_review()
         self.assertEqual(error.exception.returncode, 2)
+
+    @unittest.skipIf(os.name == "nt", "Windows filenames cannot contain arbitrary bytes")
+    def test_non_utf8_filename_reports_whitespace_on_strict_stdout(self):
+        self.remote_main()
+        # Build the tree directly: macOS filesystems reject non-UTF-8 names.
+        blob = subprocess.check_output(["git", "hash-object", "-w", "--stdin"],
+                                       input=b"bad \n", cwd=self.root).decode().strip()
+        self.git("update-index", "--add", "--cacheinfo", "100644", blob,
+                 os.fsdecode(b"bad-\xff.txt"))
+        self.git("commit", "--quiet", "-m", "non-UTF-8 tree path")
+        self.push_review()
+        self.git("config", "core.quotePath", "false")
+        with io.TextIOWrapper(io.BytesIO(), encoding="utf-8", errors="strict") as output:
+            with mock.patch("sys.stdout", output), \
+                    self.assertRaises(subprocess.CalledProcessError) as error:
+                self.check_review()
+            self.assertEqual(error.exception.returncode, 2)
+            output.flush()
+            self.assertIn(b"bad-\\xff.txt:1: trailing whitespace", output.buffer.getvalue())
 
     def test_another_remote_holding_the_pushed_commit_is_ignored(self):
         self.remote_main()
