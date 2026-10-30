@@ -571,29 +571,38 @@ fn v1_and_v2_results_are_identical() {
 #[cfg(feature = "model-v2")]
 #[test]
 fn reference_fallbacks_keep_find_and_word_counts_model_specific() {
-    let source = "[label][ref]\n\n[ref]: target.md\n";
-    let v1 = parse(source);
-    let v2 = parse_markdown_v2(
-        source,
-        DocumentId("doc".into()),
-        RevisionId("r1".into()),
-        ParseLimits::default(),
-    )
-    .unwrap();
-    let a = SearchDocument::from_v1(&v1, source).unwrap();
-    let b = SearchDocument::from_v2(&v2, source).unwrap();
-    let options = FindOptions::default();
-    let fallback = find(&a, "[label]", &options).unwrap();
-    assert_eq!(fallback.matches.len(), 1);
-    assert_eq!(fallback.matches[0].source.slice(source), Some("[label]"));
-    assert!(find(&b, "[label]", &options).unwrap().matches.is_empty());
-    for view in [a, b] {
-        let visible = find(&view, "label", &options).unwrap();
-        assert_eq!(visible.matches.len(), 1);
-        assert_eq!(visible.matches[0].source.slice(source), Some("label"));
+    for (source, literal, text, v2_words) in [
+        ("[label][ref]\n\n[ref]: target.md\n", "[label]", "label", 1),
+        ("[label][]\n\n[label]: target.md\n", "[label]", "label", 1),
+        ("[label]\n\n[label]: target.md\n", "[label]", "label", 1),
+        ("![alt][ref]\n\n[ref]: image.png\n", "![alt]", "alt", 0),
+    ] {
+        let v1 = parse(source);
+        let v2 = parse_markdown_v2(
+            source,
+            DocumentId("doc".into()),
+            RevisionId("r1".into()),
+            ParseLimits::default(),
+        )
+        .unwrap();
+        let a = SearchDocument::from_v1(&v1, source).unwrap();
+        let b = SearchDocument::from_v2(&v2, source).unwrap();
+        let options = FindOptions::default();
+        let fallback = find(&a, literal, &options).unwrap();
+        assert_eq!(fallback.matches.len(), 1, "{source:?}");
+        assert_eq!(fallback.matches[0].source.slice(source), Some(literal));
+        assert!(find(&b, literal, &options).unwrap().matches.is_empty());
+        for view in [a, b] {
+            let visible = find(&view, text, &options).unwrap();
+            assert_eq!(visible.matches.len(), 1, "{source:?}");
+            assert_eq!(visible.matches[0].source.slice(source), Some(text));
+        }
+        assert_eq!(read_stats(&a, &ReadOptions::default()).unwrap().words, 0);
+        assert_eq!(
+            read_stats(&b, &ReadOptions::default()).unwrap().words,
+            v2_words
+        );
     }
-    assert_eq!(read_stats(&a, &ReadOptions::default()).unwrap().words, 0);
-    assert_eq!(read_stats(&b, &ReadOptions::default()).unwrap().words, 1);
 }
 
 #[test]

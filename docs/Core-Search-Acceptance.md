@@ -39,11 +39,15 @@ Facade evidence is in
 
 The earlier workspace contract claimed every match and source range was the
 same under v1 and v2. The existing `v1_and_v2_results_are_identical` test
-explicitly excludes reference syntax. The new
+skips the entire `specs/semantic-model/v1/fixtures/gfm.source.txt` fixture
+because it contains reference syntax; it does not assert that every other
+input is reference-free. The new
 `reference_fallbacks_keep_find_and_word_counts_model_specific` regression uses
 `[label][ref]` with a definition: v1 find matches the literal `[label]` fallback
 and reading stats count zero words; v2 find matches `label`, not `[label]`,
 and counts one word. Both locate `label` at its original source bytes.
+The regression also pins collapsed/shortcut links and a full image reference;
+image alt is searchable in v2 but excluded from reading stats in both models.
 
 Workspace content search deliberately keeps its v1 text index, per the accepted
 CORE-005C disposition. It is independent of the host's chosen session model,

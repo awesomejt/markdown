@@ -321,10 +321,12 @@ file budget.
 
 Content search is a text index. It always parses with v1, whatever model
 the host's sessions request. This is deliberate (owner decision on review G4,
-2026-10-28). The [find](../search/README.md) parity tests cover the shared
-semantic-text subset and exclude reference syntax: v1 exposes resolved
-references as literal source fallbacks, while v2 exposes their link/image
-text. A v1 workspace hit can therefore differ from a v2 document-find result,
+2026-10-28). The [find](../search/README.md) cross-model parity test skips the
+entire `specs/semantic-model/v1/fixtures/gfm.source.txt` fixture because it
+contains reference syntax; it does not assert that the other inputs are
+reference-free. A separate regression pins the reference distinction:
+v1 keeps reference syntax as literal source fallbacks, while v2 resolves
+definitions and exposes link/image text. A v1 workspace hit can therefore differ from a v2 document-find result,
 and reading counts can differ too. This is not universal cross-model parity.
 
 V2's richer link/resource/URI-target semantics are supplied by the document
