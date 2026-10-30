@@ -383,9 +383,8 @@ addressed later, are recorded here and in state:
   IOS-001.
 - **No change:** the ASCII-letter autolink boundary matches cmark-gfm (M2).
   The specs already tell hosts to cap concurrent content searches.
-- **Owner decision pending:** require `Checks / complete` on `main` (M4,
-  C-M5). All three reviewers recommend it; see
-  [Process options](#process-options-under-consideration).
+- **Done:** `main` requires `Checks / complete` (M4, C-M5), approved by the
+  owner and applied 2026-10-29.
 
 ### Desktop walking skeletons
 
@@ -481,10 +480,8 @@ when it is resolved.
 Harder gates the owner deferred on 2026-10-28 to see how the D-030 workflow
 works first, revisited at the first milestone review (PR #28).
 
-- Require the `Checks / complete` status in `main`'s branch protection. It is
-  off so a stuck check cannot block a milestone merge. All three CORE-FIX
-  milestone reviewers recommend turning it on; the owner has not decided, and
-  it is a settings change for the owner.
+- None open. Requiring the `Checks / complete` status on `main` was applied
+  on 2026-10-29 after all three CORE-FIX milestone reviewers recommended it.
 
 ## Dependency summary
 
