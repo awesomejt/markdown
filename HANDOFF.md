@@ -1,7 +1,7 @@
 # Agent Session and Platform Handoff
 
-Updated: 2026-10-29 (America/Denver), after CORE-004 (PR #36).
-Source baseline: `develop` after PR #36; acceptance head `261e587`, session baseline `b958f6e`. Preserve intended source, lock/spec/golden
+Updated: 2026-10-30 (America/Denver), after CORE-005 (PR #37).
+Source baseline: `develop` after PR #37; reviewed head `68cb794`, validated fixes `6bd6cd5`. Preserve intended source, lock/spec/golden
 files, docs and state together. Never transfer caches, environments, build
 products, private runtime state or user documents.
 
@@ -30,18 +30,22 @@ done list is in [the memory archive](agents/Memory-Archive.md#handoffmd-phase-ha
   [parsing/safety acceptance](docs/Core-Parser-Acceptance.md), with fresh
   named-Mac benchmarks and no runtime change.
 - **Done:** CORE-004 in [PR #36](https://github.com/awesomejt/markdown/pull/36):
-  [session acceptance](docs/Core-Session-Acceptance.md), covering generations,
-  cancellation, immutable snapshots, change handling, deduplication and anchors.
-  Focused session tests passed: 28 default, 29 in each v2/all-feature debug and
-  all-feature release run, plus generation exhaustion. Full local
-  `tools/check.py all` and common documentation checks passed on macOS 27.0.1
-  with Rust 1.99.1 at baseline `b958f6e`.
-  [PR CI](https://github.com/awesomejt/markdown/actions/runs/41010966470)
-  passed at `261e587`.
-  [Grok review](https://github.com/awesomejt/markdown/pull/36#pullrequestreview-5708589037)
-  at that head had 0 blockers, 0 concerns and 0 nits. One review, no re-review
-  requested, no findings deferred. No live pass or lease remains.
-- **Next:** CORE-005, then CORE-006. CORE-006 also records the 8 to
+  [session acceptance](docs/Core-Session-Acceptance.md), with explicit race
+  coverage, adapter-ordering and memory limits.
+- **Done:** CORE-005 in [PR #37](https://github.com/awesomejt/markdown/pull/37):
+  [search/read acceptance](docs/Core-Search-Acceptance.md), with a regression
+  for full/collapsed/shortcut/image references and corrected parity wording.
+  The accepted v1 workspace index stays unchanged; v2 find need not reproduce
+  a reference-syntax hit. No runtime/limit/ABI/schema/golden change.
+  Focused regression, final `tools/check.py all` and common checks passed on
+  macOS 27.0.1/Rust 1.99.1 after the review fixes.
+  [Fixed-head three-OS CI](https://github.com/awesomejt/markdown/actions/runs/41013505189)
+  passed at `6bd6cd5`.
+  [Grok review](https://github.com/awesomejt/markdown/pull/37#pullrequestreview-5708692468)
+  at `68cb794` had 0 blockers, 1 low wording concern and 2 nits, all fixed at
+  `6bd6cd5` and exempt from re-review under step 7. One review, no re-review
+  requested, all threads resolved, no findings deferred. No live lease remains.
+- **Next:** CORE-006, including shared facade acceptance and the 8 to
   2 MiB content-search default change in the FFI spec. Each host's chain in
   `desktop-apps` starts after CORE-006 (D-027); do not select platform tasks
   before then.

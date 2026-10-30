@@ -321,13 +321,19 @@ file budget.
 
 Content search is a text index. It always parses with v1, whatever model
 the host's sessions request. This is deliberate (owner decision on review G4,
-2026-10-28). Find's visible text, and so every match and source range, is
-the same under v1 and v2 (the [find](../search/README.md) parity tests).
-V2 adds link, resource and URI-target semantics, capabilities and
-diagnostics, which search neither uses nor reports, and its parse is never
-cheaper. Hits carry `source` ranges and anchors that resolve against a
-snapshot of either model. Richer semantics come from the document session
-when the user opens a hit. `unit` is a v1 node index,
+2026-10-28). The [find](../search/README.md) cross-model parity test skips the
+entire `specs/semantic-model/v1/fixtures/gfm.source.txt` fixture because it
+contains reference syntax; it does not assert that the other inputs are
+reference-free. A separate regression pins the reference distinction:
+v1 keeps reference syntax as literal source fallbacks, while v2 resolves
+definitions and exposes link/image text. A v1 workspace hit can therefore differ from a v2 document-find result,
+and reading counts can differ too. This is not universal cross-model parity.
+
+V2's richer link/resource/URI-target semantics are supplied by the document
+session when the user opens a hit. The workspace index retains its v1 match
+and does not promise that a v2 find rerun will reproduce it. Hits carry
+`source` ranges and anchors for navigation against a snapshot of either model;
+changed files still require the anchor's best-effort resolution. `unit` is a v1 node index,
 so v2 hosts navigate by `source` or `anchor`
 ([C ABI](../ffi/README.md#workspace-search-core-005b2)).
 
