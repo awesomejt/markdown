@@ -89,8 +89,10 @@ public enum DocumentError: Error, Sendable, Equatable {
     case .permissionDenied: .permissionDenied
     case .accessRevoked: .accessRevoked
     case .volumeUnavailable, .unreadable: .io
-    case .busy: .busy
-    case .notRegularFile, .unsupportedType, .tooLarge, .invalidText, .tooComplex, .parseFailed:
+    // Busy is a core-admission timeout, not a file state: the file was never
+    // read, so recorded availability must not change.
+    case .busy,
+      .notRegularFile, .unsupportedType, .tooLarge, .invalidText, .tooComplex, .parseFailed:
       nil
     }
   }
@@ -151,10 +153,11 @@ enum DocumentReader {
     // The coordinator opens the item itself and would block on a FIFO; reject
     // non-regular items first. fstat after our own open still guards a swap.
     var info = stat()
-    let found = capability.url.withUnsafeFileSystemRepresentation { path in
-      path.map { stat($0, &info) == 0 } ?? false
+    // Capture errno inside the closure, before any cleanup can overwrite it.
+    let failure = capability.url.withUnsafeFileSystemRepresentation { path in
+      path.map { stat($0, &info) == 0 ? 0 : errno } ?? ENOENT
     }
-    guard found else { throw map(errno: errno) }
+    guard failure == 0 else { throw map(errno: failure) }
     let kind = info.st_mode & S_IFMT
     guard kind == S_IFREG else { throw DocumentError.notRegularFile(isDirectory: kind == S_IFDIR) }
     var result: Result<DocumentBytes, Error> = .failure(CancellationError())
@@ -173,11 +176,12 @@ enum DocumentReader {
   {
     // O_NONBLOCK keeps a FIFO or device from blocking open(); fstat on the
     // opened descriptor avoids a check-then-open race.
-    let fd = url.withUnsafeFileSystemRepresentation { path -> Int32 in
-      guard let path else { return -1 }
-      return open(path, O_RDONLY | O_NONBLOCK | O_CLOEXEC)
+    let (fd, failure) = url.withUnsafeFileSystemRepresentation { path -> (Int32, Int32) in
+      guard let path else { return (-1, ENOENT) }
+      let fd = open(path, O_RDONLY | O_NONBLOCK | O_CLOEXEC)
+      return (fd, fd >= 0 ? 0 : errno)
     }
-    guard fd >= 0 else { throw map(errno: errno) }
+    guard fd >= 0 else { throw map(errno: failure) }
     defer { Darwin.close(fd) }
     var info = stat()
     guard fstat(fd, &info) == 0 else { throw map(errno: errno) }

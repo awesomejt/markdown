@@ -53,13 +53,15 @@ document flow:
   replaces the window's core session; closing the window cancels work and
   awaits native cleanup. A failed read of the current request is recorded
   in the core session as `Deleted` or `Unreadable` (permission, revoked,
-  busy, I/O), so in-flight work is superseded and status stays truthful.
+  I/O), so in-flight work is superseded and status stays truthful. A core
+  admission timeout (busy) never touched the file and records nothing.
   Older requests never record availability, so a late failure cannot
   supersede a newer successful load.
 - Permission lost after a successful read is reported as **revoked**. A
   missing file on a volume no longer mounted where it was read is
   **disk unavailable**, not deleted. Core admission is shared by all windows
   (one running, one queued); a load waits up to 30 seconds for a slot.
+  Reload after a failed session creation retries the whole open.
 
 Folder grants, recents, security-scoped bookmarks, external-change watching
 and sandboxed sibling-image access remain MAC-002A, MAC-001H and MAC-001E

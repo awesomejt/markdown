@@ -32,6 +32,9 @@ public final class DocumentLoader {
   private var sessionCapability: DocumentCapability?
   private var lastRead: (device: dev_t, volume: URL?)?
 
+  /// Session factory; tests inject a failure.
+  var makeSession: (String) throws -> CoreSession = { try CoreSession(documentID: $0) }
+
   /// Bound on waiting for core admission while other windows are parsing.
   nonisolated static let busyTimeout = Duration.seconds(30)
 
@@ -58,7 +61,7 @@ public final class DocumentLoader {
       retireSession()
       do {
         // A random logical identity: the core never receives the path.
-        session = try CoreSession(documentID: UUID().uuidString)
+        session = try makeSession(UUID().uuidString)
         sessionCapability = capability
       } catch {
         request &+= 1
@@ -71,8 +74,9 @@ public final class DocumentLoader {
   }
 
   public func reload() {
-    guard let capability = sessionCapability else { return }
-    start(capability)
+    guard let capability = sessionCapability ?? self.capability else { return }
+    // A failed session creation left no session: retry the whole open.
+    if session == nil { open(capability) } else { start(capability) }
   }
 
   /// Cancel pending work and await the session's native cleanup.

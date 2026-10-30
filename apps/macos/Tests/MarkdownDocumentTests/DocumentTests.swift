@@ -195,6 +195,21 @@ struct DocumentTests {
     try expectNoHandles()
   }
 
+  @Test func reloadRetriesFailedSessionCreation() async throws {
+    let loader = DocumentLoader()
+    loader.makeSession = { _ in throw CoreError.closed }
+    let document = try file("retry.md", Data("---\ntitle: Retry\n---\n".utf8))
+    loader.open(document)
+    #expect(failure(loader) == .parseFailed)
+    loader.makeSession = { try CoreSession(documentID: $0) }
+    loader.reload()
+    try await settle(loader)
+    #expect(loadedTitle(loader) == "Retry")
+    #expect(DocumentError.busy.coreChange == nil)  // Admission timeout, not file state.
+    await loader.close()
+    try expectNoHandles()
+  }
+
   @Test func detachedVolumeIsUnavailable() async throws {
     let image = directory.appendingPathComponent("volume.dmg")
     let mount = directory.appendingPathComponent("mount")
