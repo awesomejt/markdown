@@ -681,7 +681,7 @@ needs them.
 
 **Date:** 2026-10-29
 
-**Status:** accepted 2026-10-29 (clean Grok review of PR #27, D-029)
+**Status:** accepted 2026-10-29 (clean Grok review of PR #27, D-029); amended by D-034
 
 **Context:** The Grok review of PR #17 found that the front-matter guard
 covered only controls and General_Category=Cf. Blank characters that are not
@@ -735,3 +735,39 @@ workflow and documentation changes, administrative records and nit fixes.
 on any host can run the workflow, but each must poll the PR for the review.
 Unreviewed changes rely on the runner choosing `patch/` honestly; the owner
 sees every one at the next milestone review.
+
+## D-034 — Front-matter text allows joiners and subdivision flags
+
+**Date:** 2026-10-30
+
+**Status:** proposed; accepted with the merge approval of its PR (D-029)
+
+**Context:** The CORE-FIX milestone review (M1; Claude, Grok and Codex) found
+that the D-032 guard rejects ZWNJ and ZWJ, which are Cf. A front-matter title
+or value holding either discards the whole map, so Persian, Arabic-script,
+Indic and emoji ZWJ titles lose their metadata. File names already exempt
+both (CORE-005D). Grok also suggested allowing emoji tag sequences, and
+allowing LRM and RLM; Codex treated the marks as a separate choice.
+
+**Decision:** Amend D-032 for the title and string and list values, not keys.
+One shared predicate, `metadata::display_text`, serves the producer and the
+v1 and v2 `from_json` validation:
+
+- ZWNJ (U+200C) and ZWJ (U+200D) are allowed.
+- Tag characters are allowed only inside a subdivision flag: U+1F3F4, then 3
+  to 7 tag digits or lowercase letters, then U+E007F. That is the shape of a
+  CLDR subdivision id, which covers the flags Unicode recommends (England,
+  Scotland, Wales). Tag characters mirror ASCII, so an unbounded or
+  base-less run could carry hidden text; every other tag character stays
+  rejected.
+- The bidi embedding, override and isolate controls stay rejected, and so do
+  LRM and RLM: a title is isolated display text, and the marks can reorder
+  what a reader sees without being visible.
+- Keys keep the full D-032 guard and reject joiners on import
+  (`metadata_key`); the producer already accepts only ASCII keys.
+
+**Consequences:** Such titles and properties now survive parsing and import
+unchanged. A spoofing name can use a joiner, as file names already can, but
+not a bidi control. File names still flag tag characters, flags included.
+The frozen corpus and goldens contain none of these characters, so none
+changed.

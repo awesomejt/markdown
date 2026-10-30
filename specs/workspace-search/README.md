@@ -73,8 +73,9 @@ The rule flags:
 It exempts ZWNJ and ZWJ, which emoji, Persian and Indic names need, and the
 display modifiers that front matter also keeps: CGJ (U+034F), Mongolian FVS
 1–4 (U+180B–180D, U+180F) and the variation selectors (U+FE00–FE0F,
-U+E0100–E01EF), so `❤️.md` is not flagged. Apart from ZWNJ and ZWJ this is
-the rule front-matter text rejects (D-032). Such a name can display exactly
+U+E0100–E01EF), so `❤️.md` is not flagged. This is the rule front-matter
+keys reject (D-032); front-matter values also allow subdivision-flag tag
+sequences (D-034), which file names still flag. Such a name can display exactly
 like another name, so the UI should mark it. `MD_PATH_INVISIBLE` reports the
 same rule through the C ABI.
 

@@ -22,7 +22,7 @@ struct Context<'a> {
 }
 impl Context<'_> {
     fn own(&mut self, value: &str) -> Result<String, Error> {
-        if value.chars().any(hidden_character) {
+        if !display_text(value) {
             return Err(Error::Unsupported);
         }
         *self.copied = self
@@ -380,6 +380,30 @@ pub(crate) fn display_modifier(c: char) -> bool {
 // Front-matter values reject it; file names flag it (minus ZWNJ/ZWJ).
 pub(crate) fn hidden_character(c: char) -> bool {
     unsafe_character(c) || (invisible_character(c) && !display_modifier(c))
+}
+
+// Front-matter titles and string/list values (D-034): the display-text guard,
+// except ZWNJ and ZWJ, which Persian, Indic and emoji text need, and the tag
+// characters of a subdivision flag: U+1F3F4, 3 to 7 tag digits or lowercase
+// letters (the length of a CLDR subdivision id), then U+E007F. Keys keep the
+// full guard. Bidi controls, LRM and RLM stay rejected.
+pub(crate) fn display_text(value: &str) -> bool {
+    let mut chars = value.chars();
+    while let Some(c) = chars.next() {
+        if c == '\u{1F3F4}' {
+            let rest = chars.as_str();
+            let spec = rest
+                .find(|t| !matches!(t, '\u{E0030}'..='\u{E0039}' | '\u{E0061}'..='\u{E007A}'))
+                .unwrap_or(rest.len());
+            // Each tag character is four UTF-8 bytes.
+            if (12..=28).contains(&spec) && rest[spec..].starts_with('\u{E007F}') {
+                chars = rest[spec + 4..].chars();
+            }
+        } else if !matches!(c, '\u{200C}' | '\u{200D}') && hidden_character(c) {
+            return false;
+        }
+    }
+    true
 }
 
 // Deliberate literal ISO subset: calendar date, optionally time and zone.
