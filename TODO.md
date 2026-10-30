@@ -53,7 +53,8 @@ workflow changes in PR #22 and on `main`, TOOL-003 in PR #23, CORE-003D in
 PR #24, CORE-005C in PR #25, CORE-005D in PR #26 and CORE-003E in PR #27
 (D-032). The owner merged the first milestone review (PR #28) into `main`,
 tagged `m-core-fix`. Its first [follow-up](#core-fix-milestone-follow-ups),
-CORE-003F, merged in PR #32 (D-034); CORE-001 is next on `develop`. Inspect
+CORE-003F, merged in PR #32 (D-034); CORE-001 closed in PR #33 with both
+TOOL-003 findings fixed and hosted three-OS CI green. CORE-002 is next on `develop`. Inspect
 state and `HANDOFF.md` before any pass. Scoped commits, pushes, PR updates and
 review requests are authorized; a Grok review with no serious finding approves
 a merge into `develop` (D-029); only the owner merges into `main` (D-030);
@@ -376,8 +377,9 @@ addressed later, are recorded here and in state:
     for Persian, Devanagari and ZWJ emoji, keys still rejecting joiners, bidi
     controls still rejected, goldens unchanged or regenerated with a reviewed
     diff.
-- **TOOL-003 deferred findings (M3, C-M4).** Folded into CORE-001, which owns
-  the common checks; see [Deferred review findings](#deferred-review-findings).
+- **TOOL-003 deferred findings (M3, C-M4).** Resolved by CORE-001 in PR #33:
+  color-free diffs, lossless decoding and safe filename diagnostics, with
+  real-Git regressions; new whitespace violations still fail.
 - **2 MiB content-search default (Grok, C-M2).** A zero `max_file_bytes` now
   means 2 MiB instead of 8 MiB. Reviewers differ on whether that strains
   D-022; it changes no layout or signature and no host had shipped. CORE-006
@@ -469,17 +471,9 @@ Low findings and nits from Grok reviews that were merged under D-029 without
 being fixed. A later pass fixes them or records why not; remove each entry
 when it is resolved.
 
-- **TOOL-003, PR #23, Grok review 5692910610 (owner-approved merge).**
-  Both are false failures of the first-push whitespace check in
-  `tools/check_git.py`, outside default settings:
-  - With `color.ui=always` or `color.diff=always`, the `+` content lines
-    start with an ANSI code and can be parsed as problem headers. Run the
-    diffs with `--no-color`.
-  - Output is decoded as strict UTF-8, so an inherited non-UTF-8 problem line
-    raises `UnicodeDecodeError`. Read bytes, or decode with
-    `errors="surrogateescape"`.
-
-  Both are now part of CORE-001's scope (CORE-FIX milestone review M3).
+None open after CORE-001 (PR #33). The two TOOL-003 findings from PR #23,
+Grok review 5692910610, are resolved: forced color and non-UTF-8 problem
+content no longer cause false failures. Both PR #33 review nits are also fixed.
 
 ## Process options under consideration
 

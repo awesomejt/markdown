@@ -31,8 +31,9 @@ read.
   into `main` through the first milestone review, PR #28, tagged
   `m-core-fix`. Its three reviews (Claude, Grok, Codex) found no blocking
   defect. Follow-ups: CORE-003F (front-matter joiners and subdivision flags,
-  D-034 amending D-032) merged in PR #32; CORE-001 is next and also takes
-  the two TOOL-003 findings; CORE-006 records the 2 MiB content-search default change; each
+  D-034 amending D-032) merged in PR #32; CORE-001 closed in PR #33 with
+  hosted three-OS CI and both TOOL-003 findings fixed. CORE-002 is next;
+  CORE-006 records the 2 MiB content-search default change; each
   001B sets a session memory bound. `main` now requires the
   `Checks / complete` status (M4, 2026-10-29). See [HANDOFF.md](HANDOFF.md) and
   [TODO.md](TODO.md#core-fix-milestone-follow-ups). HARD-001 sits between
@@ -47,6 +48,11 @@ read.
   one, `/grok review` asks for another, and the runner polls the PR for it.
   Grok ignores `review/*` and `patch/*`; `patch/` carries unreviewed docs,
   workflow, state and behavior-free nit changes and merges on green CI.
+- The owner confirmed on 2026-10-29 that Cursor/Grok reviews post as
+  `awesomejt`, with no GitHub app identity and the heading “🤖 Automated
+  first-pass review by Grok Bot” (PR #33). Task PRs merge after Grok and CI;
+  only critical/high/important fixes need re-review, within the three-review
+  cap. The owner handles combined milestone reviews into `main`.
 - Each 001B also measures flat-view and retained RSS on its host, and WIN-001B
   makes the MSVC C smoke a required CI step.
 - Node IDs are snapshot-local and block anchors carry position (D-021). ABI v1
