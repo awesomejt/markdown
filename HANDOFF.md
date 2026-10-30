@@ -1,8 +1,8 @@
 # Agent Session and Platform Handoff
 
-Updated: 2026-10-30 (America/Denver), after MAC-001D (PR #42).
-Source baseline: `develop` after PR #42; reviewed head `f5cca9f`,
-validated fix head `5fcb25d`, followed by one state/docs closeout.
+Updated: 2026-10-30 (America/Denver), after MAC-001E (PR #43).
+Source baseline: `develop` after PR #43; reviewed head `9a0cb5f`,
+validated fix head `dbced29`, followed by one state/docs closeout.
 Preserve intended source, lock/spec/golden files, docs and state together. Never transfer caches, environments, build
 products, private runtime state or user documents.
 
@@ -84,9 +84,18 @@ done list is in [the memory archive](agents/Memory-Archive.md#handoffmd-phase-ha
   passed on its third attempt. The first two hit a hosted-runner rustup
   `cargo-fmt` conflict, and dispatched `develop` runs flaked in MAC-001C
   checks; see the TODO.md hosted `macos-native` flakiness entry.
+- **Done:** MAC-001E in [PR #43](https://github.com/awesomejt/markdown/pull/43):
+  [tables, task lists and the image resource policy](apps/macos/README.md#tables-task-lists-and-images-mac-001e).
+  Debug and release native checks each passed 13 render, 8 document and
+  10 core tests, plus both relocated bundle smokes with the rich-block check.
+  [Grok review 1](https://github.com/awesomejt/markdown/pull/43#pullrequestreview-5719371478)
+  at `9a0cb5f` found 0 blockers, 1 concern (`realpath` on the main actor)
+  and 1 nit (transient full-decode memory). Both were fixed at `dbced29`
+  without re-review; one review was used. Release prose 5 MiB renders in
+  about 580 ms (MAC-001D: 540 ms).
 - **Next:** `portable-core` is complete and `desktop-apps` is active.
-  MAC-001E is next on this Mac: tables, task lists, images and resource
-  policy, with rich-block and denied/unsafe-resource checks. The Mac 001A–001C walking skeleton is a D-030 milestone
+  MAC-001F is next on this Mac: document find, theme and text controls, with
+  Unicode find and native command/settings checks. The Mac 001A–001C walking skeleton is a D-030 milestone
   boundary (rule 3). WIN-001A/LNX-001A start on their hosts; their chains
   remain independent.
   The shared-core milestone boundary is reached. Per MEMORY.md, Claude writes

@@ -4,7 +4,7 @@ import AppKit
 /// view, so selection, copy and the text accessibility element span the whole
 /// document. Never touch `layoutManager`, which would fall back to TextKit 1.
 @MainActor
-public final class ReaderSurface: NSObject, NSTextViewDelegate {
+public final class ReaderSurface: NSObject, NSTextViewDelegate, NSTextLayoutManagerDelegate {
   public let scrollView: NSScrollView
   public let textView: NSTextView
   public private(set) var document: RenderedDocument?
@@ -18,6 +18,7 @@ public final class ReaderSurface: NSObject, NSTextViewDelegate {
     textView = scrollView.documentView as! NSTextView
     super.init()
     precondition(textView.textLayoutManager != nil, "TextKit 2 text view expected")
+    textView.textLayoutManager?.delegate = self
     textView.isEditable = false
     textView.isSelectable = true
     textView.isRichText = true
@@ -105,6 +106,21 @@ public final class ReaderSurface: NSObject, NSTextViewDelegate {
     }
     let top = max(rect.minY - textView.textContainerInset.height, 0)
     textView.scroll(NSPoint(x: 0, y: top))
+  }
+
+  /// Table rows get a fragment that draws their grid; everything else is default.
+  public nonisolated func textLayoutManager(
+    _ textLayoutManager: NSTextLayoutManager, textLayoutFragmentFor location: any NSTextLocation,
+    in textElement: NSTextElement
+  ) -> NSTextLayoutFragment {
+    let range = textElement.elementRange
+    if let paragraph = textElement as? NSTextParagraph, paragraph.attributedString.length > 0,
+      let style = paragraph.attributedString.attribute(.tableRow, at: 0, effectiveRange: nil)
+        as? TableRowStyle
+    {
+      return TableRowFragment(style: style, textElement: textElement, range: range)
+    }
+    return NSTextLayoutFragment(textElement: textElement, range: range)
   }
 
   public func textView(_ textView: NSTextView, clickedOnLink link: Any, at charIndex: Int) -> Bool {

@@ -63,9 +63,9 @@ document flow:
   (one running, one queued); a load waits up to 30 seconds for a slot.
   Reload after a failed session creation retries the whole open.
 
-Folder grants, recents, security-scoped bookmarks, external-change watching
-and sandboxed sibling-image access remain MAC-002A, MAC-001H and MAC-001E
-work.
+Folder grants, recents, security-scoped bookmarks and external-change
+watching remain MAC-002A and MAC-001H work. Images beside the document are
+read under the [resource policy](#tables-task-lists-and-images-mac-001e).
 
 ## Reading documents (MAC-001D)
 
@@ -85,12 +85,11 @@ accessibility element continuous across the whole document. The
   number), bullet and nested lists, block quotes, thematic breaks and fenced
   or indented code in a monospaced font. Colours are dynamic system colours,
   so light and dark appearance follow the window.
-- Readable fallbacks until MAC-001E: tables become tab-separated rows with a
-  bold header row, images show their alt text in brackets (“Image not
-  shown”), and task items show ☐/☑ markers. Alerts render as a quote with
-  its label, and footnotes as bracketed labels. Raw HTML, math and other
-  unsupported syntax stay inert, secondary-coloured source text. No
-  attachment, image or remote resource is loaded.
+- Tables, task items and images are described in
+  [the next section](#tables-task-lists-and-images-mac-001e). Alerts render
+  as a quote with its label, and footnotes as bracketed labels. Raw HTML,
+  math and other unsupported syntax stay inert, secondary-coloured source
+  text.
 - Links follow the core's v2 classification. A fragment link to a heading
   anchor (including non-ASCII anchors such as `#café`) scrolls to that heading; a missing anchor beeps. An `http`, `https`
   or `mailto` link the core marks external opens with the system handler.
@@ -107,7 +106,60 @@ accessibility element continuous across the whole document. The
 
 Heading-level accessibility roles, find, text size and theme controls,
 document-wide performance budgets and reading-position restoration remain
-MAC-001E to MAC-001H work.
+MAC-001F to MAC-001H work.
+
+## Tables, task lists and images (MAC-001E)
+
+- **Tables.** TextKit 2 accepts `NSTextTable` attributes but lays each cell
+  out as a stacked paragraph (checked on macOS 27.0.1), so a table is one
+  paragraph per row with tab-separated cells. Tab stops come from each
+  column's measured width (capped at 360 pt) and its GFM alignment: left,
+  centre or right. A centred or right-aligned first column starts with a tab.
+  A custom `NSTextLayoutFragment`, supplied by the surface's
+  text-layout-manager delegate, draws the header shading, alternate-row
+  shading and grid rules behind the text using dynamic system colours. The
+  header is bold and GFM pads short rows. Rows stay selectable, and copying
+  a table gives tab-separated text that pastes into a spreadsheet. Limits:
+  a cell wider than its column overflows into the next one, and a table
+  wider than the window wraps its rows. VoiceOver reads a table as lines of
+  text, without table navigation (MAC-001G).
+- **Task lists.** Task items show ☑ (accent colour) or ☐ (secondary colour)
+  in place of the bullet. They are read-only.
+- **Images: resource policy.** Rendering follows the core's v2 resource
+  classification ([URI policy](../../docs/URI-Policy.md)):
+  - Remote images (`MD_DENIAL_REMOTE_RESOURCE`) are never fetched, and other
+    denied targets (unsafe, `data:`, fragment-only) are never read.
+  - A relative image (`requires_capability`) is read by
+    `DocumentResources` in `MarkdownDocument`. The core's path is already
+    decoded once, and it is never decoded again or turned into a URL. It is
+    joined to the document's folder and resolved with `realpath`. The result
+    must be inside that folder or a subfolder, so `../` and symlinks that
+    leave the folder are refused. It is opened with `O_NOFOLLOW_ANY |
+    O_NONBLOCK`, so a symlink swapped in after the check fails and a FIFO
+    cannot block. It must be a regular file of at most 16 MiB whose
+    extension is a raster image type; SVG is refused (ADV-002).
+  - `MarkdownRender` decodes in the off-main render. ImageIO identifies the
+    content, so SVG or non-image data named `.png` is refused. The pixel
+    count from the header must be at most 32 Mi pixels, so a full decode
+    (ImageIO cannot subsample PNG and most GIF/TIFF) briefly needs at most
+    128 MiB, and images decode one at a time. The retained copy is
+    downsampled to at most 2,048 px on its long side. One document holds at
+    most 128 distinct images and 128 MiB of retained decoded pixels. Each distinct path
+    is read and decoded once per render, and cancellation is checked before
+    each image.
+  - A loaded image is an inline attachment. It scales down to the line width
+    and never up, at one point per pixel. Its accessibility description is
+    its alt text, and its tooltip is its title or alt text. Linked images
+    keep their link.
+  - Any other image shows its alt text in brackets, in italics. A tooltip
+    gives the reason: remote images are blocked, the image was blocked, it is
+    outside the document's folder, it was not found, permission was denied,
+    the format is not supported, it is too large, there are too many images,
+    or it couldn't be read. No path is shown.
+
+  This build is not sandboxed. A sandboxed build's single-file grant does not
+  cover sibling images (capability matrix CAP-04), so it would need the
+  folder grant from MAC-002A. Images are read again on every reload.
 
 ## Build and launch
 
@@ -191,13 +243,25 @@ reading part opens a 202-heading document and checks the rendered text, the
 outline rows, outline and fragment-link navigation (heading revealed and
 selected, outline following), an external link routed to a stub instead of
 the browser, the sidebar command and Copy enabled on the document selection.
+Its rich-block part opens a document whose sibling image loads through the
+app's real resource adapter, while a remote image and a `../` image are
+refused; the task marker and tab-separated table rows are checked on TextKit 2.
 Copy is written to a private pasteboard, never the user's clipboard.
 `MarkdownRenderTests` render every semantic corpus case and compare its
 outline levels, titles and anchors with the frozen expectations, check each
 heading's rendered range, link policy on the GFM tour, inert unsafe content,
 block and inline styling, render cancellation, and navigation and copy on a
 real TextKit 2 view; they also render, install and navigate the generated
-performance profiles and print their timings.
+performance profiles and print their timings. MAC-001E adds table alignment
+(right edges and centres line up across rows, grid fragments are used, copy
+is tab-separated), table edge cases, task markers, the image policy (each
+denial reason, one read per distinct path, no loader call for remote or
+denied targets, width fitting on a real view) and the image budgets
+(header pixel limit, forged dimensions, downsampling, count and decoded-memory
+limits, cancellation). `MarkdownDocumentTests` checks resource containment:
+subfolders, `./`/`../` within the folder, literal `%` names, escaping `../`,
+escaping and in-folder symlinks, absolute paths, missing files, SVG and
+non-image types, folders, FIFOs, the size limit and denied permission.
 `MarkdownDocumentTests` cover the same reader and loader directly, plus a FIFO,
 an exact-bound file, cancellation and a real detached disk image (`hdiutil`). Menu actions routed directly to a window do not
 prove physical keyboard/responder-chain interaction; perform the manual check

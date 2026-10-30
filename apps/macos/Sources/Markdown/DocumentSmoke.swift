@@ -111,6 +111,7 @@ enum DocumentSmoke {
       "only the newest request is presented")
     note("reload/revocation/generations checked")
     try await reading(delegate: delegate, file: file, check: check)
+    try await richBlocks(delegate: delegate, directory: directory, file: file, check: check)
 
     for window in delegate.windows.map(\.window) { window?.performClose(nil) }
     try await waitUntil("closed documents release native sessions") {
@@ -188,6 +189,54 @@ enum DocumentSmoke {
     note("rendering/outline/navigation/copy checked")
   }
 
+  /// Rich blocks through the real loader wiring (MAC-001E): an image beside
+  /// the document loads, a remote one and one outside its folder do not, and
+  /// a table lays out as grid rows on TextKit 2.
+  private static func richBlocks(
+    delegate: AppDelegate, directory: URL, file: (String, Data) throws -> URL,
+    check: (Bool, String) throws -> Void
+  ) async throws {
+    let bitmap = try requireValue(
+      NSBitmapImageRep(
+        bitmapDataPlanes: nil, pixelsWide: 40, pixelsHigh: 20, bitsPerSample: 8,
+        samplesPerPixel: 4, hasAlpha: true, isPlanar: false, colorSpaceName: .deviceRGB,
+        bytesPerRow: 0, bitsPerPixel: 0), "bitmap")
+    let png = try requireValue(bitmap.representation(using: .png, properties: [:]), "png")
+    let folder = directory.appendingPathComponent("rich")
+    try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+    try png.write(to: folder.appendingPathComponent("pic.png"))
+    _ = try file("outside.png", png)
+    let markdown = """
+      # Rich
+
+      ![local](pic.png) ![remote](https://example.com/a.png) ![outside](../outside.png)
+
+      - [x] done
+
+      | A | B |
+      | - | -: |
+      | x | 1 |
+      """
+    let document = folder.appendingPathComponent("rich.md")
+    try Data(markdown.utf8).write(to: document)
+    delegate.application(NSApp, open: [document])
+    let reader = try requireWindow(delegate.windows.last)
+    try await settle(reader)
+    let surface = reader.surface
+    let images = surface.document?.images ?? []
+    try check(
+      images.map(\.failure) == [nil, .remote, .outsideFolder],
+      "local image loads; remote and outside-folder images are refused")
+    let storage = surface.textView.textStorage
+    try check(
+      storage?.attribute(.attachment, at: images[0].range.location, effectiveRange: nil) != nil,
+      "local image is an attachment")
+    try check(surface.textView.string.contains("☑\tdone"), "task item shows its state")
+    try check(surface.textView.string.contains("A\tB\nx\t1"), "table rows are tab-separated")
+    try check(surface.textView.textLayoutManager != nil, "rich blocks stay on TextKit 2")
+    note("tables/tasks/images/resource policy checked")
+  }
+
   private static func settle(_ controller: ReaderWindowController) async throws {
     try await waitUntil("document load and rendering settle") { !controller.isBusy }
   }
@@ -217,6 +266,11 @@ enum DocumentSmoke {
 
 struct SmokeFailure: Error, CustomStringConvertible {
   let description: String
+}
+
+private func requireValue<T>(_ value: T?, _ name: String) throws -> T {
+  guard let value else { throw SmokeFailure(description: "missing \(name)") }
+  return value
 }
 
 private func requireWindow(_ controller: ReaderWindowController?) throws
