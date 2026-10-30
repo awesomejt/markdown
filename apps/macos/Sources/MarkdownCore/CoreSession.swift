@@ -12,6 +12,16 @@ public enum CoreParseFailure: UInt32, Sendable {
   case sourceMapping, model, other
 }
 
+/// Adapter-observed read failures, reported to the session as external changes.
+public enum CoreUnavailability: Sendable, Equatable {
+  case deleted, permissionDenied, accessRevoked, busy, io
+}
+
+public enum CoreAvailability: Sendable, Equatable {
+  case available
+  case unavailable(CoreUnavailability)
+}
+
 public struct CoreTimings: Sendable {
   public let parseMilliseconds: Double
   public let encodeMilliseconds: Double
@@ -101,6 +111,50 @@ public final class CoreSession: @unchecked Sendable {
       guard handle != 0 else { throw CoreError.closed }
       var cancelled: UInt32 = 0
       try checked(md_session_cancel(handle, &cancelled))
+    }
+  }
+
+  /// Record a failed adapter read (no I/O): supersedes in-flight work and
+  /// returns the new or already-recorded generation.
+  @discardableResult
+  public func recordUnavailable(_ change: CoreUnavailability) throws -> UInt64 {
+    let (kind, reason) =
+      switch change {
+      case .deleted: (MD_CHANGE_DELETED, MD_REASON_NONE)
+      case .permissionDenied: (MD_CHANGE_UNREADABLE, MD_REASON_PERMISSION_DENIED)
+      case .accessRevoked: (MD_CHANGE_UNREADABLE, MD_REASON_ACCESS_REVOKED)
+      case .busy: (MD_CHANGE_UNREADABLE, MD_REASON_BUSY)
+      case .io: (MD_CHANGE_UNREADABLE, MD_REASON_IO)
+      }
+    return try lock.withLock {
+      guard handle != 0 else { throw CoreError.closed }
+      var disposition: UInt32 = 0
+      var generation: UInt64 = 0
+      try checked(
+        md_session_external_change(
+          handle, UInt32(kind), UInt32(reason), nil, 0, &disposition, &generation))
+      guard disposition == UInt32(MD_DISPOSITION_RECORDED) else { throw CoreError.invalidSnapshot }
+      return generation
+    }
+  }
+
+  public func availability() throws -> CoreAvailability {
+    try lock.withLock {
+      guard handle != 0 else { throw CoreError.closed }
+      var info = md_session_status_info()
+      info.struct_size = UInt32(MemoryLayout<md_session_status_info>.size)
+      try checked(md_session_get_status(handle, &info))
+      switch (info.availability, info.unreadable_reason) {
+      case (UInt32(MD_AVAILABLE), _): return .available
+      case (UInt32(MD_DELETED), _): return .unavailable(.deleted)
+      case (UInt32(MD_UNREADABLE), UInt32(MD_REASON_PERMISSION_DENIED)):
+        return .unavailable(.permissionDenied)
+      case (UInt32(MD_UNREADABLE), UInt32(MD_REASON_ACCESS_REVOKED)):
+        return .unavailable(.accessRevoked)
+      case (UInt32(MD_UNREADABLE), UInt32(MD_REASON_BUSY)): return .unavailable(.busy)
+      case (UInt32(MD_UNREADABLE), UInt32(MD_REASON_IO)): return .unavailable(.io)
+      default: throw CoreError.invalidSnapshot
+      }
     }
   }
 

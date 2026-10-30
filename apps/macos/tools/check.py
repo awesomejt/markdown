@@ -21,7 +21,8 @@ for configuration in ("debug", "release"):
     prepare_core(configuration)
     app = build(configuration, prepared=True)
     subprocess.run(["swift", "test", "--package-path", str(APP_ROOT), "--configuration",
-                    configuration, "-Xswiftc", "-warnings-as-errors"], env=env, check=True, timeout=180)
+                    configuration, "--no-parallel", "-Xswiftc", "-warnings-as-errors"],
+                   env=env, check=True, timeout=300)
     # A local static package must not turn into a runtime build-tree dependency.
     dependencies = subprocess.check_output(["otool", "-L", str(app / "Contents/MacOS/Markdown")], text=True)
     if "libmarkdown_ffi" in dependencies or str(REPO_ROOT) in "\n".join(dependencies.splitlines()[1:]):

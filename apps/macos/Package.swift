@@ -22,8 +22,11 @@ let package = Package(
         .linkedLibrary("markdown_ffi"),
         .linkedLibrary("iconv"), .linkedLibrary("resolv"),
       ]),
-    .executableTarget(name: "Markdown", dependencies: ["MarkdownCore"]),
+    .target(name: "MarkdownDocument", dependencies: ["MarkdownCore"]),
+    .executableTarget(name: "Markdown", dependencies: ["MarkdownCore", "MarkdownDocument"]),
     .executableTarget(name: "CoreProbe", dependencies: ["MarkdownCore", "CMarkdown"]),
     .testTarget(name: "MarkdownCoreTests", dependencies: ["MarkdownCore", "CMarkdown"]),
+    .testTarget(
+      name: "MarkdownDocumentTests", dependencies: ["MarkdownDocument", "MarkdownCore"]),
   ]
 )

@@ -1,8 +1,8 @@
 # Agent Session and Platform Handoff
 
-Updated: 2026-10-30 (America/Denver), after MAC-001B (PR #40).
-Source baseline: `develop` after PR #40; reviewed head `be4010e`,
-validated test-nit head `eef0b48`, followed by one state/docs closeout.
+Updated: 2026-10-30 (America/Denver), after MAC-001C (PR #41).
+Source baseline: `develop` after PR #41; reviewed head `8b44d4f`,
+validated fix head `b5da5b6`, followed by one state/docs closeout.
 Preserve intended source, lock/spec/golden files, docs and state together. Never transfer caches, environments, build
 products, private runtime state or user documents.
 
@@ -59,11 +59,20 @@ done list is in [the memory archive](agents/Memory-Archive.md#handoffmd-phase-ha
   peak RSS are 577.9/361.8 MiB. Repeated 5 MiB loads retain up to 1,698.1 MiB
   RSS after 20 sessions despite zero native handles and no leak found.
   MAC-001G must resolve or obtain owner disposition before aggregate acceptance.
+- **Done:** MAC-001C in [PR #41](https://github.com/awesomejt/markdown/pull/41):
+  [file open, association, typed access errors and generation-safe loading](apps/macos/README.md#opening-documents-mac-001c).
+  Debug and release native checks each passed 7 document and 10 core tests,
+  plus both relocated bundle smokes with document checks. Launch Services
+  recorded the Viewer/Alternate claim. [Grok review 1](https://github.com/awesomejt/markdown/pull/41#pullrequestreview-5717458097)
+  at `8b44d4f` found 0 blockers, 2 concerns and 2 nits. Both concerns and one
+  nit were fixed at `b5da5b6` without re-review (none was high or critical).
+  The dedup nit is deferred in TODO.md. One review was used.
 - **Next:** `portable-core` is complete and `desktop-apps` is active.
-  MAC-001C is next on this Mac: file open/association, permission capabilities
-  and errors, generation-safe off-thread loading and revoked/unavailable-file
-  checks. Use the adapter and measured bounds from MAC-001B. WIN-001A/LNX-001A
-  start on their hosts; their chains remain independent.
+  MAC-001D is next on this Mac: headings, prose, lists, links, code, the
+  outline and basic selection on TextKit 2, with semantic corpus and
+  navigation checks. The Mac 001A–001C walking skeleton is a D-030 milestone
+  boundary (rule 3). WIN-001A/LNX-001A start on their hosts; their chains
+  remain independent.
   The shared-core milestone boundary is reached. Per MEMORY.md, Claude writes
   the combined packet for CORE-001–CORE-006 (plus CORE-003F since `m-core-fix`),
   including MAC-001A/B if freezing current `develop`; name the exact snapshot and

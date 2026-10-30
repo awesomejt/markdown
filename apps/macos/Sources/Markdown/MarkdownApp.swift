@@ -1,6 +1,8 @@
 import AppKit
 import Darwin
 import MarkdownCore
+import MarkdownDocument
+import UniformTypeIdentifiers
 
 @main
 enum MarkdownApp {
@@ -28,9 +30,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     self.smokeTest = smokeTest
   }
 
-  func applicationDidFinishLaunching(_ notification: Notification) {
+  func applicationWillFinishLaunching(_ notification: Notification) {
     installMenus()
-    newWindow(nil)
+  }
+
+  func applicationDidFinishLaunching(_ notification: Notification) {
+    // Documents delivered at launch (Finder, `open`) already created windows.
+    if windows.isEmpty { newWindow(nil) }
     NSApp.activate()
     if smokeTest {
       // Exercise the running AppKit application, not just its constructors.
@@ -52,7 +58,46 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     return true
   }
 
+  /// Finder, Launch Services and `open -a` deliver granted file URLs here.
+  func application(_ sender: NSApplication, open urls: [URL]) {
+    open(urls)
+  }
+
+  @objc func openDocument(_ sender: Any?) {
+    let panel = NSOpenPanel()
+    panel.allowedContentTypes = [UTType("net.daringfireball.markdown") ?? .plainText, .plainText]
+    panel.allowsMultipleSelection = true
+    panel.canChooseDirectories = false
+    panel.begin { [weak self, panel] response in
+      if response == .OK { self?.open(panel.urls) }
+    }
+  }
+
+  /// Focus a window already showing the file, else reuse an empty window, else
+  /// open a new one. Each window owns its document and core session.
+  func open(_ urls: [URL]) {
+    for url in urls {
+      guard let capability = try? DocumentCapability(granted: url) else { continue }
+      if let existing = windows.first(where: { $0.loader.capability == capability }) {
+        // Choosing a file again retries a failed load, e.g. after reconnecting.
+        if case .failed = existing.loader.state { existing.loader.reload() }
+        existing.showWindow(nil)
+        continue
+      }
+      let target =
+        windows.first(where: { $0.window?.isKeyWindow == true && $0.loader.capability == nil })
+        ?? windows.first(where: { $0.loader.capability == nil }) ?? makeWindow(nil)
+      target.loader.open(capability)
+      target.showWindow(nil)
+    }
+  }
+
   @objc func newWindow(_ sender: Any?) {
+    makeWindow(sender)
+  }
+
+  @discardableResult
+  private func makeWindow(_ sender: Any?) -> ReaderWindowController {
     let controller = ReaderWindowController()
     controller.onClose = { [weak self] closed in
       self?.windows.removeAll { $0 === closed }
@@ -60,6 +105,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     windows.append(controller)
     controller.showWindow(sender)
     controller.window?.makeKeyAndOrderFront(sender)
+    return controller
   }
 
   private func installMenus() {
@@ -88,6 +134,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let new = file.addItem(
       withTitle: "New Window", action: #selector(newWindow(_:)), keyEquivalent: "n")
     new.target = self
+    let open = file.addItem(
+      withTitle: "Open…", action: #selector(openDocument(_:)), keyEquivalent: "o")
+    open.target = self
+    file.addItem(
+      withTitle: "Reload", action: #selector(ReaderWindowController.reloadDocument(_:)),
+      keyEquivalent: "r")
+    file.addItem(.separator())
     file.addItem(
       withTitle: "Close Window", action: #selector(NSWindow.performClose(_:)), keyEquivalent: "w")
     add(file, to: bar)
@@ -114,8 +167,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 }
 
 @MainActor
-final class ReaderWindowController: NSWindowController, NSWindowDelegate {
+final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenuItemValidation {
   var onClose: ((ReaderWindowController) -> Void)?
+  let loader = DocumentLoader()
+  private let status = NSTextField(labelWithString: "No document open")
+  private let detail = NSTextField(wrappingLabelWithString: "")
 
   init() {
     let window = NSWindow(
@@ -130,26 +186,80 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate {
     window.center()
 
     let content = NSView()
-    let title = NSTextField(labelWithString: "No document open")
-    title.font = .systemFont(ofSize: 22, weight: .semibold)
-    title.textColor = .secondaryLabelColor
-    title.setAccessibilityIdentifier("empty-document-label")
-    title.translatesAutoresizingMaskIntoConstraints = false
-    content.addSubview(title)
+    status.font = .systemFont(ofSize: 22, weight: .semibold)
+    status.textColor = .secondaryLabelColor
+    status.alignment = .center
+    status.setAccessibilityIdentifier("document-status-label")
+    detail.font = .systemFont(ofSize: 13)
+    detail.textColor = .secondaryLabelColor
+    detail.alignment = .center
+    detail.isHidden = true
+    detail.setAccessibilityIdentifier("document-detail-label")
+    let stack = NSStackView(views: [status, detail])
+    stack.orientation = .vertical
+    stack.spacing = 8
+    stack.translatesAutoresizingMaskIntoConstraints = false
+    content.addSubview(stack)
     NSLayoutConstraint.activate([
-      title.centerXAnchor.constraint(equalTo: content.centerXAnchor),
-      title.centerYAnchor.constraint(equalTo: content.centerYAnchor),
+      stack.centerXAnchor.constraint(equalTo: content.centerXAnchor),
+      stack.centerYAnchor.constraint(equalTo: content.centerYAnchor),
+      stack.widthAnchor.constraint(lessThanOrEqualTo: content.widthAnchor, constant: -48),
+      detail.widthAnchor.constraint(lessThanOrEqualToConstant: 480),
     ])
     window.contentView = content
     super.init(window: window)
     window.delegate = self
+    loader.onChange = { [weak self] state in self?.present(state) }
   }
 
   required init?(coder: NSCoder) {
     fatalError("Reader windows are constructed programmatically")
   }
 
+  var statusText: String { status.stringValue }
+  var detailText: String { detail.stringValue }
+
+  /// Placeholder presentation until the MAC-001D renderer: names the document
+  /// and its size, or the typed error with its recovery suggestion.
+  private func present(_ state: DocumentLoader.State) {
+    switch state {
+    case .empty:
+      show("No document open", nil, title: "Markdown", url: nil)
+    case .loading(let capability):
+      show("Loading…", nil, title: capability.displayName, url: capability.url)
+    case .loaded(let loaded):
+      let document = loaded.document
+      let size = ByteCountFormatter.string(
+        fromByteCount: Int64(document.source.count), countStyle: .file)
+      show(
+        document.title ?? loaded.capability.displayName,
+        "\(document.roots.count) blocks · \(document.outline.count) headings · \(size)",
+        title: loaded.capability.displayName, url: loaded.capability.url)
+    case .failed(let capability, let error):
+      show(error.message, error.recovery, title: capability.displayName, url: nil)
+    }
+  }
+
+  private func show(_ primary: String, _ secondary: String?, title: String, url: URL?) {
+    status.stringValue = primary
+    detail.stringValue = secondary ?? ""
+    detail.isHidden = secondary == nil
+    window?.title = title
+    window?.representedURL = url
+  }
+
+  @objc func reloadDocument(_ sender: Any?) {
+    loader.reload()
+  }
+
+  func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
+    if menuItem.action == #selector(reloadDocument(_:)) { return loader.capability != nil }
+    return true
+  }
+
   func windowWillClose(_ notification: Notification) {
+    let loader = loader
+    Task { await loader.close() }
     onClose?(self)
   }
 }
