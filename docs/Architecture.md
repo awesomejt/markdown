@@ -74,6 +74,11 @@ native adapters use session anchors for position across revisions.
 - Resolve portable settings semantics.
 - Reject or classify unsafe HTML, URLs, and resources.
 
+[CORE-005 acceptance](Core-Search-Acceptance.md) maps the search/read criteria
+to golden, source/snippet, budget and Rust/C ABI checks. It records the
+reference-syntax boundary between the v1 workspace text index and v2 document
+find, alongside the Unicode, memory and native-presentation limitations.
+
 The core never opens an arbitrary platform path, creates windows, persists OS
 preferences, watches the filesystem, or chooses a native presentation.
 

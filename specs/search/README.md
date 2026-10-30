@@ -272,7 +272,10 @@ all-feature builds:
   goldens, which cover all 24 node kinds. The invariants are UTF-8
   boundaries, containment, reading order, exact-segment source equality and
   segment round trip to the normalized query.
-- Snapshot/document/v1/v2 parity and anchor round trips from match offsets.
+- Snapshot/document/v1/v2 parity on the shared semantic-text corpus and anchor
+  round trips from match offsets. Reference syntax is excluded from the parity
+  comparison: a separate regression fixes v1's literal fallback match and zero
+  word count versus v2's link text and one word for `[label][ref]`.
 - Word segmentation cases against `Intl.Segmenter` values (Node 24.14), with
   the deviations listed above.
 - Inclusion rules, own and cumulative sections, rounding and rate bounds.
