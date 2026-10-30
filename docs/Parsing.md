@@ -10,6 +10,10 @@ across revisions; CORE-004A [sessions](../specs/session/README.md) provide
 block-level cross-generation correspondence through anchors instead. The owner
 accepted snapshot-local IDs for the MVP in [D-021](../agents/Decisions.md).
 
+[CORE-003 acceptance](Core-Parser-Acceptance.md) maps the aggregate corpus,
+safety, generated-input and benchmark criteria to the delivered checks and
+records the remaining limitations and platform gates.
+
 ## Opt-in v2
 
 CORE-003B2 adds `parse_markdown_v2` behind feature `model-v2`. The owner selected
@@ -122,8 +126,9 @@ relative destination with no colon, absolute prefix or dot/dot-dot segment.
 Every other link is a denied intent. Images permit only that relative subset;
 remote/absolute/unsafe images remain denied intents with readable alt text.
 
-This deliberately blocks some legitimate names/URLs (Unicode names/IDNs and
-Unicode fragments, spaces, percent encoding and parent-relative navigation) until CORE-003B's URI/conformance work. It does
+V1 deliberately blocks some legitimate names/URLs (Unicode names/IDNs and
+Unicode fragments, spaces, percent encoding and parent-relative navigation).
+Opt-in v2 supports these under [its typed URI policy](URI-Policy.md). V1 does
 not validate full URL syntax, normalize paths, grant permissions or prove the
 safety of a platform URL launcher. Native adapters must revalidate external
 activation and decode/resolve local resources under actual OS capabilities,
