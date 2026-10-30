@@ -217,7 +217,6 @@ struct CoreTests {
     let queued = Task { try await session.parse(Data("cancelled".utf8)) }
     try await waitForPending(2)
     queued.cancel()
-    queued.cancel()
     try await waitForPending(1)
     do {
       _ = try await queued.value
