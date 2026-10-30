@@ -6,7 +6,8 @@ The implementation is already merged: CORE-005A/A2 (PRs #8/#9), B/B2
 warnings). This acceptance adds a reference-syntax regression and corrects an
 overbroad cross-model parity statement; runtime behavior, default limits,
 dependencies, ABI, schemas and golden bytes are unchanged. Review disposition
-and completion live in the PR and CORE-005 pass record in `project.yaml`.
+and completion live in [PR #37](https://github.com/awesomejt/markdown/pull/37)
+and the CORE-005 pass record in `project.yaml`.
 
 The [find/read contract](../specs/search/README.md) and
 [workspace contract](../specs/workspace-search/README.md) define the delivered

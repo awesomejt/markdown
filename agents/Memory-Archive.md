@@ -1131,3 +1131,32 @@ The next task was CORE-003; its parsing/safety acceptance is now closed in PR #3
   No live pass or lease remains.
 
 The next task was CORE-004; its session acceptance is now closed in PR #36.
+
+## Superseded CORE-004 handoff before CORE-005 closeout
+
+- **Done:** CORE-004 in [PR #36](https://github.com/awesomejt/markdown/pull/36):
+  [session acceptance](../docs/Core-Session-Acceptance.md), covering generations,
+  cancellation, immutable snapshots, change handling, deduplication and anchors.
+  Focused session tests passed: 28 default, 29 in each v2/all-feature debug and
+  all-feature release run, plus generation exhaustion. Full local
+  `tools/check.py all` and common documentation checks passed on macOS 27.0.1
+  with Rust 1.99.1 at baseline `b958f6e`.
+  [PR CI](https://github.com/awesomejt/markdown/actions/runs/41010966470)
+  passed at `261e587`.
+  [Grok review](https://github.com/awesomejt/markdown/pull/36#pullrequestreview-5708589037)
+  at that head had 0 blockers, 0 concerns and 0 nits. One review, no re-review
+  requested, no findings deferred. No live pass or lease remains.
+
+The next task was CORE-005; its search/read acceptance is now closed in PR #37.
+
+## Superseded shared-core posture before CORE-005 closeout
+
+  defect. Follow-ups: CORE-003F (front-matter joiners and subdivision flags,
+  D-034 amending D-032) merged in PR #32; CORE-001 closed in PR #33 with
+  hosted three-OS CI and both TOOL-003 findings fixed. CORE-002 closed in
+  PR #34 on [model acceptance](../docs/Core-Model-Acceptance.md), with the
+  frozen contracts unchanged and D-021's identity policy explicit. CORE-003
+  closed in PR #35 with [parser/safety acceptance](../docs/Core-Parser-Acceptance.md)
+  and fresh named-Mac benchmarks; runtime behavior is unchanged. CORE-004
+  closed in PR #36 with [session acceptance](../docs/Core-Session-Acceptance.md),
+  including explicit race-coverage and adapter-ordering limits. CORE-005 is next;
