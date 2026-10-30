@@ -22,9 +22,9 @@ Finder, Launch Services and `open -a` deliver URLs to
 `application(_:open:)`. A document already shown is focused, and retried if
 its load failed; otherwise the first empty window is reused, or a new window
 opens. Documents delivered at launch do not add a stray empty window. File → Reload (Command-R) rereads the
-current document. There is still no renderer: until MAC-001D, the window shows
-the document title (or file name), its top-level block, heading and byte
-counts, or the error.
+current document. A failed load shows the typed error and its recovery
+suggestion in the window; a loaded document is rendered as described in
+[Reading documents](#reading-documents-mac-001d).
 
 The Foundation-only `MarkdownDocument` target holds the platform side of the
 document flow:
@@ -66,6 +66,48 @@ document flow:
 Folder grants, recents, security-scoped bookmarks, external-change watching
 and sandboxed sibling-image access remain MAC-002A, MAC-001H and MAC-001E
 work.
+
+## Reading documents (MAC-001D)
+
+A loaded document is shown as one continuous, read-only, selectable TextKit 2
+text view (`NSTextView` with a `textLayoutManager`; nothing asks for its
+TextKit 1 `layoutManager`). One text view keeps selection, Copy and the text
+accessibility element continuous across the whole document. The
+`MarkdownRender` target holds the rendering:
+
+- `DocumentRenderer` turns the owned model-v2 snapshot into one immutable
+  attributed string and a heading map, **off the main thread**. The window
+  starts a render for each loaded result; only the newest render installs,
+  and a newer state or closing the window cancels it. Cancellation is checked
+  every 1,024 nodes. The core's depth limit (128) bounds the recursion.
+- Styled: headings (six sizes, bold), paragraphs, emphasis, strong,
+  strikethrough, inline code, soft and hard breaks, ordered (with start
+  number), bullet and nested lists, block quotes, thematic breaks and fenced
+  or indented code in a monospaced font. Colours are dynamic system colours,
+  so light and dark appearance follow the window.
+- Readable fallbacks until MAC-001E: tables become tab-separated rows with a
+  bold header row, images show their alt text in brackets (“Image not
+  shown”), and task items show ☐/☑ markers. Alerts render as a quote with
+  its label, and footnotes as bracketed labels. Raw HTML, math and other
+  unsupported syntax stay inert, secondary-coloured source text. No
+  attachment, image or remote resource is loaded.
+- Links follow the core's v2 classification. A fragment link to a heading
+  anchor (including non-ASCII anchors such as `#café`) scrolls to that heading; a missing anchor beeps. An `http`, `https`
+  or `mailto` link the core marks external opens with the system handler.
+  Links to other files need a folder grant (MAC-002A) and denied links
+  (unsafe schemes, invalid URIs) carry no link at all: they are dotted and
+  explain themselves in a tooltip.
+- The sidebar outline lists every heading from the core's outline, indented
+  by level. Clicking a row (again, to return to it) or moving through it with
+  the arrow keys scrolls
+  that heading to the top and selects it, so keyboard and accessibility focus
+  follow. Link navigation selects the matching outline row. View → Show/Hide
+  Sidebar (Control-Command-S) toggles it, and Edit → Copy/Select All work on
+  the document.
+
+Heading-level accessibility roles, find, text size and theme controls,
+document-wide performance budgets and reading-position restoration remain
+MAC-001E to MAC-001H work.
 
 ## Build and launch
 
@@ -144,12 +186,23 @@ reusing the empty window, focus instead of a duplicate, typed missing/folder/
 unsupported/oversized/invalid-UTF-8 errors in their own windows, Reload after
 withdrawn and restored permission (with the core session's recorded
 revocation), a slow document replaced before it finishes never being
-presented, and zero native handles after all document windows close.
+presented, and zero native handles after all document windows close. Its
+reading part opens a 202-heading document and checks the rendered text, the
+outline rows, outline and fragment-link navigation (heading revealed and
+selected, outline following), an external link routed to a stub instead of
+the browser, the sidebar command and Copy enabled on the document selection.
+Copy is written to a private pasteboard, never the user's clipboard.
+`MarkdownRenderTests` render every semantic corpus case and compare its
+outline levels, titles and anchors with the frozen expectations, check each
+heading's rendered range, link policy on the GFM tour, inert unsafe content,
+block and inline styling, render cancellation, and navigation and copy on a
+real TextKit 2 view; they also render, install and navigate the generated
+performance profiles and print their timings.
 `MarkdownDocumentTests` cover the same reader and loader directly, plus a FIFO,
 an exact-bound file, cancellation and a real detached disk image (`hdiutil`). Menu actions routed directly to a window do not
 prove physical keyboard/responder-chain interaction; perform the manual check
-below as well. This is shell acceptance, not renderer, screen-reader,
-startup-to-presented-content, RSS or distribution acceptance.
+below as well. This is shell and basic-reading acceptance, not heading-role,
+screen-reader, startup-to-presented-content, RSS or distribution acceptance.
 
 CI uses the path-filtered `macos-native` job on GitHub's
 [`xcode-27` image](https://github.com/actions/runner-images#available-images),
@@ -186,6 +239,10 @@ be cancelled and its runner configuration fixed.
    some.md` and confirm one document window and no extra empty window. Use
    Finder → Open With to confirm Markdown is listed for `.md` files without
    becoming the default.
+7. Open `fixtures/markdown/foundation/gfm-tour.md`. Read it in light and dark
+   appearance, click outline rows and use the arrow keys in the outline,
+   click “the table section”, drag a selection across several blocks and
+   paste it into a text editor, and press Control-Command-S twice.
 
 Inspect the empty-state text/window/menu roles using macOS accessibility
 tooling. Full VoiceOver document reading, large documents, mixed displays,
@@ -233,3 +290,27 @@ bundle claiming `net.daringfireball.markdown` as Viewer at Alternate rank,
 so the system default handler was not changed. The interactive open panel
 and Finder Open With remain the manual steps above. Not sandboxed, signed or
 distributed.
+
+## MAC-001D local evidence
+
+Checked on 2026-10-30 on the same Mac (macOS 27.0.1, Xcode 27.1, Swift 6.4):
+`apps/macos/tools/check.py` passed in debug and release, with 8
+`MarkdownRenderTests`, 7 `MarkdownDocumentTests` and 10 `MarkdownCoreTests`
+in each and both relocated bundle smokes including the reading checks.
+Offscreen snapshots of the GFM tour were inspected in light and dark
+appearance. Release-build timings from the profile test (render off the main
+thread; install and navigation on it):
+
+| Profile | Headings | Render | Install | Reveal last heading |
+| --- | ---: | ---: | ---: | ---: |
+| Prose 1 MiB | 4,855 | 97.7 ms | 7.8 ms | 1.4 ms |
+| Delimiter storm 1 MiB | 12,337 | 186.7 ms | 7.0 ms | 1.1 ms |
+| Long lines 1 MiB | 1 | 1.7 ms | 246.3 ms | 1.9 ms |
+| Prose 5 MiB | 24,273 | 539.9 ms | 15.6 ms | 1.3 ms |
+
+These are single in-process samples, not presented-frame, scrolling or memory
+budgets. Installing the long-line profile blocks the main thread for about a
+quarter of a second; MAC-001G owns large-document layout budgets. The
+interactive steps in manual check 7 were not performed by the agent (no
+Accessibility or Screen Recording grant); the smoke covers them through the
+same controls.

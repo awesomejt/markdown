@@ -23,10 +23,14 @@ let package = Package(
         .linkedLibrary("iconv"), .linkedLibrary("resolv"),
       ]),
     .target(name: "MarkdownDocument", dependencies: ["MarkdownCore"]),
-    .executableTarget(name: "Markdown", dependencies: ["MarkdownCore", "MarkdownDocument"]),
+    .target(name: "MarkdownRender", dependencies: ["MarkdownCore", "CMarkdown"]),
+    .executableTarget(
+      name: "Markdown", dependencies: ["MarkdownCore", "MarkdownDocument", "MarkdownRender"]),
     .executableTarget(name: "CoreProbe", dependencies: ["MarkdownCore", "CMarkdown"]),
     .testTarget(name: "MarkdownCoreTests", dependencies: ["MarkdownCore", "CMarkdown"]),
     .testTarget(
       name: "MarkdownDocumentTests", dependencies: ["MarkdownDocument", "MarkdownCore"]),
+    .testTarget(
+      name: "MarkdownRenderTests", dependencies: ["MarkdownRender", "MarkdownCore", "CMarkdown"]),
   ]
 )
