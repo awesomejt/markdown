@@ -1083,3 +1083,16 @@ both TOOL-003 deferred findings from PR #23. CORE-001's shared workspace/CI
 acceptance and those findings are now closed in PR #33; CORE-002 is next.
 The earlier handoff's claim that `main` and `develop` were in sync applied to
 the milestone sync, before the subsequent task PRs on `develop`.
+
+## Superseded CORE-001 handoff before CORE-002 closeout
+
+- **Done:** CORE-001 in [PR #33](https://github.com/awesomejt/markdown/pull/33):
+  shared workspace/CI acceptance, both TOOL-003 findings and both review nits.
+  Local `tools/check.py all` passed on macOS 27.0.1 with Rust 1.99.1;
+  [hosted CI](https://github.com/awesomejt/markdown/actions/runs/40991275826)
+  passed on macOS, Linux and Windows at `29b87d4`.
+  [Grok review](https://github.com/awesomejt/markdown/pull/33#pullrequestreview-5707355475)
+  at `0440908` had no serious finding; both nits were fixed at `29b87d4`,
+  exempt from re-review under step 7. No live pass or lease remains.
+
+The next task was CORE-002; its acceptance is now closed in PR #34.

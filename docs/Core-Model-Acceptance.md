@@ -5,7 +5,8 @@ track in D-027. The implementation is already merged: CORE-002A in PR #2,
 opt-in v2 in PR #5, CORE-002B in PR #18, and the metadata refinements through
 CORE-003F in PR #32. This acceptance changes no Rust code, schema, fixture,
 golden, dependency or ABI. Review disposition and completion live in the PR
-and the CORE-002 pass record in `project.yaml`.
+and the CORE-002 pass record in `project.yaml`. The acceptance PR is
+[PR #34](https://github.com/awesomejt/markdown/pull/34).
 
 ## Contract coverage
 
@@ -46,8 +47,10 @@ not establish a matching algorithm or promise persistent IDs. Adapters must
 not persist node IDs. Reading position uses the block anchors in the
 [session contract](../specs/session/README.md).
 
-[D-020](../agents/Decisions.md) keeps v1 as the Rust default and v2 opt-in;
-[D-025](../agents/Decisions.md) requires each native 001B package to build
+[D-020](../agents/Decisions.md#d-020--additive-opt-in-semantic-model-v2)
+keeps v1 as the Rust default and v2 opt-in;
+[D-025](../agents/Decisions.md#d-025--native-hosts-build-and-request-semantic-model-v2)
+requires each native 001B package to build
 `model-v2` and explicitly request v2. The two versions are not interchangeable.
 V2 upgrades revalidate provenance and may reject inconsistent legacy data.
 The frozen schemas and golden bytes remain unchanged by this acceptance.

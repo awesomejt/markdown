@@ -32,7 +32,9 @@ read.
   `m-core-fix`. Its three reviews (Claude, Grok, Codex) found no blocking
   defect. Follow-ups: CORE-003F (front-matter joiners and subdivision flags,
   D-034 amending D-032) merged in PR #32; CORE-001 closed in PR #33 with
-  hosted three-OS CI and both TOOL-003 findings fixed. CORE-002 is next;
+  hosted three-OS CI and both TOOL-003 findings fixed. CORE-002 closed in
+  PR #34 on [model acceptance](docs/Core-Model-Acceptance.md), with the
+  frozen contracts unchanged and D-021's identity policy explicit. CORE-003 is next;
   CORE-006 records the 2 MiB content-search default change; each
   001B sets a session memory bound. `main` now requires the
   `Checks / complete` status (M4, 2026-10-29). See [HANDOFF.md](HANDOFF.md) and
