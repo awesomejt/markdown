@@ -32,7 +32,8 @@ enum DocumentSmoke {
     let reader = try requireWindow(delegate.windows.first)
     try check(delegate.windows.count == 1, "opening reuses the empty window")
     try await settle(reader)
-    try check(reader.statusText == "Smoke", "loaded document title is presented")
+    try check(reader.documentTitle == "Smoke", "loaded document is presented")
+    try check(reader.surface.textView.string == "One\nText", "document text is rendered")
     try check(reader.window?.title == "valid.md", "window names the document")
     try check(reader.window?.representedURL != nil, "window represents the opened file")
     delegate.application(NSApp, open: [valid])
@@ -68,7 +69,7 @@ enum DocumentSmoke {
     let retried = try requireWindow(delegate.windows[1])
     try check(delegate.windows.count == 1 + failures.count, "reopening a failed file reuses it")
     try await settle(retried)
-    try check(retried.statusText == "Found", "reopening retries a failed load")
+    try check(retried.documentTitle == "Found", "reopening retries a failed load")
     note("open/association/errors checked")
 
     // Reload through the menu after permission is withdrawn, then restored.
@@ -85,7 +86,7 @@ enum DocumentSmoke {
       try check(chmod(valid.path, 0o644) == 0, "restore read permission")
       try check(NSApp.sendAction(reload.action!, to: reader, from: reload), "Reload command routes")
       try await settle(reader)
-      try check(reader.statusText == "Smoke", "reload recovers the document")
+      try check(reader.documentTitle == "Smoke", "reload recovers the document")
     }
 
     // A slow document replaced before it finishes is never presented.
@@ -106,9 +107,10 @@ enum DocumentSmoke {
     try await settle(generations)
     try await waitUntil("stale result completes") { generations.loader.discardedResults == 1 }
     try check(
-      generations.statusText == "Fast" && presented == ["Fast"],
+      generations.documentTitle == "Fast" && presented == ["Fast"],
       "only the newest request is presented")
     note("reload/revocation/generations checked")
+    try await reading(delegate: delegate, file: file, check: check)
 
     for window in delegate.windows.map(\.window) { window?.performClose(nil) }
     try await waitUntil("closed documents release native sessions") {
@@ -118,8 +120,76 @@ enum DocumentSmoke {
     delegate.newWindow(nil)
   }
 
+  /// Rendered reading: outline, outline and link navigation, external links
+  /// kept in the app, the sidebar command and copy through the Edit menu.
+  private static func reading(
+    delegate: AppDelegate, file: (String, Data) throws -> URL, check: (Bool, String) throws -> Void
+  ) async throws {
+    var text = "# Guide\n\nSee [the end](#the-end) or [the site](https://example.com/).\n\n"
+    for index in 0..<200 {
+      text += "## Part \(index)\n\n- item *one*\n- item **two**\n\n```\ncode \(index)\n```\n\n"
+    }
+    text += "## The End\n\nDone.\n"
+    delegate.application(NSApp, open: [try file("guide.md", Data(text.utf8))])
+    let reader = try requireWindow(delegate.windows.last)
+    try await settle(reader)
+    let surface = reader.surface
+    let headings = reader.outline.headings
+    try check(headings.count == 202, "outline lists every heading")
+    try check(reader.outline.table.numberOfRows == 202, "outline table shows every heading")
+    try check(surface.textView.textLayoutManager != nil, "surface stays on TextKit 2")
+    try check(!surface.textView.isEditable && surface.textView.isSelectable, "read-only selectable")
+    reader.outline.table.selectRowIndexes(IndexSet(integer: 101), byExtendingSelection: false)
+    try check(surface.isVisible(headings[101].range), "outline selection reveals its heading")
+    try check(surface.textView.selectedRange() == headings[101].range, "heading is selected")
+    try check(!surface.isVisible(headings[0].range), "navigation scrolled away from the top")
+    reader.outline.table.selectRowIndexes(IndexSet(integer: 0), byExtendingSelection: false)
+    var opened: [URL] = []
+    surface.openExternal = { opened.append($0) }
+    let string = surface.textView.string as NSString
+    for (label, _) in [("the end", 0), ("the site", 1)] {
+      let range = string.range(of: label)
+      guard
+        let link = surface.textView.textStorage?.attribute(
+          .link, at: range.location, effectiveRange: nil)
+      else { throw SmokeFailure(description: "missing link \(label)") }
+      surface.textView.clicked(onLink: link, at: range.location)
+    }
+    try check(surface.isVisible(headings[201].range), "fragment link reveals its heading")
+    try check(reader.outline.table.selectedRow == 201, "outline follows link navigation")
+    try check(opened.map(\.absoluteString) == ["https://example.com/"], "external link is routed")
+
+    // Like the other menu checks, route to the window: the background smoke
+    // has no key window for a nil-targeted action.
+    let toggle = try item("View", "Show Sidebar", key: "s", modifiers: [.command, .control])
+    let split = reader.window?.contentViewController
+    try check(NSApp.sendAction(toggle.action!, to: split, from: toggle), "sidebar command routes")
+    try await waitUntil("sidebar collapses") { reader.isSidebarCollapsed }
+    try check(NSApp.sendAction(toggle.action!, to: split, from: toggle), "sidebar command routes")
+    try await waitUntil("sidebar expands") { !reader.isSidebarCollapsed }
+
+    let span = NSRange(location: 0, length: string.range(of: "Part 0").location)
+    reader.window?.makeFirstResponder(surface.textView)
+    surface.textView.setSelectedRange(span)
+    let copy = try item("Edit", "Copy", key: "c")
+    // The user's clipboard is never touched: Copy is enabled on the focused
+    // text view, which then writes its selection to a private pasteboard.
+    try check(
+      reader.window?.firstResponder === surface.textView
+        && surface.textView.responds(to: copy.action!) && surface.textView.validateMenuItem(copy),
+      "Copy is enabled for the document selection")
+    let pasteboard = NSPasteboard(name: NSPasteboard.Name("markdown-smoke-\(UUID().uuidString)"))
+    defer { pasteboard.releaseGlobally() }
+    try check(
+      surface.textView.writeSelection(
+        to: pasteboard, types: surface.textView.writablePasteboardTypes)
+        && pasteboard.string(forType: .string) == "Guide\nSee the end or the site.\n",
+      "copy writes the selected plain text")
+    note("rendering/outline/navigation/copy checked")
+  }
+
   private static func settle(_ controller: ReaderWindowController) async throws {
-    try await waitUntil("document load settles") { !controller.loader.isLoading }
+    try await waitUntil("document load and rendering settle") { !controller.isBusy }
   }
 
   private static func waitUntil(_ message: String, condition: () -> Bool) async throws {
@@ -130,9 +200,12 @@ enum DocumentSmoke {
     if !condition() { throw SmokeFailure(description: message) }
   }
 
-  private static func item(_ menu: String, _ title: String, key: String) throws -> NSMenuItem {
+  private static func item(
+    _ menu: String, _ title: String, key: String,
+    modifiers: NSEvent.ModifierFlags = .command
+  ) throws -> NSMenuItem {
     guard let item = NSApp.mainMenu?.item(withTitle: menu)?.submenu?.item(withTitle: title),
-      item.keyEquivalent == key, item.keyEquivalentModifierMask == .command, item.action != nil
+      item.keyEquivalent == key, item.keyEquivalentModifierMask == modifiers, item.action != nil
     else { throw SmokeFailure(description: "missing menu item \(menu)/\(title)") }
     return item
   }

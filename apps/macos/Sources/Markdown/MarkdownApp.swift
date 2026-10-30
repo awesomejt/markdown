@@ -145,6 +145,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
       withTitle: "Close Window", action: #selector(NSWindow.performClose(_:)), keyEquivalent: "w")
     add(file, to: bar)
 
+    let edit = NSMenu(title: "Edit")
+    edit.addItem(withTitle: "Copy", action: #selector(NSText.copy(_:)), keyEquivalent: "c")
+    edit.addItem(
+      withTitle: "Select All", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
+    add(edit, to: bar)
+
+    let view = NSMenu(title: "View")
+    let sidebar = view.addItem(
+      withTitle: "Show Sidebar", action: #selector(NSSplitViewController.toggleSidebar(_:)),
+      keyEquivalent: "s")
+    sidebar.keyEquivalentModifierMask = [.command, .control]
+    add(view, to: bar)
+
     let window = NSMenu(title: "Window")
     window.addItem(
       withTitle: "Minimize", action: #selector(NSWindow.performMiniaturize(_:)), keyEquivalent: "m")
@@ -163,103 +176,5 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let item = NSMenuItem(title: menu.title, action: nil, keyEquivalent: "")
     item.submenu = menu
     bar.addItem(item)
-  }
-}
-
-@MainActor
-final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenuItemValidation {
-  var onClose: ((ReaderWindowController) -> Void)?
-  let loader = DocumentLoader()
-  private let status = NSTextField(labelWithString: "No document open")
-  private let detail = NSTextField(wrappingLabelWithString: "")
-
-  init() {
-    let window = NSWindow(
-      contentRect: NSRect(x: 0, y: 0, width: 900, height: 640),
-      styleMask: [.titled, .closable, .miniaturizable, .resizable],
-      backing: .buffered, defer: false
-    )
-    window.title = "Markdown"
-    window.minSize = NSSize(width: 480, height: 320)
-    window.isReleasedWhenClosed = false
-    window.tabbingMode = .disallowed
-    window.center()
-
-    let content = NSView()
-    status.font = .systemFont(ofSize: 22, weight: .semibold)
-    status.textColor = .secondaryLabelColor
-    status.alignment = .center
-    status.setAccessibilityIdentifier("document-status-label")
-    detail.font = .systemFont(ofSize: 13)
-    detail.textColor = .secondaryLabelColor
-    detail.alignment = .center
-    detail.isHidden = true
-    detail.setAccessibilityIdentifier("document-detail-label")
-    let stack = NSStackView(views: [status, detail])
-    stack.orientation = .vertical
-    stack.spacing = 8
-    stack.translatesAutoresizingMaskIntoConstraints = false
-    content.addSubview(stack)
-    NSLayoutConstraint.activate([
-      stack.centerXAnchor.constraint(equalTo: content.centerXAnchor),
-      stack.centerYAnchor.constraint(equalTo: content.centerYAnchor),
-      stack.widthAnchor.constraint(lessThanOrEqualTo: content.widthAnchor, constant: -48),
-      detail.widthAnchor.constraint(lessThanOrEqualToConstant: 480),
-    ])
-    window.contentView = content
-    super.init(window: window)
-    window.delegate = self
-    loader.onChange = { [weak self] state in self?.present(state) }
-  }
-
-  required init?(coder: NSCoder) {
-    fatalError("Reader windows are constructed programmatically")
-  }
-
-  var statusText: String { status.stringValue }
-  var detailText: String { detail.stringValue }
-
-  /// Placeholder presentation until the MAC-001D renderer: names the document
-  /// and its size, or the typed error with its recovery suggestion.
-  private func present(_ state: DocumentLoader.State) {
-    switch state {
-    case .empty:
-      show("No document open", nil, title: "Markdown", url: nil)
-    case .loading(let capability):
-      show("Loading…", nil, title: capability.displayName, url: capability.url)
-    case .loaded(let loaded):
-      let document = loaded.document
-      let size = ByteCountFormatter.string(
-        fromByteCount: Int64(document.source.count), countStyle: .file)
-      show(
-        document.title ?? loaded.capability.displayName,
-        "\(document.roots.count) blocks · \(document.outline.count) headings · \(size)",
-        title: loaded.capability.displayName, url: loaded.capability.url)
-    case .failed(let capability, let error):
-      show(error.message, error.recovery, title: capability.displayName, url: nil)
-    }
-  }
-
-  private func show(_ primary: String, _ secondary: String?, title: String, url: URL?) {
-    status.stringValue = primary
-    detail.stringValue = secondary ?? ""
-    detail.isHidden = secondary == nil
-    window?.title = title
-    window?.representedURL = url
-  }
-
-  @objc func reloadDocument(_ sender: Any?) {
-    loader.reload()
-  }
-
-  func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
-    if menuItem.action == #selector(reloadDocument(_:)) { return loader.capability != nil }
-    return true
-  }
-
-  func windowWillClose(_ notification: Notification) {
-    let loader = loader
-    Task { await loader.close() }
-    onClose?(self)
   }
 }
