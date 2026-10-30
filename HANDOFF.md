@@ -1,7 +1,7 @@
 # Agent Session and Platform Handoff
 
-Updated: 2026-10-30, after CORE-003F (PR #32, D-034).
-Source baseline: `develop` after the `main` sync. Preserve intended source, lock/spec/golden
+Updated: 2026-10-29 (America/Denver), after CORE-001 (PR #33).
+Source baseline: `develop` after PR #33; validated code `29b87d4`. Preserve intended source, lock/spec/golden
 files, docs and state together. Never transfer caches, environments, build
 products, private runtime state or user documents.
 
@@ -12,7 +12,7 @@ Older per-phase handoffs and the feasibility host notes are in
 
 CORE-FIX (PRs #17 to #27) is merged into `main` through the first milestone
 review, [PR #28](https://github.com/awesomejt/markdown/pull/28), tagged
-`m-core-fix` (D-030). `main` and `develop` are in sync. Its three reviews
+`m-core-fix` (D-030). `develop` now includes the follow-up task PRs. Its three reviews
 (Claude, Grok, Codex) are in [docs/reviews/](docs/reviews/README.md); none
 found a blocking defect. The follow-ups are in
 [TODO.md](TODO.md#core-fix-milestone-follow-ups) and in state. The CORE-FIX
@@ -21,8 +21,15 @@ done list is in [the memory archive](agents/Memory-Archive.md#handoffmd-phase-ha
 - **Done:** CORE-003F (milestone M1) in PR #32, D-034: front-matter titles
   and values allow ZWNJ/ZWJ between visible characters and subdivision-flag
   tag sequences; keys, bidi controls, LRM and RLM stay rejected.
-- **Next:** CORE-001 (now also fixing the two TOOL-003 deferred findings),
-  then the CORE-002 to CORE-006 aggregates. CORE-006 also records the 8 to
+- **Done:** CORE-001 in [PR #33](https://github.com/awesomejt/markdown/pull/33):
+  shared workspace/CI acceptance, both TOOL-003 findings and both review nits.
+  Local `tools/check.py all` passed on macOS 27.0.1 with Rust 1.99.1;
+  [hosted CI](https://github.com/awesomejt/markdown/actions/runs/40991275826)
+  passed on macOS, Linux and Windows at `29b87d4`.
+  [Grok review](https://github.com/awesomejt/markdown/pull/33#pullrequestreview-5707355475)
+  at `0440908` had no serious finding; both nits were fixed at `29b87d4`,
+  exempt from re-review under step 7. No live pass or lease remains.
+- **Next:** CORE-002, then the CORE-003 to CORE-006 aggregates. CORE-006 also records the 8 to
   2 MiB content-search default change in the FFI spec. Each host's chain in
   `desktop-apps` starts after CORE-006 (D-027); do not select platform tasks
   before then.

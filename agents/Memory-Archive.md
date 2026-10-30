@@ -1075,3 +1075,11 @@ kept as a record; steps 1–3 are done.
    `docs/Platform-Capability-Evaluation.md`; its “Implications for GATE-001”
    section lists the decisions the owner must make or defer. Ask the owner to
    accept or revise GATE-001; do not accept it on the owner's behalf.
+
+## Superseded posture before CORE-001 closeout
+
+After CORE-003F (PR #32, D-034), the handoff named CORE-001 as next, including
+both TOOL-003 deferred findings from PR #23. CORE-001's shared workspace/CI
+acceptance and those findings are now closed in PR #33; CORE-002 is next.
+The earlier handoff's claim that `main` and `develop` were in sync applied to
+the milestone sync, before the subsequent task PRs on `develop`.

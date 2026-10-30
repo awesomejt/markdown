@@ -118,8 +118,12 @@ Grok review, and failing CI on `develop`.
    after creation, post that comment once.
 6. Monitor the PR until Grok's review arrives, for example by polling
    `gh pr view <PR> --json reviews,comments` every minute or two. Check
-   reviews, review comments and conversation comments, and identify Grok's
-   by its app account, not by the owner's. Record the PR URL, reviewed head
+   reviews, review comments and conversation comments. The owner confirmed on
+   2026-10-29 (PR #33) that the configured Cursor/Grok integration posts as
+   `awesomejt`, with no GitHub app identity, using the review heading
+   `🤖 Automated first-pass review by Grok Bot`. Use that confirmed attribution
+   for this integration; an ordinary owner comment is not a Grok review.
+   Record the PR URL, reviewed head
    SHA and review URL in the handoff. A trigger proves a request, not that
    Grok reviewed or approved. If nothing arrives within about 30 minutes,
    post `/grok review` once more; if that also stays silent, keep the pass

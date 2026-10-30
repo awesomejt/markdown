@@ -20,7 +20,8 @@ def new_branch_whitespace(*, cwd=None) -> None:
     excluding the branch under test.
     """
     def out(*args):
-        return subprocess.run(["git", *args], cwd=cwd, capture_output=True, text=True)
+        return subprocess.run(["git", *args], cwd=cwd, capture_output=True,
+                              text=True, encoding="utf-8", errors="surrogateescape")
 
     refs = out("for-each-ref", "--format=%(refname)", "refs/remotes/origin").stdout.split()
     pushed = f"refs/remotes/origin/{os.environ.get('GITHUB_REF_NAME', '')}"
@@ -33,12 +34,12 @@ def new_branch_whitespace(*, cwd=None) -> None:
     if not forks:
         empty = subprocess.check_output(
             ["git", "hash-object", "-w", "-t", "tree", "--stdin"], input=b"", cwd=cwd).decode().strip()
-        subprocess.run(["git", "diff", "--check", empty, "HEAD", "--"], cwd=cwd, check=True)
+        subprocess.run(["git", "diff", "--no-color", "--check", empty, "HEAD", "--"], cwd=cwd, check=True)
         return
     common = None
     for fork in sorted(forks):
         # Renames keep a moved file's lines old whatever the local Git config.
-        result = out("-c", "diff.renames=true", "diff", "--check", fork, "HEAD", "--")
+        result = out("-c", "diff.renames=true", "diff", "--no-color", "--check", fork, "HEAD", "--")
         if result.returncode not in (0, 2):
             raise subprocess.CalledProcessError(result.returncode, result.args, result.stdout, result.stderr)
         # Offending content follows each header as a "+" line; never parse it.
@@ -46,7 +47,10 @@ def new_branch_whitespace(*, cwd=None) -> None:
                  if not line.startswith("+") and (m := PROBLEM.match(line))}
         common = found if common is None else {k: v for k, v in common.items() if k in found}
     if common:
-        print("\n".join(common.values()))
+        # Keep exact surrogateescaped keys for comparison; escape bytes only
+        # when reporting paths, since stdout may reject lone surrogates.
+        diagnostic = "\n".join(common.values()).encode("utf-8", "surrogateescape")
+        print(diagnostic.decode("utf-8", "backslashreplace"))
         raise subprocess.CalledProcessError(2, ["git", "diff", "--check", "(new lines)"])
 
 
