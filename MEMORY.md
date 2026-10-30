@@ -38,7 +38,7 @@ read.
   CORE-006 documented the ABI v1 zero content-budget change from 8 to 2 MiB
   and passed fresh all-feature release CI on all three OSes. Native packages
   remain platform 001B work; each 001B sets a session memory bound. The next
-  Mac task is MAC-001E. `main` now requires the
+  Mac task is MAC-001F. `main` now requires the
   `Checks / complete` status (M4, 2026-10-29). See [HANDOFF.md](HANDOFF.md) and
   [TODO.md](TODO.md#core-fix-milestone-follow-ups). HARD-001 sits between
   DESK-001 and DESK-002.
@@ -63,7 +63,17 @@ read.
   an outline sidebar and fragment/external link navigation. Only fragment and
   core-external http/https/mailto links get a `.link`. Decode fragments with
   `url.fragment(percentEncoded: false)`, because anchors keep non-ASCII
-  letters. Tables, images and tasks are plain fallbacks until MAC-001E.
+  letters.
+- MAC-001E (PR #43): TextKit 2 stacks `NSTextTable` cells, so tables are one
+  paragraph per row with measured, aligned tab stops and a `TableRowFragment`
+  (text-layout-manager delegate) drawing the grid. Copy gives TSV. Relative
+  images go through `DocumentResources`, which keeps them in the document's
+  folder (`realpath` containment, `O_NOFOLLOW_ANY`, regular raster files up
+  to 16 MiB, no SVG; it resolves off-main). They decode off-main through
+  ImageIO: 32 Mi source pixels, 2,048 px retained side, 128 images and
+  128 MiB retained per document. Remote and denied images never reach the
+  loader. Share decoded `CGImage`s, never `NSImage`s: alt text is set on each
+  `NSImage`.
 - Workflow: task PRs target `develop` and merge on a Grok review with no
   serious finding (D-029). `main` takes only owner-approved milestone reviews
   from `review/<milestone>`, tagged `m-<milestone>` (D-030). The shared-core
