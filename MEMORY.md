@@ -38,7 +38,7 @@ read.
   CORE-006 documented the ABI v1 zero content-budget change from 8 to 2 MiB
   and passed fresh all-feature release CI on all three OSes. Native packages
   remain platform 001B work; each 001B sets a session memory bound. The next
-  Mac task is MAC-001C. `main` now requires the
+  Mac task is MAC-001D. `main` now requires the
   `Checks / complete` status (M4, 2026-10-29). See [HANDOFF.md](HANDOFF.md) and
   [TODO.md](TODO.md#core-fix-milestone-follow-ups). HARD-001 sits between
   DESK-001 and DESK-002.
@@ -49,8 +49,14 @@ read.
   Queued cancellation promptly clears owned input/admission; concurrent close
   awaits shared worker cleanup. Bundle ID: `io.github.awesomejt.markdown`.
   [Measurements](docs/macOS-Core-Integration.md) leave repeated-load RSS open
-  for MAC-001G before skeleton acceptance. MAC-001C is next: file capabilities,
-  generation-safe background loading and access errors. No reader UI yet.
+  for MAC-001G before skeleton acceptance.
+- MAC-001C (PR #41) adds the Foundation-only `MarkdownDocument` target. It
+  covers Open…/Reload, Launch Services delivery with a Viewer/Alternate
+  Markdown document type, path-free typed errors (revoked and disk-unavailable
+  are distinguished), serial coordinated bounded reads and a per-window
+  newest-request-only loader that records failed reads in the core session.
+  `NSFileCoordinator` blocks opening a FIFO, so non-regular items are rejected
+  before coordination. Not sandboxed. No renderer yet: MAC-001D is next.
 - Workflow: task PRs target `develop` and merge on a Grok review with no
   serious finding (D-029). `main` takes only owner-approved milestone reviews
   from `review/<milestone>`, tagged `m-<milestone>` (D-030). The shared-core

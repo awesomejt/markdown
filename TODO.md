@@ -33,8 +33,9 @@ The shared `portable-core` phase is complete through CORE-006 (PR #38).
 MAC-001A closed in PR #39 with the [AppKit shell](apps/macos/README.md),
 native build/check instructions and required macOS 27 debug/release CI.
 MAC-001B closed in PR #40 with the [model-v2 core package/adapter](docs/macOS-Core-Integration.md),
-release consumer tests and measured session/source bounds. MAC-001C is next
-on macOS; repeated-load RSS remains a MAC-001G acceptance gate.
+release consumer tests and measured session/source bounds. MAC-001C closed in
+PR #41 with [file open, typed access errors and generation-safe loading](apps/macos/README.md#opening-documents-mac-001c).
+MAC-001D is next on macOS; repeated-load RSS remains a MAC-001G acceptance gate.
 The shared-core milestone boundary is reached:
 Claude prepares the combined packet for the owner under D-030; only the owner
 merges that milestone into `main`.
@@ -69,7 +70,7 @@ closed in PR #37 with [search/read acceptance](docs/Core-Search-Acceptance.md)
 and explicit reference-syntax boundaries. CORE-006 closed in PR #38 with
 [facade acceptance](docs/Core-Facade-Acceptance.md), the ABI v1 default-change
 history and fresh three-OS all-feature release CI. The desktop chains are
-eligible; MAC-001A/B closed in PRs #39/#40 and MAC-001C is next on this Mac. Inspect
+eligible; MAC-001A/B/C closed in PRs #39 to #41 and MAC-001D is next on this Mac. Inspect
 state and `HANDOFF.md` before any pass. Scoped commits, pushes, PR updates and
 review requests are authorized; a Grok review with no serious finding approves
 a merge into `develop` (D-029); only the owner merges into `main` (D-030);
@@ -486,7 +487,14 @@ Low findings and nits from Grok reviews that were merged under D-029 without
 being fixed. A later pass fixes them or records why not; remove each entry
 when it is resolved.
 
-None open after CORE-001 (PR #33). The two TOOL-003 findings from PR #23,
+- **MAC-001C (PR #41, Grok review 5717458097), nit:** the window that is
+  already showing a file is found by resolved URL. A case variant on a
+  case-insensitive volume, or a hard link, opens a second window. Compare the
+  file identity (`st_dev`/`st_ino` or `fileResourceIdentifier`) along with the
+  persistent identity work for recents in MAC-002A, which avoids adding a stat
+  on the main thread for every open now.
+
+Before MAC-001C, none were open after CORE-001 (PR #33). The two TOOL-003 findings from PR #23,
 Grok review 5692910610, are resolved: forced color and non-UTF-8 problem
 content no longer cause false failures. Both PR #33 review nits are also fixed.
 
