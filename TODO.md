@@ -38,7 +38,9 @@ PR #41 with [file open, typed access errors and generation-safe loading](apps/ma
 MAC-001D closed in PR #42 with [TextKit 2 rendering, outline and navigation](apps/macos/README.md#reading-documents-mac-001d).
 MAC-001E closed in PR #43 with [tables, task lists and the image resource policy](apps/macos/README.md#tables-task-lists-and-images-mac-001e).
 MAC-001F closed in PR #44 with [find, text size and appearance](apps/macos/README.md#find-text-size-and-appearance-mac-001f).
-MAC-001G is next on macOS; repeated-load RSS remains its acceptance gate.
+MAC-001G closed in PR #45 with [large documents, copy, VoiceOver rotors and budgets](apps/macos/README.md#large-documents-and-accessibility-mac-001g);
+its fix bounds repeated-load memory, and its open budgets are [listed below](#open-native-budgets).
+MAC-001H is next on macOS.
 The shared-core milestone boundary is reached:
 Claude prepares the combined packet for the owner under D-030; only the owner
 merges that milestone into `main`.
@@ -73,7 +75,7 @@ closed in PR #37 with [search/read acceptance](docs/Core-Search-Acceptance.md)
 and explicit reference-syntax boundaries. CORE-006 closed in PR #38 with
 [facade acceptance](docs/Core-Facade-Acceptance.md), the ABI v1 default-change
 history and fresh three-OS all-feature release CI. The desktop chains are
-eligible; MAC-001A to MAC-001F closed in PRs #39 to #44 and MAC-001G is next on this Mac. Inspect
+eligible; MAC-001A to MAC-001G closed in PRs #39 to #45 and MAC-001H is next on this Mac. Inspect
 state and `HANDOFF.md` before any pass. Scoped commits, pushes, PR updates and
 review requests are authorized; a Grok review with no serious finding approves
 a merge into `develop` (D-029); only the owner merges into `main` (D-030);
@@ -499,6 +501,14 @@ when it is resolved.
   persistent identity work for recents in MAC-002A, which avoids adding a stat
   on the main thread for every open now.
 
+- **MAC-001G (PR #45, Grok review 1), nit:** a text size change while only
+  a long document's lead is shown can't restyle in place (its render is
+  still running), so it renders afresh and the new lead returns to the top,
+  losing a position the reader scrolled to within the lead (a fraction of a
+  second after opening). Keep the top line and selection when the shown
+  document is an incomplete lead of the same generation, with MAC-001H's
+  reading-position restoration.
+
 - **Hosted `macos-native` flakiness (found 2026-10-30 during PR #42), not a
   review finding:** on the `xcode-27-arm64` image 20261026.0314.1, some
   runners fail before any project code runs. When `rust-toolchain.toml` adds
@@ -516,6 +526,28 @@ when it is resolved.
 Before MAC-001C, none were open after CORE-001 (PR #33). The two TOOL-003 findings from PR #23,
 Grok review 5692910610, are resolved: forced color and non-UTF-8 problem
 content no longer cause false failures. Both PR #33 review nits are also fixed.
+
+## Open native budgets
+
+Measured budgets that a merged task left open for the owner, from
+[the MAC-001G evidence](apps/macos/README.md#mac-001g-local-evidence).
+They stay open until fixed or explicitly accepted; none is waived.
+
+- **macOS prose 5 MiB warm launch (D-016, 400 ms):** 533–573 ms to first
+  text through Launch Services. About 255 ms is AppKit start-up and about
+  215 ms the core read and parse, so meeting it needs a faster or
+  incremental core parse, or an owner revision of the target. Prose 1 MiB
+  had one of five runs at 404 ms (median 355 ms).
+- **macOS cold launches (D-012/D-016, 700 ms):** unmeasured; run
+  `apps/macos/tools/measure.py launch --cold` from an administrator account.
+- **macOS first VoiceOver line query on 5 MiB:** `accessibilityLine(for:)`
+  near the end lays out all earlier text, 3.6 s once (0.7 s for 1 MiB), and
+  the footprint then stays near 1 GiB while the document is open. Confirm
+  the effect with VoiceOver (README manual check 9) before choosing between
+  accepting it, paragraph-based accessibility lines, or a bounded
+  accessibility model.
+- **macOS mixed-scale displays and display pacing:** unmeasured; only two 2×
+  displays were available.
 
 ## Process options under consideration
 

@@ -42,6 +42,7 @@ enum CoreProbe {
         result["mode"] = mode
         result["baseline_rss"] = baseline
         result["retained_rss"] = rss()
+        result["retained_footprint"] = footprint()
         result["retained_heap"] = heap()
         let handles = try CoreRuntime.liveHandles()
         result["native_handles"] = handles.sessions + handles.jobs + handles.snapshots
@@ -63,6 +64,7 @@ enum CoreProbe {
       "call_ms": milliseconds(start, end),
       "copy_ms": result.timings.copyMilliseconds, "copied_bytes": result.document?.copiedBytes ?? 0,
       "nodes": result.document?.nodes.count ?? 0, "live_rss": rss(),
+      "live_footprint": footprint(),
     ]
     let closing = ContinuousClock.now
     try await session.close()
@@ -115,6 +117,22 @@ enum CoreProbe {
     }
     precondition(result == KERN_SUCCESS)
     return info.resident_size
+  }
+
+  /// The physical footprint the kernel charges the process for (Activity
+  /// Monitor's Memory column). Unlike `resident_size`, it excludes pages
+  /// malloc has freed and marked reusable, which the kernel can reclaim.
+  static func footprint() -> UInt64 {
+    var info = task_vm_info_data_t()
+    var count = mach_msg_type_number_t(
+      MemoryLayout<task_vm_info_data_t>.size / MemoryLayout<integer_t>.size)
+    let result = withUnsafeMutablePointer(to: &info) {
+      $0.withMemoryRebound(to: integer_t.self, capacity: Int(count)) {
+        task_info(mach_task_self_, task_flavor_t(TASK_VM_INFO), $0, &count)
+      }
+    }
+    precondition(result == KERN_SUCCESS)
+    return info.phys_footprint
   }
 
   static func peakRSS() -> Int64 {

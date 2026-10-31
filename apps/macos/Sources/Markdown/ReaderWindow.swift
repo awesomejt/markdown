@@ -37,6 +37,10 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
   /// The title of the presented document, once its text is shown.
   private(set) var documentTitle: String?
   private var shownCapability: DocumentCapability?
+  /// Development measurements observe when a load finishes, when its first
+  /// text is installed and when the whole document is shown (MAC-001G).
+  var onMilestone: ((Milestone) -> Void)?
+  enum Milestone { case loaded, installed, completed }
 
   init(preferences: ReaderPreferences) {
     self.preferences = preferences
@@ -132,6 +136,7 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
         showStatus("Loading…", nil, title: capability.displayName, url: capability.url)
       }
     case .loaded(let loaded):
+      onMilestone?(.loaded)
       render(loaded)
     case .failed(let capability, let error):
       showStatus(error.message, error.recovery, title: capability.displayName, url: nil)
@@ -139,16 +144,23 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
   }
 
   /// Build the attributed text off the main actor; only the newest request
-  /// installs its result, so a slow render never replaces newer content.
+  /// installs its result, so a slow render never replaces newer content. A
+  /// long document shows its lead first and is completed in place.
   private func render(_ loaded: LoadedDocument, restyle: Bool = false) {
     let id = renderRequest
     let document = loaded.document
     let capability = loaded.capability
     let scale = preferences.textScale
+    let lead: (@Sendable (RenderedDocument) -> Void)? =
+      restyle
+      ? nil
+      : { @Sendable [weak self] partial in
+        Task { @MainActor in self?.installLead(partial, id: id, loaded) }
+      }
     let work = Task.detached(priority: .userInitiated) {
       // Resolving the folder touches the filesystem, so it stays off the main thread.
       let images = Self.imageLoader(DocumentResources(document: capability))
-      return try DocumentRenderer.render(document, images: images, scale: scale)
+      return try DocumentRenderer.render(document, images: images, scale: scale, lead: lead)
     }
     renderTask = Task { [weak self] in
       // Cancelling the window's task (a newer state, or close) stops the render.
@@ -162,6 +174,10 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
       switch result {
       case .success(let rendered) where restyle:
         self.surface.restyle(rendered)
+      case .success(let rendered)
+      where self.surface.document?.isComplete == false
+        && self.surface.document?.generation == rendered.generation:
+        self.completeLead(rendered)
       case .success(let rendered):
         self.install(rendered, title: document.title ?? loaded.capability.displayName, loaded)
       case .failure:
@@ -190,6 +206,24 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
     }
   }
 
+  /// Show the start of a long document while the rest renders; a lead that
+  /// arrives after its render finished, or was replaced, is dropped.
+  private func installLead(_ lead: RenderedDocument, id: UInt64, _ loaded: LoadedDocument) {
+    guard id == renderRequest, renderTask != nil else { return }
+    install(lead, title: loaded.document.title ?? loaded.capability.displayName, loaded)
+  }
+
+  /// Append the rest of the document to its lead, keeping the reader's place.
+  private func completeLead(_ rendered: RenderedDocument) {
+    let row = outline.table.selectedRow
+    surface.complete(rendered)
+    outline.show(rendered.headings)
+    if row >= 0 { outline.select(row) }
+    // A search started while the lead was shown runs now.
+    if !findBar.isHidden { search(then: pendingStep) }
+    onMilestone?(.completed)
+  }
+
   private func install(_ rendered: RenderedDocument, title: String, _ loaded: LoadedDocument) {
     documentTitle = title
     shownCapability = loaded.capability
@@ -203,6 +237,8 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
     findMatches = nil
     findKey = nil
     if !findBar.isHidden { search(then: nil) }
+    onMilestone?(.installed)
+    if rendered.isComplete { onMilestone?(.completed) }
   }
 
   /// Re-render the presented document at the current text size, keeping the
@@ -378,7 +414,10 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
     findTask = nil
     findTaskKey = nil
     pendingStep = direction
-    guard let rendered = surface.document, let key = currentFindKey else { return }
+    // Find maps matches over the whole rendering, so a lead waits for it.
+    guard let rendered = surface.document, rendered.isComplete, let key = currentFindKey else {
+      return
+    }
     if key.query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
       findMatches = nil
       findKey = nil

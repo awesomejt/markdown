@@ -130,6 +130,8 @@ enum DocumentSmoke {
     var text = "# Guide\n\nSee [the end](#the-end) or [the site](https://example.com/).\n\n"
     for index in 0..<200 {
       text += "## Part \(index)\n\n- item *one*\n- item **two**\n\n```\ncode \(index)\n```\n\n"
+      // Long enough that the window shows a lead first, then completes it.
+      text += String(repeating: "Filler prose for a long document. ", count: 6) + "\n\n"
     }
     text += "## The End\n\nDone.\n"
     delegate.application(NSApp, open: [try file("guide.md", Data(text.utf8))])
@@ -138,6 +140,15 @@ enum DocumentSmoke {
     let surface = reader.surface
     let headings = reader.outline.headings
     try check(headings.count == 202, "outline lists every heading")
+    try check(surface.document?.isComplete == true, "a long document completes after its lead")
+    // VoiceOver's heading rotor reaches the last heading of the text view.
+    let rotor = surface.textView.accessibilityCustomRotors().first { $0.type == .heading }
+    let search = NSAccessibilityCustomRotor.SearchParameters()
+    search.searchDirection = .previous
+    try check(
+      rotor.flatMap { $0.itemSearchDelegate?.rotor($0, resultFor: search) }?.targetRange
+        == headings[201].range,
+      "heading rotor finds the last heading")
     try check(reader.outline.table.numberOfRows == 202, "outline table shows every heading")
     try check(surface.textView.textLayoutManager != nil, "surface stays on TextKit 2")
     try check(!surface.textView.isEditable && surface.textView.isSelectable, "read-only selectable")

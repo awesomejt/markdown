@@ -135,22 +135,50 @@ core default. These are resident process measurements; the earlier roughly
 is a different metric and is not superseded. Lowering source size reduces
 the measured per-call peak while retaining the accepted prose corpus.
 
-## Repeated-session risk remains open
+## Repeated-session memory
 
-Twenty serial new-session/parse/copy/close cycles of the same 5 MiB profile in
-one process retained 112.2 MiB RSS after cycle 1 and 1,698.1 MiB after cycle 20.
-All three native handle counts returned to zero on every cycle. Malloc
-`size_in_use` stayed about 5.1–5.2 MiB (including the input buffer), and a
-separate `leaks --atExit` run reported zero leaked bytes. This is consistent
-with the previously observed macOS allocator retention; it does not establish
-an acceptable repeated-load RSS budget. Explicit autorelease pools and moving
-destruction onto the worker did not solve it. An experimental allocator
-pressure-relief call also had no material benefit and is not shipped.
+MAC-001B measured twenty serial new-session/parse/copy/close cycles of the
+same 5 MiB profile in one process: 112.2 MiB RSS retained after cycle 1 and
+1,698.1 MiB after cycle 20, with zero native handles, malloc `size_in_use`
+near 5.2 MiB and no leak. MAC-001G found the cause and resolved it.
 
-MAC-001B meets its package/consumer and **measurement/source-bound** criteria.
-MAC-001G must resolve or explicitly obtain owner disposition of repeated-load
-memory before the native skeleton aggregate is accepted. No application-wide
-memory, renderer, VoiceOver, startup or scroll budget is claimed by this work.
+- The physical footprint (`phys_footprint`, which the probe now reports
+  beside RSS) grew the same way, so the pages were not reclaimable. `vmmap`
+  put 1.6 GiB in 245 "Malloc Large (empty)" regions: freed large blocks the
+  allocator kept resident and dirty.
+- A raw C-ABI loop without the Swift copy grew by the same ~80 MiB per
+  cycle, so the core's own allocations were responsible.
+- A minimal C program reproduces it on macOS 27.0.1: growing one buffer with
+  `realloc` to 16 MiB leaks about 8 MiB per cycle and to 64 MiB about
+  32 MiB, without bound. Fixed-size `malloc`/`free` and allocate-copy-free
+  growth plateau instead. `malloc_zone_pressure_relief` changed nothing.
+  The undocumented `MallocLargeCache=0` and `MallocSpaceEfficient=1`
+  environment settings kept retention flat (8–9 MiB) and confirmed the
+  diagnosis; they are not used.
+
+**Fix.** `markdown-ffi` installs a global allocator on Apple targets only
+(`core/crates/markdown-ffi/src/apple_alloc.rs`). It forwards every call to
+the system allocator, except that a reallocation whose old or new size
+reaches 1 MiB allocates, copies and frees. Linux and Windows are unchanged.
+Only macOS builds it (`target_os = "macos"`); iOS can adopt it after IOS-001
+measures. The macOS static library therefore defines Rust's global
+allocator: a host that linked a second Rust static library would need one
+combined Rust build.
+The probe's twenty 5 MiB cycles now retain a flat 199 MiB footprint from
+cycle 2 (54 MiB after cycle 1), the allocator's reused cache of freed large
+blocks; the awaited parse call is unchanged at about 190–200 ms. Prose
+1 MiB retains 57–58 MiB and long lines 8–9 MiB.
+
+Using `mmap` and `munmap` for blocks of 4 MiB and more was also measured: it
+retained 65 MiB but made each 5 MiB parse 15–20 ms slower and needs raw
+system calls, so it is not shipped.
+
+The whole app, which also keeps rendered text and layout, retains 227–581 MiB
+over twenty 5 MiB loads and 461–572 MiB over forty, rising slowly and
+dropping back as malloc trims (launch baseline 28 MiB). Without the wrapper
+it reached 1,838 MiB after twenty loads. See the
+[app evidence](../apps/macos/README.md#mac-001g-local-evidence). These are
+measured bounds on this host, not a numeric whole-app RSS budget.
 
 ## Reproduction and validation
 

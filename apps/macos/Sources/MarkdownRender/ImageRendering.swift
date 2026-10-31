@@ -61,6 +61,8 @@ public struct RenderedImage: Sendable, Equatable {
   /// The attachment character, or the alt-text placeholder.
   public let range: NSRange
   public let failure: ImageFailure?
+  /// The alt text, which VoiceOver's Images rotor shows.
+  public let alt: String
 }
 
 /// An image that scales down to the line width and never up, so the reading

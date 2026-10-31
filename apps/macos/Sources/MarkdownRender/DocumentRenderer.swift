@@ -54,11 +54,21 @@ public struct RenderedDocument: @unchecked Sendable {
   public let headings: [RenderedHeading]
   /// Every image in document order, loaded or shown as its alt text.
   public let images: [RenderedImage]
+  /// The UTF-16 range of each table, in document order.
+  public let tables: [NSRange]
+  /// False for a lead: the first blocks of a long document, shown while the
+  /// rest renders. Its text is a prefix of the complete rendering's, except
+  /// that only the complete text drops the final paragraph terminator.
+  public let isComplete: Bool
   /// The text size factor the document was rendered at.
   public let scale: CGFloat
   /// Where each node's display text was rendered, by node index, so core find
   /// segments map to rendered ranges.
   let nodeText: [NodeText]
+  /// Ascending UTF-16 locations of the line breaks inserted into very long
+  /// unbroken runs (`RenderStyle.hardParagraphLimit`). They are not part of
+  /// any node's display text.
+  let insertedBreaks: [Int]
 
   /// The first heading with this anchor, as GitHub resolves duplicate slugs.
   public func heading(anchor: String) -> RenderedHeading? {
@@ -74,26 +84,28 @@ public struct RenderedDocument: @unchecked Sendable {
 /// plain readable fallbacks. Raw HTML and unsupported syntax stay inert text.
 public enum DocumentRenderer {
   /// `scale` multiplies every font size and text metric (the text size
-  /// setting); images keep their pixel size.
+  /// setting); images keep their pixel size. With `lead`, a document whose
+  /// rendering passes `RenderStyle.leadLength` UTF-16 units before its last
+  /// block first passes a lead, so the window can show its start sooner.
   public static func render(
     _ document: CoreDocument, images: ImageLoader? = nil, budget: ImageBudget = ImageBudget(),
-    scale: CGFloat = 1
+    scale: CGFloat = 1, lead: (@Sendable (RenderedDocument) -> Void)? = nil
   ) throws -> RenderedDocument {
     var builder = Builder(
       document: document, images: ImageCache(loader: images, budget: budget), scale: scale)
-    for root in document.roots { try builder.block(Int(root), context: .root) }
-    builder.trimTrailingNewline()
-    var headings: [RenderedHeading] = []
-    for entry in document.outline {
-      guard let range = builder.headingRanges[Int(entry.node)] else { continue }
-      headings.append(
-        RenderedHeading(
-          level: Int(entry.level), title: try document.string(entry.title),
-          anchor: try document.string(entry.anchor), range: range))
+    var lead = lead
+    for (index, root) in document.roots.enumerated() {
+      try builder.block(Int(root), context: .root)
+      // Each root block is final once rendered, so the text so far is a prefix.
+      if let send = lead, builder.length >= RenderStyle.leadLength,
+        index < document.roots.count - 1
+      {
+        lead = nil
+        send(try builder.finish(complete: false))
+      }
     }
-    return RenderedDocument(
-      generation: document.generation, text: builder.output.copy() as! NSAttributedString,
-      headings: headings, images: builder.images, scale: scale, nodeText: builder.nodeText)
+    builder.trimTrailingNewline()
+    return try builder.finish(complete: true)
   }
 }
 
@@ -117,6 +129,17 @@ enum RenderStyle {
   static let rowPadding: CGFloat = 4
   /// Wider cells overflow their column rather than widen the whole table.
   static let maxColumnWidth: CGFloat = 360
+  /// TextKit 2 lays out and draws a whole paragraph to show any of it, so a
+  /// pathological paragraph stalls the main thread. Past this many UTF-16
+  /// units, the next space or soft break becomes a line break (both are one
+  /// UTF-8 byte and one UTF-16 unit, so find mapping is unchanged).
+  static let paragraphLimit = 16_384
+  /// A run with no space this long gets a line break inserted at a grapheme
+  /// boundary; find mapping skips these breaks.
+  static let hardParagraphLimit = 32_768
+  /// The lead of a long document: enough text to fill a large window at the
+  /// smallest text size.
+  static let leadLength = 32_768
 
   static func headingSize(_ level: Int) -> CGFloat {
     [28, 22, 18, 16, 14, 13][min(max(level, 1), 6) - 1]
@@ -185,7 +208,11 @@ private struct Builder {
   private let imageCache: ImageCache
   var headingRanges: [Int: NSRange] = [:]
   var images: [RenderedImage] = []
+  var tables: [NSRange] = []
   var nodeText: [NodeText]
+  var insertedBreaks: [Int] = []
+  /// Where the current TextKit paragraph starts in `output`.
+  private var paragraphStart = 0
   private var visited = 0
 
   init(document: CoreDocument, images: ImageCache, scale: CGFloat) {
@@ -396,6 +423,10 @@ private struct Builder {
       }
       edges.append(left + width + 2 * pad)
     }
+    if let first = rows.first, let last = rows.last {
+      // Without the last row's terminator, like a heading's range.
+      tables.append(NSRange(first.range.location..<(last.range.upperBound - 1)))
+    }
     var body = 0
     for (index, row) in rows.enumerated() {
       let style = NSMutableParagraphStyle()
@@ -454,6 +485,22 @@ private struct Builder {
     let spaced = style.mutableCopy() as! NSMutableParagraphStyle
     spaced.paragraphSpacing = pt(context.tight && context.indent > 0 ? 2 : 10)
     output.addAttribute(.paragraphStyle, value: spaced, range: last)
+  }
+
+  /// The document rendered so far, with the outline's headings it contains.
+  func finish(complete: Bool) throws -> RenderedDocument {
+    var headings: [RenderedHeading] = []
+    for entry in document.outline {
+      guard let range = headingRanges[Int(entry.node)] else { continue }
+      headings.append(
+        RenderedHeading(
+          level: Int(entry.level), title: try document.string(entry.title),
+          anchor: try document.string(entry.anchor), range: range))
+    }
+    return RenderedDocument(
+      generation: document.generation, text: output.copy() as! NSAttributedString,
+      headings: headings, images: images, tables: tables, isComplete: complete, scale: scale,
+      nodeText: nodeText, insertedBreaks: insertedBreaks)
   }
 
   mutating func trimTrailingNewline() {
@@ -584,7 +631,7 @@ private struct Builder {
       mark(index, from: start, atomic: true)
       let tip = node.flags & UInt32(MD_NODE_HAS_TITLE) != 0 ? try document.string(node.extra) : alt
       if !tip.isEmpty { output.addAttribute(.toolTip, value: tip, range: NSRange(start..<length)) }
-      images.append(RenderedImage(range: NSRange(start..<length), failure: nil))
+      images.append(RenderedImage(range: NSRange(start..<length), failure: nil, alt: alt))
     case .failure(let failure):
       var inner = font
       inner.italic = true
@@ -595,14 +642,54 @@ private struct Builder {
           start: Int32(clamping: start + 1), length: Int32(clamping: (alt as NSString).length))
       }
       output.addAttribute(.toolTip, value: failure.message, range: NSRange(start..<length))
-      images.append(RenderedImage(range: NSRange(start..<length), failure: failure))
+      images.append(RenderedImage(range: NSRange(start..<length), failure: failure, alt: alt))
     }
   }
 
-  /// `output` is a reference, so appending needs no mutation of the builder.
-  private func append(_ text: String, font: Font, color: NSColor = .labelColor) {
+  private mutating func append(_ text: String, font: Font, color: NSColor = .labelColor) {
     guard !text.isEmpty else { return }
-    output.append(NSAttributedString(string: text, attributes: cache.attributes(font, color)))
+    let units = text.utf16
+    let start = length
+    var string = text
+    if start - paragraphStart + units.count > RenderStyle.paragraphLimit {
+      string = bounded(units, at: start)
+    } else if let last = units.lastIndex(where: Self.isParagraphSeparator) {
+      paragraphStart = start + units.distance(from: units.startIndex, to: last) + 1
+    }
+    output.append(NSAttributedString(string: string, attributes: cache.attributes(font, color)))
+  }
+
+  private static func isParagraphSeparator(_ unit: UTF16.CodeUnit) -> Bool {
+    unit == 0x0A || unit == 0x0D || unit == 0x2029
+  }
+
+  /// `text`, to be appended at `start`, with line breaks that keep every
+  /// TextKit paragraph near `RenderStyle.paragraphLimit` units.
+  private mutating func bounded(_ text: String.UTF16View, at start: Int) -> String {
+    let source = Array(text)
+    let string = NSString(characters: source, length: source.count)
+    var units: [UTF16.CodeUnit] = []
+    units.reserveCapacity(source.count + source.count / RenderStyle.hardParagraphLimit + 1)
+    var run = start - paragraphStart
+    for (index, unit) in source.enumerated() {
+      if Self.isParagraphSeparator(unit) {
+        run = 0
+      } else if unit == 0x20 && run >= RenderStyle.paragraphLimit {
+        units.append(0x0A)
+        run = 0
+        continue
+      } else if run >= RenderStyle.hardParagraphLimit
+        && string.rangeOfComposedCharacterSequence(at: index).location == index
+      {
+        insertedBreaks.append(start + units.count)
+        units.append(0x0A)
+        run = 0
+      }
+      units.append(unit)
+      run += 1
+    }
+    paragraphStart = start + units.count - run
+    return String(utf16CodeUnits: units, count: units.count)
   }
 
   private static func alertLabel(_ value: UInt32) -> String {
