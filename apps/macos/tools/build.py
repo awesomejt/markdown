@@ -6,6 +6,7 @@ from pathlib import Path
 import shutil
 import subprocess
 
+from licenses import write_notices
 from package_core import prepare_core
 
 APP_ROOT = Path(__file__).resolve().parents[1]
@@ -31,7 +32,26 @@ def build(configuration: str, *, prepared: bool = False) -> Path:
     shutil.copy2(binary_dir / "Markdown", executable_dir / "Markdown")
     shutil.copy2(APP_ROOT / "Info.plist", app / "Contents" / "Info.plist")
     subprocess.run(["plutil", "-lint", str(app / "Contents" / "Info.plist")], check=True)
+    resources = app / "Contents" / "Resources"
+    write_notices(resources)
+    (resources / "BuildInfo.json").write_text(json.dumps(build_info(configuration, manifest), indent=2) + "\n")
     return app
+
+
+def build_info(configuration: str, manifest: dict) -> dict:
+    """What built this bundle: versions and hashes only, never a path."""
+    def output(*command: str) -> str:
+        return subprocess.check_output(command, cwd=REPO_ROOT, text=True,
+                                       stderr=subprocess.DEVNULL).strip()
+
+    dirty = bool(output("git", "status", "--porcelain"))
+    return {"configuration": configuration, "source_commit": manifest["source_commit"],
+            "source_dirty": dirty, "target": manifest["target"],
+            "minimum_macos": manifest["minimum_macos"], "rustc": manifest["rustc"],
+            "swift": output("swift", "--version").splitlines()[0],
+            "xcode": " ".join(output("xcodebuild", "-version").split()),
+            "core_library_sha256": manifest["libraries"][configuration]["sha256"],
+            "signed": False}
 
 
 if __name__ == "__main__":
