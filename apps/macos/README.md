@@ -63,9 +63,11 @@ document flow:
   (one running, one queued); a load waits up to 30 seconds for a slot.
   Reload after a failed session creation retries the whole open.
 
-Folder grants, recents, security-scoped bookmarks and external-change
-watching remain MAC-002A and MAC-001H work. Images beside the document are
-read under the [resource policy](#tables-task-lists-and-images-mac-001e).
+Folder grants, recents and security-scoped bookmarks remain MAC-002A work.
+External changes and relaunch restoration are described in
+[External refresh and restoration](#external-refresh-and-restoration-mac-001h).
+Images beside the document are read under the
+[resource policy](#tables-task-lists-and-images-mac-001e).
 
 ## Reading documents (MAC-001D)
 
@@ -108,7 +110,8 @@ Find, text size and appearance are described in
 [a later section](#find-text-size-and-appearance-mac-001f), and large
 documents, VoiceOver rotors and budgets in
 [Large documents and accessibility](#large-documents-and-accessibility-mac-001g).
-Reading-position restoration remains MAC-001H work.
+Reading-position restoration is described in
+[External refresh and restoration](#external-refresh-and-restoration-mac-001h).
 
 ## Tables, task lists and images (MAC-001E)
 
@@ -161,7 +164,9 @@ Reading-position restoration remains MAC-001H work.
 
   This build is not sandboxed. A sandboxed build's single-file grant does not
   cover sibling images (capability matrix CAP-04), so it would need the
-  folder grant from MAC-002A. Images are read again on every reload.
+  folder grant from MAC-002A. Images are read again whenever the document
+  is rendered again: on Reload, or when an external change alters its
+  text. A change to an image file alone is not detected.
 
 ## Find, text size and appearance (MAC-001F)
 
@@ -272,6 +277,78 @@ window.
 Limits: the first VoiceOver line query near the end of a 5 MiB document
 lays out all the text before it (see the evidence below). Cold-cache launch
 measurements need an administrator for `purge` and were not run.
+
+## External refresh and restoration (MAC-001H)
+
+- **Watching.** Each window watches its document with a kqueue vnode source
+  (`DocumentWatcher` in `MarkdownDocument`). The descriptor uses
+  `O_EVTONLY`, so watching never stops a disk from being ejected. A write,
+  growth, rename, deletion or revocation reports a change. After a rename
+  or deletion the watcher re-arms on the path: an editor's atomic save
+  replaces the file, so the new file is watched; if nothing is there it
+  watches the folder and reports when the path comes back. Bursts within
+  100 ms are coalesced into one report. When a window becomes key, the app
+  also compares the file's revision token (device, inode, size and
+  modification time, from one `stat` off the main thread), for changes a
+  network volume may not report. Changes to images, and permission changes
+  alone, are not watched.
+- **The core decides whether to read.** A report hands the file's current
+  token to the core session (`md_session_external_change`). It answers
+  *unchanged* (the bytes it already has), *pending* (the read in flight has
+  it) or *read required*, and only then is the file read again. A report
+  that arrives during a load is checked when the load finishes, so a burst
+  of saves ends on the last one and an older revision is never shown after
+  a newer one.
+- **Refreshing in place.** The new revision loads in the background while
+  the window keeps showing the current one, with no loading state. Bytes
+  identical to the shown revision (a `touch`, or a file restored after
+  deletion) are not parsed, copied or rendered again. A long document waits
+  for its whole rendering instead of showing its lead, since the reader's
+  place may lie past it.
+- **Keeping the reader's place.** The line at the top of the view and the
+  selection are mapped to source offsets in the shown revision and stored
+  as core block anchors (content fingerprint, neighbours, offset within the
+  block; [session contract](../../specs/session/README.md#node-identity-and-anchors)).
+  They are resolved in the new revision and mapped back to its rendered
+  text, so text added or removed above keeps the same line at the top,
+  an edited paragraph keeps the reader on it, and the selection follows its
+  words. Reload (Command-R) does the same. Anchoring a position in the 5 MiB
+  prose profile and resolving it in an edited revision takes about 85 ms,
+  off the main thread. Each copied document keeps its core snapshot handle
+  for this; the session holds the same snapshot while it is published, so
+  this adds no memory until a newer revision replaces it.
+- **Stale documents.** If a refresh fails because the file was deleted,
+  moved, became unreadable or is no longer valid UTF-8, the window keeps the
+  version it last read and shows a notice below it with the reason and a
+  Reload button. VoiceOver announces the notice. The core session records a
+  deletion or an unreadable file, as for a failed reload. The notice goes
+  away by itself when the file comes back. Choosing Reload, or opening the
+  file again, tries to read it and shows the error in the window if it
+  still fails. A file missing when it was opened loads by itself once it
+  appears.
+- **Relaunch.** Reader windows use AppKit state restoration. Each saves a
+  bookmark to its document (which also finds the file after a move or
+  rename on the same volume), its reading position as anchors, and whether
+  its sidebar is shown; AppKit saves the frame. The position is saved half
+  a second after the reader stops scrolling or selecting. On relaunch the
+  document reopens at that line with that selection. A document whose
+  bookmark no longer resolves, or one whose load had failed, is not
+  restored. Bookmarks are resolved without mounting a volume, so a
+  disconnected server never stalls the launch. Restoration follows the
+  system setting “Close windows when quitting an application”: with it on
+  (the default), windows come back after a restart or a crash, not after
+  Quit. Saved state is private document-derived data; it is never logged.
+  This build is not sandboxed, so its bookmarks are not security-scoped
+  (MAC-002A).
+- **Text size during a lead.** A text size change while a long document is
+  still showing its lead now keeps the line at the top and the selection
+  (the MAC-001G deferred finding); the new size waits for the whole text.
+
+Limits: a move or rename of an open document is reported as the file not
+being found, as before; its window does not follow the file (a relaunch
+does, through the bookmark). Change detection on network volumes is
+unverified (capability matrix CAP-06). A refresh briefly holds both
+revisions; see the evidence below.
 
 ## Build and launch
 
@@ -401,7 +478,41 @@ subfolders, `./`/`../` within the folder, literal `%` names, escaping `../`,
 escaping and in-folder symlinks, absolute paths, missing files, SVG and
 non-image types, folders, FIFOs, the size limit and denied permission.
 `MarkdownDocumentTests` cover the same reader and loader directly, plus a FIFO,
-an exact-bound file, cancellation and a real detached disk image (`hdiutil`). Menu actions routed directly to a window do not
+an exact-bound file, cancellation and a real detached disk image (`hdiutil`).
+
+MAC-001H adds: `MarkdownCoreTests` anchor round trips across an insertion,
+an old snapshot still resolving after the session moved on, forged
+anchors, an emptied document, change-notice dispositions, unchanged
+refreshes without a copy, and documents releasing their snapshot handles.
+`MarkdownDocumentTests` drive a real watcher through a write, an atomic
+save (followed to the new file), an append, deletion, unrelated folder
+changes, reappearance, a coalesced burst and cancellation, and the loader
+through an external write (with no loading state), a newer modification
+time with identical bytes (no new snapshot), an unchanged check (no read),
+deletion (stale, with the session's recorded deletion), the same bytes
+returning, ten rapid atomic saves (the last one shown, never out of order),
+an invalid save (stale, then Reload's error) and a missing file that loads
+once it appears. `ReadingPositionTests` map rendered locations to source
+offsets and back through non-ASCII text, inline markup, code spans and
+blocks and list markers; resolve saved positions across an insertion, an
+edited paragraph and an emptied document; check the line (not just the
+paragraph) at the top of a real TextKit 2 view across a reload; and time
+anchoring on the generated profiles. The smoke's MAC-001H part keeps a
+reader's place (a heading at the top, a word selected) across an external
+atomic save that inserts text above, a deletion (notice shown, text kept,
+deletion recorded), the file's return (notice cleared, nothing re-rendered)
+and Reload; it then encodes the window's restorable state into a private
+archive, closes the window, restores it from the archive at the same place
+and selection, and checks that a second restore, another state version, a
+deleted document and unreadable anchors are handled. Finally `check.py`
+runs a real relaunch: the bundle is launched with
+`--relaunch-check prepare` and `-NSQuitAlwaysKeepsWindows YES`, places the
+reader and quits, then relaunched with `--relaunch-check verify`, which
+expects AppKit to restore that window at that place and selection. The
+verify run closes its windows, so the app's saved state is left empty. The
+smoke and measurements never restore or save windows.
+
+Menu actions routed directly to a window do not
 prove physical keyboard/responder-chain interaction; perform the manual check
 below as well. This is shell and basic-reading acceptance, not heading-role,
 screen-reader, startup-to-presented-content, RSS or distribution acceptance.
@@ -461,10 +572,19 @@ be cancelled and its runner configuration fixed.
    Copy and paste into TextEdit; the text, its styling and images arrive.
    Copy again, close the window and paste; then copy, quit Markdown and
    paste, and record whether the styled text still arrives after quitting.
+10. Open a long Markdown file, scroll to the middle and select a word. Edit
+    the file in another editor (TextEdit, or `vim`, which saves by
+    replacing the file) and save: the change appears without moving the
+    text or the selection. Add lines near the top and save again. Delete
+    the file in Finder and read the notice; restore it from the Trash and
+    confirm the notice goes away. Turn off System Settings → Desktop & Dock
+    → “Close windows when quitting an application”, quit Markdown with the
+    window open and relaunch: the window returns at the same place. Move
+    the file while Markdown is not running and relaunch again.
 
 Inspect the empty-state text/window/menu roles using macOS accessibility
-tooling. Full VoiceOver document reading, large documents, mixed displays,
-state restoration and permission recovery remain later native checks. Do not
+tooling. Full VoiceOver document reading, mixed displays and permission
+recovery remain later native checks. Do not
 toggle VoiceOver or change user accessibility preferences as part of this smoke.
 
 ## Measurements
@@ -479,6 +599,7 @@ release app and run `tools/check.py` (or
 .build/feas004-venv/bin/python apps/macos/tools/measure.py launch --cold   # needs sudo purge
 .build/feas004-venv/bin/python apps/macos/tools/measure.py repeated --count 20
 .build/feas004-venv/bin/python apps/macos/tools/measure.py interaction
+.build/feas004-venv/bin/python apps/macos/tools/measure.py refresh --count 10
 ```
 
 - `launch` opens the document through Launch Services (`open -n -a`), as
@@ -496,6 +617,11 @@ release app and run `tools/check.py` (or
   drawing per step, not display pacing), Select All and Copy to a private
   pasteboard, a text size change and the accessibility queries VoiceOver
   makes.
+- `refresh` puts the middle heading at the top, then saves a temporary copy
+  of the profile from outside (an atomic save, alternating two revisions
+  that differ by a paragraph at the top). It reports the time from each
+  save to the presented frame of the new revision, whether the heading
+  stayed at the top and the footprint after each refresh.
 
 Rows hold counts, times and memory only, never text or paths. Settings stay
 in memory and the user's clipboard is never touched.
@@ -646,3 +772,34 @@ for line numbers while reading, so this first pause and memory remain open
 for owner disposition with a real VoiceOver check (manual check 9). Display
 pacing, mixed-scale displays and VoiceOver speech were not measured by the
 agent.
+
+## MAC-001H local evidence
+
+Checked on 2026-10-31 on the same Mac (Apple M5 Max, macOS 27.0.1 build
+26A434, Xcode 27.1, Swift 6.4, Rust 1.99.1). `tools/check.py` passed in
+debug and release: 30 render, 11 document and 13 core tests, both bundle
+smokes with the refresh and restoration parts, both real relaunch checks
+and the relocated release consumer.
+
+External refreshes (`measure.py refresh --count 10`, release, middle
+heading at the top; ms from the save to the presented frame of the new
+revision, min/median/max; footprint in MiB):
+
+| Profile | Refresh | Place kept | Footprint before → after 10 refreshes |
+| --- | ---: | --- | --- |
+| Prose 1 MiB | 300 / 310 / 324 | 10 of 10 | 288 → 348–410 |
+| Prose 5 MiB | 1,033 / 1,050 / 1,067 | 10 of 10 | 531 → 887–1,043 |
+| Long lines 1 MiB | 150 / 167 / 167 | 10 of 10 | 239 → 253–267 |
+
+A refresh reads, parses and renders the whole new revision off the main
+thread (for 5 MiB, about 215 ms of read and parse and 600 ms of rendering),
+while the window keeps showing the old one. In the 5 MiB profile, saving
+the anchors took about 42 ms and resolving them about 45 ms, off the main
+thread (`ReadingPositionTests`, release). The footprint rises over the first two
+or three refreshes and then stays flat: for a moment both revisions'
+models, renderings and layouts are alive, and the system allocator keeps
+the freed blocks for reuse, as with repeated loads (MAC-001G). It is not
+growing, but a 5 MiB document can stay near 1 GiB after it has been
+refreshed; see [TODO.md](../../TODO.md#open-native-budgets). Manual check 10
+was not performed by the agent; the smoke and relaunch check cover the same
+paths with synthetic files.
