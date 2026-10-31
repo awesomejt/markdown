@@ -14,7 +14,9 @@ enum MarkdownApp {
       exit(EXIT_FAILURE)
     }
     let app = NSApplication.shared
-    let delegate = AppDelegate(smokeTest: CommandLine.arguments.contains("--smoke-test"))
+    let delegate = AppDelegate(
+      smokeTest: CommandLine.arguments.contains("--smoke-test"),
+      measurement: Measurement.Mode(arguments: CommandLine.arguments))
     app.setActivationPolicy(.regular)
     app.delegate = delegate
     app.run()
@@ -26,14 +28,16 @@ enum MarkdownApp {
 final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
   private(set) var windows: [ReaderWindowController] = []
   private let smokeTest: Bool
+  private let measurement: Measurement.Mode?
   let preferences: ReaderPreferences
   private(set) var settings: SettingsWindowController?
 
-  init(smokeTest: Bool) {
+  init(smokeTest: Bool, measurement: Measurement.Mode? = nil) {
     self.smokeTest = smokeTest
-    // The smoke never reads or writes the user's settings.
+    self.measurement = measurement
+    // The smoke and measurements never read or write the user's settings.
     preferences = ReaderPreferences(
-      store: smokeTest ? MemoryPreferenceStore() : UserDefaults.standard)
+      store: smokeTest || measurement != nil ? MemoryPreferenceStore() : UserDefaults.standard)
     appliedScale = preferences.textScale
     super.init()
     preferences.onChange = { [weak self] in self?.preferencesChanged() }
@@ -96,9 +100,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
   }
 
   func applicationDidFinishLaunching(_ notification: Notification) {
+    if measurement?.opensAtLaunch == true,
+      let url = Measurement.documentArgument(CommandLine.arguments)
+    {
+      open([url])
+    }
     // Documents delivered at launch (Finder, `open`) already created windows.
     if windows.isEmpty { newWindow(nil) }
     NSApp.activate()
+    if let measurement {
+      Task { await Measurement.run(measurement, delegate: self) }
+    }
     if smokeTest {
       // Exercise the running AppKit application, not just its constructors.
       DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [self] in
@@ -158,7 +170,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
   }
 
   @discardableResult
-  private func makeWindow(_ sender: Any?) -> ReaderWindowController {
+  func makeWindow(_ sender: Any?) -> ReaderWindowController {
     let controller = ReaderWindowController(preferences: preferences)
     controller.onClose = { [weak self] closed in
       self?.windows.removeAll { $0 === closed }
