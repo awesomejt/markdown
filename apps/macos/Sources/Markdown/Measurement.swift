@@ -20,8 +20,13 @@ enum Measurement {
     /// Off-screen jumps, scrolling, Select All and Copy, a text size change
     /// and accessibility queries on the document delivered at launch.
     case interaction
+    /// Save the document delivered at launch `count` times from outside,
+    /// alternating two revisions, reporting how long each refresh takes to
+    /// show, whether the reader's place was kept and the footprint (MAC-001H).
+    /// The tool passes a temporary copy, which this mode overwrites.
+    case refresh(Int)
 
-    /// `--measure launch|interaction|repeated=N`, optionally followed by a
+    /// `--measure launch|interaction|repeated=N|refresh=N`, optionally followed by a
     /// document path (Launch Services can deliver the document instead).
     init?(arguments: [String]) {
       guard let flag = arguments.firstIndex(of: "--measure"), arguments.count > flag + 1 else {
@@ -34,6 +39,8 @@ enum Measurement {
         self = .interaction
       } else if value.hasPrefix("repeated="), let count = Int(value.dropFirst(9)), count > 0 {
         self = .repeated(count)
+      } else if value.hasPrefix("refresh="), let count = Int(value.dropFirst(8)), count > 0 {
+        self = .refresh(count)
       } else {
         return nil
       }
@@ -60,6 +67,7 @@ enum Measurement {
       case .launch: try await launch(delegate)
       case .repeated(let count): try await repeated(count, delegate)
       case .interaction: try await interaction(delegate)
+      case .refresh(let count): try await refresh(count, delegate)
       }
       NSApp.terminate(nil)
     } catch {
@@ -113,6 +121,49 @@ enum Measurement {
       try await Task.sleep(for: .milliseconds(200))
       row["baseline_footprint_mib"] = mebibytes(baseline)
       row["retained_footprint_mib"] = mebibytes(footprint())
+      emit(row)
+    }
+  }
+
+  private static func refresh(_ count: Int, _ delegate: AppDelegate) async throws {
+    guard let url = documentArgument(CommandLine.arguments) else {
+      throw Failure(description: "refresh mode needs a document path")
+    }
+    let window = try launchWindow(delegate)
+    _ = try await present(window) { _ in }
+    try await complete(window)
+    let surface = window.surface
+    let original = try Data(contentsOf: url)
+    // The other revision adds a paragraph above, dropping the last line so a
+    // 5 MiB document stays within the host bound.
+    guard let cut = original[..<max(original.count - 64, 0)].lastIndex(of: 0x0A) else {
+      throw Failure(description: "document too short")
+    }
+    let edited = Data("Refreshed from outside.\n\n".utf8) + original[..<cut]
+    guard let document = surface.document, !document.headings.isEmpty else {
+      throw Failure(description: "refresh needs a document with headings")
+    }
+    // The added paragraph comes before every heading, so the index holds;
+    // generated profiles repeat one heading title.
+    let middle = document.headings.count / 2
+    surface.reveal(heading: middle)
+    let baseline = footprint()
+    for iteration in 1...count {
+      let generation = surface.document?.generation
+      let start = ContinuousClock.now
+      try (iteration % 2 == 1 ? edited : original).write(to: url, options: .atomic)
+      try await waitUntil("refresh is shown") {
+        surface.document?.generation != generation && !window.isBusy
+      }
+      // To the presented frame that shows the new revision.
+      _ = await frame(of: surface.textView) { true }
+      let heading = surface.document?.headings[middle]
+      var row = describe(window)
+      row["iteration"] = iteration
+      row["refresh_ms"] = milliseconds(start.duration(to: .now))
+      row["kept_place"] = heading.map { abs(surface.topLocation() - $0.range.location) <= 1 }
+      row["baseline_footprint_mib"] = mebibytes(baseline)
+      row["footprint_mib"] = mebibytes(footprint())
       emit(row)
     }
   }
