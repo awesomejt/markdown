@@ -37,7 +37,8 @@ release consumer tests and measured session/source bounds. MAC-001C closed in
 PR #41 with [file open, typed access errors and generation-safe loading](apps/macos/README.md#opening-documents-mac-001c).
 MAC-001D closed in PR #42 with [TextKit 2 rendering, outline and navigation](apps/macos/README.md#reading-documents-mac-001d).
 MAC-001E closed in PR #43 with [tables, task lists and the image resource policy](apps/macos/README.md#tables-task-lists-and-images-mac-001e).
-MAC-001F is next on macOS; repeated-load RSS remains a MAC-001G acceptance gate.
+MAC-001F closed in PR #44 with [find, text size and appearance](apps/macos/README.md#find-text-size-and-appearance-mac-001f).
+MAC-001G is next on macOS; repeated-load RSS remains its acceptance gate.
 The shared-core milestone boundary is reached:
 Claude prepares the combined packet for the owner under D-030; only the owner
 merges that milestone into `main`.
@@ -72,7 +73,7 @@ closed in PR #37 with [search/read acceptance](docs/Core-Search-Acceptance.md)
 and explicit reference-syntax boundaries. CORE-006 closed in PR #38 with
 [facade acceptance](docs/Core-Facade-Acceptance.md), the ABI v1 default-change
 history and fresh three-OS all-feature release CI. The desktop chains are
-eligible; MAC-001A to MAC-001E closed in PRs #39 to #43 and MAC-001F is next on this Mac. Inspect
+eligible; MAC-001A to MAC-001F closed in PRs #39 to #44 and MAC-001G is next on this Mac. Inspect
 state and `HANDOFF.md` before any pass. Scoped commits, pushes, PR updates and
 review requests are authorized; a Grok review with no serious finding approves
 a merge into `develop` (D-029); only the owner merges into `main` (D-030);
@@ -358,7 +359,9 @@ Not in CORE-FIX, kept where they belong:
   retained-RSS cost for one document and for repeated documents on its host,
   and on Windows makes the MSVC C smoke a required CI step. If 001F measures
   real latency from the search calls that can't be cancelled (F4), add
-  cancellable variants under D-022.
+  cancellable variants under D-022. MAC-001F measured 46–56 ms for a release
+  find over the 5 MiB prose profile, run off the main thread, so macOS needs
+  none; WIN-001F and LNX-001F measure their own hosts.
 - **HARD-001 — Release hardening (F7, G6, C7).** Follows DESK-001 and blocks
   DESK-002. Coverage-guided fuzzing of the parser, the model decoder and the
   safe FFI inputs (with valid backing buffers), sanitizer runs where

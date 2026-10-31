@@ -64,6 +64,22 @@ across concurrent close callers; deinit schedules a fallback cleanup. Callers
 should explicitly await close. MAC-001C still owns permission checks, bounded
 reads, latest-request UI ordering and ignoring results for closed windows.
 
+MAC-001F adds `CoreSession.find`, which calls `md_snapshot_find`
+(CORE-005A2) on the same serial worker, after any queued parse, over a new
+`md_session_current` handle that it releases before returning. Only that
+worker publishes snapshots, so checking the published generation from
+`md_session_get_status` under the session lock, before taking the handle,
+guarantees that node indices belong to the snapshot the window rendered. Any
+other generation fails with `CoreError.superseded`. Find takes no admission
+slot: it holds only its query (at most 4,096 bytes, otherwise
+`CoreError.queryTooLong`) and caller-owned result arrays sized from
+`max_matches`. At the default 10,000 matches those are 240 KiB of matches and
+480 KiB of segments, with one retry when matches span more nodes. A find
+cancelled before the worker reaches it never calls the core. A running call
+cannot be interrupted, so callers drop superseded results. Results are owned
+Swift values whose segment ranges are UTF-8 offsets into node display text;
+`MarkdownRender` maps them to TextKit ranges.
+
 ## Host limits and measured costs
 
 Selected host policy:

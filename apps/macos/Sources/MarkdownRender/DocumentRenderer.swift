@@ -54,6 +54,11 @@ public struct RenderedDocument: @unchecked Sendable {
   public let headings: [RenderedHeading]
   /// Every image in document order, loaded or shown as its alt text.
   public let images: [RenderedImage]
+  /// The text size factor the document was rendered at.
+  public let scale: CGFloat
+  /// Where each node's display text was rendered, by node index, so core find
+  /// segments map to rendered ranges.
+  let nodeText: [NodeText]
 
   /// The first heading with this anchor, as GitHub resolves duplicate slugs.
   public func heading(anchor: String) -> RenderedHeading? {
@@ -68,10 +73,14 @@ public struct RenderedDocument: @unchecked Sendable {
 /// or denied targets, an image shows its alt text. Alerts and footnotes get
 /// plain readable fallbacks. Raw HTML and unsupported syntax stay inert text.
 public enum DocumentRenderer {
+  /// `scale` multiplies every font size and text metric (the text size
+  /// setting); images keep their pixel size.
   public static func render(
-    _ document: CoreDocument, images: ImageLoader? = nil, budget: ImageBudget = ImageBudget()
+    _ document: CoreDocument, images: ImageLoader? = nil, budget: ImageBudget = ImageBudget(),
+    scale: CGFloat = 1
   ) throws -> RenderedDocument {
-    var builder = Builder(document: document, images: ImageCache(loader: images, budget: budget))
+    var builder = Builder(
+      document: document, images: ImageCache(loader: images, budget: budget), scale: scale)
     for root in document.roots { try builder.block(Int(root), context: .root) }
     builder.trimTrailingNewline()
     var headings: [RenderedHeading] = []
@@ -84,8 +93,17 @@ public enum DocumentRenderer {
     }
     return RenderedDocument(
       generation: document.generation, text: builder.output.copy() as! NSAttributedString,
-      headings: headings, images: builder.images)
+      headings: headings, images: builder.images, scale: scale, nodeText: builder.nodeText)
   }
+}
+
+/// A node's display text in the rendered string: a UTF-16 start and length.
+/// An atomic node (a break, an image attachment) has no display text of its
+/// own, so any part of it covers the whole range.
+struct NodeText: Sendable {
+  var start: Int32 = -1
+  var length: Int32 = 0
+  var atomic = false
 }
 
 /// Fonts and colours. Dynamic system colours follow the window's appearance
@@ -122,8 +140,11 @@ private struct Font: Hashable {
   var code = false
   var size = RenderStyle.bodySize
 
-  var font: NSFont {
-    if code { return .monospacedSystemFont(ofSize: size - 1, weight: bold ? .bold : .regular) }
+  func font(scale: CGFloat) -> NSFont {
+    if code {
+      return .monospacedSystemFont(ofSize: (size - 1) * scale, weight: bold ? .bold : .regular)
+    }
+    let size = size * scale
     var traits: NSFontDescriptor.SymbolicTraits = []
     if bold { traits.insert(.bold) }
     if italic { traits.insert(.italic) }
@@ -141,11 +162,16 @@ private final class AttributeCache {
     let color: NSColor
   }
   private var values: [Key: [NSAttributedString.Key: Any]] = [:]
+  private let scale: CGFloat
+
+  init(scale: CGFloat) { self.scale = scale }
 
   func attributes(_ font: Font, _ color: NSColor) -> [NSAttributedString.Key: Any] {
     let key = Key(font: font, color: color)
     if let cached = values[key] { return cached }
-    let value: [NSAttributedString.Key: Any] = [.font: font.font, .foregroundColor: color]
+    let value: [NSAttributedString.Key: Any] = [
+      .font: font.font(scale: scale), .foregroundColor: color,
+    ]
     values[key] = value
     return value
   }
@@ -154,18 +180,33 @@ private final class AttributeCache {
 private struct Builder {
   let document: CoreDocument
   let output = NSMutableAttributedString()
-  private let cache = AttributeCache()
+  let scale: CGFloat
+  private let cache: AttributeCache
   private let imageCache: ImageCache
   var headingRanges: [Int: NSRange] = [:]
   var images: [RenderedImage] = []
+  var nodeText: [NodeText]
   private var visited = 0
 
-  init(document: CoreDocument, images: ImageCache) {
+  init(document: CoreDocument, images: ImageCache, scale: CGFloat) {
     self.document = document
+    self.scale = scale
+    cache = AttributeCache(scale: scale)
     imageCache = images
+    nodeText = Array(repeating: NodeText(), count: document.nodes.count)
   }
 
   var length: Int { output.length }
+
+  /// A text metric at the rendering scale.
+  func pt(_ value: CGFloat) -> CGFloat { value * scale }
+
+  /// Record that node `index` rendered its display text from `start` to here.
+  mutating func mark(_ index: Int, from start: Int, atomic: Bool = false) {
+    guard nodeText.indices.contains(index), length > start else { return }
+    nodeText[index] = NodeText(
+      start: Int32(clamping: start), length: Int32(clamping: length - start), atomic: atomic)
+  }
 
   private func node(_ index: Int) throws -> md_node {
     guard document.nodes.indices.contains(index) else { throw CoreError.invalidSnapshot }
@@ -205,7 +246,7 @@ private struct Builder {
     case MD_NODE_HEADING:
       let level = Int(node.value)
       var start = length
-      try paragraph(context, spacingBefore: level <= 2 ? 10 : 6) { builder in
+      try paragraph(context, spacingBefore: pt(level <= 2 ? 10 : 6)) { builder in
         // After any list or footnote marker, so the range is the heading text.
         start = builder.length
         try builder.inlines(of: node, font: Font(bold: true, size: RenderStyle.headingSize(level)))
@@ -213,7 +254,7 @@ private struct Builder {
       headingRanges[index] = NSRange(location: start, length: max(length - 1 - start, 0))
     case MD_NODE_BLOCK_QUOTE, MD_NODE_ALERT:
       var inner = context
-      inner.indent += RenderStyle.indent
+      inner.indent += pt(RenderStyle.indent)
       inner.quoted = true
       if Int(node.kind) == MD_NODE_ALERT {
         try paragraph(inner) { builder in
@@ -230,7 +271,7 @@ private struct Builder {
       // Items are rendered by `list`; a stray item renders its blocks.
       for child in try children(node) { try block(child, context: context) }
     case MD_NODE_CODE_BLOCK:
-      try codeBlock(node, context: context)
+      try codeBlock(node, index: index, context: context)
     case MD_NODE_THEMATIC_BREAK:
       try paragraph(context, alignment: .center) { builder in
         builder.append("* * *", font: Font(), color: .tertiaryLabelColor)
@@ -243,16 +284,19 @@ private struct Builder {
       for child in try children(node) {
         var inner = context
         if first { inner.marker = "[\(label)]" }
-        inner.indent += RenderStyle.indent
+        inner.indent += pt(RenderStyle.indent)
         first = false
         try block(child, context: inner)
       }
     default:
       // Unsupported blocks (raw HTML, disabled extensions) stay inert source text.
+      // Find segments index the source slice, so only line endings are trimmed.
+      var text = source(node)
+      while text.last?.isNewline == true { text.removeLast() }
       try paragraph(context) { builder in
-        builder.append(
-          builder.source(node).trimmingCharacters(in: .newlines), font: Font(code: true),
-          color: .secondaryLabelColor)
+        let start = builder.length
+        builder.append(text, font: Font(code: true), color: .secondaryLabelColor)
+        builder.mark(index, from: start)
       }
     }
   }
@@ -263,7 +307,7 @@ private struct Builder {
     for itemIndex in try children(node) {
       let item = try self.node(itemIndex)
       var inner = context
-      inner.indent += RenderStyle.indent
+      inner.indent += pt(RenderStyle.indent)
       inner.tight = node.flags & UInt32(MD_NODE_TIGHT) != 0
       inner.marker = ordered ? "\(number)." : "•"
       inner.markerColor = .labelColor
@@ -289,17 +333,19 @@ private struct Builder {
       if let style = output.attribute(.paragraphStyle, at: last.location, effectiveRange: nil)
         as? NSParagraphStyle, let spaced = style.mutableCopy() as? NSMutableParagraphStyle
       {
-        spaced.paragraphSpacing = 10
+        spaced.paragraphSpacing = pt(10)
         output.addAttribute(.paragraphStyle, value: spaced, range: last)
       }
     }
   }
 
-  private mutating func codeBlock(_ node: md_node, context: Context) throws {
+  private mutating func codeBlock(_ node: md_node, index: Int, context: Context) throws {
     var code = try document.string(node.text)
     if code.hasSuffix("\n") { code.removeLast() }
     try paragraph(context, code: true) { builder in
+      let start = builder.length
       builder.append(code, font: Font(code: true))
+      builder.mark(index, from: start)
     }
   }
 
@@ -330,12 +376,12 @@ private struct Builder {
           options: [.usesLineFragmentOrigin]
         ).width.rounded(.up)
         if column >= widths.count { widths.append(0) }
-        widths[column] = max(widths[column], min(width, RenderStyle.maxColumnWidth))
+        widths[column] = max(widths[column], min(width, pt(RenderStyle.maxColumnWidth)))
       }
       append("\n", font: Font())
       rows.append((NSRange(start..<length), header))
     }
-    let pad = RenderStyle.cellPadding
+    let pad = pt(RenderStyle.cellPadding)
     var edges = [context.indent]
     var tabs: [NSTextTab] = []
     for (column, width) in widths.enumerated() {
@@ -356,14 +402,14 @@ private struct Builder {
       style.tabStops = tabs
       style.firstLineHeadIndent = leading ? context.indent : context.indent + pad
       style.headIndent = context.indent + pad
-      style.paragraphSpacingBefore = RenderStyle.rowPadding
+      style.paragraphSpacingBefore = pt(RenderStyle.rowPadding)
       // The last row keeps the block gap below the table.
-      style.paragraphSpacing = index == rows.count - 1 ? 10 : RenderStyle.rowPadding
+      style.paragraphSpacing = pt(index == rows.count - 1 ? 10 : RenderStyle.rowPadding)
       output.addAttribute(.paragraphStyle, value: style, range: row.range)
       if !row.header { body += 1 }
       let grid = TableRowStyle(
         edges: edges, header: row.header, first: index == 0, shaded: !row.header && body % 2 == 0,
-        padding: RenderStyle.rowPadding)
+        padding: pt(RenderStyle.rowPadding))
       output.addAttribute(.tableRow, value: grid, range: row.range)
       if context.quoted {
         output.addAttribute(.foregroundColor, value: NSColor.secondaryLabelColor, range: row.range)
@@ -381,7 +427,7 @@ private struct Builder {
     var head = context.indent
     if let marker = context.marker {
       append(marker + "\t", font: Font(), color: context.markerColor)
-      head = context.indent - RenderStyle.markerWidth
+      head = context.indent - pt(RenderStyle.markerWidth)
     }
     try body(&self)
     append("\n", font: Font())
@@ -391,8 +437,8 @@ private struct Builder {
     style.firstLineHeadIndent = max(head, 0)
     style.headIndent = context.indent
     style.tabStops = [NSTextTab(textAlignment: .natural, location: context.indent)]
-    style.defaultTabInterval = 120
-    style.lineSpacing = code ? 1 : 3
+    style.defaultTabInterval = pt(120)
+    style.lineSpacing = pt(code ? 1 : 3)
     style.paragraphSpacingBefore = spacingBefore
     output.addAttribute(.paragraphStyle, value: style, range: range)
     if code {
@@ -406,7 +452,7 @@ private struct Builder {
     let last = output.mutableString.paragraphRange(
       for: NSRange(location: length - 1, length: 0))
     let spaced = style.mutableCopy() as! NSMutableParagraphStyle
-    spaced.paragraphSpacing = context.tight && context.indent > 0 ? 2 : 10
+    spaced.paragraphSpacing = pt(context.tight && context.indent > 0 ? 2 : 10)
     output.addAttribute(.paragraphStyle, value: spaced, range: last)
   }
 
@@ -427,7 +473,9 @@ private struct Builder {
     let node = try node(index)
     switch Int(node.kind) {
     case MD_NODE_TEXT:
+      let start = length
       append(try document.string(node.text), font: font)
+      mark(index, from: start)
     case MD_NODE_EMPHASIS:
       var inner = font
       inner.italic = true
@@ -447,24 +495,30 @@ private struct Builder {
       inner.code = true
       let start = length
       append(try document.string(node.text), font: inner)
+      mark(index, from: start)
       output.addAttribute(
         .backgroundColor, value: NSColor.quaternarySystemFill, range: NSRange(start..<length))
     case MD_NODE_SOFT_BREAK:
       append(" ", font: font)
+      mark(index, from: length - 1, atomic: true)
     case MD_NODE_HARD_BREAK:
       // A line separator keeps the paragraph's style and spacing together.
       append("\u{2028}", font: font)
+      mark(index, from: length - 1, atomic: true)
     case MD_NODE_LINK:
       try link(node, font: font)
     case MD_NODE_IMAGE:
-      try image(node, font: font)
+      try image(node, index: index, font: font)
     case MD_NODE_FOOTNOTE_REFERENCE:
       let start = length
       append("[\(try document.string(node.text))]", font: Font(size: font.size * 0.75))
-      output.addAttribute(.baselineOffset, value: font.size * 0.3, range: NSRange(start..<length))
+      output.addAttribute(
+        .baselineOffset, value: pt(font.size * 0.3), range: NSRange(start..<length))
     default:
       // Raw inline HTML and unsupported syntax: inert source text.
+      let start = length
       append(source(node), font: font, color: .secondaryLabelColor)
+      mark(index, from: start)
     }
   }
 
@@ -505,7 +559,7 @@ private struct Builder {
 
   /// A local image the core allows is read and decoded once per render; any
   /// other image, or one that fails, shows its alt text and the reason.
-  private mutating func image(_ node: md_node, font: Font) throws {
+  private mutating func image(_ node: md_node, index: Int, font: Font) throws {
     let alt = try document.string(node.text)
     var result: Result<CGImage, ImageFailure> = .failure(.blocked)
     if document.resources.indices.contains(Int(node.aux)) {
@@ -527,6 +581,7 @@ private struct Builder {
       attachment.addAttributes(
         cache.attributes(font, .labelColor), range: NSRange(0..<attachment.length))
       output.append(attachment)
+      mark(index, from: start, atomic: true)
       let tip = node.flags & UInt32(MD_NODE_HAS_TITLE) != 0 ? try document.string(node.extra) : alt
       if !tip.isEmpty { output.addAttribute(.toolTip, value: tip, range: NSRange(start..<length)) }
       images.append(RenderedImage(range: NSRange(start..<length), failure: nil))
@@ -534,6 +589,11 @@ private struct Builder {
       var inner = font
       inner.italic = true
       append(alt.isEmpty ? "[image]" : "[\(alt)]", font: inner, color: .secondaryLabelColor)
+      // The alt text follows the opening bracket.
+      if !alt.isEmpty, nodeText.indices.contains(index) {
+        nodeText[index] = NodeText(
+          start: Int32(clamping: start + 1), length: Int32(clamping: (alt as NSString).length))
+      }
       output.addAttribute(.toolTip, value: failure.message, range: NSRange(start..<length))
       images.append(RenderedImage(range: NSRange(start..<length), failure: failure))
     }

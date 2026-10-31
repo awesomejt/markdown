@@ -8,6 +8,10 @@ public enum CoreError: Error, Sendable, CustomStringConvertible {
   case snapshotBudget
   case closed
   case busy
+  /// The session no longer publishes the requested snapshot generation.
+  case superseded
+  /// A find query over MD_FIND_MAX_QUERY_BYTES.
+  case queryTooLong
 
   public var description: String {
     switch self {
@@ -17,6 +21,8 @@ public enum CoreError: Error, Sendable, CustomStringConvertible {
     case .snapshotBudget: "Core snapshot exceeds the host copy budget"
     case .closed: "Core session closed"
     case .busy: "Core worker capacity reached"
+    case .superseded: "Core snapshot superseded"
+    case .queryTooLong: "Find query too long"
     }
   }
 }

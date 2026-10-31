@@ -158,6 +158,23 @@ public final class CoreSession: @unchecked Sendable {
     }
   }
 
+  /// A new handle to the published snapshot, which must be `generation`.
+  /// Parses publish only on the serial worker, so a caller on that worker
+  /// keeps the status check and the handle consistent.
+  func currentSnapshot(generation: UInt64) throws -> md_snapshot {
+    try lock.withLock {
+      guard handle != 0 else { throw CoreError.closed }
+      var info = md_session_status_info()
+      info.struct_size = UInt32(MemoryLayout<md_session_status_info>.size)
+      try checked(md_session_get_status(handle, &info))
+      guard info.published == generation else { throw CoreError.superseded }
+      var snapshot: md_snapshot = 0
+      try checked(md_session_current(handle, &snapshot))
+      guard snapshot != 0 else { throw CoreError.superseded }
+      return snapshot
+    }
+  }
+
   public func parse(_ source: Data, revisionToken: String? = nil) async throws -> CoreResult {
     try Task.checkCancellation()
     try CoreRuntime.admission.reserve()

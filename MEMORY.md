@@ -38,7 +38,7 @@ read.
   CORE-006 documented the ABI v1 zero content-budget change from 8 to 2 MiB
   and passed fresh all-feature release CI on all three OSes. Native packages
   remain platform 001B work; each 001B sets a session memory bound. The next
-  Mac task is MAC-001F. `main` now requires the
+  Mac task is MAC-001G. `main` now requires the
   `Checks / complete` status (M4, 2026-10-29). See [HANDOFF.md](HANDOFF.md) and
   [TODO.md](TODO.md#core-fix-milestone-follow-ups). HARD-001 sits between
   DESK-001 and DESK-002.
@@ -74,6 +74,18 @@ read.
   128 MiB retained per document. Remote and denied images never reach the
   loader. Share decoded `CGImage`s, never `NSImage`s: alt text is set on each
   `NSImage`.
+- MAC-001F (PR #44): find calls `md_snapshot_find` on the core worker over
+  `md_session_current`, refusing any generation but the one on screen
+  (`CoreError.superseded`). The renderer records each node's display-text
+  range, so core segments map exactly to TextKit ranges. Highlight with TextKit
+  2 rendering attributes added eagerly (about 26 ms for 10,000 matches): the
+  `renderingAttributesValidator` is not re-run for laid-out fragments by
+  invalidation. While the find field has focus, don't select the current
+  match; the inactive selection paints over it. Text size re-renders at a
+  `scale` (75–250%). Settings live in user defaults; the smoke uses
+  `MemoryPreferenceStore`, because deleting a suite domain races Quit and
+  leaves a plist. Never put the reading surface in an `NSStackView`: hidden
+  views detach and lose their frame.
 - Workflow: task PRs target `develop` and merge on a Grok review with no
   serious finding (D-029). `main` takes only owner-approved milestone reviews
   from `review/<milestone>`, tagged `m-<milestone>` (D-030). The shared-core
