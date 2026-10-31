@@ -1,10 +1,11 @@
 # macOS skeleton acceptance
 
-MAC-001I completes the macOS walking skeleton: MAC-001A to MAC-001I, merged
-into `develop` through PRs #39 to #46 and this task's PR. This page checks
+MAC-001I completed the macOS walking skeleton: MAC-001A to MAC-001I, merged
+into `develop` through PRs #39 to #47. This page checks
 the [Phase 3 slice](Implementation-Plan.md#phase-3--desktop-walking-skeletons)
 and the [MAC-001 milestone](../TODO.md) on this host, and lists what stays
-open. The MAC-001 aggregate closes on it. Per-task details, commands and
+open. The MAC-001 aggregate closes on it, with the
+[aggregate evidence](#mac-001-aggregate) below. Per-task details, commands and
 measurements are in the [macOS app README](../apps/macos/README.md); review
 and completion evidence is in each task's PR and `project.yaml` pass.
 
@@ -24,7 +25,7 @@ versions and architectures are not claimed.
 | Find, theme and text controls | MAC-001F (PR #44) | Core find over the shown snapshot with exact highlights and Unicode rules; nine text sizes; System/Light/Dark; Settings |
 | Large documents, global selection, accessibility | MAC-001G (PR #45) | Bounded repeated-load memory (allocator fix), lead-first display, fast replacement, lazy RTF copy, heading/level/table/image rotors; measured launch and interaction budgets |
 | External refresh and reading restoration | MAC-001H (PR #46) | kqueue watcher and activation check through core change dispositions; anchored top line and selection across revisions; stale notice; AppKit restoration with a real two-launch check |
-| Local development artifact, license inventory, relocated launch | MAC-001I | Unsigned arm64 zip with license inventory and notices for the 43 linked packages, no build-machine paths; extracted outside the checkout, launched directly and through Launch Services ([details](../apps/macos/README.md#development-artifact-and-licenses-mac-001i)) |
+| Local development artifact, license inventory, relocated launch | MAC-001I (PR #47) | Unsigned arm64 zip with license inventory and notices for the 43 linked packages, no build-machine paths; extracted outside the checkout, launched directly and through Launch Services ([details](../apps/macos/README.md#development-artifact-and-licenses-mac-001i)) |
 
 Boundaries held throughout: the core receives bytes and opaque revision
 tokens, never paths (file access stays in `MarkdownDocument`); the UI uses
@@ -59,6 +60,58 @@ resolved, and none is waived.
   (MAC-002A), signing and notarization (owner approval), heading roles for
   continuous VoiceOver reading, and diagrams and math (ADV-005).
 
+## MAC-001 aggregate
+
+The aggregate adds no implementation; it records already-merged evidence
+against the MAC-001 validation expectations (basic corpus, native
+interaction, accessibility, refresh, restoration and package, plus the
+native CI job from 001A and the release-mode core consumer from 001B that
+CORE-001 and CORE-006 no longer carry, D-027).
+
+**AppKit and SwiftUI.** The milestone asked for AppKit/SwiftUI
+responsibilities to be decided from measurements. The
+[rendering evaluation](macOS-Rendering-Evaluation.md) measured the TextKit 2
+surface directly and hosted in SwiftUI with similar timing, so hosting gave
+no advantage, and D-010 limits SwiftUI to shell surfaces. The skeleton uses
+AppKit throughout: windows, menus, the outline sidebar, the reading surface,
+find and the Settings window (`SettingsWindowController`, one small
+`NSWindowController`). No target imports SwiftUI. SwiftUI stays allowed for
+later shell surfaces, such as MAC-002 preferences, when a surface gains from
+it; that choice needs no new decision.
+
+**Fresh native evidence.** At the `develop` head after PR #47
+(`96d8aea`, source unchanged; only this page and task state were edited),
+`apps/macos/tools/check.py` passed on the host above, about 3 minutes:
+
+- `swift format` lint (strict) and generated performance fixtures;
+- in debug and in release: 30 render, 11 document and 13 core tests, no
+  build-tree or dynamic Rust dependency (`otool -L`), the full bundle smoke
+  (windows, commands, close/reopen, minimize, documents, errors, reading,
+  outline, tables, images, find, text size, appearance, Settings, external
+  refresh, anchors and restoration) and the real two-launch relaunch check;
+- in debug, the smoke from a bundle copied outside the checkout;
+- in release, the development artifact extracted outside the checkout,
+  verified (43 linked packages inventoried) and launched directly and
+  through Launch Services, and the relocated `CoreProbe` release consumer
+  on a 5 MiB synthetic input (177,726 nodes, parse 81 ms, zero native
+  handles, retained footprint 31.6 MiB).
+
+**Hosted CI.** The `develop` push run for PR #47's merge,
+[41215648620](https://github.com/awesomejt/markdown/actions/runs/41215648620)
+at `96d8aea`, passed every job, including the required `macos-native`
+debug/release job and `core` on all three OSes. The previous `develop` push
+run, [41204938464](https://github.com/awesomejt/markdown/actions/runs/41204938464)
+at `941a571`, failed `macos-native` before any project code ran, with the
+known rustup `detected conflict: 'bin/cargo-fmt'`
+([hosted flakiness entry](../TODO.md#deferred-review-findings)).
+
+**Milestone.** The skeleton is the D-030 rule 3 boundary for macOS (and the
+8-PR cap has passed since `m-core-fix`). The milestone review follows this
+aggregate: freeze green `develop` with no task PR waiting as
+`review/<milestone>`, then Claude prepares the packet and only the owner
+merges into `main`. The open items above go into that packet; the hosted
+`macos-native` fix is recommended before it.
+
 ## Validation
 
 ```sh
@@ -66,7 +119,6 @@ resolved, and none is waived.
 .build/feas004-venv/bin/python tools/check.py common
 ```
 
-`check.py` ran on this host in debug and release at this task's head; the
-results and the hosted CI run are in the MAC-001I pass record and PR.
-The milestone review of the macOS skeleton (D-030 rule 3) follows the
-MAC-001 aggregate.
+`check.py` ran on this host in debug and release at MAC-001I's head and
+again for the aggregate at `96d8aea`. Results and hosted runs are in the
+MAC-001I and MAC-001 pass records and PRs.

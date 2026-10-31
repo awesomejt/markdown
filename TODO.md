@@ -434,7 +434,10 @@ CORE-006 no longer carry. The three host chains are independent.
   selection and UIA reading order; exercise mixed DPI, font scaling and real
   input frame pacing before accepting a large-document strategy.
 - **MAC-001 — macOS single-document skeleton.** Equivalent native macOS slice
-  with AppKit/SwiftUI responsibilities decided from measurements.
+  with AppKit/SwiftUI responsibilities decided from measurements. Outcome:
+  AppKit throughout, Settings included; SwiftUI stays allowed for later
+  shell surfaces under D-010
+  ([aggregate evidence](docs/macOS-Skeleton-Acceptance.md#mac-001-aggregate)).
 - **LNX-001 — Linux single-document skeleton.** GTK/gtk-rs native virtualized
   blocks, conditional on LNX-001D1 after basic text/navigation: prove AT-SPI
   heading semantics, off-screen heading navigation and owner-confirmed Orca
