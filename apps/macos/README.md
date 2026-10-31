@@ -350,6 +350,66 @@ does, through the bookmark). Change detection on network volumes is
 unverified (capability matrix CAP-06). A refresh briefly holds both
 revisions; see the evidence below.
 
+## Development artifact and licenses (MAC-001I)
+
+```sh
+.build/feas004-venv/bin/python apps/macos/tools/artifact.py
+```
+
+builds the release app and writes
+`build/macos/artifacts/Markdown-<version>-<commit>[-dirty]-macos-arm64.zip`
+(about 1.1 MB) with a JSON record beside it: the archive's SHA-256 and
+size, the source commit and whether the working tree had changes, the
+toolchain versions and the core archive's hash. It then verifies the
+artifact relocated, as described below. `--no-verify` skips that.
+
+- **What the zip holds.** One `Markdown.app` for macOS 27 on Apple Silicon
+  (arm64 only). The core is linked statically; the app needs only the Swift
+  runtime and frameworks that macOS supplies. Its debug symbols are
+  stripped (`strip -S`), because the debug map names the build's object
+  and source paths; local builds under `build/macos/` keep them.
+- **No build-machine paths.** The core package builds with
+  `--remap-path-prefix`, so the source locations in Rust panic messages
+  read `/cargo/registry/…` and `./core/…` instead of the builder's home
+  folder and checkout.
+- **License inventory.** Every bundle `build.py` assembles carries
+  `Contents/Resources/Licenses/`: the project `LICENSE` (Apache-2.0),
+  `THIRD-PARTY-NOTICES.txt` and `inventory.json`. The inventory lists the
+  Rust packages the app actually links: the normal dependencies of
+  `markdown-ffi` with `model-v2` for `aarch64-apple-darwin`, without
+  build, development or proc-macro crates (those run only in the compiler).
+  That is 43 packages: the two workspace crates and 41 from crates.io. Each
+  crates.io package's own license files are copied in full; markdown-core
+  adds the Unicode License V3 for its Unicode data. Each license must pass
+  the repository's [dependency policy](../../docs/Dependencies.md), and a
+  package without license text fails the build. Swift and Apple frameworks
+  come with macOS and are noted, not copied.
+  `Contents/Resources/BuildInfo.json` records the same build facts as the
+  JSON record, with no paths.
+- **Unsigned.** Only the linker's ad hoc signature is present: no signing
+  identity, no bundle seal, no notarization, no sandbox entitlements, no
+  installer. `strip` reapplies the linker signature, so the stripped
+  executable still runs on Apple Silicon. This is a development artifact,
+  not a distribution.
+
+**Relocated launch.** The verification extracts the zip with `ditto` into
+a new temporary folder outside the checkout and checks that it holds only
+`Markdown.app`, the bundle ID and executable, arm64 only with a macOS 27.0
+minimum, only `/usr/lib` and `/System/Library` libraries and no absolute
+run path, no file naming the checkout, the home folder or `CARGO_HOME`, no
+signing identity or seal, the bundled `LICENSE` and a notice and license
+text for every inventoried package. It then runs the full app smoke
+twice from the extracted copy: once by executing the bundle directly, and
+once through Launch Services (`open -n -W -a`), as Finder launches it.
+`check.py` runs this for the release configuration; the debug bundle is
+still copied to a temporary folder and smoke-tested there.
+
+Limits: the artifact was verified on the Mac that built it. A copy
+downloaded on another Mac is quarantined, and Gatekeeper refuses an
+unsigned app until it is allowed in System Settings → Privacy & Security;
+that path and a clean second Mac are untested. Signed distribution
+(CAP-29) needs owner approval.
+
 ## Build and launch
 
 Use Xcode 27 with the macOS 27 SDK, Swift 6 and the pinned Rust toolchain.
@@ -396,6 +456,8 @@ notarization, sandbox entitlements, installer or distribution approval. The
 toolchain may attach an ad hoc Mach-O signature during linking; no explicit
 codesign step, signing identity or credential is used. The assembly tool only
 replaces its generated bundle and does not install or register file types.
+For a single file to hand to a tester, use the
+[development artifact](#development-artifact-and-licenses-mac-001i).
 
 ## Checks
 
@@ -417,6 +479,9 @@ each **assembled bundle executable** with `--smoke-test`. Each child has a
 native Quit action. No success marker or a timeout fails the check. The relocated
 app is launched with loader overrides removed, and a relocated standalone release
 consumer parses synthetic input without repository/runtime library dependencies.
+In release, the relocated app is the
+[development artifact](#development-artifact-and-licenses-mac-001i), extracted
+outside the checkout, verified and launched directly and through Launch Services.
 
 The smoke runs the AppKit event loop and verifies bundle identity, a visible
 resizable window/native empty state, menu shortcuts/actions, a second window,
@@ -804,3 +869,23 @@ growing, but a 5 MiB document can stay near 1 GiB after it has been
 refreshed; see [TODO.md](../../TODO.md#open-native-budgets). Manual check 10
 was not performed by the agent; the smoke and relaunch check cover the same
 paths with synthetic files.
+
+## MAC-001I local evidence
+
+Checked on 2026-10-31 on the same Mac (Apple M5 Max, macOS 27.0.1 build
+26A434, Xcode 27.1, Swift 6.4, Rust 1.99.1). `tools/check.py` passed in
+debug and release: 30 render, 11 document and 13 core tests, the debug
+bundle smoke from a copied folder, both real relaunch checks, the relocated
+release consumer and the release artifact verification. The artifact was
+1,115,214 bytes; its 43 inventoried packages (41 from crates.io) each had a
+notice and license text. Extracted into a temporary folder outside the
+checkout, it linked only `/usr/lib` and `/System/Library` libraries
+(`libiconv`, `libresolv`, `libobjc`, `libSystem`, the Swift runtime and
+AppKit, Foundation, CoreGraphics, ImageIO, QuartzCore and CoreFoundation),
+had only the linker's ad hoc signature and no run path but
+`@loader_path`, and passed the full smoke when executed directly and when
+launched through Launch Services. Before the path remapping and `strip -S`,
+the release executable named the build user's home folder 23 times in
+Rust panic locations and 66 times in the debug map; the artifact names
+it nowhere. Stripping took the executable from 3.15 MB to 2.88 MB.
+A clean second Mac and a quarantined download were not available.

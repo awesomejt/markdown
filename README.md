@@ -62,6 +62,8 @@ Start with:
   ownership, cancellation, packaging and memory findings.
 - [Linux core integration](docs/Shared-Core-Linux-Evaluation.md) — gtk-rs C-ABI
   ownership, cancellation, debugging, GTK timing and relocatable packaging.
+- [macOS skeleton acceptance](docs/macOS-Skeleton-Acceptance.md) — MAC-001A
+  to MAC-001I against the walking-skeleton slice, and what stays open.
 - [macOS rendering evaluation](docs/macOS-Rendering-Evaluation.md) — AppKit
   TextKit comparisons, native interaction, memory, and development bundles.
 - [Platform capability evaluation](docs/Platform-Capability-Evaluation.md) —
