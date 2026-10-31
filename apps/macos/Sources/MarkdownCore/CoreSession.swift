@@ -138,6 +138,14 @@ public final class CoreSession: @unchecked Sendable {
     }
   }
 
+  /// Run a short call on the live handle under the session lock.
+  func withHandle<T>(_ body: (md_session) throws -> T) throws -> T {
+    try lock.withLock {
+      guard handle != 0 else { throw CoreError.closed }
+      return try body(handle)
+    }
+  }
+
   public func availability() throws -> CoreAvailability {
     try lock.withLock {
       guard handle != 0 else { throw CoreError.closed }
@@ -175,10 +183,15 @@ public final class CoreSession: @unchecked Sendable {
     }
   }
 
-  public func parse(_ source: Data, revisionToken: String? = nil) async throws -> CoreResult {
+  /// Parse a new revision. With `copyUnchanged` false, an `unchanged`
+  /// outcome (the bytes equal the published source) skips copying the
+  /// snapshot again and returns no document.
+  public func parse(_ source: Data, revisionToken: String? = nil, copyUnchanged: Bool = true)
+    async throws -> CoreResult
+  {
     try Task.checkCancellation()
     try CoreRuntime.admission.reserve()
-    let request = Request(source: source, token: revisionToken)
+    let request = Request(source: source, token: revisionToken, copyUnchanged: copyUnchanged)
     return try await withTaskCancellationHandler {
       try await withCheckedThrowingContinuation { continuation in
         guard request.installContinuation(continuation) else { return }
@@ -196,6 +209,7 @@ public final class CoreSession: @unchecked Sendable {
   }
 
   private func run(_ source: Data, _ token: String?, _ request: Request) throws -> CoreResult {
+    let copyUnchanged = request.copyUnchanged
     precondition(!Thread.isMainThread)
     try request.checkCancellation()
     var job: md_job = 0
@@ -219,7 +233,9 @@ public final class CoreSession: @unchecked Sendable {
     let start = ContinuousClock.now
     try checked(md_job_run(job, &result))
     let parsed = ContinuousClock.now
-    defer { if result.snapshot != 0 { _ = md_snapshot_release(result.snapshot) } }
+    // The copied document keeps the handle; otherwise release it here.
+    var snapshot = result.snapshot
+    defer { if snapshot != 0 { _ = md_snapshot_release(snapshot) } }
     try request.checkCancellation()
     try lock.withLock { if handle == 0 { throw CoreError.closed } }
     guard let outcome = CoreOutcome(rawValue: result.outcome) else {
@@ -230,13 +246,16 @@ public final class CoreSession: @unchecked Sendable {
     var document: CoreDocument?
     var encoded = parsed
     var copied = parsed
-    if outcome == .published || outcome == .unchanged {
-      guard result.snapshot != 0 else { throw CoreError.invalidSnapshot }
+    if outcome == .published || (outcome == .unchanged && copyUnchanged) {
+      guard snapshot != 0 else { throw CoreError.invalidSnapshot }
       var view = md_snapshot_view()
       view.struct_size = UInt32(MemoryLayout<md_snapshot_view>.size)
-      try checked(md_snapshot_get_view(result.snapshot, &view))
+      try checked(md_snapshot_get_view(snapshot, &view))
       encoded = .now
-      document = try CoreDocument(copying: view)
+      // The owner releases the handle from here on, even if the copy throws.
+      let owner = CoreSnapshot(taking: snapshot)
+      snapshot = 0
+      document = try CoreDocument(copying: view, snapshot: owner)
       copied = .now
     }
     try request.checkCancellation()
@@ -266,10 +285,12 @@ private final class Request: @unchecked Sendable {
   private var continuation: CheckedContinuation<CoreResult, Error>?
   private var cancelled = false
   private var job: md_job = 0
+  let copyUnchanged: Bool
 
-  init(source: Data, token: String?) {
+  init(source: Data, token: String?, copyUnchanged: Bool) {
     self.source = source
     self.token = token
+    self.copyUnchanged = copyUnchanged
   }
 
   func installContinuation(_ callback: CheckedContinuation<CoreResult, Error>) -> Bool {

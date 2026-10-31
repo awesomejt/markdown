@@ -1,7 +1,8 @@
 import CMarkdown
 import Foundation
 
-/// Immutable owned values, never an md_snapshot_view or a borrowed pointer.
+/// Immutable owned values, never an md_snapshot_view or a borrowed pointer;
+/// `snapshot` is an owned, thread-safe handle used only for anchors.
 /// The unchecked conformance covers imported C records: all stored records consist
 /// solely of fixed-width integers/md_str offsets (frozen ABI v1). Arrays and Data
 /// are copied before the snapshot is released; no mutable/reference C storage escapes.
@@ -27,8 +28,11 @@ public struct CoreDocument: @unchecked Sendable {
   public let sourceSHA256: String
   public let title: String?
   public let copiedBytes: UInt64
+  /// The snapshot these values were copied from, for anchors.
+  public let snapshot: CoreSnapshot
 
-  init(copying view: md_snapshot_view) throws {
+  init(copying view: md_snapshot_view, snapshot: CoreSnapshot) throws {
+    self.snapshot = snapshot
     guard view.model_version == UInt32(MD_MODEL_V2) else { throw CoreError.incompatibleABI }
     // Price the whole copy before allocating any array; all additions are checked.
     var bytes: UInt64 = 0
