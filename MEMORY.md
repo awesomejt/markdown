@@ -38,7 +38,7 @@ read.
   CORE-006 documented the ABI v1 zero content-budget change from 8 to 2 MiB
   and passed fresh all-feature release CI on all three OSes. Native packages
   remain platform 001B work; each 001B sets a session memory bound. The next
-  Mac task is the MAC-001 aggregate. `main` now requires the
+  Mac step is the macOS skeleton milestone review (MAC-001 closed, PR #48). `main` now requires the
   `Checks / complete` status (M4, 2026-10-29). See [HANDOFF.md](HANDOFF.md) and
   [TODO.md](TODO.md#core-fix-milestone-follow-ups). HARD-001 sits between
   DESK-001 and DESK-002.
@@ -115,6 +115,10 @@ read.
   `licenses.py` (43 linked packages, a safe superset). The core builds with
   `--remap-path-prefix` for the checkout and CARGO_HOME. Skeleton
   acceptance: [docs/macOS-Skeleton-Acceptance.md](docs/macOS-Skeleton-Acceptance.md).
+- MAC-001 aggregate (PR #48) closed on that page with fresh native checks at
+  `96d8aea`. The skeleton is AppKit throughout, Settings included; SwiftUI
+  stays allowed for later shell surfaces (D-010). No Mac task is eligible
+  until DESK-001; the macOS skeleton milestone review (D-030) is next here.
 - Workflow: task PRs target `develop` and merge on a Grok review with no
   serious finding (D-029). `main` takes only owner-approved milestone reviews
   from `review/<milestone>`, tagged `m-<milestone>` (D-030). The shared-core

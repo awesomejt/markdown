@@ -80,7 +80,8 @@ later shell surfaces, such as MAC-002 preferences, when a surface gains from
 it; that choice needs no new decision.
 
 **Fresh native evidence.** At the `develop` head after PR #47
-(`96d8aea`, source unchanged; only this page and task state were edited),
+(`96d8aea`, source unchanged; only docs (this page, `TODO.md`) and task state
+were edited),
 `apps/macos/tools/check.py` passed on the host above, about 3 minutes:
 
 - `swift format` lint (strict) and generated performance fixtures;

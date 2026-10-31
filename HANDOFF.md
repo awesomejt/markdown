@@ -1,8 +1,8 @@
 # Agent Session and Platform Handoff
 
-Updated: 2026-10-31 (America/Denver), after MAC-001I (PR #47).
-Source baseline: `develop` after PR #47; reviewed head `e9a6dd5`,
-validated fix head `c837f23`, followed by one state/docs closeout.
+Updated: 2026-10-31 (America/Denver), after the MAC-001 aggregate (PR #48).
+Source baseline: `develop` after PR #48; reviewed head `679068c`,
+followed by one state/docs closeout.
 Preserve intended source, lock/spec/golden files, docs and state together. Never transfer caches, environments, build
 products, private runtime state or user documents.
 
@@ -152,12 +152,21 @@ done list is in [the memory archive](agents/Memory-Archive.md#handoffmd-phase-ha
   and a timeout orphan) and 1 nit (inventory is a superset); both fixed at
   `c837f23` without re-review. One review was used. A clean second Mac and
   a quarantined copy are untested (CAP-28).
-- **Next:** `portable-core` is complete and `desktop-apps` is active.
-  The MAC-001 aggregate is next on this Mac; it closes on
-  [the skeleton acceptance](docs/macOS-Skeleton-Acceptance.md). The Mac
-  001A–001I skeleton is a D-030 milestone boundary (rule 3), well past the
-  8-PR cap. WIN-001A/LNX-001A start on their hosts; their chains
-  remain independent.
+- **Done:** MAC-001 aggregate in [PR #48](https://github.com/awesomejt/markdown/pull/48):
+  [aggregate evidence](docs/macOS-Skeleton-Acceptance.md#mac-001-aggregate).
+  No source change. Fresh debug/release `apps/macos/tools/check.py` passed
+  at `96d8aea` (30 render, 11 document, 13 core tests, smokes, relaunch,
+  artifact and release consumer), hosted `develop` run 41215648620 passed
+  `macos-native`. AppKit throughout; SwiftUI stays allowed for later shell
+  surfaces (D-010). [Grok review 1](https://github.com/awesomejt/markdown/pull/48#pullrequestreview-5723675753)
+  at `679068c` found 0 blockers, 0 concerns and 2 nits; both fixed in the
+  closeout without re-review. One review was used.
+- **Next:** `desktop-apps` is active. No Mac task is eligible until
+  DESK-001 (it needs WIN-001 and LNX-001). On this Mac the next step is the
+  D-030 milestone review: the macOS skeleton (rule 3) and the overdue
+  8-PR cap since `m-core-fix`. Fix the hosted `macos-native` flakiness
+  (TODO.md) first if it keeps failing `develop`. WIN-001A/LNX-001A start on
+  their hosts; their chains remain independent.
   The shared-core milestone boundary is reached. Per MEMORY.md, Claude writes
   the combined packet for CORE-001–CORE-006 (plus CORE-003F since `m-core-fix`),
   including MAC-001A/B if freezing current `develop`; name the exact snapshot and
