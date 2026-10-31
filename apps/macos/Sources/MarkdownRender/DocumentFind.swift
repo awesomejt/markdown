@@ -63,13 +63,24 @@ extension RenderedDocument {
     let string = text.string as NSString
     // Segments arrive in reading order, so offsets within one node only grow:
     // resume from the previous position instead of rescanning a long node.
-    var cursor = (node: -1, byte: 0, unit: 0)
-    func utf16Offset(_ node: Int, _ entry: NodeText, byte target: Int) -> Int {
-      if cursor.node != node || target < cursor.byte { cursor = (node, 0, 0) }
-      var (byte, unit) = (cursor.byte, cursor.unit)
+    // `next` indexes the first inserted break at or after the cursor.
+    var cursor = (node: -1, byte: 0, unit: 0, next: 0)
+    func utf16Offset(_ node: Int, _ entry: NodeText, byte target: Int, start: Bool) -> Int {
       let base = Int(entry.start)
+      if cursor.node != node || target < cursor.byte {
+        cursor = (node, 0, 0, firstBreak(atOrAfter: base))
+      }
+      var (byte, unit, next) = (cursor.byte, cursor.unit, cursor.next)
       let length = Int(entry.length)
-      while byte < target, unit < length {
+      // A start skips a break inserted where it falls; an end stops before it.
+      while unit < length {
+        if next < insertedBreaks.count, insertedBreaks[next] == base + unit {
+          guard byte < target || start else { break }
+          unit += 1
+          next += 1
+          continue
+        }
+        guard byte < target else { break }
         let code = string.character(at: base + unit)
         if UTF16.isLeadSurrogate(code), unit + 1 < length {
           byte += 4
@@ -79,7 +90,7 @@ extension RenderedDocument {
           unit += 1
         }
       }
-      cursor = (node, byte, unit)
+      cursor = (node, byte, unit, next)
       return unit
     }
     var ranges: [NSRange] = []
@@ -97,8 +108,8 @@ extension RenderedDocument {
         var end = base + Int(entry.length)
         if !entry.atomic {
           guard !segment.text.isEmpty else { continue }
-          start = base + utf16Offset(node, entry, byte: Int(segment.text.lowerBound))
-          end = base + utf16Offset(node, entry, byte: Int(segment.text.upperBound))
+          start = base + utf16Offset(node, entry, byte: Int(segment.text.lowerBound), start: true)
+          end = base + utf16Offset(node, entry, byte: Int(segment.text.upperBound), start: false)
         }
         guard end > start else { continue }
         lower = min(lower, start)
@@ -107,6 +118,17 @@ extension RenderedDocument {
       if lower < upper { ranges.append(NSRange(lower..<upper)) }
     }
     return FindMatches(generation: generation, ranges: ranges, truncated: result.truncated)
+  }
+
+  /// The index of the first inserted break at or after `location`.
+  private func firstBreak(atOrAfter location: Int) -> Int {
+    var low = 0
+    var high = insertedBreaks.count
+    while low < high {
+      let middle = (low + high) / 2
+      if insertedBreaks[middle] < location { low = middle + 1 } else { high = middle }
+    }
+    return low
   }
 }
 

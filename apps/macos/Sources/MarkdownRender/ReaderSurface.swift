@@ -15,13 +15,27 @@ public final class ReaderSurface: NSObject, NSTextViewDelegate, NSTextLayoutMana
   /// Highlighted find matches, in reading order, and the current one.
   public private(set) var matches: [NSRange] = []
   public private(set) var currentMatch: Int?
+  /// VoiceOver's heading, table and image rotors for the shown document.
+  let rotors: DocumentRotors
 
   static let matchColor = NSColor.findHighlightColor.withAlphaComponent(0.4)
   static let currentMatchColor = NSColor.findHighlightColor
 
   public override init() {
-    scrollView = NSTextView.scrollableTextView()
-    textView = scrollView.documentView as! NSTextView
+    // The same configuration `NSTextView.scrollableTextView()` builds, with
+    // the reader's text view class.
+    scrollView = NSScrollView()
+    let textView = ReaderTextView(usingTextLayoutManager: true)
+    textView.minSize = .zero
+    textView.maxSize = NSSize(
+      width: CGFloat.greatestFiniteMagnitude, height: .greatestFiniteMagnitude)
+    textView.isVerticallyResizable = true
+    textView.isHorizontallyResizable = false
+    textView.autoresizingMask = [.width]
+    textView.textContainer?.widthTracksTextView = true
+    scrollView.documentView = textView
+    self.textView = textView
+    rotors = DocumentRotors(textView: textView)
     super.init()
     precondition(textView.textLayoutManager != nil, "TextKit 2 text view expected")
     textView.textLayoutManager?.delegate = self
@@ -41,6 +55,7 @@ public final class ReaderSurface: NSObject, NSTextViewDelegate, NSTextLayoutMana
     textView.delegate = self
     textView.setAccessibilityIdentifier("document-text")
     textView.setAccessibilityLabel("Document")
+    textView.setAccessibilityCustomRotors(rotors.rotors)
     scrollView.hasVerticalScroller = true
     scrollView.autohidesScrollers = true
     scrollView.borderType = .noBorder
@@ -49,10 +64,33 @@ public final class ReaderSurface: NSObject, NSTextViewDelegate, NSTextLayoutMana
   /// Replace the presented text and return to the top, clearing highlights.
   public func show(_ document: RenderedDocument?) {
     self.document = document
-    textView.textStorage?.setAttributedString(document?.text ?? NSAttributedString())
+    describe(document)
+    replaceText(with: document?.text ?? NSAttributedString())
     highlight([])
     textView.setSelectedRange(NSRange(location: 0, length: 0))
     textView.scroll(.zero)
+  }
+
+  /// Finish a document shown from its lead: the rest of the text is appended
+  /// in place, so the reader's selection and scroll position stay put.
+  public func complete(_ document: RenderedDocument) {
+    guard let lead = self.document, !lead.isComplete, lead.generation == document.generation,
+      lead.scale == document.scale, let storage = textView.textStorage
+    else {
+      show(document)
+      return
+    }
+    // Only the complete text drops the last paragraph terminator.
+    let common = min(lead.text.length, document.text.length)
+    let selection = textView.selectedRange()
+    self.document = document
+    describe(document)
+    storage.replaceCharacters(
+      in: NSRange(common..<storage.length),
+      with: document.text.attributedSubstring(from: NSRange(common..<document.text.length)))
+    let end = min(selection.upperBound, document.text.length)
+    let start = min(selection.location, end)
+    textView.setSelectedRange(NSRange(start..<end))
   }
 
   /// Replace the presented text with a new rendering of the same text (a
@@ -66,7 +104,8 @@ public final class ReaderSurface: NSObject, NSTextViewDelegate, NSTextLayoutMana
     let top = topLocation()
     let selection = textView.selectedRange()
     self.document = document
-    textView.textStorage?.setAttributedString(document.text)
+    describe(document)
+    replaceText(with: document.text)
     textView.setSelectedRange(selection)
     let line = NSRange(location: top, length: min(1, document.text.length - top))
     scroll(to: line)
@@ -74,6 +113,21 @@ public final class ReaderSurface: NSObject, NSTextViewDelegate, NSTextLayoutMana
     scroll(to: line)
     // Re-apply the highlights to the new text.
     highlight(matches, current: currentMatch)
+  }
+
+  /// Point the rotors and copy at the document's structure.
+  private func describe(_ document: RenderedDocument?) {
+    rotors.show(document)
+    (textView as? ReaderTextView)?.imageRanges =
+      document?.images.filter { $0.failure == nil }.map(\.range) ?? []
+  }
+
+  /// Replacing a long text in place took TextKit 2 about 12 s for 5 MiB
+  /// (macOS 27.0.1), against about 15 ms into an empty view, so clear first.
+  private func replaceText(with text: NSAttributedString) {
+    guard let storage = textView.textStorage else { return }
+    if storage.length > 0 { storage.setAttributedString(NSAttributedString()) }
+    storage.setAttributedString(text)
   }
 
   /// The UTF-16 location of the line at the top of the visible area, below
@@ -242,5 +296,73 @@ public final class ReaderSurface: NSObject, NSTextViewDelegate, NSTextLayoutMana
 extension Array {
   fileprivate subscript(safe index: Int) -> Element? {
     indices.contains(index) ? self[index] : nil
+  }
+}
+
+/// The reading surface's text view. Copying a long selection writes its plain
+/// text at once and promises rich text, made only if a paste asks for it.
+/// For a 5 MiB selection AppKit took about 1 s to choose the pasteboard types
+/// and 0.3 s to make RTF, both on the main thread (macOS 27.0.1).
+/// AppKit asks the owner for promised data on the main thread.
+final class ReaderTextView: NSTextView, @preconcurrency NSPasteboardTypeOwner {
+  /// Longer selections copy their rich text lazily.
+  static let eagerRichTextLimit = 65_536
+  /// AppKit's writable types use the legacy names (macOS 27.0.1).
+  static let legacyRichTextWithImages = NSPasteboard.PasteboardType("NeXT RTFD pasteboard type")
+  static let legacyRichText = NSPasteboard.PasteboardType(
+    "NeXT Rich Text Format v1.0 pasteboard type")
+  static let legacyString = NSPasteboard.PasteboardType("NSStringPboardType")
+  /// The ranges of loaded images, in order; the surface sets them.
+  var imageRanges: [NSRange] = []
+  /// The copied rich text, kept until another owner takes the pasteboard.
+  private var promised: (pasteboard: NSPasteboard, text: NSAttributedString)?
+
+  /// What AppKit offers for a selection of this read-only view, which never
+  /// imports graphics: RTFD only when it holds an image, then RTF and plain
+  /// text (LargeDocumentTests checks both against AppKit's own answer).
+  static func types(withImages: Bool) -> [NSPasteboard.PasteboardType] {
+    (withImages ? [legacyRichTextWithImages] : []) + [legacyRichText, legacyString]
+  }
+
+  /// A long selection skips AppKit's scan of it.
+  override var writablePasteboardTypes: [NSPasteboard.PasteboardType] {
+    let range = selectedRange()
+    guard range.length > Self.eagerRichTextLimit else { return super.writablePasteboardTypes }
+    return Self.types(
+      withImages: imageRanges.contains { NSIntersectionRange($0, range).length > 0 })
+  }
+
+  static func isRichText(_ type: NSPasteboard.PasteboardType) -> Bool {
+    [.rtf, .rtfd, legacyRichText, legacyRichTextWithImages].contains(type)
+  }
+
+  override func writeSelection(to pboard: NSPasteboard, types: [NSPasteboard.PasteboardType])
+    -> Bool
+  {
+    let range = selectedRange()
+    let rich = types.filter(Self.isRichText)
+    guard range.length > Self.eagerRichTextLimit, !rich.isEmpty, let storage = textStorage
+    else { return super.writeSelection(to: pboard, types: types) }
+    guard super.writeSelection(to: pboard, types: types.filter { !Self.isRichText($0) }) else {
+      return false
+    }
+    promised = (pboard, storage.attributedSubstring(from: range))
+    let images = rich.contains { $0 == .rtfd || $0 == Self.legacyRichTextWithImages }
+    pboard.addTypes(images ? [.rtfd, .rtf] : [.rtf], owner: self)
+    return true
+  }
+
+  func pasteboard(_ sender: NSPasteboard, provideDataForType type: NSPasteboard.PasteboardType) {
+    guard Self.isRichText(type), let promised, promised.pasteboard == sender else { return }
+    let text = promised.text
+    let range = NSRange(location: 0, length: text.length)
+    let images = type == .rtfd || type == Self.legacyRichTextWithImages
+    if let data = images ? text.rtfd(from: range) : text.rtf(from: range) {
+      sender.setData(data, forType: type)
+    }
+  }
+
+  func pasteboardChangedOwner(_ sender: NSPasteboard) {
+    if promised?.pasteboard == sender { promised = nil }
   }
 }
