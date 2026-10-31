@@ -124,7 +124,7 @@ HTTPS references and next-check owners that exist in `project.yaml`.
 | Platform | Status | Evidence | Basis and user impact | Fallback | Next check | Sources |
 | --- | --- | --- | --- | --- | --- | --- |
 | Windows | Supported | Authoritative | `ReadDirectoryChangesW` reports subtree changes. On overflow, the buffer is discarded and the app must re-enumerate. | Re-enumerate and reread on overflow or focus | WIN-001: replace, rename and overflow storms | A06 |
-| macOS | Supported | Authoritative | FSEvents reports directory-hierarchy changes. File presenters receive coordinated changes from other processes. | Reread on focus | MAC-001: atomic-replace and coordinated-write refresh | A22, A23 |
+| macOS | Supported | Measured | MAC-001H watches each open document with a kqueue vnode source (`O_EVTONLY`, so a volume can still unmount). Writes, growth, an atomic replacement (followed to the new file), deletion and the path's reappearance each report within about 100 ms, coalesced; uncoordinated writers are seen too. Measured on macOS 27.0.1, Apple M5 Max. FSEvents and file presenters are not used for single documents. | A stat and session token check when a window becomes key | MAC-002: folder-workspace watching | M10, A22, A23 |
 | Linux | Supported | Authoritative | inotify reports local changes. Its queue can overflow, and watches are capped per user. | Poll after `IN_Q_OVERFLOW` or watch exhaustion | LNX-001: replace, rename, overflow and watch-limit behavior | A55 |
 | iOS/iPadOS | Alternative | Authoritative | File presenters are notified only of coordinated changes. They must be removed before backgrounding, or coordinated access elsewhere can deadlock. | Re-check on scene activation | IOS-002: presenter lifecycle and foreground refresh | A23 |
 
@@ -133,7 +133,7 @@ HTTPS references and next-check owners that exist in `project.yaml`.
 | Platform | Status | Evidence | Basis and user impact | Fallback | Next check | Sources |
 | --- | --- | --- | --- | --- | --- | --- |
 | Windows | Supported | Authoritative | SMB 3 shares support change notification. Network watches need buffers of 64 KB or less, and redirectors without support return `ERROR_INVALID_FUNCTION`. | Polling when the share refuses notification | WIN-002: SMB share watch and unsupported-redirector fallback | A06 |
-| macOS | Deferred | Unverified | No official statement was found on whether FSEvents reports changes made by other machines on network volumes. | Poll and reread on focus | MAC-002: SMB and NFS change detection on a named NAS | U01, A22 |
+| macOS | Deferred | Unverified | No official statement was found on whether FSEvents or kqueue reports changes made by other machines on network volumes. | A stat check when a window becomes key (MAC-001H); no polling yet | MAC-002: SMB and NFS change detection on a named NAS | U01, A22 |
 | Linux | Alternative | Authoritative | inotify doesn't catch remote events on network filesystems, and the man page tells apps to poll. | Bounded polling with visible staleness | LNX-002: polling cost and staleness on SMB and NFS | A55 |
 | iOS/iPadOS | Alternative | Authoritative | Network locations arrive through File Provider extensions, not mounted filesystems. Only coordinated changes notify presenters. | Foreground refresh and manual reload | IOS-002: third-party provider refresh behavior | A41, A23 |
 
@@ -435,6 +435,7 @@ Sources were read on 2026-10-25. Measured paths are relative to this file.
 | M07 | Measured | [FEAS-004 results](../spikes/feas004/results-2026-10-24.yaml) | macOS Unicode and NFD corpus runs |
 | M08 | Measured | [Linux virtualized renderer evaluation](Virtualized-Renderer-Linux-Evaluation.md) | FEAS-008 GTK virtualized blocks, selection, Orca and WebKitGTK baseline |
 | M09 | Measured | [Windows virtualized renderer evaluation](Virtualized-Renderer-Windows-Evaluation.md) | FEAS-008 WinUI virtualized blocks in C# JIT, Native AOT and C++/WinRT, selection, Narrator, UIA and WebView2 baseline |
+| M10 | Measured | [macOS app README](../apps/macos/README.md) | MAC-001H local evidence: document watching, atomic replacement, deletion, refresh and relaunch restoration |
 | A01 | Authoritative | [FileOpenPicker](https://learn.microsoft.com/en-us/windows/windows-app-sdk/api/winrt/microsoft.windows.storage.pickers.fileopenpicker) | Windows App SDK file picker |
 | A02 | Authoritative | [FolderPicker](https://learn.microsoft.com/en-us/windows/windows-app-sdk/api/winrt/microsoft.windows.storage.pickers.folderpicker) | Windows App SDK folder picker |
 | A03 | Authoritative | [FileSavePicker](https://learn.microsoft.com/en-us/windows/windows-app-sdk/api/winrt/microsoft.windows.storage.pickers.filesavepicker) | Windows App SDK save picker |

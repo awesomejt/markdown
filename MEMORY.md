@@ -38,7 +38,7 @@ read.
   CORE-006 documented the ABI v1 zero content-budget change from 8 to 2 MiB
   and passed fresh all-feature release CI on all three OSes. Native packages
   remain platform 001B work; each 001B sets a session memory bound. The next
-  Mac task is MAC-001H. `main` now requires the
+  Mac task is MAC-001I. `main` now requires the
   `Checks / complete` status (M4, 2026-10-29). See [HANDOFF.md](HANDOFF.md) and
   [TODO.md](TODO.md#core-fix-milestone-follow-ups). HARD-001 sits between
   DESK-001 and DESK-002.
@@ -97,6 +97,16 @@ read.
   send `pasteboardChangedOwner`, so track `changeCount`. A code-built `NSWindow`
   in tests needs `isReleasedWhenClosed = false`. Measure with
   `apps/macos/tools/measure.py`; open budgets are in TODO.md.
+- MAC-001H (PR #46): a kqueue vnode watcher (`O_EVTONLY`, re-armed on the
+  path after a rename/delete, falling back to the folder) plus a stat on
+  window activation feed `md_session_external_change`; refreshes keep the
+  shown revision until the new one is ready. `CoreDocument` owns its
+  snapshot handle, so positions are anchored in the old snapshot and
+  resolved in the new one; keep that in mind for handle-count checks
+  (release is async on the worker). Restoration uses AppKit with a cached
+  bookmark; `-NSQuitAlwaysKeepsWindows YES` makes a scripted quit keep
+  windows. `Data.range(of:)` indexes its argument from zero: never pass a
+  slice.
 - Workflow: task PRs target `develop` and merge on a Grok review with no
   serious finding (D-029). `main` takes only owner-approved milestone reviews
   from `review/<milestone>`, tagged `m-<milestone>` (D-030). The shared-core

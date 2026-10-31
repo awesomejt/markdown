@@ -54,18 +54,24 @@ enum CoreProbe {
 
   static func trial(_ source: Data, _ iteration: Int) async throws -> [String: Any] {
     let session = try CoreSession(documentID: "probe")
-    let start = ContinuousClock.now
-    let result = try await session.parse(source)
-    let end = ContinuousClock.now
-    var row: [String: Any] = [
-      "iteration": iteration, "source_bytes": source.count,
-      "outcome": result.outcome.rawValue, "failure": result.failure?.rawValue ?? 0,
-      "parse_ms": result.timings.parseMilliseconds, "encode_ms": result.timings.encodeMilliseconds,
-      "call_ms": milliseconds(start, end),
-      "copy_ms": result.timings.copyMilliseconds, "copied_bytes": result.document?.copiedBytes ?? 0,
-      "nodes": result.document?.nodes.count ?? 0, "live_rss": rss(),
-      "live_footprint": footprint(),
-    ]
+    var row: [String: Any]
+    do {
+      // The document (and its snapshot handle) is released before the
+      // session closes, so its queued release runs first on the worker.
+      let start = ContinuousClock.now
+      let result = try await session.parse(source)
+      let end = ContinuousClock.now
+      row = [
+        "iteration": iteration, "source_bytes": source.count,
+        "outcome": result.outcome.rawValue, "failure": result.failure?.rawValue ?? 0,
+        "parse_ms": result.timings.parseMilliseconds,
+        "encode_ms": result.timings.encodeMilliseconds, "call_ms": milliseconds(start, end),
+        "copy_ms": result.timings.copyMilliseconds,
+        "copied_bytes": result.document?.copiedBytes ?? 0,
+        "nodes": result.document?.nodes.count ?? 0, "live_rss": rss(),
+        "live_footprint": footprint(),
+      ]
+    }
     let closing = ContinuousClock.now
     try await session.close()
     row["close_ms"] = milliseconds(closing, .now)

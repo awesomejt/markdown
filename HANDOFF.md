@@ -1,8 +1,8 @@
 # Agent Session and Platform Handoff
 
-Updated: 2026-10-30 (America/Denver), after MAC-001G (PR #45).
-Source baseline: `develop` after PR #45; reviewed head `ee4c8d5`,
-validated fix head `34fabd1`, followed by one state/docs closeout.
+Updated: 2026-10-31 (America/Denver), after MAC-001H (PR #46).
+Source baseline: `develop` after PR #46; reviewed head `ba7f337`,
+validated fix head `394fb11`, followed by one state/docs closeout.
 Preserve intended source, lock/spec/golden files, docs and state together. Never transfer caches, environments, build
 products, private runtime state or user documents.
 
@@ -122,9 +122,27 @@ done list is in [the memory archive](agents/Memory-Archive.md#handoffmd-phase-ha
   [TODO.md](TODO.md#open-native-budgets): prose 5 MiB warm launch (median
   547 ms), unrun cold launches, the first VoiceOver line query on 5 MiB
   (3.6 s, then ~1 GiB) and mixed-scale displays.
+- **Done:** MAC-001H in [PR #46](https://github.com/awesomejt/markdown/pull/46):
+  [external refresh, anchored reading positions and restoration](apps/macos/README.md#external-refresh-and-restoration-mac-001h).
+  A kqueue watcher (following atomic saves, deletion and reappearance) and
+  a stat check on window activation feed the core session's change
+  dispositions; refreshes load behind the shown revision; the top line and
+  selection carry across revisions through core anchors (each
+  `CoreDocument` now owns its snapshot handle); a failed refresh keeps the
+  last version with a notice; AppKit state restoration saves a bookmark,
+  anchors and the sidebar state. Debug and release native checks each
+  passed 30 render, 11 document and 13 core tests, both bundle smokes and a
+  new real two-launch relaunch check. `measure.py refresh` kept the place
+  in 10 of 10 refreshes on each profile (5 MiB: about 1.05 s per refresh).
+  [Grok review 1](https://github.com/awesomejt/markdown/pull/46) at
+  `ba7f337` found 0 blockers, 3 concerns and 1 nit; all four were fixed at
+  `394fb11` without re-review. One review was used. The MAC-001G text-size
+  nit is resolved; the refresh footprint (5 MiB: flat 887–1,043 MiB) is a
+  new open budget in [TODO.md](TODO.md#open-native-budgets). Manual check
+  10 is unrun.
 - **Next:** `portable-core` is complete and `desktop-apps` is active.
-  MAC-001H is next on this Mac: external refresh, anchors and reading
-  restoration. The Mac 001A–001C walking skeleton is a D-030 milestone
+  MAC-001I is next on this Mac: local development artifact, license
+  inventory and relocated launch, with full skeleton acceptance. The Mac 001A–001C walking skeleton is a D-030 milestone
   boundary (rule 3). WIN-001A/LNX-001A start on their hosts; their chains
   remain independent.
   The shared-core milestone boundary is reached. Per MEMORY.md, Claude writes

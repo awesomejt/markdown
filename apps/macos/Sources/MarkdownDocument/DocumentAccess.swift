@@ -29,6 +29,26 @@ public struct DocumentCapability: Sendable, Hashable, CustomStringConvertible {
     return UTType(filenameExtension: ext)?.conforms(to: .plainText) == true
   }
 
+  /// A bookmark to the file for state restoration, which also finds it
+  /// after a move or rename on the same volume. This build is not
+  /// sandboxed; a sandboxed one needs a security-scoped bookmark instead.
+  public func bookmark() -> Data? {
+    try? url.bookmarkData(options: [], includingResourceValuesForKeys: nil, relativeTo: nil)
+  }
+
+  /// Resolve a saved bookmark without UI or mounting a volume, so a
+  /// relaunch never stalls on a disconnected server. Nil when the file is gone.
+  public init?(bookmark: Data) {
+    var stale = false
+    guard
+      let url = try? URL(
+        resolvingBookmarkData: bookmark, options: [.withoutUI, .withoutMounting],
+        relativeTo: nil, bookmarkDataIsStale: &stale),
+      let capability = try? DocumentCapability(granted: url, securityScoped: false)
+    else { return nil }
+    self = capability
+  }
+
   public static func == (lhs: Self, rhs: Self) -> Bool { lhs.url == rhs.url }
   public func hash(into hasher: inout Hasher) { hasher.combine(url) }
 }
@@ -204,9 +224,29 @@ enum DocumentReader {
       data.append(contentsOf: buffer[..<count])
     }
     let volume = try? url.resourceValues(forKeys: [.volumeURLKey]).volume
+    return DocumentBytes(
+      data: data, revisionToken: token(info, size: data.count), device: info.st_dev,
+      volume: volume)
+  }
+
+  /// The file's current revision token, as a read would record it, or nil
+  /// when it can't be examined. A stat only: no coordination and no read.
+  static func revisionToken(_ capability: DocumentCapability) -> String? {
+    dispatchPrecondition(condition: .notOnQueue(.main))
+    let scoped = capability.securityScoped && capability.url.startAccessingSecurityScopedResource()
+    defer { if scoped { capability.url.stopAccessingSecurityScopedResource() } }
+    var info = stat()
+    let found = capability.url.withUnsafeFileSystemRepresentation { path in
+      path.map { stat($0, &info) == 0 } ?? false
+    }
+    guard found, info.st_mode & S_IFMT == S_IFREG else { return nil }
+    return token(info, size: Int(info.st_size))
+  }
+
+  /// Opaque device/inode/size/mtime identity; holds no path.
+  static func token(_ info: stat, size: Int) -> String {
     let mtime = info.st_mtimespec
-    let token = "\(info.st_dev):\(info.st_ino):\(data.count):\(mtime.tv_sec).\(mtime.tv_nsec)"
-    return DocumentBytes(data: data, revisionToken: token, device: info.st_dev, volume: volume)
+    return "\(info.st_dev):\(info.st_ino):\(size):\(mtime.tv_sec).\(mtime.tv_nsec)"
   }
 
   static func map(errno code: Int32) -> DocumentError {

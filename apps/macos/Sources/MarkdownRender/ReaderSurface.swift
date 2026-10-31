@@ -71,6 +71,33 @@ public final class ReaderSurface: NSObject, NSTextViewDelegate, NSTextLayoutMana
     textView.scroll(.zero)
   }
 
+  /// Replace the presented text, clearing highlights, and put `position`'s
+  /// line at the top with its selection (a reload or a restored window).
+  public func show(_ document: RenderedDocument, at position: ReadingPosition) {
+    self.document = document
+    describe(document)
+    replaceText(with: document.text)
+    highlight([])
+    go(to: position)
+  }
+
+  /// The line at the top of the view and the selection.
+  public var readingPosition: ReadingPosition {
+    ReadingPosition(top: topLocation(), selection: textView.selectedRange())
+  }
+
+  /// Select and scroll to a position in the shown text, clamped to it.
+  private func go(to position: ReadingPosition) {
+    let length = textView.textStorage?.length ?? 0
+    let end = min(position.selection.upperBound, length)
+    textView.setSelectedRange(NSRange(min(position.selection.location, end)..<end))
+    let top = min(max(position.top, 0), length)
+    let line = NSRange(location: top, length: min(1, length - top))
+    scroll(to: line)
+    textView.layoutSubtreeIfNeeded()
+    scroll(to: line)
+  }
+
   /// Finish a document shown from its lead: the rest of the text is appended
   /// in place, so the reader's selection and scroll position stay put.
   public func complete(_ document: RenderedDocument) {
@@ -101,16 +128,11 @@ public final class ReaderSurface: NSObject, NSTextViewDelegate, NSTextLayoutMana
       show(document)
       return
     }
-    let top = topLocation()
-    let selection = textView.selectedRange()
+    let position = readingPosition
     self.document = document
     describe(document)
     replaceText(with: document.text)
-    textView.setSelectedRange(selection)
-    let line = NSRange(location: top, length: min(1, document.text.length - top))
-    scroll(to: line)
-    textView.layoutSubtreeIfNeeded()
-    scroll(to: line)
+    go(to: position)
     // Re-apply the highlights to the new text.
     highlight(matches, current: currentMatch)
   }
@@ -143,8 +165,12 @@ public final class ReaderSurface: NSObject, NSTextViewDelegate, NSTextLayoutMana
       + textView.textContainerInset.height + 1
     let point = CGPoint(x: 0, y: max(y, 0))
     guard let fragment = layout.textLayoutFragment(for: point) else { return 0 }
-    return content.offset(
+    let start = content.offset(
       from: content.documentRange.location, to: fragment.rangeInElement.location)
+    // A bounded paragraph can still span many screens: use the line within it.
+    let inside = point.y - fragment.layoutFragmentFrame.minY
+    let line = fragment.textLineFragments.last { $0.typographicBounds.minY <= inside }
+    return start + (line?.characterRange.location ?? 0)
   }
 
   /// Highlight find matches (rendered ranges in reading order). `current` is

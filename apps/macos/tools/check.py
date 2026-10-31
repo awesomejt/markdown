@@ -48,6 +48,26 @@ for configuration in ("debug", "release"):
         raise SystemExit(f"{configuration}: app exited without completing its smoke")
     print(f"{configuration}: AppKit bundle smoke passed", flush=True)
 
+    # Real state restoration: quit with the window kept, relaunch, expect the
+    # document back at its place. The verify launch closes its windows, so
+    # the app's saved state is left empty.
+    with tempfile.TemporaryDirectory(prefix="markdown-relaunch-") as directory:
+        document = Path(directory) / "live.md"
+        document.write_text("# Live\n\n" + "\n".join(
+            f"## Part {index}\n\nProse for part {index}, with a *marked* word.\n"
+            for index in range(120)), encoding="utf-8")
+        for phase, marker in (("prepare", "relaunch-check: prepared"),
+                              ("verify", "relaunch-check: pass")):
+            result = subprocess.run(
+                [str(app / "Contents/MacOS/Markdown"), "--relaunch-check", phase, str(document),
+                 "-NSQuitAlwaysKeepsWindows", "YES"],
+                cwd=directory, env=env, text=True, capture_output=True, timeout=30)
+            print(result.stdout, end="", flush=True)
+            if result.returncode != 0 or marker not in result.stdout:
+                print(result.stderr, end="", flush=True)
+                raise SystemExit(f"{configuration}: relaunch check {phase} failed")
+    print(f"{configuration}: relaunch restoration passed", flush=True)
+
     if configuration == "release":
         binary_dir = Path(subprocess.check_output(
             ["swift", "build", "--package-path", str(APP_ROOT), "--configuration", "release",

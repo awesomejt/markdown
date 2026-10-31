@@ -68,8 +68,10 @@ struct CoreTests {
     try await session.close()
     try await session.close()
     #expect(try document.string(link.destination) == "https://example.com")
-    #expect(document.source == source)  // No native lifetime retained by the Swift value.
-    #expect(try CoreRuntime.liveHandles() == CoreHandleCounts(sessions: 0, jobs: 0, snapshots: 0))
+    #expect(document.source == source)  // Owned values outlive the session.
+    // Each copied document keeps only its snapshot handle, for anchors.
+    #expect(try CoreRuntime.liveHandles() == CoreHandleCounts(sessions: 0, jobs: 0, snapshots: 3))
+    withExtendedLifetime((first, unchanged, newer)) {}
   }
 
   @Test func parseFailuresAndRecovery() async throws {
@@ -126,6 +128,7 @@ struct CoreTests {
       #expect(result.document?.nodes.isEmpty == false)
       try await session.close()
     }
+    await Self.drainWorker()
     #expect(try CoreRuntime.liveHandles() == CoreHandleCounts(sessions: 0, jobs: 0, snapshots: 0))
   }
 
@@ -147,6 +150,7 @@ struct CoreTests {
       _ = try await session.parse(Data())
       Issue.record("closed session accepted bytes")
     } catch CoreError.closed {}
+    await Self.drainWorker()
     #expect(try CoreRuntime.liveHandles() == CoreHandleCounts(sessions: 0, jobs: 0, snapshots: 0))
   }
 
@@ -157,6 +161,7 @@ struct CoreTests {
     async let second: Void = session.close()
     try await first
     try await second
+    await Self.drainWorker()
     #expect(try CoreRuntime.liveHandles() == CoreHandleCounts(sessions: 0, jobs: 0, snapshots: 0))
   }
 
@@ -229,7 +234,10 @@ struct CoreTests {
     #expect(try await replacement.value.outcome == .published)
     #expect(CoreRuntime.admission.pending == 0)
     try await session.close()
-    #expect(try CoreRuntime.liveHandles() == CoreHandleCounts(sessions: 0, jobs: 0, snapshots: 0))
+    await Self.drainWorker()
+    // The two published results keep their documents' snapshots.
+    #expect(try CoreRuntime.liveHandles() == CoreHandleCounts(sessions: 0, jobs: 0, snapshots: 2))
+    withExtendedLifetime((first, replacement)) {}
   }
 
   @Test func queuedWorkIsBounded() async throws {
@@ -337,6 +345,71 @@ struct CoreTests {
       _ = try await session.find("café", generation: second.generation)
       Issue.record("closed session searched")
     } catch CoreError.closed {}
+    await Self.drainWorker()
+    // The two parse results keep their documents' snapshots.
+    #expect(try CoreRuntime.liveHandles() == CoreHandleCounts(sessions: 0, jobs: 0, snapshots: 2))
+    withExtendedLifetime((first, second)) {}
+  }
+
+  /// Each copied document keeps its snapshot for anchors (MAC-001H): a
+  /// position anchored in an old revision resolves in the next one, and
+  /// change notices follow the session's revision tokens.
+  @Test func anchorsAndExternalChanges() async throws {
+    let session = try CoreSession(documentID: "anchors")
+    let old = "# One\n\nFirst paragraph.\n\n## Two\n\nSecond paragraph.\n"
+    let first = try #require(try await session.parse(Data(old.utf8), revisionToken: "a").document)
+    #expect(try session.externalChange(token: "a") == .unchanged)
+    #expect(try session.externalChange(token: "b") == .readRequired)
+    #expect(try session.externalChange(token: nil) == .readRequired)
+    let offset = UInt64(Array(old.utf8).count - "Second paragraph.\n".utf8.count + 7)
+    let anchor = try first.snapshot.anchor(atSource: offset)
+    #expect(!anchor.isEmpty && anchor.count <= Int(MD_ANCHOR_MAX_BYTES))
+    #expect(try first.snapshot.resolve(anchor)?.sourceOffset == offset)
+
+    // Text inserted above moves the block; the anchor follows it exactly.
+    let new = "# One\n\nInserted.\n\nFirst paragraph.\n\n## Two\n\nSecond paragraph.\n"
+    let second = try await session.parse(Data(new.utf8), revisionToken: "b")
+    let document = try #require(second.document)
+    let moved = try #require(try document.snapshot.resolve(anchor))
+    #expect(moved.quality == .exact)
+    #expect(moved.sourceOffset == offset + UInt64("Inserted.\n\n".utf8.count))
+    // The old snapshot is still usable after the session moved on.
+    #expect(try first.snapshot.resolve(anchor)?.sourceOffset == offset)
+
+    // A refresh of identical bytes needn't copy the snapshot again.
+    let unchanged = try await session.parse(
+      Data(new.utf8), revisionToken: "c", copyUnchanged: false)
+    #expect(unchanged.outcome == .unchanged && unchanged.document == nil)
+    #expect(try session.externalChange(token: "c") == .unchanged)
+
+    // Forged anchors throw; an empty document loses every anchor.
+    #expect(throws: CoreError.self) { try document.snapshot.resolve(Data("{}".utf8)) }
+    #expect(throws: CoreError.self) { try document.snapshot.resolve(Data(count: 2048)) }
+    let empty = try #require(try await session.parse(Data(), revisionToken: "d").document)
+    #expect(try empty.snapshot.resolve(anchor) == nil)
+    #expect(throws: CoreError.self) { try empty.snapshot.anchor(atSource: 0) }
+    try await session.close()
+    #expect(throws: CoreError.self) { try session.externalChange(token: "a") }
+  }
+
+  /// Copied documents hold their snapshot handles until they are released;
+  /// the last release runs on the core worker.
+  @Test func documentsReleaseTheirSnapshots() async throws {
+    do {
+      let session = try CoreSession(documentID: "release")
+      let document = try await session.parse(Data("# Kept".utf8)).document
+      try await session.close()
+      #expect(try CoreRuntime.liveHandles().snapshots == 1)
+      #expect(document?.nodes.isEmpty == false)
+    }
+    await Self.drainWorker()
     #expect(try CoreRuntime.liveHandles() == CoreHandleCounts(sessions: 0, jobs: 0, snapshots: 0))
+  }
+
+  /// Wait for releases already queued on the core worker.
+  static func drainWorker() async {
+    await withCheckedContinuation { continuation in
+      CoreRuntime.worker.async { continuation.resume() }
+    }
   }
 }

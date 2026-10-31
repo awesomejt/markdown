@@ -62,7 +62,7 @@ enum ShellSmoke {
       let quit = try item("Markdown", "Quit Markdown", key: "q")
       note(
         "pass (bundle, event loop, windows, commands, close/reopen, minimize, ownership, documents,"
-          + " reading, find, text size, appearance, settings)"
+          + " reading, find, text size, appearance, settings, refresh, restoration)"
       )
       try check(NSApp.sendAction(quit.action!, to: NSApp, from: quit), "Quit command routes")
     } catch {

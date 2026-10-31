@@ -43,10 +43,17 @@ API status failures are typed Swift errors; job outcomes and parse failures
 remain separate typed values. Unknown outcome/model/layout values fail closed.
 
 `CoreDocument` copies source, string table and every flat record/index array
-before releasing the snapshot handle. Its imported C records contain only
+out of the snapshot view. Its imported C records contain only
 fixed-width scalar values/string offsets, with no pointers. The documented
 `@unchecked Sendable` conformance covers those immutable, owned values.
-The borrowed `md_snapshot_view` never escapes. String access checks range and
+The borrowed `md_snapshot_view` never escapes. Since MAC-001H the document
+also owns the snapshot handle itself (`CoreSnapshot`), used only for
+`md_snapshot_anchor_at` and `md_snapshot_resolve_anchor`, so a reading
+position can be anchored in a revision after the session has published a
+newer one. The session holds the same snapshot while it is published, so
+this adds no memory until a newer revision replaces it; the last release
+runs on the core worker. A refresh can skip copying an `unchanged` result
+(`copyUnchanged: false`). String access checks range and
 UTF-8 validity; spans remain UTF-8 byte offsets, not TextKit UTF-16 offsets.
 Node IDs remain snapshot-local (D-021). Submission generation is on
 `CoreResult`; an unchanged snapshot can retain an older snapshot generation.

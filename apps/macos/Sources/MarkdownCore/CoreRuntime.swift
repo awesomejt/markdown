@@ -12,6 +12,8 @@ public enum CoreError: Error, Sendable, CustomStringConvertible {
   case superseded
   /// A find query over MD_FIND_MAX_QUERY_BYTES.
   case queryTooLong
+  /// The snapshot has no anchorable block (an empty document).
+  case noBlocks
 
   public var description: String {
     switch self {
@@ -23,6 +25,7 @@ public enum CoreError: Error, Sendable, CustomStringConvertible {
     case .busy: "Core worker capacity reached"
     case .superseded: "Core snapshot superseded"
     case .queryTooLong: "Find query too long"
+    case .noBlocks: "Snapshot has no anchorable block"
     }
   }
 }

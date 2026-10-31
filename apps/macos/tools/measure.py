@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Measure the macOS app on the generated profiles (MAC-001G).
+"""Measure the macOS app on the generated profiles (MAC-001G, MAC-001H).
 
-D-012 launch to presented content, repeated-load memory and interaction
-timings, from the app's own `--measure` modes. Rows hold counts, times and
+D-012 launch to presented content, repeated-load memory, interaction
+timings and external refreshes, from the app's own `--measure` modes. Rows hold counts, times and
 memory only. Build the app first (build.py) and generate the profiles
 (tools/generate_performance_fixtures.py, which check.py also runs).
 """
@@ -64,11 +64,11 @@ def spread(values):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("mode", choices=["launch", "repeated", "interaction"])
+    parser.add_argument("mode", choices=["launch", "repeated", "interaction", "refresh"])
     parser.add_argument("--configuration", choices=["debug", "release"], default="release")
     parser.add_argument("--profile", action="append", choices=PROFILES)
     parser.add_argument("--runs", type=int, default=5, help="launches per profile")
-    parser.add_argument("--count", type=int, default=20, help="repeated loads")
+    parser.add_argument("--count", type=int, default=20, help="repeated loads or refreshes")
     parser.add_argument("--cold", action="store_true", help="purge caches before each launch")
     args = parser.parse_args()
     bundle = app(args.configuration)
@@ -96,6 +96,19 @@ def main():
                               "retained_footprint_mib": spread(retained),
                               "retained_by_load": [round(value, 1) for value in retained],
                               "presented_ms": spread([row["presented_ms"] for row in rows])}))
+        elif args.mode == "refresh":
+            # The app overwrites the document it measures, so give it a copy.
+            with tempfile.TemporaryDirectory(prefix="markdown-refresh-") as directory:
+                copy = Path(directory) / document.name
+                copy.write_bytes(document.read_bytes())
+                rows = direct(bundle, f"refresh={args.count}", copy, 60 + 10 * args.count)
+            footprints = [row["footprint_mib"] for row in rows]
+            print(json.dumps({"profile": name, "refreshes": len(rows),
+                              "refresh_ms": spread([row["refresh_ms"] for row in rows]),
+                              "kept_place": all(row["kept_place"] for row in rows),
+                              "baseline_footprint_mib": rows[0]["baseline_footprint_mib"],
+                              "footprint_mib": spread(footprints),
+                              "footprint_by_refresh": [round(value, 1) for value in footprints]}))
         else:
             row = direct(bundle, "interaction", document, 120)[-1]
             jumps = [row["ms"][key] for key in ("jump_first_ms", "jump_last_ms", "jump_middle_ms")]
