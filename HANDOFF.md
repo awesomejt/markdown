@@ -1,8 +1,8 @@
 # Agent Session and Platform Handoff
 
-Updated: 2026-10-30 (America/Denver), after MAC-001E (PR #43).
-Source baseline: `develop` after PR #43; reviewed head `9a0cb5f`,
-validated fix head `dbced29`, followed by one state/docs closeout.
+Updated: 2026-10-30 (America/Denver), after MAC-001F (PR #44).
+Source baseline: `develop` after PR #44; reviewed head `d7ba449`,
+validated fix head `71a7dd8`, followed by one state/docs closeout.
 Preserve intended source, lock/spec/golden files, docs and state together. Never transfer caches, environments, build
 products, private runtime state or user documents.
 
@@ -93,9 +93,22 @@ done list is in [the memory archive](agents/Memory-Archive.md#handoffmd-phase-ha
   and 1 nit (transient full-decode memory). Both were fixed at `dbced29`
   without re-review; one review was used. Release prose 5 MiB renders in
   about 580 ms (MAC-001D: 540 ms).
+- **Done:** MAC-001F in [PR #44](https://github.com/awesomejt/markdown/pull/44):
+  [find, text size and appearance](apps/macos/README.md#find-text-size-and-appearance-mac-001f).
+  Debug and release native checks each passed 13 render, 6 find, 8 document
+  and 11 core tests, plus both relocated bundle smokes with the find, text
+  size, appearance and Settings checks.
+  [Grok review 1](https://github.com/awesomejt/markdown/pull/44#pullrequestreview-5719953560)
+  at `d7ba449` found 0 blockers, 1 concern and 3 nits. The concern and two
+  nits were fixed at `71a7dd8` without re-review (none was high or critical).
+  The footnote nit doesn't apply, because labels are not searchable. One
+  review was used. A release find over 5 MiB with 10,000+ matches takes
+  46–56 ms, so macOS needs no cancellable find variant. Manual check 8 is
+  unrun.
 - **Next:** `portable-core` is complete and `desktop-apps` is active.
-  MAC-001F is next on this Mac: document find, theme and text controls, with
-  Unicode find and native command/settings checks. The Mac 001A–001C walking skeleton is a D-030 milestone
+  MAC-001G is next on this Mac: large-document layout, global selection and
+  accessibility, with reader/copy, scaling and performance budgets, and the
+  repeated-load RSS disposition. The Mac 001A–001C walking skeleton is a D-030 milestone
   boundary (rule 3). WIN-001A/LNX-001A start on their hosts; their chains
   remain independent.
   The shared-core milestone boundary is reached. Per MEMORY.md, Claude writes
