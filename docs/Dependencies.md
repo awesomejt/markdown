@@ -138,6 +138,38 @@ facts, checked against the official UCD and Python Unicode 16.0 data. Its source
 copyright/provenance and `licenses/Unicode-3.0.txt` retain the Unicode notice.
 This adds no Cargo package and does not alter the reviewed dependency graph.
 
+## macOS app runtime inventory (MAC-001I)
+
+The macOS app links the core statically, so its runtime graph is the
+normal-dependency closure of `markdown-ffi` with `model-v2` for
+`aarch64-apple-darwin`: 43 of the packages above. `apps/macos/tools/licenses.py`
+computes it from `cargo metadata` at build time and writes it, with every
+package's license files, into each bundle's `Contents/Resources/Licenses/`
+([details](../apps/macos/README.md#development-artifact-and-licenses-mac-001i)).
+It follows only normal dependencies and stops at proc-macro crates, which run
+in the compiler. Features are unified across the workspace, so the list is a
+superset of what the app links: another member's features can add a package,
+never remove one. Each declaration must still pass this policy, and a crates.io
+package without a license file fails the build.
+
+Linked: bitflags, block-buffer, cfg-if, cpufeatures, crypto-common, digest,
+form_urlencoded, generic-array, the seven icu_* packages, idna, idna_adapter,
+itoa, libc, litemap, markdown-core, markdown-ffi, memchr, percent-encoding,
+potential_utf, pulldown-cmark, ryu, serde, serde_core, serde_json, sha2,
+smallvec, stable_deref_trait, tinystr, typenum, unicase, url, utf8_iter,
+writeable, yoke, zerofrom, zerotrie and zerovec, at the versions in the table.
+
+Not linked (compile-time or optional only): displaydoc, dyn-clone,
+proc-macro2, quote, ref-cast, ref-cast-impl, schemars, schemars_derive,
+serde_derive, serde_derive_internals, both syn versions, synstructure,
+unicode-ident, version_check, yoke-derive, zerofrom-derive and
+zerovec-derive. unicode-ident's Unicode notice is therefore not needed in
+the app; the ICU packages' Unicode License V3 texts are bundled, as is
+`licenses/Unicode-3.0.txt` for markdown-core's Unicode data. The Swift
+runtime and Apple frameworks are part of macOS and are not redistributed;
+the app has no Swift package dependencies. This is a development
+inventory, not a distribution approval.
+
 ## Development tooling and feasibility
 
 MAC-001A's [SwiftPM AppKit shell](../apps/macos/Package.swift) has no external
@@ -155,6 +187,7 @@ adds no Rust or Swift dependency. The app source uses the repository's Apache-2.
 | Feasibility engines | spike-specific locks/reports | Experimental, outside production workspace; never linked by sibling paths |
 
 The Rust license gate is not an npm/Python license audit, vulnerability scanner,
-font audit or distribution approval. Preserve dependency notices and add a
-distribution inventory for the actual runtime/package when that phase exists.
+font audit or distribution approval. Preserve dependency notices. The macOS
+app has a runtime inventory (above); the Windows and Linux packages add theirs
+in their own 001I phases.
 Signing, release publishing and production deployment still need owner approval.

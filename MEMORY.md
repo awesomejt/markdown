@@ -38,7 +38,7 @@ read.
   CORE-006 documented the ABI v1 zero content-budget change from 8 to 2 MiB
   and passed fresh all-feature release CI on all three OSes. Native packages
   remain platform 001B work; each 001B sets a session memory bound. The next
-  Mac task is MAC-001I. `main` now requires the
+  Mac task is the MAC-001 aggregate. `main` now requires the
   `Checks / complete` status (M4, 2026-10-29). See [HANDOFF.md](HANDOFF.md) and
   [TODO.md](TODO.md#core-fix-milestone-follow-ups). HARD-001 sits between
   DESK-001 and DESK-002.
@@ -107,6 +107,14 @@ read.
   bookmark; `-NSQuitAlwaysKeepsWindows YES` makes a scripted quit keep
   windows. `Data.range(of:)` indexes its argument from zero: never pass a
   slice.
+- MAC-001I (PR #47): `apps/macos/tools/artifact.py` zips a `strip -S` copy
+  of the release app (strip reapplies the linker ad hoc signature) and
+  verifies it extracted outside the checkout, launched directly and through
+  Launch Services. `open -a` registers the temporary copy, so unregister it
+  with `lsregister -u`. Every bundle carries `Resources/Licenses` from
+  `licenses.py` (43 linked packages, a safe superset). The core builds with
+  `--remap-path-prefix` for the checkout and CARGO_HOME. Skeleton
+  acceptance: [docs/macOS-Skeleton-Acceptance.md](docs/macOS-Skeleton-Acceptance.md).
 - Workflow: task PRs target `develop` and merge on a Grok review with no
   serious finding (D-029). `main` takes only owner-approved milestone reviews
   from `review/<milestone>`, tagged `m-<milestone>` (D-030). The shared-core

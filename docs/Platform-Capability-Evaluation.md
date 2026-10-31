@@ -343,7 +343,7 @@ HTTPS references and next-check owners that exist in `project.yaml`.
 | Platform | Status | Evidence | Basis and user impact | Fallback | Next check | Sources |
 | --- | --- | --- | --- | --- | --- | --- |
 | Windows | Supported | Measured | Unsigned framework-dependent folders launched locally with the normal core DLL. Clean-machine deployment wasn't tested. | Run from build output | WIN-001: relocated launch on a clean machine | M01, M04 |
-| macOS | Supported | Measured | Ad-hoc signed bundles with the normal dylib relocated and launched. | Run from build output | MAC-001: relocated bundle with the accepted floor | M02, M05 |
+| macOS | Supported | Measured | Ad-hoc signed bundles with the normal dylib relocated and launched. MAC-001I packages the release app, with its static core and license notices, as an unsigned zip; extracted outside the checkout on macOS 27.0.1 it links only system libraries and passed direct and Launch Services smokes. | Run from build output | DESK-002: a quarantined copy on a clean second Mac (Gatekeeper refuses unsigned apps until allowed) | M02, M05 |
 | Linux | Supported | Measured | A relocated normal-library package passed lifecycle, console and GTK smokes with loader overrides removed. | Run from build output | LNX-001: package on a second distribution | M06 |
 | iOS/iPadOS | Deferred | Unverified | No iOS build exists. Device installs need development signing. | Simulator build, labeled as simulator evidence | IOS-001: device install of the packaged core | U02 |
 

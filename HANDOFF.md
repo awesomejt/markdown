@@ -1,8 +1,8 @@
 # Agent Session and Platform Handoff
 
-Updated: 2026-10-31 (America/Denver), after MAC-001H (PR #46).
-Source baseline: `develop` after PR #46; reviewed head `ba7f337`,
-validated fix head `394fb11`, followed by one state/docs closeout.
+Updated: 2026-10-31 (America/Denver), after MAC-001I (PR #47).
+Source baseline: `develop` after PR #47; reviewed head `e9a6dd5`,
+validated fix head `c837f23`, followed by one state/docs closeout.
 Preserve intended source, lock/spec/golden files, docs and state together. Never transfer caches, environments, build
 products, private runtime state or user documents.
 
@@ -140,10 +140,23 @@ done list is in [the memory archive](agents/Memory-Archive.md#handoffmd-phase-ha
   nit is resolved; the refresh footprint (5 MiB: flat 887–1,043 MiB) is a
   new open budget in [TODO.md](TODO.md#open-native-budgets). Manual check
   10 is unrun.
+- **Done:** MAC-001I in [PR #47](https://github.com/awesomejt/markdown/pull/47):
+  [development artifact, license inventory and relocated launch](apps/macos/README.md#development-artifact-and-licenses-mac-001i)
+  and [skeleton acceptance](docs/macOS-Skeleton-Acceptance.md). An unsigned,
+  stripped arm64 zip (about 1.1 MB) with notices for 43 linked packages and
+  no build-machine paths; extracted outside the checkout it passed the full
+  smoke directly and through Launch Services. Debug and release native
+  checks passed (30 render, 11 document, 13 core tests, both smokes and
+  relaunch checks). [Grok review 1](https://github.com/awesomejt/markdown/pull/47)
+  at `e9a6dd5` found 0 blockers, 1 concern (Launch Services registration
+  and a timeout orphan) and 1 nit (inventory is a superset); both fixed at
+  `c837f23` without re-review. One review was used. A clean second Mac and
+  a quarantined copy are untested (CAP-28).
 - **Next:** `portable-core` is complete and `desktop-apps` is active.
-  MAC-001I is next on this Mac: local development artifact, license
-  inventory and relocated launch, with full skeleton acceptance. The Mac 001A–001C walking skeleton is a D-030 milestone
-  boundary (rule 3). WIN-001A/LNX-001A start on their hosts; their chains
+  The MAC-001 aggregate is next on this Mac; it closes on
+  [the skeleton acceptance](docs/macOS-Skeleton-Acceptance.md). The Mac
+  001A–001I skeleton is a D-030 milestone boundary (rule 3), well past the
+  8-PR cap. WIN-001A/LNX-001A start on their hosts; their chains
   remain independent.
   The shared-core milestone boundary is reached. Per MEMORY.md, Claude writes
   the combined packet for CORE-001–CORE-006 (plus CORE-003F since `m-core-fix`),

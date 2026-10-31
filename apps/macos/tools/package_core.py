@@ -14,17 +14,31 @@ REPO_ROOT = APP_ROOT.parents[1]
 PACKAGE = APP_ROOT / "CorePackage"
 
 
+def cargo_homes() -> list[str]:
+    """CARGO_HOME as configured and resolved; Cargo passes rustc the former."""
+    configured = Path(os.environ.get("CARGO_HOME") or Path.home() / ".cargo").absolute()
+    return list(dict.fromkeys((str(configured), str(configured.resolve()))))
+
+
 def prepare_core(configuration="debug"):
     if configuration not in ("debug", "release"):
         raise ValueError("configuration")
     if os.uname().machine != "arm64":
         raise SystemExit("This development package is validated only on Apple Silicon")
-    flags = (os.environ.get("RUSTFLAGS", "") + " -C panic=unwind").strip()
-    env = dict(os.environ, MACOSX_DEPLOYMENT_TARGET="27.0", RUSTFLAGS=flags)
+    env = dict(os.environ, MACOSX_DEPLOYMENT_TARGET="27.0")
+    # Cargo prefers the encoded form; it also keeps paths with spaces intact.
     if "CARGO_ENCODED_RUSTFLAGS" in env:
         encoded = env["CARGO_ENCODED_RUSTFLAGS"]
         arguments = encoded.split("\x1f") if encoded else []
-        env["CARGO_ENCODED_RUSTFLAGS"] = "\x1f".join(arguments + ["-C", "panic=unwind"])
+    else:
+        arguments = env.get("RUSTFLAGS", "").split()
+    env.pop("RUSTFLAGS", None)
+    # Panic locations name source files; keep the build machine's home,
+    # registry and checkout paths out of the archive (MAC-001I). The last
+    # matching prefix wins, and CARGO_HOME may lie inside the checkout.
+    remaps = [f"--remap-path-prefix={REPO_ROOT}=."] + [
+        f"--remap-path-prefix={home}=/cargo" for home in cargo_homes()]
+    env["CARGO_ENCODED_RUSTFLAGS"] = "\x1f".join(arguments + ["-C", "panic=unwind"] + remaps)
     compiler = subprocess.check_output(["rustc", "--version"], env=env, text=True).strip()
     pinned = tomllib.loads((REPO_ROOT / "rust-toolchain.toml").read_text())["toolchain"]["channel"]
     if compiler.split()[1] != pinned:
