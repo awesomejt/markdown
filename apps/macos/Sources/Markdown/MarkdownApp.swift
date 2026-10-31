@@ -149,7 +149,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
       !windows.contains(where: { $0.loader.capability == capability })
     else { return nil }
     let controller = makeWindow(nil, show: false)
-    controller.restore(capability, at: state.position, sidebar: state.sidebar)
+    controller.restore(state, document: capability)
     return controller
   }
 

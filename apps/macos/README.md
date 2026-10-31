@@ -323,9 +323,9 @@ measurements need an administrator for `purge` and were not run.
   Reload button. VoiceOver announces the notice. The core session records a
   deletion or an unreadable file, as for a failed reload. The notice goes
   away by itself when the file comes back. Choosing Reload, or opening the
-  file again, tries to read it and shows the error in the window if it
-  still fails. A file missing when it was opened loads by itself once it
-  appears.
+  file again, tries to read it; if that fails too, the last version and
+  the notice stay. A file missing when it was opened loads by itself once
+  it appears.
 - **Relaunch.** Reader windows use AppKit state restoration. Each saves a
   bookmark to its document (which also finds the file after a move or
   rename on the same volume), its reading position as anchors, and whether
@@ -491,7 +491,8 @@ through an external write (with no loading state), a newer modification
 time with identical bytes (no new snapshot), an unchanged check (no read),
 deletion (stale, with the session's recorded deletion), the same bytes
 returning, ten rapid atomic saves (the last one shown, never out of order),
-an invalid save (stale, then Reload's error) and a missing file that loads
+an invalid save (stale, still stale after Reload, then replaced by a good
+save) and a missing file that loads
 once it appears. `ReadingPositionTests` map rendered locations to source
 offsets and back through non-ASCII text, inline markup, code spans and
 blocks and list markers; resolve saved positions across an insertion, an

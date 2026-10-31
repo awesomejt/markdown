@@ -92,6 +92,7 @@ enum RefreshSmoke {
 
     // Restoration: encode the window's state as AppKit would, close the
     // window, then restore it from the archive.
+    await reader.makeBookmark()
     await reader.saveReadingPosition()
     try check(reader.savedPosition != nil, "the reading position is anchored")
     let archiver = NSKeyedArchiver(requiringSecureCoding: true)

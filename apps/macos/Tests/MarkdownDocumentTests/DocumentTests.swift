@@ -451,13 +451,16 @@ struct DocumentTests {
     let versions = states.compactMap { $0.hasPrefix("v") ? Int($0.dropFirst()) : nil }
     #expect(versions == versions.sorted(), "an older revision is never presented after a newer one")
 
-    // An invalid save keeps the last good revision; Reload then shows the error.
+    // An invalid save keeps the last good revision, and so does a Reload
+    // that fails again; a good save then replaces it.
     try Data([0x23, 0x20, 0xff]).write(to: capability.url)
     try await waitUntil("an invalid save leaves the document stale") { stale(loader) != nil }
     #expect(stale(loader)?.1 == .invalidText && stale(loader)?.0 == "v12")
     loader.reload()
     try await settle(loader)
-    #expect(failure(loader) == .invalidText)
+    #expect(stale(loader)?.1 == .invalidText && stale(loader)?.0 == "v12")
+    try titled("v13").write(to: capability.url)
+    try await waitUntil("a good save replaces the stale document") { loadedTitle(loader) == "v13" }
     await loader.close()
     try expectNoHandles()
   }

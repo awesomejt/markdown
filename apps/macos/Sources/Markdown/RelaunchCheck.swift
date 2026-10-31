@@ -41,6 +41,7 @@ enum RelaunchCheck {
       case .prepare:
         reader.surface.reveal(heading: index)
         reader.surface.textView.setSelectedRange(word)
+        await reader.makeBookmark()
         await reader.saveReadingPosition()
         guard reader.savedPosition != nil else { throw Failure(description: "position not saved") }
         reader.invalidateRestorableState()

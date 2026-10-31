@@ -65,6 +65,12 @@ public final class DocumentWatcher: @unchecked Sendable {
       watch(file, folder: false, events: [.write, .extend, .delete, .rename, .revoke, .link])
     } else if let folder = open(url.deletingLastPathComponent()) {
       watch(folder, folder: true, events: [.write, .delete, .rename, .revoke])
+      // The file may have appeared before the folder was watched.
+      if let file = open(url) {
+        source?.cancel()
+        watch(file, folder: false, events: [.write, .extend, .delete, .rename, .revoke, .link])
+        schedule()
+      }
     }
   }
 

@@ -15,7 +15,8 @@ public struct LoadedDocument: Sendable {
 /// the core session whether the file's current revision token needs a read
 /// and, if so, refreshes in the background: the presented document stays in
 /// place until the new one is loaded, and a failed refresh keeps it as
-/// `stale`. Notices that arrive during a load are checked once it finishes.
+/// `stale`, as does a reload of a stale document that fails again. Notices
+/// that arrive during a load are checked once it finishes.
 @MainActor
 public final class DocumentLoader {
   public enum State: Sendable {
@@ -45,6 +46,8 @@ public final class DocumentLoader {
   private var refreshing = false
   /// A change notice arrived during a load; check again when it finishes.
   private var recheck = false
+  /// A stale document a reload replaces; it stays if the reload fails too.
+  private var keptOnFailure: LoadedDocument?
   private var checkTask: Task<Void, Never>?
 
   /// Session factory; tests inject a failure.
@@ -138,7 +141,12 @@ public final class DocumentLoader {
       // A missing or unreadable file needs a read to report it; so does any
       // token the session hasn't accepted.
       switch try? session.externalChange(token: token) {
-      case .unchanged?, .pending?: break
+      case .unchanged?, .pending?:
+        // A notice that arrived during the stat may describe a newer write.
+        if self.recheck {
+          self.recheck = false
+          self.checkForChanges()
+        }
       case .readRequired?, nil: self.start(capability, refresh: true)
       }
     }
@@ -190,6 +198,11 @@ public final class DocumentLoader {
     // A notice that arrives from here on is checked after this request.
     recheck = false
     refreshing = refresh
+    if case .stale(let shown, _) = state {
+      keptOnFailure = shown
+    } else if !refresh {
+      keptOnFailure = nil
+    }
     if !refresh { state = .loading(capability) }
     let previous = lastRead
     task = Task { [weak self] in
@@ -215,6 +228,8 @@ public final class DocumentLoader {
     task = nil
     let refresh = refreshing
     refreshing = false
+    let kept = keptOnFailure
+    keptOnFailure = nil
     switch outcome {
     case .document(let document, let bytes):
       lastRead = (bytes.device, bytes.volume)
@@ -235,7 +250,7 @@ public final class DocumentLoader {
       // Only the current request records availability, so a late failure
       // can't supersede a newer successful load in the core session.
       if let change = error.coreChange { _ = try? session?.recordUnavailable(change) }
-      if refresh, let shown = document {
+      if let shown = (refresh ? document : nil) ?? kept {
         state = .stale(shown, error)
       } else {
         state = .failed(capability, error)
@@ -243,8 +258,14 @@ public final class DocumentLoader {
     case .discarded:
       // The current request is never cancelled by this loader; treat an
       // unexpected core cancellation as a failure rather than loading forever.
-      // A refresh keeps what is presented.
-      if !refresh || document == nil { state = .failed(capability, .parseFailed) }
+      // A refresh keeps what is presented; a stale document stays.
+      if refresh && document != nil {
+        break
+      } else if let kept {
+        state = .stale(kept, .parseFailed)
+      } else {
+        state = .failed(capability, .parseFailed)
+      }
     }
     if recheck {
       recheck = false

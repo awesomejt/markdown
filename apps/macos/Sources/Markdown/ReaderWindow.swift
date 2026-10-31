@@ -52,6 +52,9 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
   private var pendingRestore: SavedPosition?
   /// The anchored position most recently saved for state restoration.
   private(set) var savedPosition: SavedPosition?
+  /// The bookmark saved with the window's state, made off the main thread
+  /// once per document, since it touches the filesystem.
+  private var bookmark: (capability: DocumentCapability, data: Data)?
   private var positionTask: Task<Void, Never>?
   /// The title of the presented document, once its text is shown.
   private(set) var documentTitle: String?
@@ -437,11 +440,19 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
     guard window?.isRestorable == true, surface.document != nil else { return }
     positionTask?.cancel()
     positionTask = Task { [weak self] in
+      await self?.makeBookmark()
       await self?.saveReadingPosition()
       guard let self, !Task.isCancelled else { return }
       self.positionTask = nil
       self.invalidateRestorableState()
     }
+  }
+
+  /// Bookmark the shown document off the main thread, unless already done.
+  func makeBookmark() async {
+    guard let capability = shownCapability, bookmark?.capability != capability else { return }
+    let data = await Task.detached { capability.bookmark() }.value
+    if let data, shownCapability == capability { bookmark = (capability, data) }
   }
 
   /// Anchor the current position off the main thread for state restoration.
@@ -464,7 +475,10 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
   }
 
   /// Open the document a relaunch restores, at its saved position.
-  func restore(_ capability: DocumentCapability, at position: SavedPosition?, sidebar: Bool) {
+  func restore(_ state: RestorationState, document capability: DocumentCapability) {
+    let position = state.position
+    let sidebar = state.sidebar
+    bookmark = (capability, state.bookmark)
     pendingRestore = position
     savedPosition = position
     split.splitViewItems[0].isCollapsed = !sidebar
@@ -474,10 +488,10 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
   func window(_ window: NSWindow, willEncodeRestorableState state: NSCoder) {
     // Only a document that loaded is restored; a failed one isn't.
     guard let capability = loader.document?.capability ?? pendingCapability,
-      let bookmark = capability.bookmark()
+      let bookmark, bookmark.capability == capability
     else { return }
     RestorationState(
-      bookmark: bookmark, position: savedPosition, sidebar: !isSidebarCollapsed
+      bookmark: bookmark.data, position: savedPosition, sidebar: !isSidebarCollapsed
     ).encode(to: state)
   }
 
