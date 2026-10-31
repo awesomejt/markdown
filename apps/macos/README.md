@@ -378,6 +378,9 @@ artifact relocated, as described below. `--no-verify` skips that.
   Rust packages the app actually links: the normal dependencies of
   `markdown-ffi` with `model-v2` for `aarch64-apple-darwin`, without
   build, development or proc-macro crates (those run only in the compiler).
+  `cargo metadata` unifies features across the workspace, so the list is a
+  safe superset: a feature another member enables can add a package the
+  app does not link, never drop one.
   That is 43 packages: the two workspace crates and 41 from crates.io. Each
   crates.io package's own license files are copied in full; markdown-core
   adds the Unicode License V3 for its Unicode data. Each license must pass
@@ -401,6 +404,10 @@ signing identity or seal, the bundled `LICENSE` and a notice and license
 text for every inventoried package. It then runs the full app smoke
 twice from the extracted copy: once by executing the bundle directly, and
 once through Launch Services (`open -n -W -a`), as Finder launches it.
+That launch registers the temporary copy with Launch Services, so the tool
+unregisters it afterwards (`lsregister -u`), and stops the app if the
+launch times out. `open` does not report the app's exit status, so the
+smoke's marker must be its last line of output.
 `check.py` runs this for the release configuration; the debug bundle is
 still copied to a temporary folder and smoke-tested there.
 

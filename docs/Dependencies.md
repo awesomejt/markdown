@@ -147,7 +147,9 @@ computes it from `cargo metadata` at build time and writes it, with every
 package's license files, into each bundle's `Contents/Resources/Licenses/`
 ([details](../apps/macos/README.md#development-artifact-and-licenses-mac-001i)).
 It follows only normal dependencies and stops at proc-macro crates, which run
-in the compiler. Each declaration must still pass this policy, and a crates.io
+in the compiler. Features are unified across the workspace, so the list is a
+superset of what the app links: another member's features can add a package,
+never remove one. Each declaration must still pass this policy, and a crates.io
 package without a license file fails the build.
 
 Linked: bitflags, block-buffer, cfg-if, cpufeatures, crypto-common, digest,

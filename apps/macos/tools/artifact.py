@@ -15,6 +15,8 @@ from package_core import cargo_homes, prepare_core
 ARTIFACTS = REPO_ROOT / "build" / "macos" / "artifacts"
 BUNDLE_ID = "io.github.awesomejt.markdown"
 SYSTEM_PREFIXES = ("/usr/lib/", "/System/Library/")
+LSREGISTER = ("/System/Library/Frameworks/CoreServices.framework/Frameworks/"
+              "LaunchServices.framework/Support/lsregister")
 
 
 def smoke_environment() -> dict:
@@ -145,10 +147,21 @@ def verify(archive: Path, *, env: dict) -> None:
         # Launch from the extracted folder: directly, then as Finder does.
         run_smoke(executable, root, env)
         output = root / "launch-services.out"
-        subprocess.run(["open", "-n", "-W", "--stdout", str(output), "--stderr",
-                        str(root / "launch-services.err"), "-a", str(app),
-                        "--args", "--smoke-test"], check=True, timeout=60)
-        if "shell-smoke: pass" not in output.read_text():
+        try:
+            subprocess.run(["open", "-n", "-W", "--stdout", str(output), "--stderr",
+                            str(root / "launch-services.err"), "-a", str(app),
+                            "--args", "--smoke-test"], check=True, timeout=60)
+        except subprocess.TimeoutExpired:
+            # launchd started the app, not open: stop it before its folder goes.
+            subprocess.run(["pkill", "-f", str(executable)], check=False)
+            raise
+        finally:
+            # open registered this temporary copy and its document types.
+            subprocess.run([LSREGISTER, "-u", str(app)], check=False)
+        # open does not report the app's exit status; the smoke prints its
+        # marker last, just before Quit.
+        lines = output.read_text().splitlines()
+        if not lines or not lines[-1].startswith("shell-smoke: pass"):
             print((root / "launch-services.err").read_text(), end="", flush=True)
             raise SystemExit("the Launch Services launch did not complete its smoke")
         print(f"artifact: {archive.name} verified relocated ({len(inventory['packages'])} "
