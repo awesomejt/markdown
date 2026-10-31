@@ -41,7 +41,8 @@ MAC-001F closed in PR #44 with [find, text size and appearance](apps/macos/READM
 MAC-001G closed in PR #45 with [large documents, copy, VoiceOver rotors and budgets](apps/macos/README.md#large-documents-and-accessibility-mac-001g);
 its fix bounds repeated-load memory, and its open budgets are [listed below](#open-native-budgets).
 MAC-001H closed in PR #46 with [external refresh, anchored reading positions and restoration](apps/macos/README.md#external-refresh-and-restoration-mac-001h).
-MAC-001I is next on macOS.
+MAC-001I closed in PR #47 with [the development artifact, license inventory and relocated launch](apps/macos/README.md#development-artifact-and-licenses-mac-001i)
+and [skeleton acceptance](docs/macOS-Skeleton-Acceptance.md). The MAC-001 aggregate is next on macOS.
 The shared-core milestone boundary is reached:
 Claude prepares the combined packet for the owner under D-030; only the owner
 merges that milestone into `main`.
@@ -76,7 +77,7 @@ closed in PR #37 with [search/read acceptance](docs/Core-Search-Acceptance.md)
 and explicit reference-syntax boundaries. CORE-006 closed in PR #38 with
 [facade acceptance](docs/Core-Facade-Acceptance.md), the ABI v1 default-change
 history and fresh three-OS all-feature release CI. The desktop chains are
-eligible; MAC-001A to MAC-001H closed in PRs #39 to #46 and MAC-001I is next on this Mac. Inspect
+eligible; MAC-001A to MAC-001I closed in PRs #39 to #47 and the MAC-001 aggregate is next on this Mac. Inspect
 state and `HANDOFF.md` before any pass. Scoped commits, pushes, PR updates and
 review requests are authorized; a Grok review with no serious finding approves
 a merge into `develop` (D-029); only the owner merges into `main` (D-030);
