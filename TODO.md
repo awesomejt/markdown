@@ -517,6 +517,28 @@ Before MAC-001C, none were open after CORE-001 (PR #33). The two TOOL-003 findin
 Grok review 5692910610, are resolved: forced color and non-UTF-8 problem
 content no longer cause false failures. Both PR #33 review nits are also fixed.
 
+## Open native budgets
+
+Measured budgets that a merged task left open for the owner, from
+[the MAC-001G evidence](apps/macos/README.md#mac-001g-local-evidence).
+They stay open until fixed or explicitly accepted; none is waived.
+
+- **macOS prose 5 MiB warm launch (D-016, 400 ms):** 533–573 ms to first
+  text through Launch Services. About 255 ms is AppKit start-up and about
+  215 ms the core read and parse, so meeting it needs a faster or
+  incremental core parse, or an owner revision of the target. Prose 1 MiB
+  had one of five runs at 404 ms (median 355 ms).
+- **macOS cold launches (D-012/D-016, 700 ms):** unmeasured; run
+  `apps/macos/tools/measure.py launch --cold` from an administrator account.
+- **macOS first VoiceOver line query on 5 MiB:** `accessibilityLine(for:)`
+  near the end lays out all earlier text, 3.6 s once (0.7 s for 1 MiB), and
+  the footprint then stays near 1 GiB while the document is open. Confirm
+  the effect with VoiceOver (README manual check 9) before choosing between
+  accepting it, paragraph-based accessibility lines, or a bounded
+  accessibility model.
+- **macOS mixed-scale displays and display pacing:** unmeasured; only two 2×
+  displays were available.
+
 ## Process options under consideration
 
 Harder gates the owner deferred on 2026-10-28 to see how the D-030 workflow

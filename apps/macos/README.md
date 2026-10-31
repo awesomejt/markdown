@@ -105,9 +105,10 @@ accessibility element continuous across the whole document. The
   the document.
 
 Find, text size and appearance are described in
-[a later section](#find-text-size-and-appearance-mac-001f). Heading-level
-accessibility roles, document-wide performance budgets and reading-position
-restoration remain MAC-001G and MAC-001H work.
+[a later section](#find-text-size-and-appearance-mac-001f), and large
+documents, VoiceOver rotors and budgets in
+[Large documents and accessibility](#large-documents-and-accessibility-mac-001g).
+Reading-position restoration remains MAC-001H work.
 
 ## Tables, task lists and images (MAC-001E)
 
@@ -123,7 +124,7 @@ restoration remain MAC-001G and MAC-001H work.
   a table gives tab-separated text that pastes into a spreadsheet. Limits:
   a cell wider than its column overflows into the next one, and a table
   wider than the window wraps its rows. VoiceOver reads a table as lines of
-  text, without table navigation (MAC-001G).
+  text; its Tables rotor moves between tables, without cell navigation.
 - **Task lists.** Task items show ☑ (accent colour) or ☐ (secondary colour)
   in place of the bullet. They are read-only.
 - **Images: resource policy.** Rendering follows the core's v2 resource
@@ -224,6 +225,49 @@ Limits: find is literal (no regular expressions) and not
 normalization-insensitive; that needs the open core proposal in
 specs/search. The outline is not searched. Text size is app-wide, not per
 window.
+
+## Large documents and accessibility (MAC-001G)
+
+- **Repeated loads keep memory bounded.** On macOS 27 a `realloc` that grows
+  a block in Apple's large-allocation range leaves the old region resident
+  and dirty, and later allocations don't reuse it ("Malloc Large (empty)" in
+  `vmmap`). The core's vectors grow that way while parsing, so every 5 MiB
+  document used to leave about 80 MiB behind after its window closed. On
+  Apple targets `markdown-ffi` now installs a global allocator that forwards
+  everything to the system allocator, except that a reallocation of 1 MiB or
+  more allocates, copies and frees
+  ([details](../../docs/macOS-Core-Integration.md#repeated-session-memory)).
+- **One continuous text view, bounded paragraphs.** Selection, Copy, Select
+  All and the text accessibility element still span the whole document.
+  TextKit 2 lays out and draws a whole paragraph to show any of it, so once a
+  paragraph passes 16,384 UTF-16 units the next space or soft break becomes a
+  line break, and a run with no space gets a line break inserted at a
+  grapheme boundary every 32,768 units. Find maps matches exactly across both
+  (an inserted break is skipped; a replaced space is one unit, like the
+  break). Only such paragraphs change: copied text has a line break there,
+  and a list item's continuation starts at its marker.
+- **The start of a long document shows first.** The renderer passes a
+  *lead*, the root blocks up to the first 32,768 UTF-16 units, while it
+  renders the rest. The window shows it, then appends the remainder in place
+  without moving the selection or the scroll position. The outline fills in
+  at the same time, and a search started meanwhile runs once the whole text
+  is shown.
+- **Fast replacement and copy.** Replacing a long text in place took TextKit
+  2 about 12 s for 5 MiB, so the surface clears the view first (14 ms); text
+  size changes and reloads use this. For a selection over 65,536 UTF-16
+  units, AppKit took about 1 s to choose the pasteboard types and 0.3 s to
+  make RTF. Such a Copy writes plain text at once and promises RTF (and RTFD
+  when the selection holds a loaded image), made only when an app pastes
+  them. Shorter selections copy as before.
+- **VoiceOver rotors.** The text view offers Headings, Heading Level 1–6,
+  Tables and Images rotors. Each item is a range of the document's text,
+  labelled with the heading title, “Table N” or the image's alt text, and
+  the rotor filter matches labels. Headings are not otherwise announced as
+  headings while reading continuously, and tables are read as lines.
+
+Limits: the first VoiceOver line query near the end of a 5 MiB document
+lays out all the text before it (see the evidence below). Cold-cache launch
+measurements need an administrator for `purge` and were not run.
 
 ## Build and launch
 
@@ -336,7 +380,16 @@ hard breaks, alt text, raw HTML, table cells, headings) after astral,
 combining, emoji and right-to-left text; check navigation wrapping, the text
 size steps and scaled fonts, indents and tab stops; check highlights,
 current-match selection and a text size change on a real TextKit 2 view; and
-time find over the generated profiles. `MarkdownCoreTests` check find over
+time find over the generated profiles. MAC-001G's `LargeDocumentTests` check
+paragraph bounding (spaces and soft breaks past the limit, inserted breaks
+at grapheme boundaries, unchanged text otherwise and across text sizes),
+find across an inserted break, the lead (a prefix of the complete text and
+outline, completed in place keeping the selection and top line, none for a
+short document), every rotor in both directions with a filter, lazy RTF and
+RTFD copy and AppKit's own pasteboard types, and fast text replacement. The
+smoke's reading document is long enough to show a lead, and the smoke checks
+it completes and that the heading rotor reaches the last heading.
+`MarkdownCoreTests` check find over
 the current snapshot: superseded and unpublished generations, the Unicode
 rules, truncation, an over-long query, cancellation before the worker runs,
 a closed session and zero live handles. `MarkdownDocumentTests` checks resource containment:
@@ -395,11 +448,51 @@ be cancelled and its runner configuration fixed.
    → Appearance → Dark, Light and System, and open Settings with
    Command-comma. Quit and relaunch to confirm the settings persist. With
    VoiceOver already on, confirm that a search announces its result.
+9. With VoiceOver already on, open `build/fixtures/performance/prose-5mib.md`
+   (generated by the checks). Confirm the text appears within about half a
+   second and stays scrollable while the rest loads. In the rotor (VO-U),
+   use Headings, a heading level, Tables and Images on the GFM tour, and
+   confirm VoiceOver moves to and reads each item. Note any pause when
+   VoiceOver first reads near the end of the 5 MiB document. Select All,
+   Copy and paste into TextEdit; the text, its styling and images arrive.
 
 Inspect the empty-state text/window/menu roles using macOS accessibility
 tooling. Full VoiceOver document reading, large documents, mixed displays,
 state restoration and permission recovery remain later native checks. Do not
 toggle VoiceOver or change user accessibility preferences as part of this smoke.
+
+## Measurements
+
+`apps/macos/tools/measure.py` drives the app's `--measure` modes on the
+generated profiles (prose 1 MiB and 5 MiB, long lines 1 MiB). Build the
+release app and run `tools/check.py` (or
+`tools/generate_performance_fixtures.py`) first:
+
+```sh
+.build/feas004-venv/bin/python apps/macos/tools/measure.py launch          # five warm runs each
+.build/feas004-venv/bin/python apps/macos/tools/measure.py launch --cold   # needs sudo purge
+.build/feas004-venv/bin/python apps/macos/tools/measure.py repeated --count 20
+.build/feas004-venv/bin/python apps/macos/tools/measure.py interaction
+```
+
+- `launch` opens the document through Launch Services (`open -n -a`), as
+  Finder does, after one unrecorded warm-up run. The app measures from the
+  kernel's start time for its process to the presentation of the first
+  frame with document text (D-012): it waits for the run-loop turn whose
+  layout, drawing and Core Animation commit include laid-out text in the
+  viewport, then for the next display-link frame. It also reports when the
+  whole document is shown.
+- `repeated` opens, presents and closes the document in one process and
+  reports the physical footprint (`phys_footprint`, Activity Monitor's
+  Memory column) after each close.
+- `interaction` times outline jumps to the last, first and middle headings
+  (to the presented frame), 60 page-down steps (main-thread layout and
+  drawing per step, not display pacing), Select All and Copy to a private
+  pasteboard, a text size change and the accessibility queries VoiceOver
+  makes.
+
+Rows hold counts, times and memory only, never text or paths. Settings stay
+in memory and the user's clipboard is never touched.
 
 ## MAC-001A local evidence
 
@@ -462,7 +555,7 @@ thread; install and navigation on it):
 
 These are single in-process samples, not presented-frame, scrolling or memory
 budgets. Installing the long-line profile blocks the main thread for about a
-quarter of a second; MAC-001G owns large-document layout budgets. The
+quarter of a second; MAC-001G bounded its paragraphs. The
 interactive steps in manual check 7 were not performed by the agent (no
 Accessibility or Screen Recording grant); the smoke covers them through the
 same controls.
@@ -490,8 +583,60 @@ These are single in-process samples, not presented-frame budgets. One find
 call stays well under 100 ms on the largest accepted document and runs off
 the main thread, so the uncancellable call needs no cancellable ABI variant
 (CORE-002B host guidance). Highlighting all 10,000 matches on the main
-thread takes about 40 ms; MAC-001G owns interaction budgets. Release prose
+thread takes about 40 ms; see MAC-001G's interaction budgets. Release prose
 5 MiB rendering, which now records each node's text range, took 586–592 ms
 in three runs (MAC-001E: about 580 ms). Manual check 8 and VoiceOver
 announcements were not performed by the agent (no Accessibility or Screen
 Recording grant); the smoke covers the same controls.
+
+## MAC-001G local evidence
+
+Checked on 2026-10-30 on the same Mac (Mac17,6, Apple M5 Max, 48 GiB,
+macOS 27.0.1, Xcode 27.1, Swift 6.4, Rust 1.99.1; two 5K displays at 2×,
+60 Hz). Release build, warm filesystem caches, no other validation running.
+
+D-012 launch to presented content (`measure.py launch`, five Launch Services
+launches after a warm-up; min/median/max ms):
+
+| Profile | First text presented | Whole document shown | D-016 warm target (400 ms) |
+| --- | ---: | ---: | --- |
+| Prose 1 MiB | 347 / 355 / 404 | 431 / 438 / 459 | missed by one run (404) |
+| Prose 5 MiB | 533 / 547 / 573 | 1,143 / 1,155 / 1,177 | missed |
+| Long lines 1 MiB | 343 / 354 / 369 | 266 / 277 / 292 | met |
+
+About 250–265 ms pass before `applicationDidFinishLaunching` (AppKit and
+window start-up). Prose 5 MiB then reads and parses for about 215 ms, so
+its first text cannot reach 400 ms without a faster or incremental core
+parse. Before this task, the same direct launches presented prose 1 MiB at
+about 400–420 ms, prose 5 MiB at about 1,020 ms and long lines at about
+625 ms, of which about 385 ms was laying out and drawing one 1 MiB
+paragraph. Cold-cache runs (`--cold`) need `sudo purge` and were not run.
+
+Repeated loads (`measure.py repeated --count 20`, footprint after each
+window closes, launch baseline 28–29 MiB): prose 1 MiB 284–291 MiB, long
+lines 239–254 MiB and prose 5 MiB 227–581 MiB. A 40-load 5 MiB run stayed
+between 461 and 572 MiB, rising slowly and then dropping back as malloc
+trims its cache. With the allocator wrapper disabled, the same 20-load run
+reached 1,838 MiB and grew about 81 MiB per load. The retained memory is
+mostly the system allocator's cache of freed large blocks, which it reuses.
+
+Interaction (`measure.py interaction`, ms):
+
+| Step | Prose 1 MiB | Prose 5 MiB | Long lines 1 MiB |
+| --- | ---: | ---: | ---: |
+| Jump to last / first / middle heading, to presented frame (target 150) | 16.6 / 24.5 / 29.8 | 37.6 / 32.6 / 46.3 | 25.8 / 31.3 / 28.5 |
+| Page-down step, p50 / p95 / max | 1.5 / 1.8 / 2.0 | 1.5 / 1.8 / 1.8 | 0.1 / 4.5 / 4.9 |
+| Select All, then Copy | 0.2, 4.8 | 1.6, 25.0 | 1.0, 1.5 |
+| Text size 150%, to presented frame | 169.5 | 705.5 | 68.6 |
+| Heading rotor, last heading | 0.3 | 1.2 | 0.0 |
+| First accessibility line query at the end | 711.3 | 3,605.3 | 131.1 |
+
+Before the copy change, Copy of the whole 5 MiB document blocked the main
+thread for 1.3–1.5 s; before the replacement change, the text size change
+took 12.6 s. The first `accessibilityLine(for:)` near the end lays out all
+the text before it (later queries take under 1 ms), and the 5 MiB footprint
+then rises to about 1 GiB while the document stays open. VoiceOver asks
+for line numbers while reading, so this first pause and memory remain open
+for owner disposition with a real VoiceOver check (manual check 9). Display
+pacing, mixed-scale displays and VoiceOver speech were not measured by the
+agent.

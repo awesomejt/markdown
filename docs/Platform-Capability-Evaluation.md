@@ -182,7 +182,7 @@ HTTPS references and next-check owners that exist in `project.yaml`.
 | Platform | Status | Evidence | Basis and user impact | Fallback | Next check | Sources |
 | --- | --- | --- | --- | --- | --- | --- |
 | Windows | Supported | Measured | A WinUI 3 `ListView` over the same bounded fragments presented 1 MiB, 5 MiB and long-line input in 240–283 ms warm and 309–356 ms cold (C# Native AOT and C++/WinRT), with off-screen jumps under 70 ms. It realizes about 15 rows. Continuous controls still time out at 5 MiB. | Bounded rich edit for small documents | WIN-001: fragment seams, tables and code within accepted budgets | M01, M04, M09 |
-| macOS | Supported | Measured | TextKit 2 reached the end of every input, including 5 MiB, with sub-millisecond end requests. Memory near 388 MiB and RSS retention across repeated parses remain open risks. | Bounded blocks for pathological lines | MAC-001: memory and repeated-session RSS budget | M02, M05 |
+| macOS | Supported | Measured | MAC-001G: one TextKit 2 view with paragraphs bounded at 16–32K UTF-16 units and a lead shown first. Warm Launch Services launches present prose 1 MiB in 347–404 ms, long lines in 343–369 ms and prose 5 MiB in 533–573 ms, which misses D-016's 400 ms (AppKit start-up plus the core parse). Off-screen jumps take 17–46 ms. Repeated 5 MiB loads stay within 227–581 MiB after an allocator fix; they had grown about 81 MiB per load. Cold launches are unmeasured. | Bounded paragraphs for pathological lines (shipped); copied text gains line breaks there | MAC-001: cold launches; owner disposition of the 5 MiB launch target | M02, M05 |
 | Linux | Supported | Measured | Virtualized `GtkListView` fragments presented 1 MiB, 5 MiB and long-line input in 289–373 ms warm and 528–623 ms cold, with off-screen jumps under 150 ms. This requires bounded fragments and a fixed label minimum width. Monolithic `GtkTextView` is rejected. | Small-document text view only | LNX-001: fragment seams, tables and code within accepted budgets | M03, M06, M08 |
 | iOS/iPadOS | Deferred | Unverified | No mobile rendering measurement exists, and mobile memory limits are tighter than desktop. | Bounded documents | IOS-001: UIKit text layout and memory on a named device | U02 |
 
@@ -191,7 +191,7 @@ HTTPS references and next-check owners that exist in `project.yaml`.
 | Platform | Status | Evidence | Basis and user impact | Fallback | Next check | Sources |
 | --- | --- | --- | --- | --- | --- | --- |
 | Windows | Supported | Measured | An app-owned model selection spans virtualized rows by pointer and keyboard, drawn with `TextHighlighter`. The owner's Ctrl+A copy of 5 MiB matched the source (registered `text/markdown`) and model text (`CF_UNICODETEXT`) byte for byte when read by a separate process. | Per-block copy, disclosed to the user | WIN-001: selection during incremental updates, IME and touch | M01, M09 |
-| macOS | Supported | Measured | All 60 continuous-text runs exported matching selections, including the lead TextKit 2 surface. | Not needed | MAC-001: selection during scrolling and incremental updates | M02 |
+| macOS | Supported | Measured | All 60 continuous-text runs exported matching selections, including the lead TextKit 2 surface. MAC-001G: Select All and Copy of 5 MiB take 1.6 and 25 ms; a long selection's RTF/RTFD is made only when pasted, and appending the rest of a document after its lead keeps the selection. | Not needed | MAC-001: owner paste check into TextEdit | M02 |
 | Linux | Supported | Measured | An app-owned model selection spans virtualized rows by pointer and keyboard. The owner's Ctrl+A copy of 5 MiB matched the source and model text byte for byte through `wl-paste`. | Per-block copy, disclosed to the user | LNX-001: selection during incremental updates and IME | M03, M08 |
 | iOS/iPadOS | Deferred | Unverified | No mobile selection measurement exists. | Per-block copy | IOS-001: touch selection across blocks | U02 |
 
@@ -200,7 +200,7 @@ HTTPS references and next-check owners that exist in `project.yaml`.
 | Platform | Status | Evidence | Basis and user impact | Fallback | Next check | Sources |
 | --- | --- | --- | --- | --- | --- | --- |
 | Windows | Supported | Measured | UIA3 inspection shows rows in model order at the top, middle and end of 5 MiB with the true set size. With the heading level on each row's text element, the owner confirmed Narrator reads rows in order, moves between headings with H, and keeps reading past the screen. Each row is read twice, and whole-tree UIA searches time out at 5 MiB. | Outline navigation | WIN-001: single exposure per row and whole-tree UIA queries at scale | M01, M09 |
-| macOS | Supported | Measured | The owner confirmed audible VoiceOver reading. Rotor heading navigation and table semantics are unverified. | Outline navigation | MAC-001: semantic roles and large-document speech | M02 |
+| macOS | Supported | Measured | The owner confirmed audible VoiceOver reading (FEAS-004). MAC-001G adds Headings, Heading Level 1–6, Tables and Images rotors over text ranges, checked in tests and the app smoke; their speech is unconfirmed. Headings aren't announced while reading continuously, tables are read as lines, and the first line query near the end of 5 MiB lays out all earlier text (3.6 s, then about 1 GiB). | Outline navigation | MAC-001: owner VoiceOver rotor check and disposition of the first-query pause | M02 |
 | Linux | Supported | Measured | AT-SPI exposes on-screen rows in model order with heading roles and levels, and the owner confirmed Orca reads rows in order. Orca heading navigation (H) doesn't work, and Say All past the screen is unconfirmed. | Outline navigation | LNX-001: Orca structural navigation and Say All on GNOME and KDE | M03, M08 |
 | iOS/iPadOS | Deferred | Unverified | No VoiceOver measurement exists on iOS/iPadOS. | Outline navigation | IOS-001: VoiceOver on a named device | U02 |
 
@@ -209,7 +209,7 @@ HTTPS references and next-check owners that exist in `project.yaml`.
 | Platform | Status | Evidence | Basis and user impact | Fallback | Next check | Sources |
 | --- | --- | --- | --- | --- | --- | --- |
 | Windows | Deferred | Measured | Only a uniform 150% three-display sweep was measured. Transitions between different scales are untested. | Single-scale support statement | WIN-001: mixed-scale transitions and font scaling | M01 |
-| macOS | Deferred | Measured | Only backing scale 2 on one display was measured. | Single-scale support statement | MAC-001: mixed-display transitions | M02 |
+| macOS | Deferred | Measured | Only backing scale 2 was measured, now on two 2× displays (MAC-001G); no mixed-scale display was available. Text size scales 75–250%. | Single-scale support statement | MAC-001: mixed-display transitions | M02 |
 | Linux | Deferred | Measured | Only compositor scale 1 was measured, and forced GDK scale variables had no effect under Wayland. | Integer-scale support statement | LNX-001: fractional scaling on GNOME and KDE | M03 |
 | iOS/iPadOS | Deferred | Unverified | No device scaling or Dynamic Type measurement exists. | System text size only | IOS-001: Dynamic Type and external displays | U02 |
 
@@ -393,8 +393,9 @@ These measured results remain open and are not reclassified by this matrix:
   document-wide selection and a proven UIA reading order (FEAS-003, FEAS-006).
 - Linux monolithic `GtkTextView` doesn't converge on far-scroll, and a 1 MiB
   logical line takes about 11.4 seconds (FEAS-005, FEAS-006).
-- macOS twenty native-only 5 MiB parses grew RSS to about 583 MiB with zero
-  native owners; there is no leak proof or accepted budget (FEAS-006).
+- macOS repeated 5 MiB parses grew RSS without bound (FEAS-006, MAC-001B)
+  until MAC-001G found the large-block `realloc` cause and fixed it in the
+  core's Apple allocator; there is still no accepted numeric budget.
 - Mixed or fractional display scaling is unmeasured on every platform (CAP-14).
 - No signing, notarization, store, clean-machine or distribution-floor test was
   run on any platform (CAP-28–30).
