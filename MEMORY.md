@@ -38,7 +38,7 @@ read.
   CORE-006 documented the ABI v1 zero content-budget change from 8 to 2 MiB
   and passed fresh all-feature release CI on all three OSes. Native packages
   remain platform 001B work; each 001B sets a session memory bound. The next
-  Mac task is MAC-001G. `main` now requires the
+  Mac task is MAC-001H. `main` now requires the
   `Checks / complete` status (M4, 2026-10-29). See [HANDOFF.md](HANDOFF.md) and
   [TODO.md](TODO.md#core-fix-milestone-follow-ups). HARD-001 sits between
   DESK-001 and DESK-002.
@@ -86,6 +86,17 @@ read.
   `MemoryPreferenceStore`, because deleting a suite domain races Quit and
   leaves a plist. Never put the reading surface in an `NSStackView`: hidden
   views detach and lose their frame.
+- MAC-001G (PR #45): on macOS 27, a `realloc` that grows a block in the large
+  range leaks dirty "Malloc Large (empty)" regions. `markdown-ffi` has a
+  macOS-only global allocator that copies reallocations of 1 MiB and more.
+  Measure memory with `phys_footprint`, not RSS. TextKit 2 pitfalls: replacing
+  a long text in place takes seconds (clear the view first); a paragraph is
+  laid out whole (the renderer bounds them); `writablePasteboardTypes` scans
+  long selections (~1 s at 5 MiB) and uses legacy type names; and
+  `accessibilityLine(for:)` lays out all earlier text. Named pasteboards don't
+  send `pasteboardChangedOwner`, so track `changeCount`. A code-built `NSWindow`
+  in tests needs `isReleasedWhenClosed = false`. Measure with
+  `apps/macos/tools/measure.py`; open budgets are in TODO.md.
 - Workflow: task PRs target `develop` and merge on a Grok review with no
   serious finding (D-029). `main` takes only owner-approved milestone reviews
   from `review/<milestone>`, tagged `m-<milestone>` (D-030). The shared-core

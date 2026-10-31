@@ -1,8 +1,8 @@
 # Agent Session and Platform Handoff
 
-Updated: 2026-10-30 (America/Denver), after MAC-001F (PR #44).
-Source baseline: `develop` after PR #44; reviewed head `d7ba449`,
-validated fix head `71a7dd8`, followed by one state/docs closeout.
+Updated: 2026-10-30 (America/Denver), after MAC-001G (PR #45).
+Source baseline: `develop` after PR #45; reviewed head `ee4c8d5`,
+validated fix head `34fabd1`, followed by one state/docs closeout.
 Preserve intended source, lock/spec/golden files, docs and state together. Never transfer caches, environments, build
 products, private runtime state or user documents.
 
@@ -105,10 +105,26 @@ done list is in [the memory archive](agents/Memory-Archive.md#handoffmd-phase-ha
   review was used. A release find over 5 MiB with 10,000+ matches takes
   46–56 ms, so macOS needs no cancellable find variant. Manual check 8 is
   unrun.
+- **Done:** MAC-001G in [PR #45](https://github.com/awesomejt/markdown/pull/45):
+  [large documents, copy, VoiceOver rotors and budgets](apps/macos/README.md#large-documents-and-accessibility-mac-001g).
+  It resolves the repeated-load RSS gate: macOS `realloc` growth in the
+  large range left dirty "Malloc Large (empty)" regions, so the core's
+  macOS-only global allocator now copies reallocations of 1 MiB and more.
+  The app retains 227–581 MiB over twenty 5 MiB loads; it had grown about
+  81 MiB per load. Bounded paragraphs, a lead shown first, clear-then-set
+  text replacement, lazy RTF/RTFD copy and heading/level/table/image rotors
+  are in. Debug and release native checks each passed 26 render, 8 document
+  and 11 core tests plus both bundle smokes; `tools/check.py all` passed.
+  [Grok review 1](https://github.com/awesomejt/markdown/pull/45#pullrequestreview-5720913417)
+  at `ee4c8d5` found 0 blockers, 2 concerns and 3 nits. Both concerns and
+  two nits were fixed at `34fabd1` without re-review, and one nit is
+  deferred. One review was used. Open budgets are in
+  [TODO.md](TODO.md#open-native-budgets): prose 5 MiB warm launch (median
+  547 ms), unrun cold launches, the first VoiceOver line query on 5 MiB
+  (3.6 s, then ~1 GiB) and mixed-scale displays.
 - **Next:** `portable-core` is complete and `desktop-apps` is active.
-  MAC-001G is next on this Mac: large-document layout, global selection and
-  accessibility, with reader/copy, scaling and performance budgets, and the
-  repeated-load RSS disposition. The Mac 001A–001C walking skeleton is a D-030 milestone
+  MAC-001H is next on this Mac: external refresh, anchors and reading
+  restoration. The Mac 001A–001C walking skeleton is a D-030 milestone
   boundary (rule 3). WIN-001A/LNX-001A start on their hosts; their chains
   remain independent.
   The shared-core milestone boundary is reached. Per MEMORY.md, Claude writes
@@ -139,10 +155,8 @@ On the Mac, Homebrew `python3` lacks PyYAML, so use
 carry the accepted stack and conditions. Prototype reports are dated
 evidence, not production contracts. Preserve these open items:
 
-- Mac repeated-session RSS retention: current release consumer reaches
-  1,698.1 MiB after twenty 5 MiB loads with zero native handles and no leak
-  found. MAC-001G must resolve or obtain owner disposition; the source/queue
-  limits do not establish a whole-app RSS budget.
+- Mac repeated-session memory is fixed and bounded (MAC-001G), but no numeric
+  whole-app budget is accepted. The open Mac budgets are in TODO.md.
 - Windows Narrator reading each row twice, and whole-tree UIA searches that
   time out at 5 MiB.
 - Linux Orca H heading navigation, and the LNX-001D1 accessibility gate.
