@@ -113,6 +113,7 @@ enum DocumentSmoke {
     try await reading(delegate: delegate, file: file, check: check)
     try await richBlocks(delegate: delegate, directory: directory, file: file, check: check)
     try await ReadingControlsSmoke.run(delegate: delegate, file: file, check: check)
+    try await RefreshSmoke.run(delegate: delegate, file: file, check: check)
 
     for window in delegate.windows.map(\.window) { window?.performClose(nil) }
     try await waitUntil("closed documents release native sessions") {

@@ -69,6 +69,11 @@ public struct RenderedDocument: @unchecked Sendable {
   /// unbroken runs (`RenderStyle.hardParagraphLimit`). They are not part of
   /// any node's display text.
   let insertedBreaks: [Int]
+  /// Every node's display text with its source span, in rendered order,
+  /// for reading positions.
+  let positions: [PositionMark]
+  /// The snapshot this document was rendered from, for anchors.
+  public let snapshot: CoreSnapshot
 
   /// The first heading with this anchor, as GitHub resolves duplicate slugs.
   public func heading(anchor: String) -> RenderedHeading? {
@@ -497,10 +502,43 @@ private struct Builder {
           level: Int(entry.level), title: try document.string(entry.title),
           anchor: try document.string(entry.anchor), range: range))
     }
+    var positions: [PositionMark] = []
+    for (index, entry) in nodeText.enumerated() where entry.start >= 0 {
+      let node = document.nodes[index]
+      let end = max(node.span_start, node.span_end)
+      positions.append(
+        PositionMark(
+          unit: entry.start, length: entry.length,
+          source: entry.atomic ? node.span_start : textStart(node, end: end), sourceEnd: end,
+          atomic: entry.atomic))
+    }
+    positions.sort { $0.unit < $1.unit }
     return RenderedDocument(
       generation: document.generation, text: output.copy() as! NSAttributedString,
       headings: headings, images: images, tables: tables, isComplete: complete, scale: scale,
-      nodeText: nodeText, insertedBreaks: insertedBreaks)
+      nodeText: nodeText, insertedBreaks: insertedBreaks, positions: positions,
+      snapshot: document.snapshot)
+  }
+
+  /// Where a node's display text starts in its source span: after a code
+  /// span's backticks or a fence line. Its first line is looked up in the
+  /// span when the text is shorter than the span; otherwise, or when it
+  /// isn't found (an entity or escape changed it), the span's start.
+  private func textStart(_ node: md_node, end: UInt32) -> UInt32 {
+    let start = Int(node.span_start)
+    guard node.text.length > 0, Int(node.text.length) < Int(end) - start,
+      Int(end) <= document.source.count
+    else { return node.span_start }
+    let text = Int(node.text.offset)
+    var prefixEnd = text
+    let limit = min(text + Int(node.text.length), text + 64)
+    while prefixEnd < limit, document.strings[prefixEnd] != 0x0A { prefixEnd += 1 }
+    // `range(of:)` indexes its argument from zero, so pass a copy, not a slice.
+    guard prefixEnd > text,
+      let found = document.source.range(
+        of: Data(document.strings[text..<prefixEnd]), in: start..<Int(end))
+    else { return node.span_start }
+    return UInt32(found.lowerBound)
   }
 
   mutating func trimTrailingNewline() {

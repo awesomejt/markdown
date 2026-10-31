@@ -320,4 +320,158 @@ struct DocumentTests {
     }
     #expect(DocumentError.tooLarge(limit: CoreRuntime.maxSourceBytes).message.contains("5 MB"))
   }
+
+  // MARK: External changes (MAC-001H)
+
+  private func waitUntil(
+    _ message: Comment, seconds: Int = 5, _ condition: () -> Bool
+  ) async throws {
+    let deadline = ContinuousClock.now.advanced(by: .seconds(seconds))
+    while !condition() && ContinuousClock.now < deadline {
+      try await Task.sleep(for: .milliseconds(10))
+    }
+    #expect(condition(), message)
+  }
+
+  private func titled(_ title: String) -> Data { Data("---\ntitle: \(title)\n---\nBody\n".utf8) }
+
+  private func stale(_ loader: DocumentLoader) -> (String?, DocumentError)? {
+    if case .stale(let loaded, let error) = loader.state { return (loaded.document.title, error) }
+    return nil
+  }
+
+  /// Writes, an atomic replacement, deletion and reappearance each report;
+  /// the watcher follows the replacement file and the reappeared path.
+  @Test func watcherFollowsReplacementAndDeletion() async throws {
+    let url = try file("watched.md", Data("one".utf8)).url
+    var reports = 0
+    let watcher = DocumentWatcher(url: url) { reports += 1 }
+    defer { watcher.cancel() }
+    try await waitUntil("watcher arms") { watcher.isArmed }
+    func expectReport(_ action: String, _ change: () throws -> Void) async throws {
+      let before = reports
+      try change()
+      try await waitUntil("\(action) reports") { reports > before }
+    }
+    try await expectReport("a write") { try Data("two".utf8).write(to: url) }
+    // Data.write(options: .atomic) writes a temporary file and renames it over.
+    try await expectReport("an atomic save") {
+      try Data("three".utf8).write(to: url, options: .atomic)
+    }
+    try await waitUntil("watcher follows the replacement") { watcher.isArmed }
+    try await expectReport("a write to the replacement") {
+      let handle = try FileHandle(forWritingTo: url)
+      try handle.seekToEnd()
+      try handle.write(contentsOf: Data(" more".utf8))
+      try handle.close()
+    }
+    try await expectReport("a deletion") { try FileManager.default.removeItem(at: url) }
+    #expect(!watcher.isArmed, "a deleted file leaves the folder watched")
+    // Unrelated folder changes don't report while the file is missing.
+    let quiet = reports
+    _ = try file("other.md", Data("x".utf8))
+    try await Task.sleep(for: .milliseconds(DocumentWatcher.delayMilliseconds * 3))
+    #expect(reports == quiet)
+    try await expectReport("reappearance") { try Data("four".utf8).write(to: url) }
+    try await waitUntil("watcher follows the reappeared file") { watcher.isArmed }
+    // A burst is coalesced into one report.
+    let burst = reports
+    for index in 0..<10 { try Data("burst \(index)".utf8).write(to: url) }
+    try await waitUntil("a burst reports") { reports > burst }
+    try await Task.sleep(for: .milliseconds(DocumentWatcher.delayMilliseconds * 3))
+    #expect(reports - burst <= 2, "a burst is coalesced")
+    watcher.cancel()
+    let cancelled = reports
+    try Data("five".utf8).write(to: url)
+    try await Task.sleep(for: .milliseconds(DocumentWatcher.delayMilliseconds * 3))
+    #expect(reports == cancelled, "a cancelled watcher stops reporting")
+  }
+
+  /// The loader refreshes in the background: the presented document stays
+  /// until the new revision loads, a deleted file keeps it as stale and the
+  /// session records the deletion, and identical bytes never reparse.
+  @Test func loaderRefreshesExternalChanges() async throws {
+    let capability = try file("live.md", titled("v1"))
+    let loader = DocumentLoader()
+    var states: [String] = []
+    loader.onChange = { state in
+      switch state {
+      case .empty: states.append("empty")
+      case .loading: states.append("loading")
+      case .loaded(let loaded): states.append(loaded.document.title ?? "")
+      case .failed: states.append("failed")
+      case .stale: states.append("stale")
+      }
+    }
+    loader.open(capability)
+    try await settle(loader)
+    #expect(loadedTitle(loader) == "v1")
+    let first = try #require(loader.document?.document.generation)
+
+    try titled("v2").write(to: capability.url)
+    try await waitUntil("an external write is presented") { loadedTitle(loader) == "v2" }
+    #expect(states == ["loading", "v1", "v2"], "a refresh never shows a loading state")
+
+    // A newer mtime with identical bytes reads, but doesn't reparse or copy.
+    let generation = try #require(loader.document?.document.generation)
+    #expect(generation > first)
+    try FileManager.default.setAttributes(
+      [.modificationDate: Date().addingTimeInterval(5)], ofItemAtPath: capability.url.path)
+    loader.checkForChanges()
+    try await waitUntil("the check finishes") { !loader.isRefreshing }
+    #expect(loader.document?.document.generation == generation)
+
+    // An unchanged file needs no read at all.
+    let reads = states.count
+    loader.checkForChanges()
+    try await waitUntil("the check finishes") { !loader.isRefreshing }
+    #expect(states.count == reads)
+
+    try FileManager.default.removeItem(at: capability.url)
+    try await waitUntil("a deletion leaves the document stale") { stale(loader) != nil }
+    #expect(stale(loader)?.0 == "v2" && stale(loader)?.1 == .notFound)
+    #expect(loader.coreAvailability == .unavailable(.deleted))
+    #expect(loader.capability == capability && loader.document?.document.title == "v2")
+
+    // The same bytes coming back restore it without a new snapshot.
+    try titled("v2").write(to: capability.url)
+    try await waitUntil("the file's return is presented") { loadedTitle(loader) == "v2" }
+    #expect(loader.document?.document.generation == generation)
+    #expect(loader.coreAvailability == .available)
+
+    // A burst of saves ends on the last one, and results arrive in order.
+    for index in 3...12 {
+      try titled("v\(index)").write(to: capability.url, options: .atomic)
+      try await Task.sleep(for: .milliseconds(15))
+    }
+    try await waitUntil("the last save is presented") { loadedTitle(loader) == "v12" }
+    try await Task.sleep(for: .milliseconds(DocumentWatcher.delayMilliseconds * 3))
+    try await waitUntil("refreshes settle") { !loader.isRefreshing }
+    #expect(loadedTitle(loader) == "v12")
+    let versions = states.compactMap { $0.hasPrefix("v") ? Int($0.dropFirst()) : nil }
+    #expect(versions == versions.sorted(), "an older revision is never presented after a newer one")
+
+    // An invalid save keeps the last good revision; Reload then shows the error.
+    try Data([0x23, 0x20, 0xff]).write(to: capability.url)
+    try await waitUntil("an invalid save leaves the document stale") { stale(loader) != nil }
+    #expect(stale(loader)?.1 == .invalidText && stale(loader)?.0 == "v12")
+    loader.reload()
+    try await settle(loader)
+    #expect(failure(loader) == .invalidText)
+    await loader.close()
+    try expectNoHandles()
+  }
+
+  /// A file that is missing when opened loads by itself once it appears.
+  @Test func missingFileLoadsWhenItAppears() async throws {
+    let capability = try capability("later.md")
+    let loader = DocumentLoader()
+    loader.open(capability)
+    try await settle(loader)
+    #expect(failure(loader) == .notFound)
+    try titled("Later").write(to: capability.url)
+    try await waitUntil("the new file loads") { loadedTitle(loader) == "Later" }
+    await loader.close()
+    try expectNoHandles()
+  }
 }

@@ -5,7 +5,13 @@ import MarkdownRender
 
 /// One document window: an outline sidebar beside the TextKit 2 reading
 /// surface and its find bar, with a centred status label for the empty,
-/// loading and error states.
+/// loading and error states, and a notice below a stale document.
+///
+/// A new revision of the shown document (an external change or Reload)
+/// keeps the reader's place: the top line and selection are anchored in the
+/// old snapshot and resolved in the new one (MAC-001H). A restorable window
+/// saves the same anchors with a bookmark to its document, so a relaunch
+/// reopens the document where the reader left it.
 @MainActor
 final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenuItemValidation {
   var onClose: ((ReaderWindowController) -> Void)?
@@ -13,6 +19,7 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
   let surface = ReaderSurface()
   let outline = OutlineController()
   let findBar = FindBar()
+  let notice = NoticeBar()
   let preferences: ReaderPreferences
   /// The matches for the find bar's current query, options and document.
   private(set) var findMatches: FindMatches?
@@ -25,15 +32,27 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
   /// The key of the running search, and the step to take when it finishes.
   private var findTaskKey: FindKey?
   private var pendingStep: Bool?
-  /// The reading surface starts below the safe area, or below a visible find bar.
+  /// The reading surface starts below the safe area, or below a visible find bar,
+  /// and ends at the bottom, or above a visible notice.
   private var surfaceTop: NSLayoutConstraint!
   private var surfaceBelowFindBar: NSLayoutConstraint!
+  private var surfaceBottom: NSLayoutConstraint!
+  private var surfaceAboveNotice: NSLayoutConstraint!
   private let split = NSSplitViewController()
   private let status = NSTextField(labelWithString: "No document open")
   private let detail = NSTextField(wrappingLabelWithString: "")
   private let statusStack: NSStackView
   private var renderTask: Task<Void, Never>?
   private var renderRequest: UInt64 = 0
+  /// Where the running render puts the reader.
+  private var renderPlacement: Placement = .top
+  /// The user chose Reload: render the result even if it is unchanged.
+  private var reloadRequested = false
+  /// A relaunch's saved position, resolved when the document first loads.
+  private var pendingRestore: SavedPosition?
+  /// The anchored position most recently saved for state restoration.
+  private(set) var savedPosition: SavedPosition?
+  private var positionTask: Task<Void, Never>?
   /// The title of the presented document, once its text is shown.
   private(set) var documentTitle: String?
   private var shownCapability: DocumentCapability?
@@ -73,14 +92,19 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
     surface.scrollView.isHidden = true
     findBar.translatesAutoresizingMaskIntoConstraints = false
     findBar.isHidden = true
+    notice.translatesAutoresizingMaskIntoConstraints = false
+    notice.isHidden = true
     content.addSubview(surface.scrollView)
     content.addSubview(findBar)
+    content.addSubview(notice)
     content.addSubview(statusStack)
     NSLayoutConstraint.activate([
       findBar.topAnchor.constraint(equalTo: content.safeAreaLayoutGuide.topAnchor),
       findBar.leadingAnchor.constraint(equalTo: content.leadingAnchor),
       findBar.trailingAnchor.constraint(equalTo: content.trailingAnchor),
-      surface.scrollView.bottomAnchor.constraint(equalTo: content.bottomAnchor),
+      notice.bottomAnchor.constraint(equalTo: content.bottomAnchor),
+      notice.leadingAnchor.constraint(equalTo: content.leadingAnchor),
+      notice.trailingAnchor.constraint(equalTo: content.trailingAnchor),
       surface.scrollView.leadingAnchor.constraint(equalTo: content.leadingAnchor),
       surface.scrollView.trailingAnchor.constraint(equalTo: content.trailingAnchor),
       statusStack.centerXAnchor.constraint(equalTo: content.centerXAnchor),
@@ -100,6 +124,9 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
       equalTo: content.safeAreaLayoutGuide.topAnchor)
     surfaceBelowFindBar = surface.scrollView.topAnchor.constraint(equalTo: findBar.bottomAnchor)
     surfaceTop.isActive = true
+    surfaceBottom = surface.scrollView.bottomAnchor.constraint(equalTo: content.bottomAnchor)
+    surfaceAboveNotice = surface.scrollView.bottomAnchor.constraint(equalTo: notice.topAnchor)
+    surfaceBottom.isActive = true
     window.contentViewController = split
     window.setContentSize(NSSize(width: 900, height: 640))
     window.center()
@@ -111,6 +138,15 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
     findBar.onSearch = { [weak self] in self?.search(then: nil) }
     findBar.onNavigate = { [weak self] backwards in self?.step(backwards: backwards) }
     findBar.onClose = { [weak self] in self?.closeFindBar() }
+    notice.onReload = { [weak self] in self?.reloadDocument(nil) }
+    // Restorable windows save the reading position once the reader pauses.
+    surface.scrollView.contentView.postsBoundsChangedNotifications = true
+    NotificationCenter.default.addObserver(
+      self, selector: #selector(readingPositionChanged(_:)),
+      name: NSView.boundsDidChangeNotification, object: surface.scrollView.contentView)
+    NotificationCenter.default.addObserver(
+      self, selector: #selector(readingPositionChanged(_:)),
+      name: NSTextView.didChangeSelectionNotification, object: surface.textView)
   }
 
   required init?(coder: NSCoder) {
@@ -120,10 +156,41 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
   var statusText: String { status.stringValue }
   var detailText: String { detail.stringValue }
   /// Whether a load or the off-main rendering of its result is still running.
-  var isBusy: Bool { loader.isLoading || renderTask != nil }
+  var isBusy: Bool { loader.isLoading || loader.isRefreshing || renderTask != nil }
   var isSidebarCollapsed: Bool { split.splitViewItems[0].isCollapsed }
 
+  /// Where a rendering puts the reader.
+  private enum Placement {
+    /// A newly opened document: the top, with a lead first for a long one.
+    case top
+    /// The shown text at a new text size, restyled in place.
+    case restyle
+    /// The shown text (a lead's) at a new text size: this position.
+    case keep(ReadingPosition)
+    /// A new revision of the shown document: the reader's place, anchored
+    /// in the old snapshot and resolved in the new one.
+    case transfer
+    /// A restored window's saved position.
+    case restore(SavedPosition)
+  }
+
+  /// Whether `loaded` is the revision on screen (or being completed from its lead).
+  private func isShowing(_ loaded: LoadedDocument) -> Bool {
+    loaded.capability == shownCapability
+      && surface.document?.generation == loaded.document.generation
+  }
+
   private func present(_ state: DocumentLoader.State) {
+    switch state {
+    case .loaded(let loaded) where isShowing(loaded) && !reloadRequested:
+      // An unchanged refresh, or the file of a stale document came back.
+      setNotice(nil)
+      return
+    case .stale(let loaded, let error) where isShowing(loaded):
+      setNotice(error)
+      return
+    default: break
+    }
     renderRequest &+= 1
     renderTask?.cancel()
     renderTask = nil
@@ -136,31 +203,56 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
         showStatus("Loading…", nil, title: capability.displayName, url: capability.url)
       }
     case .loaded(let loaded):
+      reloadRequested = false
+      setNotice(nil)
       onMilestone?(.loaded)
-      render(loaded)
+      render(loaded, placement: placement(for: loaded))
+    case .stale(let loaded, let error):
+      // A newer revision loaded but wasn't shown before the file went away.
+      setNotice(error)
+      render(loaded, placement: placement(for: loaded))
     case .failed(let capability, let error):
+      reloadRequested = false
+      pendingRestore = nil
       showStatus(error.message, error.recovery, title: capability.displayName, url: nil)
     }
   }
 
+  private func placement(for loaded: LoadedDocument) -> Placement {
+    if let saved = pendingRestore {
+      pendingRestore = nil
+      return .restore(saved)
+    }
+    return loaded.capability == shownCapability && surface.document != nil ? .transfer : .top
+  }
+
   /// Build the attributed text off the main actor; only the newest request
   /// installs its result, so a slow render never replaces newer content. A
-  /// long document shows its lead first and is completed in place.
-  private func render(_ loaded: LoadedDocument, restyle: Bool = false) {
+  /// newly opened long document shows its lead first and is completed in
+  /// place; any other placement waits for the whole text, since its
+  /// position may lie past the lead.
+  private func render(_ loaded: LoadedDocument, placement: Placement) {
     let id = renderRequest
     let document = loaded.document
     let capability = loaded.capability
     let scale = preferences.textScale
-    let lead: (@Sendable (RenderedDocument) -> Void)? =
-      restyle
-      ? nil
-      : { @Sendable [weak self] partial in
+    renderPlacement = placement
+    var lead: (@Sendable (RenderedDocument) -> Void)?
+    var saved: SavedPosition?
+    switch placement {
+    case .top:
+      lead = { @Sendable [weak self] partial in
         Task { @MainActor in self?.installLead(partial, id: id, loaded) }
       }
-    let work = Task.detached(priority: .userInitiated) {
+    case .restore(let position): saved = position
+    case .restyle, .keep, .transfer: break
+    }
+    let work = Task.detached(priority: .userInitiated) { [lead, saved] in
       // Resolving the folder touches the filesystem, so it stays off the main thread.
       let images = Self.imageLoader(DocumentResources(document: capability))
-      return try DocumentRenderer.render(document, images: images, scale: scale, lead: lead)
+      let rendered = try DocumentRenderer.render(
+        document, images: images, scale: scale, lead: lead)
+      return (rendered, saved.flatMap { rendered.restore($0) })
     }
     renderTask = Task { [weak self] in
       // Cancelling the window's task (a newer state, or close) stops the render.
@@ -170,21 +262,35 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
         work.cancel()
       }
       guard let self, id == self.renderRequest else { return }
-      self.renderTask = nil
-      switch result {
-      case .success(let rendered) where restyle:
+      let title = document.title ?? capability.displayName
+      switch (result, placement) {
+      case (.success((let rendered, _)), .restyle):
         self.surface.restyle(rendered)
-      case .success(let rendered)
+      case (.success((let rendered, _)), .keep(let position)):
+        self.install(rendered, title: title, loaded, at: position)
+      case (.success((let rendered, let restored)), .restore):
+        self.install(rendered, title: title, loaded, at: restored)
+      case (.success((let rendered, _)), .transfer):
+        // Anchor the reader's place as it is now; the core calls run off
+        // the main thread, and a newer state still wins.
+        let shown = self.surface.document
+        let position = self.surface.readingPosition
+        let moved = await Task.detached {
+          shown.flatMap { try? rendered.restore($0.save(position)) }
+        }.value
+        guard id == self.renderRequest else { return }
+        self.install(rendered, title: title, loaded, at: moved)
+      case (.success((let rendered, _)), .top)
       where self.surface.document?.isComplete == false
         && self.surface.document?.generation == rendered.generation:
         self.completeLead(rendered)
-      case .success(let rendered):
-        self.install(rendered, title: document.title ?? loaded.capability.displayName, loaded)
-      case .failure:
+      case (.success((let rendered, _)), .top):
+        self.install(rendered, title: title, loaded)
+      case (.failure, _):
         let error = DocumentError.parseFailed
-        self.showStatus(
-          error.message, error.recovery, title: loaded.capability.displayName, url: nil)
+        self.showStatus(error.message, error.recovery, title: capability.displayName, url: nil)
       }
+      self.renderTask = nil
     }
   }
 
@@ -224,10 +330,14 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
     onMilestone?(.completed)
   }
 
-  private func install(_ rendered: RenderedDocument, title: String, _ loaded: LoadedDocument) {
+  /// Show a rendering at the top, or at `position` when there is one.
+  private func install(
+    _ rendered: RenderedDocument, title: String, _ loaded: LoadedDocument,
+    at position: ReadingPosition? = nil
+  ) {
     documentTitle = title
     shownCapability = loaded.capability
-    surface.show(rendered)
+    if let position { surface.show(rendered, at: position) } else { surface.show(rendered) }
     outline.show(rendered.headings)
     surface.scrollView.isHidden = false
     statusStack.isHidden = true
@@ -239,23 +349,36 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
     if !findBar.isHidden { search(then: nil) }
     onMilestone?(.installed)
     if rendered.isComplete { onMilestone?(.completed) }
+    invalidateReadingPosition()
   }
 
   /// Re-render the presented document at the current text size, keeping the
-  /// reading position, selection and find highlights.
+  /// reading position, selection and find highlights. A lead that is still
+  /// being completed keeps the reader's place in it too.
   func applyTextScale() {
-    guard case .loaded(let loaded) = loader.state else { return }
-    let restyle =
-      renderTask == nil && loaded.capability == shownCapability
-      && surface.document?.generation == loaded.document.generation
+    guard let loaded = loader.document else { return }
+    let placement: Placement
+    if isShowing(loaded), let shown = surface.document {
+      if renderTask == nil {
+        placement = .restyle
+      } else {
+        placement = shown.isComplete ? renderPlacement : .keep(surface.readingPosition)
+      }
+    } else if renderTask != nil {
+      // A transfer or restoration in progress keeps its placement.
+      placement = renderPlacement
+    } else {
+      return
+    }
     renderRequest &+= 1
     renderTask?.cancel()
     renderTask = nil
-    render(loaded, restyle: restyle)
+    render(loaded, placement: placement)
   }
 
   private func showStatus(_ primary: String, _ secondary: String?, title: String, url: URL?) {
     closeFindBar()
+    setNotice(nil)
     documentTitle = nil
     shownCapability = nil
     surface.show(nil)
@@ -270,7 +393,98 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
   }
 
   @objc func reloadDocument(_ sender: Any?) {
+    reloadRequested = true
     loader.reload()
+  }
+
+  /// Show or hide the notice below a stale document.
+  private func setNotice(_ error: DocumentError?) {
+    let visible = error != nil
+    if let error {
+      notice.show(error.message, detail: "Showing the version last read. " + error.recovery)
+    }
+    guard visible == notice.isHidden else { return }
+    notice.isHidden = !visible
+    surfaceBottom.isActive = !visible
+    surfaceAboveNotice.isActive = visible
+    if visible, let window {
+      NSAccessibility.post(
+        element: window, notification: .announcementRequested,
+        userInfo: [
+          .announcement: notice.message.stringValue,
+          .priority: NSAccessibilityPriorityLevel.high.rawValue,
+        ])
+    }
+  }
+
+  var noticeText: String? { notice.isHidden ? nil : notice.message.stringValue }
+
+  // MARK: Restoration
+
+  /// Save the reading position for state restoration once the reader pauses.
+  @objc private func readingPositionChanged(_ notification: Notification) {
+    guard window?.isRestorable == true, surface.document != nil else { return }
+    positionTask?.cancel()
+    positionTask = Task { [weak self] in
+      try? await Task.sleep(for: .milliseconds(500))
+      guard !Task.isCancelled else { return }
+      self?.invalidateReadingPosition()
+    }
+  }
+
+  /// Save the current position and ask AppKit to encode the window's state again.
+  private func invalidateReadingPosition() {
+    guard window?.isRestorable == true, surface.document != nil else { return }
+    positionTask?.cancel()
+    positionTask = Task { [weak self] in
+      await self?.saveReadingPosition()
+      guard let self, !Task.isCancelled else { return }
+      self.positionTask = nil
+      self.invalidateRestorableState()
+    }
+  }
+
+  /// Anchor the current position off the main thread for state restoration.
+  func saveReadingPosition() async {
+    guard let rendered = surface.document else { return }
+    let position = surface.readingPosition
+    let saved = await Task.detached { try? rendered.save(position) }.value
+    guard !Task.isCancelled, let saved, surface.document?.generation == rendered.generation
+    else { return }
+    savedPosition = saved
+  }
+
+  /// Make the window restorable: AppKit saves its frame, and this
+  /// controller its document and reading position.
+  func enableRestoration() {
+    guard let window else { return }
+    window.identifier = ReaderWindowRestoration.identifier
+    window.restorationClass = ReaderWindowRestoration.self
+    window.isRestorable = true
+  }
+
+  /// Open the document a relaunch restores, at its saved position.
+  func restore(_ capability: DocumentCapability, at position: SavedPosition?, sidebar: Bool) {
+    pendingRestore = position
+    savedPosition = position
+    split.splitViewItems[0].isCollapsed = !sidebar
+    loader.open(capability)
+  }
+
+  func window(_ window: NSWindow, willEncodeRestorableState state: NSCoder) {
+    // Only a document that loaded is restored; a failed one isn't.
+    guard let capability = loader.document?.capability ?? pendingCapability,
+      let bookmark = capability.bookmark()
+    else { return }
+    RestorationState(
+      bookmark: bookmark, position: savedPosition, sidebar: !isSidebarCollapsed
+    ).encode(to: state)
+  }
+
+  /// A restored document that hasn't loaded yet keeps its saved state.
+  private var pendingCapability: DocumentCapability? {
+    if pendingRestore != nil || loader.isLoading { return loader.capability }
+    return nil
   }
 
   func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
@@ -494,7 +708,15 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
       ])
   }
 
+  /// Look for a change the watcher may have missed, as on a network volume.
+  func windowDidBecomeKey(_ notification: Notification) {
+    if loader.document != nil { loader.checkForChanges() }
+  }
+
   func windowWillClose(_ notification: Notification) {
+    NotificationCenter.default.removeObserver(self)
+    positionTask?.cancel()
+    positionTask = nil
     findRequest &+= 1
     findTask?.cancel()
     findTask = nil

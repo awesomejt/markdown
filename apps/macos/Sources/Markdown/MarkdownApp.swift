@@ -16,7 +16,8 @@ enum MarkdownApp {
     let app = NSApplication.shared
     let delegate = AppDelegate(
       smokeTest: CommandLine.arguments.contains("--smoke-test"),
-      measurement: Measurement.Mode(arguments: CommandLine.arguments))
+      measurement: Measurement.Mode(arguments: CommandLine.arguments),
+      relaunchCheck: RelaunchCheck.arguments(CommandLine.arguments))
     app.setActivationPolicy(.regular)
     app.delegate = delegate
     app.run()
@@ -31,13 +32,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
   private let measurement: Measurement.Mode?
   let preferences: ReaderPreferences
   private(set) var settings: SettingsWindowController?
+  /// Windows are saved and restored across relaunches, except in the smoke
+  /// and measurements, which never read or write the user's saved state.
+  let restoresWindows: Bool
 
-  init(smokeTest: Bool, measurement: Measurement.Mode? = nil) {
+  private let relaunchCheck: (RelaunchCheck.Phase, URL)?
+
+  init(
+    smokeTest: Bool, measurement: Measurement.Mode? = nil,
+    relaunchCheck: (RelaunchCheck.Phase, URL)? = nil
+  ) {
     self.smokeTest = smokeTest
     self.measurement = measurement
-    // The smoke and measurements never read or write the user's settings.
+    self.relaunchCheck = relaunchCheck
+    restoresWindows = !smokeTest && measurement == nil
+    // The development checks never read or write the user's settings.
     preferences = ReaderPreferences(
-      store: smokeTest || measurement != nil ? MemoryPreferenceStore() : UserDefaults.standard)
+      store: smokeTest || measurement != nil || relaunchCheck != nil
+        ? MemoryPreferenceStore() : UserDefaults.standard)
     appliedScale = preferences.textScale
     super.init()
     preferences.onChange = { [weak self] in self?.preferencesChanged() }
@@ -111,12 +123,34 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
     if let measurement {
       Task { await Measurement.run(measurement, delegate: self) }
     }
+    if let (phase, url) = relaunchCheck {
+      Task { await RelaunchCheck.run(phase, document: url, delegate: self) }
+    }
     if smokeTest {
       // Exercise the running AppKit application, not just its constructors.
       DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [self] in
         Task { await ShellSmoke.run(delegate: self) }
       }
     }
+  }
+
+  func applicationSupportsSecureRestorableState(_ app: NSApplication) -> Bool { true }
+
+  /// Recreate a reader window from its saved state (ReaderWindowRestoration).
+  func restoreWindow(from coder: NSCoder) -> ReaderWindowController? {
+    guard restoresWindows, let state = RestorationState(from: coder) else { return nil }
+    return restoreWindow(state)
+  }
+
+  /// Open a saved document at its position in a new, unshown window. Nil
+  /// when its bookmark no longer resolves or a window already shows it.
+  func restoreWindow(_ state: RestorationState) -> ReaderWindowController? {
+    guard let capability = DocumentCapability(bookmark: state.bookmark),
+      !windows.contains(where: { $0.loader.capability == capability })
+    else { return nil }
+    let controller = makeWindow(nil, show: false)
+    controller.restore(capability, at: state.position, sidebar: state.sidebar)
+    return controller
   }
 
   func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows: Bool) -> Bool {
@@ -153,7 +187,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
       guard let capability = try? DocumentCapability(granted: url) else { continue }
       if let existing = windows.first(where: { $0.loader.capability == capability }) {
         // Choosing a file again retries a failed load, e.g. after reconnecting.
-        if case .failed = existing.loader.state { existing.loader.reload() }
+        switch existing.loader.state {
+        case .failed, .stale: existing.loader.reload()
+        case .empty, .loading, .loaded: break
+        }
         existing.showWindow(nil)
         continue
       }
@@ -169,15 +206,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
     makeWindow(sender)
   }
 
+  /// A new reader window. A restored one is shown by AppKit, not here.
   @discardableResult
-  func makeWindow(_ sender: Any?) -> ReaderWindowController {
+  func makeWindow(_ sender: Any?, show: Bool = true) -> ReaderWindowController {
     let controller = ReaderWindowController(preferences: preferences)
     controller.onClose = { [weak self] closed in
       self?.windows.removeAll { $0 === closed }
     }
+    if restoresWindows { controller.enableRestoration() }
     windows.append(controller)
-    controller.showWindow(sender)
-    controller.window?.makeKeyAndOrderFront(sender)
+    if show {
+      controller.showWindow(sender)
+      controller.window?.makeKeyAndOrderFront(sender)
+    }
     return controller
   }
 
