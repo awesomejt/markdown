@@ -42,7 +42,9 @@ MAC-001G closed in PR #45 with [large documents, copy, VoiceOver rotors and budg
 its fix bounds repeated-load memory, and its open budgets are [listed below](#open-native-budgets).
 MAC-001H closed in PR #46 with [external refresh, anchored reading positions and restoration](apps/macos/README.md#external-refresh-and-restoration-mac-001h).
 MAC-001I closed in PR #47 with [the development artifact, license inventory and relocated launch](apps/macos/README.md#development-artifact-and-licenses-mac-001i)
-and [skeleton acceptance](docs/macOS-Skeleton-Acceptance.md). The MAC-001 aggregate is next on macOS.
+and [skeleton acceptance](docs/macOS-Skeleton-Acceptance.md). The MAC-001 aggregate closed in PR #48
+([aggregate evidence](docs/macOS-Skeleton-Acceptance.md#mac-001-aggregate)); the macOS skeleton
+milestone review (D-030) is next on this Mac.
 The shared-core milestone boundary is reached:
 Claude prepares the combined packet for the owner under D-030; only the owner
 merges that milestone into `main`.
@@ -77,7 +79,8 @@ closed in PR #37 with [search/read acceptance](docs/Core-Search-Acceptance.md)
 and explicit reference-syntax boundaries. CORE-006 closed in PR #38 with
 [facade acceptance](docs/Core-Facade-Acceptance.md), the ABI v1 default-change
 history and fresh three-OS all-feature release CI. The desktop chains are
-eligible; MAC-001A to MAC-001I closed in PRs #39 to #47 and the MAC-001 aggregate is next on this Mac. Inspect
+eligible; MAC-001A to MAC-001I closed in PRs #39 to #47 and the MAC-001 aggregate in PR #48. The macOS
+skeleton milestone review is next on this Mac; WIN-001A and LNX-001A wait for their hosts. Inspect
 state and `HANDOFF.md` before any pass. Scoped commits, pushes, PR updates and
 review requests are authorized; a Grok review with no serious finding approves
 a merge into `develop` (D-029); only the owner merges into `main` (D-030);
@@ -434,7 +437,10 @@ CORE-006 no longer carry. The three host chains are independent.
   selection and UIA reading order; exercise mixed DPI, font scaling and real
   input frame pacing before accepting a large-document strategy.
 - **MAC-001 — macOS single-document skeleton.** Equivalent native macOS slice
-  with AppKit/SwiftUI responsibilities decided from measurements.
+  with AppKit/SwiftUI responsibilities decided from measurements. Outcome:
+  AppKit throughout, Settings included; SwiftUI stays allowed for later
+  shell surfaces under D-010
+  ([aggregate evidence](docs/macOS-Skeleton-Acceptance.md#mac-001-aggregate)).
 - **LNX-001 — Linux single-document skeleton.** GTK/gtk-rs native virtualized
   blocks, conditional on LNX-001D1 after basic text/navigation: prove AT-SPI
   heading semantics, off-screen heading navigation and owner-confirmed Orca
