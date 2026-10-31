@@ -50,17 +50,8 @@ final class DocumentRotors: NSObject, @preconcurrency NSAccessibilityCustomRotor
     case .table:
       return document.tables.enumerated().map { ($1, "Table \($0 + 1)") }
     case .image:
-      return document.images.map { ($0.range, Self.label(of: $0, in: document)) }
+      return document.images.map { ($0.range, $0.alt.isEmpty ? "Image" : $0.alt) }
     }
-  }
-
-  /// A loaded image's alt text, or the bracketed alt text shown in its place.
-  private static func label(of image: RenderedImage, in document: RenderedDocument) -> String {
-    let attachment =
-      document.text.attribute(.attachment, at: image.range.location, effectiveRange: nil)
-      as? NSTextAttachment
-    if let description = attachment?.image?.accessibilityDescription { return description }
-    return (document.text.string as NSString).substring(with: image.range)
   }
 
   /// The next or previous item after the current one (the first or last

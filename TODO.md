@@ -499,6 +499,14 @@ when it is resolved.
   persistent identity work for recents in MAC-002A, which avoids adding a stat
   on the main thread for every open now.
 
+- **MAC-001G (PR #45, Grok review 1), nit:** a text size change while only
+  a long document's lead is shown can't restyle in place (its render is
+  still running), so it renders afresh and the new lead returns to the top,
+  losing a position the reader scrolled to within the lead (a fraction of a
+  second after opening). Keep the top line and selection when the shown
+  document is an incomplete lead of the same generation, with MAC-001H's
+  reading-position restoration.
+
 - **Hosted `macos-native` flakiness (found 2026-10-30 during PR #42), not a
   review finding:** on the `xcode-27-arm64` image 20261026.0314.1, some
   runners fail before any project code runs. When `rust-toolchain.toml` adds

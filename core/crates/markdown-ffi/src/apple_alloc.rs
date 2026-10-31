@@ -1,4 +1,7 @@
-//! Apple allocator wrapper for repeated large documents (MAC-001G).
+//! macOS allocator wrapper for repeated large documents (MAC-001G).
+//!
+//! Only macOS was measured, so only macOS builds it; iOS can adopt it after
+//! measuring IOS-001. It is the crate's `#[global_allocator]` there.
 //!
 //! On macOS 27 a `realloc` that grows a block in Apple's large-allocation
 //! range leaves the old region resident and dirty ("Malloc Large (empty)"),

@@ -233,7 +233,7 @@ window.
   and dirty, and later allocations don't reuse it ("Malloc Large (empty)" in
   `vmmap`). The core's vectors grow that way while parsing, so every 5 MiB
   document used to leave about 80 MiB behind after its window closed. On
-  Apple targets `markdown-ffi` now installs a global allocator that forwards
+  macOS `markdown-ffi` now installs a global allocator that forwards
   everything to the system allocator, except that a reallocation of 1 MiB or
   more allocates, copies and frees
   ([details](../../docs/macOS-Core-Integration.md#repeated-session-memory)).
@@ -258,10 +258,14 @@ window.
   units, AppKit took about 1 s to choose the pasteboard types and 0.3 s to
   make RTF. Such a Copy writes plain text at once and promises RTF (and RTFD
   when the selection holds a loaded image), made only when an app pastes
-  them. Shorter selections copy as before.
+  them. The promise is a separate owner the app keeps while the pasteboard
+  is unchanged, so pasting after its window closes still works; a promise
+  whose pasteboard changed is dropped at the next copy. Shorter and multiple
+  selections copy as before.
 - **VoiceOver rotors.** The text view offers Headings, Heading Level 1–6,
   Tables and Images rotors. Each item is a range of the document's text,
-  labelled with the heading title, “Table N” or the image's alt text, and
+  labelled with the heading title, “Table N” or the image's alt text (“Image”
+  without one), and
   the rotor filter matches labels. Headings are not otherwise announced as
   headings while reading continuously, and tables are read as lines.
 
@@ -455,6 +459,8 @@ be cancelled and its runner configuration fixed.
    confirm VoiceOver moves to and reads each item. Note any pause when
    VoiceOver first reads near the end of the 5 MiB document. Select All,
    Copy and paste into TextEdit; the text, its styling and images arrive.
+   Copy again, close the window and paste; then copy, quit Markdown and
+   paste, and record whether the styled text still arrives after quitting.
 
 Inspect the empty-state text/window/menu roles using macOS accessibility
 tooling. Full VoiceOver document reading, large documents, mixed displays,

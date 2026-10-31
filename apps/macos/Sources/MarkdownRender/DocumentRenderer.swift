@@ -631,7 +631,7 @@ private struct Builder {
       mark(index, from: start, atomic: true)
       let tip = node.flags & UInt32(MD_NODE_HAS_TITLE) != 0 ? try document.string(node.extra) : alt
       if !tip.isEmpty { output.addAttribute(.toolTip, value: tip, range: NSRange(start..<length)) }
-      images.append(RenderedImage(range: NSRange(start..<length), failure: nil))
+      images.append(RenderedImage(range: NSRange(start..<length), failure: nil, alt: alt))
     case .failure(let failure):
       var inner = font
       inner.italic = true
@@ -642,7 +642,7 @@ private struct Builder {
           start: Int32(clamping: start + 1), length: Int32(clamping: (alt as NSString).length))
       }
       output.addAttribute(.toolTip, value: failure.message, range: NSRange(start..<length))
-      images.append(RenderedImage(range: NSRange(start..<length), failure: failure))
+      images.append(RenderedImage(range: NSRange(start..<length), failure: failure, alt: alt))
     }
   }
 

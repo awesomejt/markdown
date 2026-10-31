@@ -160,8 +160,10 @@ near 5.2 MiB and no leak. MAC-001G found the cause and resolved it.
 (`core/crates/markdown-ffi/src/apple_alloc.rs`). It forwards every call to
 the system allocator, except that a reallocation whose old or new size
 reaches 1 MiB allocates, copies and frees. Linux and Windows are unchanged.
-The static library therefore defines Rust's global allocator: a host that
-linked a second Rust static library would need one combined Rust build.
+Only macOS builds it (`target_os = "macos"`); iOS can adopt it after IOS-001
+measures. The macOS static library therefore defines Rust's global
+allocator: a host that linked a second Rust static library would need one
+combined Rust build.
 The probe's twenty 5 MiB cycles now retain a flat 199 MiB footprint from
 cycle 2 (54 MiB after cycle 1), the allocator's reused cache of freed large
 blocks; the awaited parse call is unchanged at about 190–200 ms. Prose

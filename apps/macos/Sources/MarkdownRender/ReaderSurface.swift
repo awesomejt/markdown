@@ -303,8 +303,7 @@ extension Array {
 /// text at once and promises rich text, made only if a paste asks for it.
 /// For a 5 MiB selection AppKit took about 1 s to choose the pasteboard types
 /// and 0.3 s to make RTF, both on the main thread (macOS 27.0.1).
-/// AppKit asks the owner for promised data on the main thread.
-final class ReaderTextView: NSTextView, @preconcurrency NSPasteboardTypeOwner {
+final class ReaderTextView: NSTextView {
   /// Longer selections copy their rich text lazily.
   static let eagerRichTextLimit = 65_536
   /// AppKit's writable types use the legacy names (macOS 27.0.1).
@@ -314,8 +313,6 @@ final class ReaderTextView: NSTextView, @preconcurrency NSPasteboardTypeOwner {
   static let legacyString = NSPasteboard.PasteboardType("NSStringPboardType")
   /// The ranges of loaded images, in order; the surface sets them.
   var imageRanges: [NSRange] = []
-  /// The copied rich text, kept until another owner takes the pasteboard.
-  private var promised: (pasteboard: NSPasteboard, text: NSAttributedString)?
 
   /// What AppKit offers for a selection of this read-only view, which never
   /// imports graphics: RTFD only when it holds an image, then RTF and plain
@@ -324,10 +321,12 @@ final class ReaderTextView: NSTextView, @preconcurrency NSPasteboardTypeOwner {
     (withImages ? [legacyRichTextWithImages] : []) + [legacyRichText, legacyString]
   }
 
-  /// A long selection skips AppKit's scan of it.
+  /// A long single selection skips AppKit's scan of it.
   override var writablePasteboardTypes: [NSPasteboard.PasteboardType] {
     let range = selectedRange()
-    guard range.length > Self.eagerRichTextLimit else { return super.writablePasteboardTypes }
+    guard range.length > Self.eagerRichTextLimit, selectedRanges.count == 1 else {
+      return super.writablePasteboardTypes
+    }
     return Self.types(
       withImages: imageRanges.contains { NSIntersectionRange($0, range).length > 0 })
   }
@@ -339,30 +338,77 @@ final class ReaderTextView: NSTextView, @preconcurrency NSPasteboardTypeOwner {
   override func writeSelection(to pboard: NSPasteboard, types: [NSPasteboard.PasteboardType])
     -> Bool
   {
+    RichTextPromise.prune()
     let range = selectedRange()
     let rich = types.filter(Self.isRichText)
-    guard range.length > Self.eagerRichTextLimit, !rich.isEmpty, let storage = textStorage
+    // A multiple selection copies all its ranges, so AppKit writes it.
+    guard range.length > Self.eagerRichTextLimit, selectedRanges.count == 1, !rich.isEmpty,
+      let storage = textStorage
     else { return super.writeSelection(to: pboard, types: types) }
     guard super.writeSelection(to: pboard, types: types.filter { !Self.isRichText($0) }) else {
       return false
     }
-    promised = (pboard, storage.attributedSubstring(from: range))
     let images = rich.contains { $0 == .rtfd || $0 == Self.legacyRichTextWithImages }
-    pboard.addTypes(images ? [.rtfd, .rtf] : [.rtf], owner: self)
-    return true
+    return RichTextPromise.make(
+      storage.attributedSubstring(from: range), on: pboard,
+      types: images ? [.rtfd, .rtf] : [.rtf])
+  }
+}
+
+/// Rich text promised on a pasteboard. It declares the pasteboard's types
+/// itself, so the pasteboard doesn't keep the text view, and the app keeps it
+/// while the pasteboard is unchanged: a paste after its window closed still
+/// gets the rich text. AppKit didn't send `pasteboardChangedOwner` for a
+/// replaced named pasteboard (macOS 27.0.1), so a promise whose pasteboard
+/// has changed is dropped at the reader's next copy.
+@MainActor
+final class RichTextPromise: NSObject, @preconcurrency NSPasteboardTypeOwner {
+  /// One promise per pasteboard: a new copy replaces the old one.
+  private static var live: [NSPasteboard.Name: RichTextPromise] = [:]
+  private let text: NSAttributedString
+  private weak var pasteboard: NSPasteboard?
+  private var changeCount = 0
+
+  private init(_ text: NSAttributedString) {
+    self.text = text
   }
 
+  /// Promise `types` beside the plain text AppKit has just written.
+  static func make(
+    _ text: NSAttributedString, on pasteboard: NSPasteboard, types: [NSPasteboard.PasteboardType]
+  ) -> Bool {
+    guard let plain = pasteboard.string(forType: .string) else { return false }
+    let promise = RichTextPromise(text)
+    promise.changeCount = pasteboard.declareTypes([.string] + types, owner: promise)
+    promise.pasteboard = pasteboard
+    live[pasteboard.name] = promise
+    return pasteboard.setString(plain, forType: .string)
+  }
+
+  /// Drop promises whose pasteboard has been written since.
+  static func prune() {
+    live = live.filter { $0.value.isCurrent }
+  }
+
+  private var isCurrent: Bool { pasteboard?.changeCount == changeCount }
+
+  /// AppKit asks the owner for promised data on the main thread.
   func pasteboard(_ sender: NSPasteboard, provideDataForType type: NSPasteboard.PasteboardType) {
-    guard Self.isRichText(type), let promised, promised.pasteboard == sender else { return }
-    let text = promised.text
+    guard ReaderTextView.isRichText(type) else { return }
     let range = NSRange(location: 0, length: text.length)
-    let images = type == .rtfd || type == Self.legacyRichTextWithImages
+    let images = type == .rtfd || type == ReaderTextView.legacyRichTextWithImages
     if let data = images ? text.rtfd(from: range) : text.rtf(from: range) {
       sender.setData(data, forType: type)
     }
   }
 
   func pasteboardChangedOwner(_ sender: NSPasteboard) {
-    if promised?.pasteboard == sender { promised = nil }
+    if Self.live[sender.name] === self { Self.live[sender.name] = nil }
+  }
+
+  /// Whether a current promise is held for `pasteboard` (tests).
+  static func isHeld(for pasteboard: NSPasteboard) -> Bool {
+    prune()
+    return live[pasteboard.name] != nil
   }
 }

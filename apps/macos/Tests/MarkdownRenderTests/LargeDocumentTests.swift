@@ -17,6 +17,14 @@ struct LargeDocumentTests {
     return (session, document)
   }
 
+  /// AppKit tells a pasteboard's previous owner on a later run-loop turn.
+  private static func released(_ pasteboard: NSPasteboard) async throws -> Bool {
+    for _ in 0..<100 where RichTextPromise.isHeld(for: pasteboard) {
+      try await Task.sleep(for: .milliseconds(10))
+    }
+    return !RichTextPromise.isHeld(for: pasteboard)
+  }
+
   private static func find(
     _ query: String, _ session: CoreSession, _ rendered: RenderedDocument
   ) async throws -> [NSRange] {
@@ -215,7 +223,7 @@ struct LargeDocumentTests {
     #expect(text.substring(with: table.targetRange) == "A\tB\n1\t2")
     #expect(table.customLabel == "Table 1")
     let image = try #require(search(.image))
-    #expect(image.customLabel == "[a diagram]")
+    #expect(image.customLabel == "a diagram")
     #expect(image.targetRange == rendered.images[0].range)
   }
 
@@ -269,6 +277,46 @@ struct LargeDocumentTests {
       pasteboard.string(forType: .string)
         == (rendered.text.string as NSString).substring(with: short))
     #expect(pasteboard.data(forType: .rtf) != nil)
+    #expect(try await Self.released(pasteboard))
+
+    // A multiple selection keeps AppKit's own types and copy.
+    text.setSelectedRanges(
+      [
+        NSValue(range: NSRange(location: 0, length: 70_000)),
+        NSValue(range: NSRange(location: 80_000, length: 10)),
+      ],
+      affinity: .downstream, stillSelecting: false)
+    #expect(text.selectedRanges.count == 2)
+    #expect(text.writablePasteboardTypes.count >= 2)
+    #expect(text.writeSelection(to: pasteboard, types: text.writablePasteboardTypes))
+    #expect(try await Self.released(pasteboard))
+  }
+
+  /// The promised rich text outlives the window it was copied from.
+  @Test func promisedRichTextOutlivesItsView() async throws {
+    let (session, document) = try await Self.parse(Self.longProse(sections: 400))
+    try await session.close()
+    let rendered = try DocumentRenderer.render(document)
+    let pasteboard = NSPasteboard(name: NSPasteboard.Name("large-\(UUID().uuidString)"))
+    defer { pasteboard.releaseGlobally() }
+    weak var released: NSTextView?
+    autoreleasepool {
+      let (window, surface) = Self.surface(rendered)
+      surface.textView.selectAll(nil)
+      #expect(
+        surface.textView.writeSelection(
+          to: pasteboard, types: surface.textView.writablePasteboardTypes))
+      released = surface.textView
+      window.close()
+    }
+    for _ in 0..<100 where released != nil { try await Task.sleep(for: .milliseconds(10)) }
+    #expect(released == nil)
+    #expect(RichTextPromise.isHeld(for: pasteboard))
+    let rtf = try #require(pasteboard.data(forType: .rtf))
+    #expect(NSAttributedString(rtf: rtf, documentAttributes: nil)?.string == rendered.text.string)
+    // A new owner releases it.
+    pasteboard.clearContents()
+    #expect(try await Self.released(pasteboard))
   }
 
   /// Showing or restyling a long document over another replaces its text
