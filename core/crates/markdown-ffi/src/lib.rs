@@ -13,6 +13,8 @@
 #![warn(clippy::undocumented_unsafe_blocks)]
 
 pub mod abi;
+#[cfg(target_vendor = "apple")]
+mod apple_alloc;
 mod flat;
 mod search;
 #[cfg(test)]
