@@ -190,9 +190,11 @@ restoration remain MAC-001G and MAC-001H work.
   highlight. The current match is drawn in the system find colour with dark
   text, the other matches more lightly. While the find field has the focus,
   the current match is highlighted but not selected, because the inactive
-  selection would draw over it. When the document has the focus, or the bar
-  closes, the current match becomes the selection, so Copy and VoiceOver
-  follow it. Each new search result is announced to VoiceOver (“3 of 12”).
+  selection would draw over it. Find Next and Find Previous with the focus
+  in the document select the match, and closing the bar selects the current
+  match unless the reader has moved the selection since, so Copy and
+  VoiceOver follow it. A Return or Command-G during a running search waits
+  for it instead of starting another. Each new search result is announced to VoiceOver (“3 of 12”).
 - **Navigation.** A search starts at the selection. Next and previous wrap
   around the document and continue from the current match until the reader
   moves the selection. They count matches, not source offsets (specs/search).
@@ -203,7 +205,8 @@ restoration remain MAC-001G and MAC-001H work.
   ZWJ sequence, whole words that treat each ideograph as a word, and logical
   order for right-to-left text. An NFC “café” does not match the decomposed
   spelling, which is how the generated prose profile spells it.
-- **Text size.** View → Actual Size (Command-0), Make Text Bigger (Command-+)
+- **Text size.** View → Actual Size (Command-0), Make Text Bigger (Command-+,
+  and Command-= through a hidden alternate item)
   and Make Text Smaller (Command-−) step through nine sizes from 75% to 250%.
   Fonts and every text metric (indents, spacing, table columns) scale; images
   keep their pixel size. A change re-renders off the main thread and keeps

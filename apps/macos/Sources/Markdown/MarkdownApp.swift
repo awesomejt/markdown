@@ -245,6 +245,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
     ] {
       view.addItem(withTitle: title, action: action, keyEquivalent: key).target = self
     }
+    // Command-= (unshifted) also makes text bigger, as in other Mac apps.
+    let equals = view.addItem(
+      withTitle: "Make Text Bigger", action: #selector(makeTextBigger(_:)), keyEquivalent: "=")
+    equals.target = self
+    equals.isHidden = true
+    equals.allowsKeyEquivalentWhenHidden = true
     view.addItem(.separator())
     let appearance = NSMenu(title: "Appearance")
     for option in ReaderPreferences.Appearance.allCases {

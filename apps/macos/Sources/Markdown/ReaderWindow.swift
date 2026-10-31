@@ -22,6 +22,9 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
   /// The document selection when the current match was shown; navigation
   /// continues from that match until the reader moves the selection.
   private var selectionAtMatch: NSRange?
+  /// The key of the running search, and the step to take when it finishes.
+  private var findTaskKey: FindKey?
+  private var pendingStep: Bool?
   /// The reading surface starts below the safe area, or below a visible find bar.
   private var surfaceTop: NSLayoutConstraint!
   private var surfaceBelowFindBar: NSLayoutConstraint!
@@ -285,13 +288,16 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
     search(then: nil)
   }
 
-  /// Hide the bar and its highlights; the current match becomes the selection.
+  /// Hide the bar and its highlights. The current match becomes the
+  /// selection, unless the reader has moved the selection since it was shown.
   func closeFindBar() {
     findRequest &+= 1
     findTask?.cancel()
     findTask = nil
+    findTaskKey = nil
     if !findBar.isHidden, let current = surface.currentMatch,
-      surface.matches.indices.contains(current)
+      surface.matches.indices.contains(current),
+      surface.textView.selectedRange() == selectionAtMatch
     {
       surface.textView.setSelectedRange(surface.matches[current])
     }
@@ -320,7 +326,13 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
     // Highlights are only shown with the bar that can dismiss them.
     setFindBarVisible(true)
     guard let matches = findMatches, findKey == currentFindKey else {
-      search(then: backwards)
+      // The running search already has this query: step once it finishes,
+      // rather than queueing another uninterruptible core call.
+      if findTask != nil, findTaskKey == currentFindKey {
+        pendingStep = backwards
+      } else {
+        search(then: backwards)
+      }
       return
     }
     guard !matches.ranges.isEmpty else {
@@ -364,6 +376,8 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
     let id = findRequest
     findTask?.cancel()
     findTask = nil
+    findTaskKey = nil
+    pendingStep = direction
     guard let rendered = surface.document, let key = currentFindKey else { return }
     if key.query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
       findMatches = nil
@@ -374,6 +388,7 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
       return
     }
     let loader = loader
+    findTaskKey = key
     findTask = Task { [weak self] in
       let outcome: Result<FindMatches, any Error>
       do {
@@ -386,9 +401,12 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
       }
       guard let self, id == self.findRequest else { return }
       self.findTask = nil
+      self.findTaskKey = nil
+      let step = self.pendingStep
+      self.pendingStep = nil
       switch outcome {
       case .success(let matches):
-        self.presentMatches(matches, key, then: direction)
+        self.presentMatches(matches, key, then: step)
       case .failure(CoreError.queryTooLong):
         self.clearMatches("Search text is too long")
       case .failure(is CancellationError), .failure(CoreError.superseded),
