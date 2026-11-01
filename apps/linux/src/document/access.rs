@@ -162,7 +162,7 @@ pub(super) fn read_document(
         meta.ctime_nsec()
     )
     .into_bytes();
-    let bytes = read_bounded(&mut file, cap, cancel, limit)?;
+    let bytes = read_bounded(&mut file, cap, cancel, limit, meta.len() as usize + 1)?;
     Ok(ReadDocument { bytes, revision })
 }
 fn read_bounded(
@@ -170,16 +170,29 @@ fn read_bounded(
     cap: &DocumentCapability,
     cancel: &Cancellation,
     limit: usize,
+    initial_capacity: usize,
 ) -> Result<Vec<u8>, ReadFailure> {
-    // Fixed capacity prevents geometric Vec growth beyond the sentinel bound.
-    let mut bytes = Vec::with_capacity(limit + 1);
+    // Size the initial allocation from descriptor metadata. Growth is explicit
+    // so Vec doubling cannot exceed the source-plus-sentinel capacity bound.
+    let mut bytes = Vec::with_capacity(initial_capacity.min(limit + 1));
     let mut chunk = [0u8; 64 * 1024];
     loop {
         check(cap, cancel)?;
         let count = chunk.len().min(limit + 1 - bytes.len());
         match reader.read(&mut chunk[..count]) {
             Ok(0) => break,
-            Ok(n) => bytes.extend_from_slice(&chunk[..n]),
+            Ok(n) => {
+                let needed = bytes.len() + n;
+                if needed > bytes.capacity() {
+                    let capacity = bytes
+                        .capacity()
+                        .saturating_mul(2)
+                        .max(needed)
+                        .min(limit + 1);
+                    bytes.reserve_exact(capacity - bytes.len());
+                }
+                bytes.extend_from_slice(&chunk[..n]);
+            }
             Err(e) if e.kind() == io::ErrorKind::Interrupted => continue,
             Err(e) => return Err(e.into()),
         }
@@ -214,10 +227,9 @@ mod tests {
     fn selected_file_and_revocation() {
         let (dir, cap) = fixture();
         let cancel = Cancellation::default();
-        assert_eq!(
-            read_document(&cap, &cancel, 100).unwrap().bytes,
-            b"# Selected\n"
-        );
+        let read = read_document(&cap, &cancel, 100).unwrap();
+        assert_eq!(read.bytes, b"# Selected\n");
+        assert_eq!(read.bytes.capacity(), read.bytes.len() + 1);
         assert!(!format!("{cap:?}").contains("markdown-access"));
         cap.revoke();
         assert!(matches!(
@@ -264,7 +276,7 @@ mod tests {
         let cancel = Cancellation::default();
         let mut growing = io::repeat(b'x');
         assert_eq!(
-            read_bounded(&mut growing, &cap, &cancel, 12),
+            read_bounded(&mut growing, &cap, &cancel, 12, 0),
             Err(ReadFailure::Error(DocumentError::TooLarge))
         );
         struct Revoking<'a>(&'a DocumentCapability);
@@ -276,7 +288,7 @@ mod tests {
             }
         }
         assert_eq!(
-            read_bounded(&mut Revoking(&cap), &cap, &cancel, 12),
+            read_bounded(&mut Revoking(&cap), &cap, &cancel, 12, 0),
             Err(ReadFailure::Error(DocumentError::AccessRevoked))
         );
         std::fs::remove_dir_all(cap.path.parent().unwrap()).unwrap();

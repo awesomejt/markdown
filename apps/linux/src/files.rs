@@ -4,7 +4,7 @@ use gtk::{gio, glib};
 use markdown_linux::document::{DocumentCapability, DocumentError, DocumentLoader, LoadEvent};
 use std::cell::RefCell;
 use std::collections::HashMap;
-use std::rc::Rc;
+use std::rc::{Rc, Weak};
 use std::time::Duration;
 
 struct WindowDocument {
@@ -13,6 +13,8 @@ struct WindowDocument {
     loader: DocumentLoader,
     chooser: Option<gtk::FileChooserNative>,
     reload: gio::SimpleAction,
+    poll_source: Option<glib::SourceId>,
+    weak_self: Weak<RefCell<WindowDocument>>,
 }
 thread_local! { static WINDOWS: RefCell<HashMap<usize, Rc<RefCell<WindowDocument>>>> = RefCell::new(HashMap::new()); }
 fn key(window: &gtk::ApplicationWindow) -> usize {
@@ -27,9 +29,40 @@ impl WindowDocument {
             label.set_text(text);
         }
     }
-    fn loading(&self) {
+    fn loading(&mut self) {
         self.reload.set_enabled(self.loader.has_file());
         self.status("Loading document…");
+        if self.poll_source.is_none() {
+            let weak = self.weak_self.clone();
+            self.poll_source = Some(glib::timeout_add_local(
+                Duration::from_millis(16),
+                move || {
+                    let Some(state) = weak.upgrade() else {
+                        return glib::ControlFlow::Break;
+                    };
+                    let mut state = state.borrow_mut();
+                    let Some(event) = state.loader.poll() else {
+                        return glib::ControlFlow::Continue;
+                    };
+                    state.poll_source.take();
+                    match event {
+                        LoadEvent::Loaded {
+                            document,
+                            unchanged,
+                            ..
+                        } => state.status(&format!(
+                            "Document loaded · {} bytes · {} headings{}",
+                            document.source.len(),
+                            document.outline.len(),
+                            if unchanged { " (unchanged)" } else { "" }
+                        )),
+                        LoadEvent::Failed(error) => state.status(&error.to_string()),
+                    }
+                    glib::ControlFlow::Break
+                },
+            ));
+        }
+
         if let Some(window) = self.window.upgrade() {
             window.set_title(Some(&format!(
                 "{} — Markdown",
@@ -40,16 +73,26 @@ impl WindowDocument {
     fn open(&mut self, file: &gio::File) {
         let Some(path) = file.path() else {
             self.loader.reject_selection();
+            self.stop_polling();
             self.reload.set_enabled(false);
             self.status(&DocumentError::NonLocalFile.to_string());
             return;
         };
         match self.loader.open(DocumentCapability::from_local_file(path)) {
             Ok(()) => self.loading(),
-            Err(error) => self.status(&error.to_string()),
+            Err(error) => {
+                self.reload.set_enabled(self.loader.has_file());
+                self.status(&error.to_string());
+            }
+        }
+    }
+    fn stop_polling(&mut self) {
+        if let Some(source) = self.poll_source.take() {
+            source.remove();
         }
     }
     fn close(&mut self) {
+        self.stop_polling();
         if let Some(chooser) = self.chooser.take() {
             chooser.destroy();
         }
@@ -60,13 +103,17 @@ pub fn attach(window: &gtk::ApplicationWindow, label: &gtk::Label) {
     let reload = gio::SimpleAction::new("reload", None);
     reload.set_enabled(false);
     window.add_action(&reload);
-    let state = Rc::new(RefCell::new(WindowDocument {
-        window: window.downgrade(),
-        label: label.downgrade(),
-        loader: DocumentLoader::new(),
-        chooser: None,
-        reload: reload.clone(),
-    }));
+    let state = Rc::new_cyclic(|weak| {
+        RefCell::new(WindowDocument {
+            window: window.downgrade(),
+            label: label.downgrade(),
+            loader: DocumentLoader::new(),
+            chooser: None,
+            reload: reload.clone(),
+            poll_source: None,
+            weak_self: weak.clone(),
+        })
+    });
     WINDOWS.with(|all| all.borrow_mut().insert(key(window), state.clone()));
     let weak = Rc::downgrade(&state);
     reload.connect_activate(move |_, _| {
@@ -76,35 +123,16 @@ pub fn attach(window: &gtk::ApplicationWindow, label: &gtk::Label) {
             state.loading();
         }
     });
-    let weak = Rc::downgrade(&state);
-    glib::timeout_add_local(Duration::from_millis(16), move || {
-        let Some(state) = weak.upgrade() else {
-            return glib::ControlFlow::Break;
-        };
-        let mut state = state.borrow_mut();
-        if let Some(event) = state.loader.poll() {
-            match event {
-                LoadEvent::Loaded {
-                    document,
-                    unchanged,
-                    ..
-                } => state.status(&format!(
-                    "Document loaded · {} bytes · {} headings{}",
-                    document.source.len(),
-                    document.outline.len(),
-                    if unchanged { " (unchanged)" } else { "" }
-                )),
-                LoadEvent::Failed(error) => state.status(&error.to_string()),
-            }
-        }
-        glib::ControlFlow::Continue
-    });
     window.connect_close_request(|window| {
-        if let Some(state) = WINDOWS.with(|all| all.borrow_mut().remove(&key(window))) {
-            state.borrow_mut().close();
-        }
+        detach(window);
         glib::Propagation::Proceed
     });
+    window.connect_destroy(detach);
+}
+pub fn detach(window: &gtk::ApplicationWindow) {
+    if let Some(state) = WINDOWS.with(|all| all.borrow_mut().remove(&key(window))) {
+        state.borrow_mut().close();
+    }
 }
 pub fn shutdown() {
     let states = WINDOWS.with(|all| std::mem::take(&mut *all.borrow_mut()));
@@ -241,4 +269,12 @@ pub fn open_for_smoke(window: &gtk::ApplicationWindow, file: &gio::File) {
     if let Some(state) = state(window) {
         state.borrow_mut().open(file);
     }
+}
+
+// Observe lifecycle ownership in the native regression smoke.
+pub fn polling(window: &gtk::ApplicationWindow) -> bool {
+    state(window).is_some_and(|s| s.borrow().poll_source.is_some())
+}
+pub fn attached(window: &gtk::ApplicationWindow) -> bool {
+    state(window).is_some()
 }

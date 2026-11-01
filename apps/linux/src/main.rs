@@ -43,6 +43,11 @@ fn main() -> glib::ExitCode {
     }
     app.connect_open(|app, files, _| files::deliver(app, files));
     app.connect_shutdown(|_| files::shutdown());
+    app.connect_window_removed(|_, window| {
+        if let Some(window) = window.downcast_ref::<gtk::ApplicationWindow>() {
+            files::detach(window);
+        }
+    });
     app.connect_activate(move |app| {
         // A second launch activates the primary instance, which opens another window.
         new_window(app);

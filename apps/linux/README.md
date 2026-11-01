@@ -68,7 +68,7 @@ packages, then runs `cargo fmt --check`, Clippy with warnings denied over the
 workspace, and the
 [dependency/license policy](../../docs/Dependencies.md#linux-app-graph-lnx-001a)
 for the Linux graph. Then, for debug and then release, it builds the
-workspace with `--locked`, runs 10 document tests and the 15 core consumer tests against the
+workspace with `--locked`, runs 11 document tests and the 15 core consumer tests against the
 matching core package (negotiation, typed errors, owned v2 values, parse
 failures, copy budget, queued and running cancellation, bounded admission,
 close, non-blocking `close_then` and drop, availability, repeated lifecycle and every corpus and
@@ -223,7 +223,10 @@ read/parse work. Publication and error handling check that serial, so a stale
 read error cannot alter the replacement session's availability. Cancellation
 handles callback-before-install and synchronous queued-cancel races. Close
 and Quit remove queued work, cancel running requests and asynchronously release
-sessions; GTK never waits for the core worker. Large replaced/stale owned
+sessions; GTK never waits for the core worker. Completion polling runs only
+while a load is pending, and both window close and programmatic destruction
+detach its state and cancel work. A failed replacement-session allocation
+preserves the prior selection and Reload lineage. Large replaced/stale owned
 results are disposed off the GTK thread.
 
 Cancellation is cooperative between reads. A regular-file kernel read on a
@@ -262,7 +265,7 @@ GLib 2.90.1, Pango 1.58.2, Rust 1.99.1, Python 3.14.8, unprivileged uid 1000:
 - `python3 apps/linux/tools/check.py` passed on Wayland.
 - `GDK_BACKEND=x11 dbus-run-session -- xvfb-run -a python3 apps/linux/tools/check.py`
   passed on X11. Each command stages/audits both core packages, checks format,
-  Clippy and license policy, and runs 10 document tests plus 15 core consumer
+  Clippy and license policy, and runs 11 document tests plus 15 core consumer
   tests in both debug and release, both shell smoke modes in each configuration,
   isolated desktop-entry delivery in each configuration and the release probe.
 - Document tests cover real denied reads, explicit capability revocation,
@@ -284,3 +287,11 @@ no direct host-level barrier test in this slice. Existing core consumer tests
 cover running cancellation; host tests cover held reads, stale publication,
 queued cancellation and cancellation before handle installation. Whole-app
 startup, rendering and memory acceptance remain later tasks.
+
+The single host dispatcher also imposes cross-window delays: one stalled
+FUSE/network read prevents reads for every other window, even for local files.
+Waiting for a core admission slot can likewise delay the next window's read
+for up to the 30-second retry deadline. GTK remains responsive, but those
+windows stay at “Loading document…” until the dispatcher advances. Bounded
+parallel reads or fair admission scheduling require LNX-001G measurements;
+they are not implemented by this slice.

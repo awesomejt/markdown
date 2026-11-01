@@ -315,6 +315,10 @@ async fn documents(app: &gtk::Application, window: &gtk::ApplicationWindow) -> R
         !crate::files::reload_enabled(window),
         "Reload disabled without a file",
     )?;
+    check(
+        !crate::files::polling(window),
+        "empty window has no polling source",
+    )?;
     app.activate_action("open", None);
     check(
         crate::files::chooser_visible(window),
@@ -342,10 +346,18 @@ async fn documents(app: &gtk::Application, window: &gtk::ApplicationWindow) -> R
     })
     .await?;
     crate::files::chooser_accept(window)?;
+    check(
+        crate::files::polling(window),
+        "selection starts completion polling",
+    )?;
     wait_until("picker file loads", || {
         crate::files::source(window).as_deref() == Some(b"# Native open\n")
     })
     .await?;
+    check(
+        !crate::files::polling(window),
+        "loaded window stops completion polling",
+    )?;
     check(
         crate::files::reload_enabled(window),
         "Reload enabled after selection",
@@ -390,6 +402,17 @@ async fn documents(app: &gtk::Application, window: &gtk::ApplicationWindow) -> R
     let closing = crate::new_window(app);
     crate::files::open_for_smoke(&closing, &gio::File::for_path(&large));
     closing.close();
+    let destroyed = crate::new_window(app);
+    crate::files::open_for_smoke(&destroyed, &gio::File::for_path(&large));
+    check(
+        crate::files::attached(&destroyed) && crate::files::polling(&destroyed),
+        "programmatic destroy starts with owned pending load",
+    )?;
+    destroyed.destroy();
+    check(
+        !crate::files::attached(&destroyed) && !crate::files::polling(&destroyed),
+        "programmatic destroy detaches state and polling",
+    )?;
     glib::timeout_future(Duration::from_millis(1)).await;
     check(
         window.is_mapped(),

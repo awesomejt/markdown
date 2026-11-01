@@ -265,19 +265,33 @@ impl DocumentLoader {
         }
     }
     pub fn open(&mut self, capability: DocumentCapability) -> Result<(), DocumentError> {
+        self.open_with(capability, CoreSession::new)
+    }
+    fn open_with(
+        &mut self,
+        capability: DocumentCapability,
+        create: impl FnOnce(&str) -> Result<CoreSession, CoreError>,
+    ) -> Result<(), DocumentError> {
         if self.closed {
             return Err(DocumentError::ParseFailed);
         }
+        // A failed session allocation must leave the prior selection, request
+        // and Reload lineage intact. Prepare before mutating any owned state.
+        let next = self
+            .serial
+            .checked_add(1)
+            .expect("request serial exhausted");
+        let session = Arc::new(
+            create(&format!("linux-document-{}-{next}", self.owner))
+                .map_err(|_| DocumentError::ParseFailed)?,
+        );
         self.invalidate();
         if let Some(old) = self.session.take() {
             old.close_then(|_| {});
         }
         self.discard_document();
         self.capability = Some(capability);
-        self.session = Some(Arc::new(
-            CoreSession::new(&format!("linux-document-{}-{}", self.owner, self.serial))
-                .map_err(|_| DocumentError::ParseFailed)?,
-        ));
+        self.session = Some(session);
         self.enqueue();
         Ok(())
     }
@@ -457,6 +471,37 @@ mod tests {
             } => (generation, unchanged),
             LoadEvent::Failed(e) => panic!("{e:?}"),
         }
+    }
+    #[test]
+    fn failed_open_preserves_selection_and_reload_lineage() {
+        let _guard = lock(&TEST_LOCK);
+        let fixture = Fixture::new();
+        let mut loader = DocumentLoader::new();
+        let selected = fixture.file("selected", b"# Selected");
+        assert_eq!(
+            loader.open_with(selected.clone(), |_| Err(CoreError::Internal)),
+            Err(DocumentError::ParseFailed)
+        );
+        assert!(!loader.has_file());
+        assert!(loader.session.is_none());
+        loader.open(selected).unwrap();
+        loaded(&mut loader);
+        let serial = loader.serial;
+        let session = loader.session.as_ref().unwrap().clone();
+        let document = loader.document.as_ref().unwrap().clone();
+        assert_eq!(
+            loader.open_with(fixture.file("replacement", b"# Replacement"), |_| Err(
+                CoreError::Internal
+            )),
+            Err(DocumentError::ParseFailed)
+        );
+        assert_eq!(loader.serial, serial);
+        assert_eq!(loader.display_name().as_deref(), Some("selected"));
+        assert!(Arc::ptr_eq(loader.session.as_ref().unwrap(), &session));
+        assert!(Arc::ptr_eq(loader.document.as_ref().unwrap(), &document));
+        loader.reload();
+        assert!(loaded(&mut loader).1);
+        loader.close();
     }
     #[test]
     fn reload_lineage_and_error_recovery() {

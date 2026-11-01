@@ -509,6 +509,16 @@ Low findings and nits from Grok reviews that were merged under D-029 without
 being fixed. A later pass fixes them or records why not; remove each entry
 when it is resolved.
 
+- **LNX-001C (PR #51, Grok review 5727226665):** the single file dispatcher
+  permits cross-window delays from a stalled FUSE/network read or a Busy
+  admission retry (up to 30 seconds for the latter). The limitation and
+  recovery behavior are documented. In LNX-001G, measure a bounded read pool
+  and fair admission scheduling while preserving the source-buffer bound.
+  Also replace per-disposal OS threads with a bounded disposal mechanism if
+  rapid reload measurements justify it (review nit); current cancellation
+  and stale-publication checks remain intact. These performance changes
+  need their own measurements rather than expanding the file-opening slice.
+
 - **MAC-001C (PR #41, Grok review 5717458097), nit:** the window that is
   already showing a file is found by resolved URL. A case variant on a
   case-insensitive volume, or a hard link, opens a second window. Compare the
