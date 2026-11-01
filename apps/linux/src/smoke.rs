@@ -80,6 +80,7 @@ async fn commands(app: &gtk::Application) -> Result<(), String> {
     }
     note("menus/accelerators checked");
     documents(app, &first).await?;
+    reader(&first).await?;
 
     app.activate_action("new-window", None);
     check(
@@ -203,6 +204,7 @@ async fn launched_window(app: &gtk::Application) -> Result<gtk::ApplicationWindo
     )?;
     let label = window
         .child()
+        .and_then(|c| c.first_child())
         .and_then(|c| c.downcast::<gtk::Label>().ok())
         .ok_or("window shows an empty-state label")?;
     check(
@@ -422,6 +424,157 @@ async fn documents(app: &gtk::Application, window: &gtk::ApplicationWindow) -> R
     crate::files::open_for_smoke(window, &gio::File::for_path(&path));
     note(
         "documents checked (native chooser routing/cancel, Reload, recovery, unsupported URI, load/close)",
+    );
+    Ok(())
+}
+
+async fn reader(window: &gtk::ApplicationWindow) -> Result<(), String> {
+    let directory =
+        std::env::temp_dir().join(format!("markdown-reader-smoke-{}", std::process::id()));
+    std::fs::create_dir_all(&directory).map_err(|_| "reader fixture directory")?;
+    let path = directory.join("reader.md");
+    let mut source = String::from(
+        "# First\n\n[jump](#last) **styled** `<&>`\n\n3. list item\n\n```\ncode <&>\n```\n\n",
+    );
+    for index in 0..1600 {
+        source.push_str(&format!(
+            "## Middle {index}\n\n{}\n\n",
+            "word 文 ".repeat(40)
+        ));
+    }
+    source.push_str("# Last\n\nlast body\n");
+    std::fs::write(&path, &source).map_err(|_| "reader fixture")?;
+    crate::files::open_for_smoke(window, &gio::File::for_path(&path));
+    wait_until("reader publishes owned values", || {
+        crate::files::source(window).as_deref() == Some(source.as_bytes())
+    })
+    .await?;
+    let reader = crate::files::reader(window).ok_or("reader owner")?;
+    wait_until("first native heading", || {
+        reader
+            .observed()
+            .iter()
+            .any(|(_, l)| l.text() == "First" && l.is_mapped())
+    })
+    .await?;
+    check(reader.row_count() < 1000, "bounded lazy rows")?;
+    let observed = reader.observed();
+    check(
+        observed
+            .iter()
+            .any(|(_, l)| l.text().contains("3. list item")),
+        "native list marker",
+    )?;
+    check(
+        observed.iter().any(|(_, l)| l.text().contains("code <&>")),
+        "native code escaping",
+    )?;
+    let label = observed
+        .iter()
+        .find(|(_, l)| l.text().contains("styled"))
+        .ok_or("styled native label")?
+        .1
+        .clone();
+    label.select_region(0, 4);
+    check(
+        label.selection_bounds() == Some((0, 4)),
+        "within-fragment native selection bounds",
+    )?;
+    check(
+        reader.activate_fragment_link(),
+        "native fragment link dispatch",
+    )?;
+    wait_until("fragment link reveals far heading", || {
+        reader
+            .observed()
+            .iter()
+            .any(|(_, l)| l.text() == "Last" && l.is_mapped())
+    })
+    .await?;
+    reader.activate_outline(0);
+    wait_until("outline returns first heading", || {
+        reader
+            .observed()
+            .iter()
+            .any(|(_, l)| l.text() == "First" && l.is_mapped())
+    })
+    .await?;
+    reader.activate_outline(1601);
+    wait_until("far outline reveals last heading", || {
+        reader
+            .observed()
+            .iter()
+            .any(|(_, l)| l.text() == "Last" && l.is_mapped())
+    })
+    .await?;
+    check(
+        reader.row_count() < 1000,
+        "recycling keeps realized row ownership bounded",
+    )?;
+    for (_, label) in reader.observed() {
+        check(
+            label.selection_bounds().is_none(),
+            "recycling clears selection",
+        )?;
+        let row = label.parent().ok_or("row parent")?;
+        let mut child = row.first_child();
+        let mut visible = 0;
+        while let Some(w) = child {
+            child = w.next_sibling();
+            visible += usize::from(w.is_visible());
+        }
+        check(visible == 1, "one visible semantic label per row")?;
+    }
+    WidgetExt::activate_action(window, "win.reload", None).map_err(|_| "reader reload")?;
+    check(
+        reader.observed().is_empty(),
+        "reload invalidates row bindings",
+    )?;
+    wait_until("reader reload completes", || !crate::files::polling(window)).await?;
+    let long_title = format!("{}end", "word ".repeat(220));
+    let heading_source = format!("## {long_title}\n");
+    std::fs::write(&path, &heading_source).map_err(|_| "long heading fixture")?;
+    crate::files::open_for_smoke(window, &gio::File::for_path(&path));
+    wait_until("long heading publishes", || {
+        crate::files::source(window).as_deref() == Some(heading_source.as_bytes())
+    })
+    .await?;
+    wait_until("long heading fragments realized", || {
+        reader.observed().len() == 3
+    })
+    .await?;
+    let mut labels = reader.observed();
+    labels.sort_by_key(|(index, _)| *index);
+    check(
+        labels
+            .iter()
+            .map(|(_, label)| label.text().to_string())
+            .collect::<String>()
+            == long_title,
+        "long heading text reconstructed",
+    )?;
+    check(
+        labels
+            .iter()
+            .filter(|(_, label)| label.accessible_role() == gtk::AccessibleRole::Heading)
+            .count()
+            == 1,
+        "one semantic heading across native fragments",
+    )?;
+    check(
+        labels[0].1.accessible_role() == gtk::AccessibleRole::Heading,
+        "first fragment is heading",
+    )?;
+    for (_, label) in labels.iter().skip(1) {
+        check(
+            label.accessible_role() == gtk::AccessibleRole::Paragraph
+                && label.attributes().is_some(),
+            "continuation retains heading style with paragraph role",
+        )?;
+    }
+    std::fs::remove_dir_all(directory).map_err(|_| "remove reader fixtures")?;
+    note(
+        "reader checked (native text, escaping, bounded rows, fragment/outline jumps, selection, recycling, reload)",
     );
     Ok(())
 }

@@ -1,8 +1,8 @@
 # Agent Session and Platform Handoff
 
-Updated: 2026-11-01 (America/Denver), after LNX-001C (PR #51).
-Source baseline: `develop` after PR #51; reviewed head `d5f6b4b`, non-serious
-review fixes at `aef0cd4`, followed by one state/docs closeout. The merge SHA is
+Updated: 2026-11-01 (America/Denver), after LNX-001D (PR #52).
+Source baseline: `develop` after PR #52; reviewed head `f12d2e5`, non-serious
+review fixes at `27e84df`, followed by one state/docs closeout. The merge SHA is
 not known at closeout time.
 Preserve intended source, lock/spec/golden files, docs and state together. Never transfer caches, environments, build
 products, private runtime state or user documents.
@@ -206,8 +206,25 @@ done list is in [the memory archive](agents/Memory-Archive.md#handoffmd-phase-ha
   resolved; non-serious fixes need no re-review. [Fixed-head CI](https://github.com/awesomejt/markdown/actions/runs/41289847319)
   is green. Live AT-SPI inspection failed due to host bus/service errors;
   portal interaction/revocation and physical unplug remain unclaimed.
-- **Next on Linux:** LNX-001D (basic native blocks, outline and selection),
-  followed by the mandatory LNX-001D1 AT-SPI/Orca gate before deeper rendering.
+- **Done:** LNX-001D in [PR #52](https://github.com/awesomejt/markdown/pull/52):
+  [native virtualized reader, outline and basic selection](apps/linux/README.md#native-reader-lnx-001d).
+  Plans prepare off-main under cancellation and a 128 MiB accounted budget;
+  escaped fragments stay within 512 UTF-8 bytes. Safe links use epoch-bound
+  tokens; no relative-file grants or resource fetching. Global selection is G.
+  [Grok review 1](https://github.com/awesomejt/markdown/pull/52#pullrequestreview-5729937327)
+  at `f12d2e5` found 0 blockers, 2 concerns and 4 nits, no high/critical finding.
+  `27e84df` fixes soft/hard breaks, repeated heading roles and small code nits;
+  packaged-core tests prove source scheme canonicalization. Reload-position
+  preservation is deferred to H in TODO.md. One review used, all threads
+  resolved; [fixed-head CI](https://github.com/awesomejt/markdown/actions/runs/41344465909)
+  is green, including GTK 4.14. Full Wayland/X11 debug/release checks pass
+  12 loader + 8 renderer + 15 core tests per build and native/association smokes.
+  Live AT-SPI Registry activation failed; no service/settings changes or Orca
+  proof were attempted. Native role/navigation checks do not satisfy D1.
+- **Next on Linux:** LNX-001D1: prove document/heading semantics, off-screen
+  heading navigation and owner-confirmed Orca continuous reading beyond visible
+  rows on KDE Wayland. Preserve focus, reading order and basic selection.
+  Failure stops E and later rendering work and returns to the owner under D-017.
   The Linux 001A–001C milestone review packet is now due under D-030; hand it
   to the owner along with the existing shared/Mac milestone work. This task
   authorizes no milestone merge into `main`.

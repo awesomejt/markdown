@@ -50,7 +50,9 @@ separate Linux Cargo workspace under the dependency policy and required
 `linux-native` debug/release CI. LNX-001B closed in PR #50 with the
 [model-v2 core library package and Rust adapter](docs/Linux-Core-Integration.md),
 debug/release consumer tests, a 5 MiB host source limit and measured
-encode/copy/RSS costs; LNX-001C is next on Linux.
+encode/copy/RSS costs. LNX-001C closed in PR #51 with native file opening,
+association delivery and generation-safe loading. LNX-001D closed in PR #52
+with native fragments, outline and basic selection; LNX-001D1 is next on Linux.
 The shared-core milestone boundary is reached:
 Claude prepares the combined packet for the owner under D-030; only the owner
 merges that milestone into `main`.
@@ -86,7 +88,7 @@ and explicit reference-syntax boundaries. CORE-006 closed in PR #38 with
 [facade acceptance](docs/Core-Facade-Acceptance.md), the ABI v1 default-change
 history and fresh three-OS all-feature release CI. The desktop chains are
 eligible; MAC-001A to MAC-001I closed in PRs #39 to #47 and the MAC-001 aggregate in PR #48. The macOS
-skeleton milestone review is next on this Mac. LNX-001A and LNX-001B closed in PRs #49 and #50, and LNX-001C
+skeleton milestone review is next on this Mac. LNX-001A through LNX-001D closed in PRs #49 through #52, and LNX-001D1
 is next on Linux; WIN-001A waits for its host. Inspect
 state and `HANDOFF.md` before any pass. Scoped commits, pushes, PR updates and
 review requests are authorized; a Grok review with no serious finding approves
@@ -508,6 +510,13 @@ CORE-006 no longer carry. The three host chains are independent.
 Low findings and nits from Grok reviews that were merged under D-029 without
 being fixed. A later pass fixes them or records why not; remove each entry
 when it is resolved.
+
+- **LNX-001D (PR #52, Grok review 5729937327), nit:** Reload clears the
+  current reader and returns to the top, including unchanged content. Preserve
+  the shown revision and restore an anchor/selection in LNX-001H, alongside
+  external refresh and reading restoration. Basic D loading still invalidates
+  stale navigation immediately; keeping an older view alive needs the H
+  lifecycle and position policy rather than a partial implementation here.
 
 - **LNX-001C (PR #51, Grok review 5727226665):** the single file dispatcher
   permits cross-window delays from a stalled FUSE/network read or a Busy

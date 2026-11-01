@@ -17,7 +17,7 @@ name = "markdown-linux"
 path = "src/main.rs"
 
 [dependencies]
-gtk = { package = "gtk4", version = "=0.11.5" }
+gtk = { package = "gtk4", version = "=0.11.5", features = ["v4_14"] }
 markdown-linux-core = { path = "core" }
 
 [profile.release]

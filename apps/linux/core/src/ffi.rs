@@ -41,7 +41,33 @@ pub const MD_DISPOSITION_RECORDED: u32 = 4;
 pub const MD_VIEW_HAS_FRONT_MATTER: u32 = 1;
 pub const MD_VIEW_HAS_TITLE: u32 = 2;
 
+pub const MD_NODE_PARAGRAPH: u32 = 1;
 pub const MD_NODE_HEADING: u32 = 2;
+pub const MD_NODE_BLOCK_QUOTE: u32 = 3;
+pub const MD_NODE_LIST: u32 = 4;
+pub const MD_NODE_LIST_ITEM: u32 = 5;
+pub const MD_NODE_CODE_BLOCK: u32 = 6;
+pub const MD_NODE_THEMATIC_BREAK: u32 = 7;
+pub const MD_NODE_TABLE: u32 = 8;
+pub const MD_NODE_TABLE_ROW: u32 = 9;
+pub const MD_NODE_TABLE_CELL: u32 = 10;
+pub const MD_NODE_FOOTNOTE_DEFINITION: u32 = 11;
+pub const MD_NODE_ALERT: u32 = 12;
+pub const MD_NODE_UNSUPPORTED_BLOCK: u32 = 13;
+pub const MD_NODE_TEXT: u32 = 14;
+pub const MD_NODE_EMPHASIS: u32 = 15;
+pub const MD_NODE_STRONG: u32 = 16;
+pub const MD_NODE_STRIKETHROUGH: u32 = 17;
+pub const MD_NODE_CODE_SPAN: u32 = 18;
+pub const MD_NODE_SOFT_BREAK: u32 = 19;
+pub const MD_NODE_HARD_BREAK: u32 = 20;
+pub const MD_NODE_LINK: u32 = 21;
+pub const MD_NODE_IMAGE: u32 = 22;
+pub const MD_NODE_FOOTNOTE_REFERENCE: u32 = 23;
+pub const MD_NODE_UNSUPPORTED_INLINE: u32 = 24;
+pub const MD_NODE_ORDERED: u32 = 1;
+pub const MD_TARGET_FRAGMENT: u32 = 1;
+pub const MD_TARGET_EXTERNAL: u32 = 3;
 
 /// A UTF-8 byte range in the snapshot string table; not NUL-terminated.
 #[repr(C)]

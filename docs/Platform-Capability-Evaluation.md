@@ -192,7 +192,7 @@ HTTPS references and next-check owners that exist in `project.yaml`.
 | --- | --- | --- | --- | --- | --- | --- |
 | Windows | Supported | Measured | An app-owned model selection spans virtualized rows by pointer and keyboard, drawn with `TextHighlighter`. The owner's Ctrl+A copy of 5 MiB matched the source (registered `text/markdown`) and model text (`CF_UNICODETEXT`) byte for byte when read by a separate process. | Per-block copy, disclosed to the user | WIN-001: selection during incremental updates, IME and touch | M01, M09 |
 | macOS | Supported | Measured | All 60 continuous-text runs exported matching selections, including the lead TextKit 2 surface. MAC-001G: Select All and Copy of 5 MiB take 1.6 and 25 ms; a long selection's RTF/RTFD is made only when pasted, and appending the rest of a document after its lead keeps the selection. | Not needed | MAC-001: owner paste check into TextEdit | M02 |
-| Linux | Supported | Measured | An app-owned model selection spans virtualized rows by pointer and keyboard. The owner's Ctrl+A copy of 5 MiB matched the source and model text byte for byte through `wl-paste`. | Per-block copy, disclosed to the user | LNX-001: selection during incremental updates and IME | M03, M08 |
+| Linux | Supported | Measured | The FEAS-008 prototype's app-owned selection spans virtualized rows; the owner's Ctrl+A copy of 5 MiB matched source and model text through `wl-paste`. LNX-001D implements basic native selection within one bounded fragment; it cannot span fragment seams and resets on recycling or reload. | Within-fragment selection in the current app; global selection remains LNX-001G | LNX-001: global selection in 001G, incremental updates and IME; 001D1 reading/focus proof | M03, M08, M12 |
 | iOS/iPadOS | Deferred | Unverified | No mobile selection measurement exists. | Per-block copy | IOS-001: touch selection across blocks | U02 |
 
 ### CAP-13 — Screen-reader document reading
@@ -437,6 +437,7 @@ Sources were read on 2026-10-25. Measured paths are relative to this file.
 | M09 | Measured | [Windows virtualized renderer evaluation](Virtualized-Renderer-Windows-Evaluation.md) | FEAS-008 WinUI virtualized blocks in C# JIT, Native AOT and C++/WinRT, selection, Narrator, UIA and WebView2 baseline |
 | M10 | Measured | [macOS app README](../apps/macos/README.md) | MAC-001H local evidence: document watching, atomic replacement, deletion, refresh and relaunch restoration |
 | M11 | Measured | [Linux app README](../apps/linux/README.md) | LNX-001C native file opening, bounded loading, typed errors and isolated desktop-entry delivery |
+| M12 | Measured | [Linux app README](../apps/linux/README.md) | LNX-001D native rendering, outline navigation and basic fragment selection; document accessibility remains LNX-001D1 |
 | A01 | Authoritative | [FileOpenPicker](https://learn.microsoft.com/en-us/windows/windows-app-sdk/api/winrt/microsoft.windows.storage.pickers.fileopenpicker) | Windows App SDK file picker |
 | A02 | Authoritative | [FolderPicker](https://learn.microsoft.com/en-us/windows/windows-app-sdk/api/winrt/microsoft.windows.storage.pickers.folderpicker) | Windows App SDK folder picker |
 | A03 | Authoritative | [FileSavePicker](https://learn.microsoft.com/en-us/windows/windows-app-sdk/api/winrt/microsoft.windows.storage.pickers.filesavepicker) | Windows App SDK save picker |

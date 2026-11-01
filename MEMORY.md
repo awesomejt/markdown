@@ -157,9 +157,21 @@ read.
   Grok review 1 has no high/critical finding; concerns/nits were fixed or disposed
   at `aef0cd4`. Cross-window read/admission delays and disposal threads remain
   LNX-001G follow-ups in TODO.md. Live AT-SPI inspection failed on this session's
-  bus; no new screen-reader evidence is claimed. LNX-001D is next, then the
-  mandatory LNX-001D1 accessibility gate. The Linux 001A–001C milestone packet
+  bus; no new screen-reader evidence is claimed. The Linux 001A–001C milestone packet
   is due under D-030; only the owner merges milestone reviews into `main`.
+- LNX-001D (PR #52): a lazy GTK ListView presents bounded native text fragments
+  with outline/fragment navigation and within-fragment selection. Plans prepare
+  on the core worker under host request cancellation and a 128 MiB accounted
+  payload bound. Text/markup is escaped, URI tokens bind to plan/row membership,
+  and only core-approved fragments or canonical http/https/mailto can activate.
+  Fragments are at most 512 UTF-8 bytes; global selection remains G. Long headings
+  retain one Heading role, with styled Paragraph continuations. GTK 4.14 is the
+  floor; local Wayland/X11 debug/release suites pass 12 loader, 8 render and
+  15 core tests per build plus native smokes. Grok review 1 has no high/critical
+  finding; non-serious fixes are at `27e84df`. Reload-position restoration is
+  deferred to H in TODO.md. LNX-001D1 is now the next mandatory Linux gate:
+  AT-SPI and owner-confirmed Orca navigation/continuous reading beyond realized
+  rows must pass before deeper E/F work. Native role checks are not that proof.
 - Workflow: task PRs target `develop` and merge on a Grok review with no
   serious finding (D-029). `main` takes only owner-approved milestone reviews
   from `review/<milestone>`, tagged `m-<milestone>` (D-030). The shared-core
