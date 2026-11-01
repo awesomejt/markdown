@@ -1,8 +1,8 @@
 # Agent Session and Platform Handoff
 
-Updated: 2026-10-31 (America/Denver), after the MAC-001 aggregate (PR #48).
-Source baseline: `develop` after PR #48; reviewed head `679068c`,
-followed by one state/docs closeout.
+Updated: 2026-10-31 (America/Denver), after LNX-001A (PR #49).
+Source baseline: `develop` after PR #49; reviewed head `f4b9f36`, nit fixes
+at `b84db0d`, followed by one state/docs closeout.
 Preserve intended source, lock/spec/golden files, docs and state together. Never transfer caches, environments, build
 products, private runtime state or user documents.
 
@@ -161,12 +161,26 @@ done list is in [the memory archive](agents/Memory-Archive.md#handoffmd-phase-ha
   surfaces (D-010). [Grok review 1](https://github.com/awesomejt/markdown/pull/48#pullrequestreview-5723675753)
   at `679068c` found 0 blockers, 0 concerns and 2 nits; both fixed in the
   closeout without re-review. One review was used.
+- **Done:** LNX-001A in [PR #49](https://github.com/awesomejt/markdown/pull/49):
+  [GTK 4 shell, build/check instructions and `linux-native` CI](apps/linux/README.md).
+  Separate `apps/linux` Cargo workspace; `tools/check_dependencies.py linux`
+  checks its 65-package graph (target-lexicon 0.13.5 reviewed for it alone).
+  `apps/linux/tools/check.py` passed on CachyOS/KDE Plasma 6.8.2 Wayland,
+  GTK 4.24.1, Rust 1.99.1 (debug and release, both smoke modes; X11 via
+  Xwayland too); AT-SPI inspection and second-launch activation checked.
+  The first hosted `linux-native` run passed on `ubuntu-24.04`.
+  [Grok review 1](https://github.com/awesomejt/markdown/pull/49) at
+  `f4b9f36` found 0 blockers, 0 concerns and 2 nits; both fixed at `b84db0d`
+  without re-review. One review was used. Physical keys, window controls and
+  the About dialog's appearance are the README's unrun manual check.
+- **Next on Linux:** LNX-001B (model-v2 core package and Rust facade adapter,
+  release consumer, session/source bounds, flat-view and retained RSS).
 - **Next:** `desktop-apps` is active. No Mac task is eligible until
   DESK-001 (it needs WIN-001 and LNX-001). On this Mac the next step is the
   D-030 milestone review: the macOS skeleton (rule 3) and the overdue
   8-PR cap since `m-core-fix`. Fix the hosted `macos-native` flakiness
-  (TODO.md) first if it keeps failing `develop`. WIN-001A/LNX-001A start on
-  their hosts; their chains remain independent.
+  (TODO.md) first if it keeps failing `develop`; it recurred on PR #49.
+  WIN-001A starts on its host; the host chains remain independent.
   The shared-core milestone boundary is reached. Per MEMORY.md, Claude writes
   the combined packet for CORE-001–CORE-006 (plus CORE-003F since `m-core-fix`),
   including MAC-001A/B if freezing current `develop`; name the exact snapshot and

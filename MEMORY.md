@@ -119,6 +119,19 @@ read.
   `96d8aea`. The skeleton is AppKit throughout, Settings included; SwiftUI
   stays allowed for later shell surfaces (D-010). No Mac task is eligible
   until DESK-001; the macOS skeleton milestone review (D-030) is next here.
+- LNX-001A (PR #49): the [GTK 4 shell](apps/linux/README.md) is Rust/gtk4
+  0.11.5 without libadwaita, in its own Cargo workspace (`apps/linux`,
+  own `Cargo.lock`, target `build/linux/target`), because the root policy only
+  admits members under `core/`. `tools/check_dependencies.py linux` checks it;
+  `target-lexicon` 0.13.5 (LLVM exception, build scripts only) is reviewed for
+  that graph alone. GTK conventions: single instance over D-Bus as
+  `io.github.awesomejt.markdown`, last-window close quits. Smokes run
+  `NON_UNIQUE` so they never hand checks to a running reader; only smoke runs
+  strip GApplication arguments. CI `linux-native` runs on `ubuntu-24.04`
+  (GTK 4.14) under `dbus-run-session xvfb-run` with `GDK_BACKEND=x11`.
+  gtk-rs: `WidgetExt::activate_action` and `ActionGroupExt::activate_action`
+  clash on windows; read the accessible role through the `accessible-role`
+  property. LNX-001B is next on Linux.
 - Workflow: task PRs target `develop` and merge on a Grok review with no
   serious finding (D-029). `main` takes only owner-approved milestone reviews
   from `review/<milestone>`, tagged `m-<milestone>` (D-030). The shared-core
@@ -176,6 +189,13 @@ read.
 - On this Mac, Homebrew `python3` lacks PyYAML. Use
   `.build/feas004-venv/bin/python` for `tools/check.py` and
   `tools/project_state.py`.
+
+- Linux host (CachyOS, KDE Plasma 6.8 Wayland, Ryzen 9 5950X): system
+  `cargo`/`rustc` 1.99.1 from Arch (no rustup), GTK 4.24.1, Orca, flatpak and
+  `gh`. Run Linux smokes on the live Wayland session or with
+  `GDK_BACKEND=x11` via Xwayland. Local `tools/check.py common` fails only on
+  stale ignored `.agents/loop/` Markdown that markdownlint's `**/*.md` glob
+  picks up; lint tracked files instead and leave that runtime state alone.
 
 ## Durable context
 

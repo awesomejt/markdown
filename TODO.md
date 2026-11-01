@@ -45,6 +45,9 @@ MAC-001I closed in PR #47 with [the development artifact, license inventory and 
 and [skeleton acceptance](docs/macOS-Skeleton-Acceptance.md). The MAC-001 aggregate closed in PR #48
 ([aggregate evidence](docs/macOS-Skeleton-Acceptance.md#mac-001-aggregate)); the macOS skeleton
 milestone review (D-030) is next on this Mac.
+LNX-001A closed in PR #49 with the [GTK 4 shell](apps/linux/README.md), a
+separate Linux Cargo workspace under the dependency policy and required
+`linux-native` debug/release CI; LNX-001B is next on Linux.
 The shared-core milestone boundary is reached:
 Claude prepares the combined packet for the owner under D-030; only the owner
 merges that milestone into `main`.
@@ -80,7 +83,8 @@ and explicit reference-syntax boundaries. CORE-006 closed in PR #38 with
 [facade acceptance](docs/Core-Facade-Acceptance.md), the ABI v1 default-change
 history and fresh three-OS all-feature release CI. The desktop chains are
 eligible; MAC-001A to MAC-001I closed in PRs #39 to #47 and the MAC-001 aggregate in PR #48. The macOS
-skeleton milestone review is next on this Mac; WIN-001A and LNX-001A wait for their hosts. Inspect
+skeleton milestone review is next on this Mac. LNX-001A closed in PR #49 and LNX-001B
+is next on Linux; WIN-001A waits for its host. Inspect
 state and `HANDOFF.md` before any pass. Scoped commits, pushes, PR updates and
 review requests are authorized; a Grok review with no serious finding approves
 a merge into `develop` (D-029); only the owner merges into `main` (D-030);
@@ -521,7 +525,9 @@ when it is resolved.
   hosted attempts. A reviewed CI/test fix should make the toolchain step
   tolerate a preinstalled `cargo-fmt` and give the runner-sensitive smoke and
   disk-image steps diagnostics and bounded retries, before the Mac milestone
-  review.
+  review. It recurred on 2026-11-01 for PR #49
+  ([run 41266613674](https://github.com/awesomejt/markdown/actions/runs/41266613674)),
+  a Linux-only change that selects macOS through shared `tools/`.
 
 Before MAC-001C, none were open after CORE-001 (PR #33). The two TOOL-003 findings from PR #23,
 Grok review 5692910610, are resolved: forced color and non-UTF-8 problem

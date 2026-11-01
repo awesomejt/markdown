@@ -29,6 +29,12 @@ class HostSelectionTests(unittest.TestCase):
                      "apps/macos/tools/check.py"):
             self.assertEqual(classify([path]),
                              dict(linux=False, windows=False, macos=True), path)
+        for path in ("apps/linux/src/main.rs", "apps/linux/Cargo.toml",
+                     "apps/linux/Cargo.lock", "apps/linux/tools/check.py"):
+            self.assertEqual(classify([path]),
+                             dict(linux=True, windows=False, macos=False), path)
+        # The Linux license gate lives in shared tools/, so it selects every host.
+        self.assertTrue(all(classify(["tools/check_dependencies.py"]).values()))
 
     def test_docs_only_and_manual_runs(self):
         self.assertFalse(any(classify(["docs/Product.md"]).values()))
@@ -84,14 +90,20 @@ class CompletionGateTests(unittest.TestCase):
                                    / ".github/workflows/ci.yml").read_text())
         job = workflow["jobs"]["complete"]
         self.assertIn("macos-native", job["needs"])
+        self.assertIn("linux-native", job["needs"])
         # A later successful command must not mask any rejected gate state.
         gate = job["steps"][0]["run"] + "\ntrue\n"
         green = dict(CHANGES="success", COMMON="success", CORE="success",
-                     MACOS_SELECTED="true", MACOS_NATIVE="success")
-        cases = [({}, True), ({"MACOS_SELECTED": "false", "MACOS_NATIVE": "skipped"}, True),
-                 ({"MACOS_SELECTED": "", "MACOS_NATIVE": "skipped"}, False)]
-        for result in ("failure", "cancelled", "skipped", ""):
-            cases.append(({"MACOS_NATIVE": result}, False))
+                     MACOS_SELECTED="true", MACOS_NATIVE="success",
+                     LINUX_SELECTED="true", LINUX_NATIVE="success")
+        cases = [({}, True)]
+        for host in ("MACOS", "LINUX"):
+            selected, native = f"{host}_SELECTED", f"{host}_NATIVE"
+            cases += [({selected: "false", native: "skipped"}, True),
+                      ({selected: "", native: "skipped"}, False),
+                      ({selected: "false", native: "success"}, False)]
+            for result in ("failure", "cancelled", "skipped", ""):
+                cases.append(({native: result}, False))
         for name in ("CHANGES", "COMMON", "CORE"):
             cases.append(({name: "failure"}, False))
         for overrides, passed in cases:
