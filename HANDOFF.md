@@ -1,9 +1,9 @@
 # Agent Session and Platform Handoff
 
-Updated: 2026-11-01 (America/Denver), after LNX-001B (PR #50).
-Source baseline: `develop` after PR #50; reviewed head `d4f20b1`, review
-fixes at `0526c9b`, a CI fixture-tooling step at `b8d7de0`, followed by one
-state/docs closeout.
+Updated: 2026-11-01 (America/Denver), after LNX-001C (PR #51).
+Source baseline: `develop` after PR #51; reviewed head `d5f6b4b`, non-serious
+review fixes at `aef0cd4`, followed by one state/docs closeout. The merge SHA is
+not known at closeout time.
 Preserve intended source, lock/spec/golden files, docs and state together. Never transfer caches, environments, build
 products, private runtime state or user documents.
 
@@ -192,9 +192,25 @@ done list is in [the memory archive](agents/Memory-Archive.md#handoffmd-phase-ha
   `linux-native` then needed PyYAML for the fixture generator (`b8d7de0`);
   [run 41282215270](https://github.com/awesomejt/markdown/actions/runs/41282215270)
   passed every job.
-- **Next on Linux:** LNX-001C (file open/association, permission capability
-  and typed errors, generation-safe off-thread load). Use `close_then` or a
-  drop for window teardown, and coalesce or retry on `CoreError::Busy`.
+- **Done:** LNX-001C in [PR #51](https://github.com/awesomejt/markdown/pull/51):
+  [native file opening, Reload, capabilities and background loading](apps/linux/README.md#local-files-and-loading-lnx-001c).
+  Native Wayland and X11 checks pass in debug/release: 11 document + 15 core
+  tests per build, shell/picker and isolated desktop-entry smokes. Portable
+  checks pass with ignored private agent Markdown excluded from lint only.
+  [Grok review 1](https://github.com/awesomejt/markdown/pull/51#pullrequestreview-5727226665)
+  at `d5f6b4b` found 0 blockers, 3 concerns and 4 nits, no high/critical finding.
+  `aef0cd4` makes Open transactional, stops idle polling, cleans up programmatic
+  destruction and sizes bounded buffers from metadata; it documents dispatcher
+  delays. One disposal-performance nit is deferred in TODO.md, and the explicit
+  x86-64 baseline gate is retained with rationale. One review used, all threads
+  resolved; non-serious fixes need no re-review. [Fixed-head CI](https://github.com/awesomejt/markdown/actions/runs/41289847319)
+  is green. Live AT-SPI inspection failed due to host bus/service errors;
+  portal interaction/revocation and physical unplug remain unclaimed.
+- **Next on Linux:** LNX-001D (basic native blocks, outline and selection),
+  followed by the mandatory LNX-001D1 AT-SPI/Orca gate before deeper rendering.
+  The Linux 001A–001C milestone review packet is now due under D-030; hand it
+  to the owner along with the existing shared/Mac milestone work. This task
+  authorizes no milestone merge into `main`.
 - **Next:** `desktop-apps` is active. No Mac task is eligible until
   DESK-001 (it needs WIN-001 and LNX-001). On this Mac the next step is the
   D-030 milestone review: the macOS skeleton (rule 3) and the overdue

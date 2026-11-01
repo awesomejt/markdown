@@ -145,8 +145,21 @@ read.
   Never call blocking `close()` on the GTK main thread; use `close_then` or
   drop. Retained RSS after closing is glibc caching (`malloc_trim` returns
   it); LNX-001G should evaluate trimming. Use `cargo … --workspace` in
-  `apps/linux`: the root package alone is the default member. LNX-001C is
-  next on Linux.
+  `apps/linux`: the root package alone is the default member.
+- LNX-001C (PR #51): native Open/Reload and desktop-entry delivery share a
+  selected-file capability and bounded background dispatcher. Request serials
+  suppress obsolete reads/errors/results; cancelled reads and admission retries
+  release cooperatively, with two process-wide core parses. Poll GTK only during
+  a load; clean up on close, application window removal and widget destruction.
+  Session creation is transactional. Reload follows the selected path (including
+  symlink retargeting), with no sibling authority or persisted grant. Both native
+  backends pass 11 document and 15 core tests per debug/release build plus smokes.
+  Grok review 1 has no high/critical finding; concerns/nits were fixed or disposed
+  at `aef0cd4`. Cross-window read/admission delays and disposal threads remain
+  LNX-001G follow-ups in TODO.md. Live AT-SPI inspection failed on this session's
+  bus; no new screen-reader evidence is claimed. LNX-001D is next, then the
+  mandatory LNX-001D1 accessibility gate. The Linux 001A–001C milestone packet
+  is due under D-030; only the owner merges milestone reviews into `main`.
 - Workflow: task PRs target `develop` and merge on a Grok review with no
   serious finding (D-029). `main` takes only owner-approved milestone reviews
   from `review/<milestone>`, tagged `m-<milestone>` (D-030). The shared-core
