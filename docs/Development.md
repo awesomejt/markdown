@@ -138,7 +138,11 @@ MAC-001B adds matching model-v2 Rust static packages, native consumer tests,
 archive/profile checks and relocation; see [the integration report](macOS-Core-Integration.md).
 The completion gate requires it whenever macOS is selected; an unselected
 native job may be skipped. See [the Mac build/check instructions](../apps/macos/README.md).
-Linux/Windows native build jobs are added in their 001A tasks when those apps exist;
+LNX-001A adds the path-filtered `linux-native` job on `ubuntu-24.04`: format,
+Clippy, the Linux dependency/license policy and the debug/release GTK shell
+smoke under Xvfb. The completion gate requires it whenever Linux is selected.
+See [the Linux build/check instructions](../apps/linux/README.md).
+The Windows native build job is added in WIN-001A when that app exists;
 running a portable Rust suite on a hosted runner does not prove native UI,
 minimum-OS packaging, accessibility or performance acceptance.
 

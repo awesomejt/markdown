@@ -170,6 +170,39 @@ runtime and Apple frameworks are part of macOS and are not redistributed;
 the app has no Swift package dependencies. This is a development
 inventory, not a distribution approval.
 
+## Linux app graph (LNX-001A)
+
+The [Linux GTK shell](../apps/linux/README.md) is a separate Cargo workspace
+under `apps/linux/` with its own `Cargo.lock`, so gtk-rs never enters the
+portable core graph above. `python3 tools/check_dependencies.py linux` applies
+the same policy to it: every resolved package needs an approved or reviewed
+license declaration, third-party packages must come from crates.io, workspace
+members must stay under `apps/linux/` and remain unpublished, and nothing may
+depend on a spike. `apps/linux/tools/check.py` and the `linux-native` CI job
+run it.
+
+LNX-001A depends only on gtk4 0.11.5 (gtk-rs, MIT), with default features.
+The all-feature graph resolves 65 packages. The gtk-rs crates (cairo-rs,
+gdk-pixbuf, gdk4, gio, glib, graphene-rs, gsk4, gtk4, pango and their `-sys`
+and macro crates) are MIT; the rest use the existing MIT/Apache alternatives,
+plus the memchr and unicode-ident declarations already reviewed above. One
+declaration is new and is reviewed for this graph only:
+
+| Package | Version | License declaration | Role |
+| --- | --- | --- | --- |
+| target-lexicon | 0.13.5 | Apache-2.0 WITH LLVM-exception | Build script only: system-deps → cfg-expr, used by the gtk-rs `-sys` build scripts to read pkg-config metadata |
+
+The LLVM exception only relaxes Apache-2.0's attribution terms for compiled
+forms. The package's LICENSE file carries the Apache-2.0 text and the
+exception; it runs in the compiler and is not linked into the app. Tests
+reject it in the core graph, at another version or with another expression.
+
+GTK 4, GLib, Pango, Cairo, GdkPixbuf and Graphene are system libraries,
+linked dynamically from the distribution (LGPL-2.1-or-later, except Cairo,
+LGPL-2.1 or MPL-1.1, and Graphene, MIT). They are not redistributed by a
+development build. Packaging (LNX-001I, Flatpak and Arch) adds the Linux
+runtime inventory and the notices those libraries need.
+
 ## Development tooling and feasibility
 
 MAC-001A's [SwiftPM AppKit shell](../apps/macos/Package.swift) has no external
