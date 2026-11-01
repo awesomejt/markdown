@@ -35,8 +35,13 @@ fn main() -> glib::ExitCode {
             smoke::start(app, mode);
         }
     });
-    // GApplication would reject the smoke flag, so only the program name is passed on.
-    let status = app.run_with_args(&std::env::args().take(1).collect::<Vec<_>>());
+    // GApplication would reject the smoke flag, so a smoke run passes on only the program
+    // name; normal launches keep GApplication's own options (and, later, files to open).
+    let arguments: Vec<String> = match smoke {
+        Some(_) => std::env::args().take(1).collect(),
+        None => std::env::args().collect(),
+    };
+    let status = app.run_with_args(&arguments);
     if smoke.is_some() {
         println!("shell-smoke: event loop exited");
     }

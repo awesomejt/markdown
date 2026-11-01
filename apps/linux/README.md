@@ -74,8 +74,9 @@ key presses. Run the manual check below as well. This is shell acceptance, not
 renderer, screen-reader, startup or memory acceptance.
 
 CI runs the path-filtered `linux-native` job on `ubuntu-24.04`, which installs
-`libgtk-4-dev` (GTK 4.14) and runs the check under `xvfb-run` with
-`GDK_BACKEND=x11`, because hosted runners have no display. That proves the
+`libgtk-4-dev` (GTK 4.14) and runs the check under `dbus-run-session` and
+`xvfb-run` with `GDK_BACKEND=x11`, because hosted runners have no display or
+session bus. That proves the
 build and smoke on GTK's X11 backend; Wayland and KDE evidence comes from the
 named host below. A selected native job must succeed for `Checks / complete`;
 only an unselected job may be skipped. Changes under `apps/linux/` select only
