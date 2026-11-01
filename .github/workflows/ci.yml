@@ -115,9 +115,37 @@ jobs:
       - run: python -m pip install -r tools/requirements-fixtures.txt
       - run: python apps/macos/tools/check.py
 
+  linux-native:
+    needs: changes
+    if: needs.changes.outputs.linux == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libgtk-4-dev xvfb xauth
+      - run: lsb_release -ds && pkg-config --modversion gtk4
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec
+        with:
+          toolchain: '1.99.1'
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          workspaces: apps/linux -> ../../build/linux/target
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.14'
+      # Hosted runners have no display; the smoke uses GTK's X11 backend on Xvfb.
+      - run: xvfb-run -a python apps/linux/tools/check.py
+        env:
+          GDK_BACKEND: x11
+
   complete:
     if: always()
-    needs: [changes, common, core, macos-native]
+    needs: [changes, common, core, macos-native, linux-native]
     runs-on: ubuntu-latest
     steps:
       - env:
@@ -126,6 +154,8 @@ jobs:
           CORE: ${{ needs.core.result }}
           MACOS_SELECTED: ${{ needs.changes.outputs.macos }}
           MACOS_NATIVE: ${{ needs.macos-native.result }}
+          LINUX_SELECTED: ${{ needs.changes.outputs.linux }}
+          LINUX_NATIVE: ${{ needs.linux-native.result }}
         run: |
           set -e
           test "$CHANGES" = success
@@ -136,4 +166,10 @@ jobs:
           else
             test "$MACOS_SELECTED" = false
             test "$MACOS_NATIVE" = skipped
+          fi
+          if [ "$LINUX_SELECTED" = true ]; then
+            test "$LINUX_NATIVE" = success
+          else
+            test "$LINUX_SELECTED" = false
+            test "$LINUX_NATIVE" = skipped
           fi
