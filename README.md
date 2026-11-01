@@ -33,8 +33,10 @@ links and code on TextKit 2 with an outline sidebar. The
 [Linux GTK shell](apps/linux/README.md) (LNX-001A) provides native windows,
 commands and a debug/release CI smoke. LNX-001B integrates the model-v2 core;
 LNX-001C adds native file opening, Reload, desktop file delivery and bounded
-background loading with typed access errors. Document rendering begins in
-LNX-001D. Accessibility and whole-app performance
+background loading with typed access errors. LNX-001D adds virtualized native
+headings, prose, lists, links and code, with outline navigation and basic
+within-fragment text selection. LNX-001D1 must prove document accessibility
+before deeper Linux renderer work. Accessibility and whole-app performance
 still require platform evidence; the core alone
 delivers no working reader UI. The closed shared track also reaches the next
 owner-reviewed milestone into `main` (D-030). The accepted

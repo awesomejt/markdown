@@ -1,6 +1,8 @@
 //! Native GTK 4 shell for the Markdown reader (LNX-001A).
 
+mod count_model;
 mod files;
+mod reader;
 mod smoke;
 
 use gtk::prelude::*;

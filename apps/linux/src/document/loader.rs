@@ -74,17 +74,52 @@ impl Cancellation {
     }
 }
 
+use crate::render::{RenderError, RenderPlan};
+
 pub enum LoadEvent {
     Loaded {
         document: Arc<CoreDocument>,
+        plan: Arc<RenderPlan>,
         generation: u64,
         unchanged: bool,
     },
     Failed(DocumentError),
 }
+type PreparedResult = Result<(CoreResult, Option<Arc<RenderPlan>>), DocumentError>;
+// Called only from successful core completion, outside cancellation/core locks.
+// The injected pure builder is also the deterministic post-parse test seam.
+fn prepare_result(
+    result: Result<CoreResult, DocumentError>,
+    cancel: &Cancellation,
+    build: impl FnOnce(&CoreDocument) -> Result<RenderPlan, RenderError>,
+) -> Option<PreparedResult> {
+    if cancel.is_cancelled() {
+        return None;
+    }
+    let prepared = result.and_then(|result| {
+        let plan = if matches!(
+            result.outcome,
+            CoreOutcome::Published | CoreOutcome::Unchanged
+        ) {
+            let document = result.document.as_ref().ok_or(DocumentError::ParseFailed)?;
+            Some(Arc::new(build(document).map_err(|error| match error {
+                RenderError::Budget => DocumentError::TooComplex,
+                _ => DocumentError::ParseFailed,
+            })?))
+        } else {
+            None
+        };
+        Ok((result, plan))
+    });
+    if cancel.is_cancelled() {
+        None
+    } else {
+        Some(prepared)
+    }
+}
 struct Completion {
     serial: u64,
-    result: Result<CoreResult, DocumentError>,
+    result: PreparedResult,
 }
 struct Job {
     owner: u64,
@@ -124,7 +159,7 @@ fn dispatcher() -> &'static Arc<Dispatcher> {
         dispatcher
     })
 }
-fn send(job: &Job, result: Result<CoreResult, DocumentError>) {
+fn send(job: &Job, result: PreparedResult) {
     if !job.cancel.is_cancelled() {
         let _ = job.sender.send(Completion {
             serial: job.serial,
@@ -188,9 +223,14 @@ fn process_with(
                             DocumentError::ParseFailed
                         }
                     });
+                    let Some(prepared) = prepare_result(mapped, &cancel, |document| {
+                        RenderPlan::build(document, || cancel.is_cancelled())
+                    }) else {
+                        return;
+                    };
                     let _ = sender.send(Completion {
                         serial,
-                        result: mapped,
+                        result: prepared,
                     });
                 }
             },
@@ -344,8 +384,8 @@ impl DocumentLoader {
             } else {
                 completion.result
             };
-            let result = result.and_then(|result| match result.outcome {
-                CoreOutcome::Published | CoreOutcome::Unchanged => Ok(result),
+            let result = result.and_then(|(result, plan)| match result.outcome {
+                CoreOutcome::Published | CoreOutcome::Unchanged => Ok((result, plan)),
                 CoreOutcome::Cancelled | CoreOutcome::Closed | CoreOutcome::Superseded => {
                     Err(DocumentError::ParseFailed)
                 }
@@ -362,7 +402,10 @@ impl DocumentLoader {
                 }),
             });
             return Some(match result {
-                Ok(mut result) => {
+                Ok((mut result, plan)) => {
+                    let Some(plan) = plan else {
+                        return Some(LoadEvent::Failed(DocumentError::ParseFailed));
+                    };
                     let Some(document) = result.document.take() else {
                         return Some(LoadEvent::Failed(DocumentError::ParseFailed));
                     };
@@ -370,6 +413,7 @@ impl DocumentLoader {
                     self.discard_document();
                     self.document = Some(document.clone());
                     LoadEvent::Loaded {
+                        plan,
                         document,
                         generation: result.generation,
                         unchanged: result.outcome == CoreOutcome::Unchanged,
@@ -624,6 +668,64 @@ mod tests {
             if !close {
                 loaded(&mut loader);
                 assert_eq!(loader.document.as_ref().unwrap().source, b"# B");
+            }
+            assert!(loader.poll().is_none());
+            loader.close();
+        }
+    }
+    #[test]
+    fn completed_plan_barrier_replacement_reload_and_close_are_silent() {
+        let _guard = lock(&TEST_LOCK);
+        let fixture = Fixture::new();
+        for action in 0..3 {
+            let mut loader = DocumentLoader::new();
+            loader.open(fixture.file("plan-a", b"# Current")).unwrap();
+            loaded(&mut loader);
+            let session = CoreSession::new("held-plan").unwrap();
+            let parsed = session
+                .parse_blocking(b"# Obsolete".to_vec(), None, true)
+                .unwrap();
+            session.close().unwrap();
+            let cancel = loader.cancel.as_ref().unwrap().clone();
+            let serial = loader.serial;
+            let sender = loader.sender.clone();
+            let (started, entered) = mpsc::channel();
+            let (resume, held) = mpsc::channel();
+            let worker = std::thread::spawn(move || {
+                let prepared = prepare_result(Ok(parsed), &cancel, |document| {
+                    let plan = RenderPlan::build(document, || cancel.is_cancelled())?;
+                    started.send(()).unwrap();
+                    held.recv().unwrap();
+                    Ok(plan)
+                });
+                assert!(
+                    prepared.is_none(),
+                    "cancelled completed plan escaped suppression"
+                );
+                if let Some(result) = prepared {
+                    sender.send(Completion { serial, result }).unwrap();
+                }
+            });
+            entered.recv_timeout(Duration::from_secs(5)).unwrap();
+            match action {
+                0 => loader
+                    .open(fixture.file("plan-b", b"# Replacement"))
+                    .unwrap(),
+                1 => loader.reload(),
+                _ => loader.close(),
+            };
+            resume.send(()).unwrap();
+            worker.join().unwrap();
+            if action != 2 {
+                loaded(&mut loader);
+                assert_eq!(
+                    loader.document.as_ref().unwrap().source,
+                    if action == 0 {
+                        b"# Replacement".as_slice()
+                    } else {
+                        b"# Current".as_slice()
+                    }
+                );
             }
             assert!(loader.poll().is_none());
             loader.close();

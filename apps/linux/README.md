@@ -18,8 +18,8 @@ shell in two places:
 Since LNX-001B the app links the model-v2 core library through a UI-free Rust
 adapter, `apps/linux/core` ([integration report](../../docs/Linux-Core-Integration.md)),
 and refuses to start against an incompatible core. LNX-001C adds native Open…/Reload, local-file capabilities and background
-loading through the core. Loaded windows show a native status label and retain
-the owned semantic model; there is no document renderer yet. LNX-001D adds it, and
+loading through the core. LNX-001D presents the owned semantic model as native
+virtualized GTK text with an outline, links and basic selection.
 LNX-001D1 must prove AT-SPI and Orca
 behaviour before the renderer is deepened (D-017). The accepted baseline is
 x86-64 KDE Plasma on Wayland (D-018); libadwaita is not used, and other
@@ -28,7 +28,8 @@ desktops and architectures are not claimed.
 ## Build and launch
 
 Install Rust 1.99.1 (the root `rust-toolchain.toml`), the GTK 4 development
-files (`gtk4` on Arch, `libgtk-4-dev` on Debian and Ubuntu) and `pkg-config`.
+files (GTK 4.14 or newer: `gtk4` on Arch, `libgtk-4-dev` on Debian and Ubuntu)
+and `pkg-config`.
 The app is its own Cargo workspace with its own `Cargo.lock`. The root
 workspace and its dependency policy cover only the portable core, and gtk-rs
 is not a core dependency. The app does not depend on the core's Rust crates
@@ -68,7 +69,8 @@ packages, then runs `cargo fmt --check`, Clippy with warnings denied over the
 workspace, and the
 [dependency/license policy](../../docs/Dependencies.md#linux-app-graph-lnx-001a)
 for the Linux graph. Then, for debug and then release, it builds the
-workspace with `--locked`, runs 11 document tests and the 15 core consumer tests against the
+workspace with `--locked`, runs 12 document tests, five renderer tests and the
+15 core consumer tests against the
 matching core package (negotiation, typed errors, owned v2 values, parse
 failures, copy budget, queued and running cancellation, bounded admission,
 close, non-blocking `close_then` and drop, availability, repeated lifecycle and every corpus and
@@ -83,7 +85,10 @@ smoke modes as child processes, with a 30-second timeout each:
   with two windows open. It also exercises the native chooser fallback
   (programmatic selection and Cancel), Open, Reload after edits, missing-file
   recovery, rejection of a nonlocal URI, and responsive window creation/close
-  while a large load is pending.
+  while a large load is pending. The native reader check verifies heading/list/code
+  text and escaping, a fragment link to a far heading, near/far outline activation,
+  within-label selection bounds, bounded realized rows and recycling/reload cleanup.
+  It never writes the clipboard or launches an external URI.
 - `--smoke-test=last-window` closes the only window and expects the
   application to exit.
 - The commands smoke also parses a heading off the main thread through the
@@ -108,8 +113,8 @@ Each run must print its pass marker, then report that the GTK main loop ended,
 and exit zero. A smoke run uses `NON_UNIQUE`, so it never hands its checks to
 a reader already running on the desktop. Commands are activated as actions;
 this proves the actions and the accelerators installed for them, not physical
-key presses. Run the manual check below as well. This is shell acceptance, not
-renderer, screen-reader, startup or memory acceptance.
+key presses. Run the manual check below as well. These are scoped shell/reader
+checks; screen-reader, whole-app startup and memory acceptance remain separate.
 
 CI runs the path-filtered `linux-native` job on `ubuntu-24.04`, which installs
 `libgtk-4-dev` (GTK 4.14) and runs the check under `dbus-run-session` and
@@ -254,7 +259,9 @@ python3 apps/linux/tools/check_association.py build/linux/target/debug/markdown-
 Extend the manual shell check by opening an ordinary Markdown file through the
 desktop picker, editing it in another app and pressing Ctrl+R, removing it and
 confirming the recovery message, then restoring it and reloading. Try All files
-with an extensionless UTF-8 file. Confirm no document text is rendered yet.
+with an extensionless UTF-8 file. Confirm headings, prose, lists and code are
+readable; activate outline entries and a same-document link. Select text within
+one fragment using pointer and keyboard and copy it manually if desired.
 
 ## LNX-001C local evidence
 
@@ -295,3 +302,89 @@ for up to the 30-second retry deadline. GTK remains responsive, but those
 windows stay at “Loading document…” until the dispatcher advances. Bounded
 parallel reads or fair admission scheduling require LNX-001G measurements;
 they are not implemented by this slice.
+
+## Native reader (LNX-001D)
+
+The reader uses a lazy `GtkListView` of bounded UTF-8 text fragments, with a
+separate native outline. Headings have native heading roles/levels and body
+labels have paragraph roles. Headings, prose, ordered/unordered lists, nested
+items, emphasis/strong/strike, inline code and code blocks are presented from
+owned model-v2 values. Code wraps in monospace. Outline entries use core titles,
+levels and anchors; activation reveals and focuses the heading, including
+unrealized distant rows. Scrolling reveals the row minimally, without promising
+heading-at-top alignment. Images use readable alt text only; unsupported blocks
+and raw HTML retain escaped source fallback. No HTML is executed or resources
+loaded. NUL and XML-invalid controls become visible replacement characters.
+Tables and richer extensions retain basic readable content; deeper presentation
+belongs after the accessibility gate.
+
+A native label supports pointer/keyboard selection and plain-text copy within
+one fragment. Selection does not cross fragment seams and is reset when the row
+is recycled or a document is reloaded/replaced. Full document/global selection
+remains LNX-001G. Fragment seams can introduce early line breaks; every fragment
+is conservatively limited to 512 UTF-8 bytes, within D-017's 1024-byte whitespace
+and 512-byte unbreakable bounds. Width hints are 40 characters. There is no
+whole-document `GtkTextView` or eager widget population.
+
+Links use generated plan-epoch/fragment/intent tokens in escaped Pango markup.
+The native handler always suppresses GTK's default activation. Only a core
+same-document fragment or canonical external `http:`, `https:` or `mailto:`
+target can activate. External targets launch through GTK's URI launcher with
+the window parent. Relative/capability-requiring, denied and missing-anchor
+links stay inert: selecting a file grants no folder or sibling-document access.
+The automated checks do not launch a browser/mail client or access the network.
+
+The pure plan is prepared on successful core-worker completion before the
+serial-tagged result is sent to GTK. It checks shared cancellation at node,
+allocation and fragment boundaries and before publication. Plan admission caps
+accounted owned UTF-8/record payload at 128 MiB, conservatively charging temporary
+runs, copied traversal indices and anchor-map entries as well. This is an
+allocation-policy bound, not exact allocator RSS or a whole-app memory budget.
+Budget exhaustion maps to the existing complexity message. Cyclic/deep invalid
+models and out-of-range link indices fail without indexing panics. The core
+worker serializes plan construction, so a large plan can delay other windows'
+core work; scheduling/performance tuning remains LNX-001G. Large stale plans
+and replaced models are released off the GTK thread.
+
+Packaged-core renderer tests cover all eight corpus outlines, inline/list/code
+semantics, escaped raw HTML, alt text, URI policy and stale/forged token rejection,
+UTF-8/style/link clipping, injected budget exhaustion and cancellation. A held
+completed-plan barrier tests replacement, reload and close before publication;
+existing held-read and lifecycle tests remain in place. Native smoke selection
+checks inspect bounds only and leave the user's clipboard untouched.
+
+LNX-001D1 is still mandatory before deeper renderer work: native roles and
+headless/native smoke navigation do not prove AT-SPI whole-document access,
+Orca continuous reading across virtualized rows, or off-screen heading access.
+No new Orca proof is claimed here. GTK 4.14 is the compatibility floor; local
+checks on newer GTK do not replace CI evidence at that floor.
+
+### LNX-001D local evidence
+
+Checked on 2026-11-01 (America/Denver), AMD Ryzen 9 5950X x86-64,
+CachyOS kernel 7.3.0-4-cachyos, KDE Plasma/KWin 6.8.2 Wayland, GTK 4.24.1,
+Rust 1.99.1 and Python 3.14.8:
+
+- `python3 apps/linux/tools/check.py` and
+  `GDK_BACKEND=x11 dbus-run-session -- xvfb-run -a python3 apps/linux/tools/check.py`
+  both passed with the final GTK `v4_14` feature configuration. Each runs
+  12 document/loader, 5 renderer and 15 core consumer tests in debug and release,
+  format, Clippy, Linux dependency policy, package audits, reader/shell/last-window
+  and isolated association smokes, and the release probe.
+- Native smoke checks distant outline/fragment navigation and focus, selectable
+  text bounds, exactly one visible text label per row, recycling cleanup and
+  document replacement. A synthetic 1,602-heading document stays below the
+  smoke's 1,000-realized-row limit; an exact row count is not emitted. This
+  proves lazy realization for that case, not a 5 MiB performance budget.
+- Tests use packaged core parses for all eight corpus outlines, nested-only
+  and empty list markers, escaped fallback/control characters, styled UTF-8
+  fragments, link policy/tokens, plan budgets and cancellation. A completed-plan
+  barrier proves replacement/reload/close suppression before publication.
+- Live AT-SPI inspection remains unavailable: Registry activation reports a
+  failed unit. Private-bus address discovery is not an application-tree proof;
+  no unrelated apps were enumerated and no services or user accessibility
+  settings were changed. LNX-001D1 still needs AT-SPI and owner-confirmed Orca.
+
+No browser/mail client was launched and the user's clipboard was untouched.
+Physical input, continuous/global selection, cold/warm content presentation,
+scroll pacing, complete memory budgets and mixed scaling remain unmeasured.

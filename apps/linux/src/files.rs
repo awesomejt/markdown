@@ -1,3 +1,6 @@
+// FileChooserNative preserves the existing native/portal capability flow.
+// Its GTK 4.10 deprecation becomes visible with the renderer v4_12 feature.
+#![allow(deprecated)]
 //! GTK ownership and presentation. All file I/O and parsing belongs to document.
 use gtk::prelude::*;
 use gtk::{gio, glib};
@@ -11,6 +14,7 @@ struct WindowDocument {
     window: glib::WeakRef<gtk::ApplicationWindow>,
     label: glib::WeakRef<gtk::Label>,
     loader: DocumentLoader,
+    reader: crate::reader::Reader,
     chooser: Option<gtk::FileChooserNative>,
     reload: gio::SimpleAction,
     poll_source: Option<glib::SourceId>,
@@ -26,11 +30,13 @@ fn state(window: &gtk::ApplicationWindow) -> Option<Rc<RefCell<WindowDocument>>>
 impl WindowDocument {
     fn status(&self, text: &str) {
         if let Some(label) = self.label.upgrade() {
+            label.set_visible(true);
             label.set_text(text);
         }
     }
     fn loading(&mut self) {
         self.reload.set_enabled(self.loader.has_file());
+        self.reader.clear();
         self.status("Loading document…");
         if self.poll_source.is_none() {
             let weak = self.weak_self.clone();
@@ -48,15 +54,25 @@ impl WindowDocument {
                     match event {
                         LoadEvent::Loaded {
                             document,
+                            plan,
                             unchanged,
                             ..
-                        } => state.status(&format!(
-                            "Document loaded · {} bytes · {} headings{}",
-                            document.source.len(),
-                            document.outline.len(),
-                            if unchanged { " (unchanged)" } else { "" }
-                        )),
-                        LoadEvent::Failed(error) => state.status(&error.to_string()),
+                        } => {
+                            state.reader.install(plan);
+                            state.status(&format!(
+                                "Document loaded · {} bytes · {} headings{}",
+                                document.source.len(),
+                                document.outline.len(),
+                                if unchanged { " (unchanged)" } else { "" }
+                            ));
+                            if let Some(label) = state.label.upgrade() {
+                                label.set_visible(false);
+                            }
+                        }
+                        LoadEvent::Failed(error) => {
+                            state.reader.clear();
+                            state.status(&error.to_string());
+                        }
                     }
                     glib::ControlFlow::Break
                 },
@@ -72,6 +88,7 @@ impl WindowDocument {
     }
     fn open(&mut self, file: &gio::File) {
         let Some(path) = file.path() else {
+            self.reader.clear();
             self.loader.reject_selection();
             self.stop_polling();
             self.reload.set_enabled(false);
@@ -96,10 +113,20 @@ impl WindowDocument {
         if let Some(chooser) = self.chooser.take() {
             chooser.destroy();
         }
+        self.reader.clear();
         self.loader.close();
     }
 }
 pub fn attach(window: &gtk::ApplicationWindow, label: &gtk::Label) {
+    let reader = crate::reader::Reader::new(window);
+    let container = gtk::Box::new(gtk::Orientation::Vertical, 0);
+    window.set_child(None::<&gtk::Widget>);
+    container.append(label);
+    container.append(&reader.widget);
+    reader.widget.set_hexpand(true);
+    reader.widget.set_vexpand(true);
+    reader.clear();
+    window.set_child(Some(&container));
     let reload = gio::SimpleAction::new("reload", None);
     reload.set_enabled(false);
     window.add_action(&reload);
@@ -108,6 +135,7 @@ pub fn attach(window: &gtk::ApplicationWindow, label: &gtk::Label) {
             window: window.downgrade(),
             label: label.downgrade(),
             loader: DocumentLoader::new(),
+            reader: reader.clone(),
             chooser: None,
             reload: reload.clone(),
             poll_source: None,
@@ -277,4 +305,8 @@ pub fn polling(window: &gtk::ApplicationWindow) -> bool {
 }
 pub fn attached(window: &gtk::ApplicationWindow) -> bool {
     state(window).is_some()
+}
+
+pub fn reader(window: &gtk::ApplicationWindow) -> Option<crate::reader::Reader> {
+    state(window).map(|s| s.borrow().reader.clone())
 }
