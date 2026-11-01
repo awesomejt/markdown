@@ -1236,3 +1236,14 @@ From HANDOFF.md after LNX-001B:
 - **Next on Linux:** LNX-001C (file open/association, permission capability
   and typed errors, generation-safe off-thread load). Use `close_then` or a
   drop for window teardown, and coalesce or retry on `CoreError::Busy`.
+
+## Linux renderer queue posture superseded by LNX-001D (2026-11-01)
+
+From MEMORY.md after LNX-001C:
+
+- LNX-001D is next, then the mandatory LNX-001D1 accessibility gate.
+
+From HANDOFF.md after LNX-001C:
+
+- **Next on Linux:** LNX-001D (basic native blocks, outline and selection),
+  followed by the mandatory LNX-001D1 AT-SPI/Orca gate before deeper rendering.
