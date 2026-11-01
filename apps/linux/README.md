@@ -17,8 +17,9 @@ shell in two places:
 
 Since LNX-001B the app links the model-v2 core library through a UI-free Rust
 adapter, `apps/linux/core` ([integration report](../../docs/Linux-Core-Integration.md)),
-and refuses to start against an incompatible core. There is no document
-loader, file association or renderer yet. Those begin in LNX-001C/001D, and
+and refuses to start against an incompatible core. LNX-001C adds native Open…/Reload, local-file capabilities and background
+loading through the core. Loaded windows show a native status label and retain
+the owned semantic model; there is no document renderer yet. LNX-001D adds it, and
 LNX-001D1 must prove AT-SPI and Orca
 behaviour before the renderer is deepened (D-017). The accepted baseline is
 x86-64 KDE Plasma on Wayland (D-018); libadwaita is not used, and other
@@ -48,8 +49,9 @@ a core package of the other configuration. Re-stage after changing core
 sources. Build output and packages stay under the ignored `build/linux/`; the
 binaries find `libmarkdown_ffi.so` through a `RUNPATH` relative to their own
 directory, so keep the `build/linux/` layout together. This is a local
-development binary, not a package: there is no desktop entry, icon, Flatpak
-or Arch package yet, and nothing is installed or registered. The binary name
+development binary, not a package: a source desktop-entry template supports
+isolated association checks, but no icon, Flatpak or Arch package is supplied,
+and nothing is installed or registered. The binary name
 `markdown-linux` is a development name; packaging (LNX-001I and later) picks
 the installed name.
 
@@ -66,7 +68,7 @@ packages, then runs `cargo fmt --check`, Clippy with warnings denied over the
 workspace, and the
 [dependency/license policy](../../docs/Dependencies.md#linux-app-graph-lnx-001a)
 for the Linux graph. Then, for debug and then release, it builds the
-workspace with `--locked`, runs the 15 core consumer tests against the
+workspace with `--locked`, runs 11 document tests and the 15 core consumer tests against the
 matching core package (negotiation, typed errors, owned v2 values, parse
 failures, copy budget, queued and running cancellation, bounded admission,
 close, non-blocking `close_then` and drop, availability, repeated lifecycle and every corpus and
@@ -78,7 +80,10 @@ smoke modes as child processes, with a 30-second timeout each:
   menu item and its accelerator against a list written separately from the
   app's own, New Window, Close Window with the closed window released, About
   (transient for the window, with the program name and version) and Quit
-  with two windows open.
+  with two windows open. It also exercises the native chooser fallback
+  (programmatic selection and Cancel), Open, Reload after edits, missing-file
+  recovery, rejection of a nonlocal URI, and responsive window creation/close
+  while a large load is pending.
 - `--smoke-test=last-window` closes the only window and expects the
   application to exit.
 - The commands smoke also parses a heading off the main thread through the
@@ -88,6 +93,16 @@ smoke modes as child processes, with a 30-second timeout each:
 Last, it runs the release measurement probe once over the 1 MiB prose
 profile; the [integration report](../../docs/Linux-Core-Integration.md#reproduce)
 has the full measurement commands.
+
+An isolated association check then launches the generated development desktop
+entry with `gio launch`, delivering two files to an already-running primary
+process on a private D-Bus session. It verifies startup delivery and all three
+files' exact parsed bytes, including spaces, Unicode and a non-UTF-8 Linux
+filename. The executable symlink includes spaces, dollar/backtick and quotation
+characters; Exec is desktop-entry escaped without a shell. Temporary XDG
+applications/config/cache directories and processes are cleaned up; no MIME
+defaults or persistent registrations change. This proves delivery rather than
+a system-default association or an installed package.
 
 Each run must print its pass marker, then report that the GTK main loop ended,
 and exit zero. A smoke run uses `NON_UNIQUE`, so it never hands its checks to
@@ -160,3 +175,123 @@ Checked on 2026-10-31 on the host above (CachyOS, kernel 7.3.0, KDE Plasma
   library contains no checkout or home path.
 - Measurements, host limits and the dense 8 MiB peak are in the
   [integration report](../../docs/Linux-Core-Integration.md#measurements).
+
+## Local files and loading (LNX-001C)
+
+Open… (Ctrl+O) uses `GtkFileChooserNative`, which can use the desktop portal.
+Cancel leaves the selected document unchanged. Open replaces the invoking
+window's selection; association delivery opens one window per file, reusing
+an active empty window for the first file. New Window remains empty. Reload
+(Ctrl+R) is available after selection, including after a read failure. The
+Markdown/text picker filter is a discovery hint: All files permits any
+explicitly selected local regular UTF-8 file, including extensionless files or
+other suffixes. Remote URIs, directories, devices and FIFOs are unsupported.
+File arguments use Gio's OS-string API so non-UTF-8 Linux names remain exact.
+The title shows only a sanitized, bounded basename; failure messages contain
+no path or raw I/O diagnostic.
+
+A capability grants one selected path and its symlink target, without sibling
+or parent-directory access. Reload follows the selected path again, so atomic
+saves and symlink retargeting select the current target. It does not pin an
+inode. This unsandboxed development binary has ordinary process permissions;
+the capability is an application boundary, with an explicit revocation token,
+rather than OS sandbox enforcement. Grants are not persisted. Portal grant
+revocation, physical removable-volume unplug and Flatpak persistence have not
+been tested by this slice. Simulated ENODEV/ENXIO/ESTALE/ETIMEDOUT errors test
+only unavailable-storage mapping. Real chmod-denied reads are tested when
+running unprivileged; root cannot provide that evidence.
+
+The host opens read-only/nonblocking with O_NOCTTY (verified Linux x86-64 flag
+values), checks the opened descriptor is regular, then reads chunks with a
+5 MiB source limit plus one sentinel byte. Actual bytes are bounded even if a
+file grows after metadata was checked. UTF-8 and complexity errors come from
+the core. Missing, denied, explicitly revoked and unavailable storage have
+separate typed recovery messages; only current read-access failures update
+core availability. A failed current load clears the retained model and shows
+the error. Reload recovers once access returns.
+
+One host dispatcher serializes reads and core-admission retries, without
+waiting for parsing to finish. Each window keeps at most one pending metadata
+request; replacement removes obsolete queued work. One original source buffer
+and one submission clone may be retained before admission; two parses remain
+the process-wide core limit. Busy retries wake on cancellation or every 50 ms,
+with a 30-second admission deadline. Loaded models and queue metadata scale
+with windows; these bounds are not a whole-app memory budget.
+
+Every selection/reload/close advances a host request serial before cancelling
+read/parse work. Publication and error handling check that serial, so a stale
+read error cannot alter the replacement session's availability. Cancellation
+handles callback-before-install and synchronous queued-cancel races. Close
+and Quit remove queued work, cancel running requests and asynchronously release
+sessions; GTK never waits for the core worker. Completion polling runs only
+while a load is pending, and both window close and programmatic destruction
+detach its state and cancel work. A failed replacement-session allocation
+preserves the prior selection and Reload lineage. Large replaced/stale owned
+results are disposed off the GTK thread.
+
+Cancellation is cooperative between reads. A regular-file kernel read on a
+stalled FUSE/network mount may block despite O_NONBLOCK, delaying dispatcher
+reclamation and subsequent reads. UI publication is invalidated immediately;
+there is no claim of a bounded disk-unplug or I/O interruption deadline. This
+slice adds no watcher, restoration, recents, resource loader or renderer.
+
+The automated picker smoke uses the GTK native fallback with per-child
+`GDK_DEBUG=no-portals`; on older GTK without that flag it requires the normal
+fallback (as on the hosted Xvfb session). It responds to the fallback dialog,
+which forwards through the real native chooser response callback. Chooser
+configuration uses temporary XDG directories and an in-memory settings backend.
+Normal app launches retain the desktop's portal behavior. Physical Ctrl+O and
+Ctrl+R, interactive portal selection/cancellation and real grant revocation
+remain manual checks. The smoke's load-status label is a native accessible
+label; document reading/heading navigation still require LNX-001D1 evidence.
+
+To run only the isolated development association check after building:
+
+```sh
+python3 apps/linux/tools/check_association.py build/linux/target/debug/markdown-linux
+```
+
+Extend the manual shell check by opening an ordinary Markdown file through the
+desktop picker, editing it in another app and pressing Ctrl+R, removing it and
+confirming the recovery message, then restoring it and reloading. Try All files
+with an extensionless UTF-8 file. Confirm no document text is rendered yet.
+
+## LNX-001C local evidence
+
+Checked on 2026-11-01 (America/Denver), x86-64 AMD Ryzen 9 5950X, CachyOS
+kernel 7.3.0-4-cachyos, KDE Plasma/KWin 6.8.2 Wayland, GTK 4.24.1,
+GLib 2.90.1, Pango 1.58.2, Rust 1.99.1, Python 3.14.8, unprivileged uid 1000:
+
+- `python3 apps/linux/tools/check.py` passed on Wayland.
+- `GDK_BACKEND=x11 dbus-run-session -- xvfb-run -a python3 apps/linux/tools/check.py`
+  passed on X11. Each command stages/audits both core packages, checks format,
+  Clippy and license policy, and runs 11 document tests plus 15 core consumer
+  tests in both debug and release, both shell smoke modes in each configuration,
+  isolated desktop-entry delivery in each configuration and the release probe.
+- Document tests cover real denied reads, explicit capability revocation,
+  missing-file recovery, FIFO/device rejection, bounded growth, invalid UTF-8,
+  complexity limits, unchanged reloads, stale availability/results, a held-read
+  replacement/close barrier, callback installation/cancellation races and an
+  observed Busy retry before admission is released. Storage-error mapping uses
+  injected errno values; no physical unplug or portal revocation is claimed.
+- Chooser Cancel must dismiss the actual mapped fallback dialog before the smoke
+  reopens it. The smoke checks native actions and installed accelerators; physical
+  keys and interactive portal selection remain the manual checks above.
+- A live AT-SPI inspection could not run: the existing accessibility bus refused
+  connection, and isolated-bus retries could not expose the app because host
+  service activation failed. GTK smoke role checks pass; no new AT-SPI or Orca
+  result is claimed. LNX-001D1 must still prove the document accessibility gate.
+
+Close during an actively running parse and admission-timeout reclamation have
+no direct host-level barrier test in this slice. Existing core consumer tests
+cover running cancellation; host tests cover held reads, stale publication,
+queued cancellation and cancellation before handle installation. Whole-app
+startup, rendering and memory acceptance remain later tasks.
+
+The single host dispatcher also imposes cross-window delays: one stalled
+FUSE/network read prevents reads for every other window, even for local files.
+Waiting for a core admission slot can likewise delay the next window's read
+for up to the 30-second retry deadline. GTK remains responsive, but those
+windows stay at “Loading document…” until the dispatcher advances. Bounded
+parallel reads or fair admission scheduling require LNX-001G measurements;
+they are not implemented by this slice.

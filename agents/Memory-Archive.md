@@ -1223,3 +1223,16 @@ The next task was CORE-005; its search/read acceptance is now closed in PR #37.
   timeout diagnostics, plain gate checks and the GitHub-owned development ID.
   One review, no re-review required for those non-serious fixes, all threads
   resolved, no findings deferred.
+
+## Linux queued-step posture superseded by LNX-001C (2026-11-01)
+
+From MEMORY.md after LNX-001B:
+
+- `apps/linux`: the root package alone is the default member. LNX-001C is
+  next on Linux.
+
+From HANDOFF.md after LNX-001B:
+
+- **Next on Linux:** LNX-001C (file open/association, permission capability
+  and typed errors, generation-safe off-thread load). Use `close_then` or a
+  drop for window teardown, and coalesce or retry on `CoreError::Busy`.
