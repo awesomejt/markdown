@@ -403,7 +403,12 @@ name = "markdown-linux"
 version = "0.1.0"
 dependencies = [
  "gtk4",
+ "markdown-linux-core",
 ]
+
+[[package]]
+name = "markdown-linux-core"
+version = "0.1.0"
 
 [[package]]
 name = "memchr"

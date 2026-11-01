@@ -134,10 +134,15 @@ jobs:
           components: rustfmt, clippy
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
         with:
-          workspaces: apps/linux -> ../../build/linux/target
+          # The app workspace, and the core library it links (package_core.py).
+          workspaces: |
+            apps/linux -> ../../build/linux/target
+            . -> build/linux/rust
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: '3.14'
+      # PyYAML for the performance fixtures the core consumer tests read.
+      - run: python -m pip install -r tools/requirements-fixtures.txt
       # Hosted runners have no display or session bus; the smoke uses GTK's X11
       # backend on Xvfb inside a private D-Bus session, as on a desktop.
       - run: dbus-run-session -- xvfb-run -a python apps/linux/tools/check.py

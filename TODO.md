@@ -47,7 +47,10 @@ and [skeleton acceptance](docs/macOS-Skeleton-Acceptance.md). The MAC-001 aggreg
 milestone review (D-030) is next on this Mac.
 LNX-001A closed in PR #49 with the [GTK 4 shell](apps/linux/README.md), a
 separate Linux Cargo workspace under the dependency policy and required
-`linux-native` debug/release CI; LNX-001B is next on Linux.
+`linux-native` debug/release CI. LNX-001B closed in PR #50 with the
+[model-v2 core library package and Rust adapter](docs/Linux-Core-Integration.md),
+debug/release consumer tests, a 5 MiB host source limit and measured
+encode/copy/RSS costs; LNX-001C is next on Linux.
 The shared-core milestone boundary is reached:
 Claude prepares the combined packet for the owner under D-030; only the owner
 merges that milestone into `main`.
@@ -83,7 +86,7 @@ and explicit reference-syntax boundaries. CORE-006 closed in PR #38 with
 [facade acceptance](docs/Core-Facade-Acceptance.md), the ABI v1 default-change
 history and fresh three-OS all-feature release CI. The desktop chains are
 eligible; MAC-001A to MAC-001I closed in PRs #39 to #47 and the MAC-001 aggregate in PR #48. The macOS
-skeleton milestone review is next on this Mac. LNX-001A closed in PR #49 and LNX-001B
+skeleton milestone review is next on this Mac. LNX-001A and LNX-001B closed in PRs #49 and #50, and LNX-001C
 is next on Linux; WIN-001A waits for its host. Inspect
 state and `HANDOFF.md` before any pass. Scoped commits, pushes, PR updates and
 review requests are authorized; a Grok review with no serious finding approves

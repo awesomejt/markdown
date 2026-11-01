@@ -131,7 +131,22 @@ read.
   (GTK 4.14) under `dbus-run-session xvfb-run` with `GDK_BACKEND=x11`.
   gtk-rs: `WidgetExt::activate_action` and `ActionGroupExt::activate_action`
   clash on windows; read the accessible role through the `accessible-role`
-  property. LNX-001B is next on Linux.
+  property.
+- LNX-001B (PR #50): `apps/linux/tools/package_core.py` stages
+  `build/linux/core-package/<debug|release>/` with the model-v2
+  **cdylib** `libmarkdown_ffi.so` (exactly the 24 `md_` exports). Never link
+  the Rust staticlib into the Rust host: its private `std` collides with the
+  host's in the thin-LTO release link. `apps/linux/core`
+  (`markdown-linux-core`, no deps, hand-written bindings) is the UI-free
+  adapter; its build.rs links the package matching Cargo's `PROFILE` and sets
+  an `$ORIGIN`-relative RUNPATH (the app's build.rs repeats it via
+  `DEP_MARKDOWN_FFI_RUNPATH`). Host limits match macOS (5 MiB source, 500k
+  nodes, 1M events, 128 MiB copy); admission (two parses) is process-wide.
+  Never call blocking `close()` on the GTK main thread; use `close_then` or
+  drop. Retained RSS after closing is glibc caching (`malloc_trim` returns
+  it); LNX-001G should evaluate trimming. Use `cargo … --workspace` in
+  `apps/linux`: the root package alone is the default member. LNX-001C is
+  next on Linux.
 - Workflow: task PRs target `develop` and merge on a Grok review with no
   serious finding (D-029). `main` takes only owner-approved milestone reviews
   from `review/<milestone>`, tagged `m-<milestone>` (D-030). The shared-core
@@ -195,7 +210,13 @@ read.
   `gh`. Run Linux smokes on the live Wayland session or with
   `GDK_BACKEND=x11` via Xwayland. Local `tools/check.py common` fails only on
   stale ignored `.agents/loop/` Markdown that markdownlint's `**/*.md` glob
-  picks up; lint tracked files instead and leave that runtime state alone.
+  picks up; lint tracked files instead and leave that runtime state alone
+  (`npx markdownlint-cli2 --no-globs <files>`). Also installed: gdb, Orca,
+  Accerciser, python-gobject with AT-SPI, xvfb-run, patchelf, appstreamcli,
+  desktop-file-validate, makepkg and the Flathub GNOME 50/51 and
+  Freedesktop runtimes. Missing on 2026-11-01: flatpak-builder, the GNOME
+  SDK and rust-stable SDK extension, namcap (LNX-001I), heaptrack/valgrind
+  (LNX-001G) and xdotool/ydotool.
 
 ## Durable context
 

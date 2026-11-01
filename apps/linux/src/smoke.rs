@@ -56,6 +56,7 @@ async fn commands(app: &gtk::Application) -> Result<(), String> {
         "resizable window with a menu bar",
     )?;
     note("launch/window checked");
+    core().await?;
 
     for (menu, label, action, accels) in EXPECTED {
         check(
@@ -121,6 +122,46 @@ async fn commands(app: &gtk::Application) -> Result<(), String> {
     note("pass (application, windows, menus, accelerators, close, about, quit)");
     // Quit with two windows open; tools/check.py requires the event loop to exit cleanly.
     app.activate_action("quit", None);
+    Ok(())
+}
+
+/// The app links the matching core package: parse off the main thread through the
+/// adapter, then confirm every native handle is released.
+async fn core() -> Result<(), String> {
+    use markdown_linux_core as core;
+    let expected = if cfg!(debug_assertions) {
+        "debug"
+    } else {
+        "release"
+    };
+    check(
+        core::PACKAGE_CONFIGURATION == expected,
+        "core package matches the build profile",
+    )?;
+    let parsed = gio::spawn_blocking(|| {
+        let session = core::CoreSession::new("smoke")?;
+        let result = session.parse_blocking(b"# Smoke heading\n\nBody.\n".to_vec(), None, true);
+        session.close()?;
+        result
+    })
+    .await
+    .map_err(|_| "core worker panicked".to_owned())?
+    .map_err(|error| format!("core parse: {error}"))?;
+    let document = parsed.document.ok_or("core parse published no document")?;
+    let title = document
+        .outline
+        .first()
+        .map(|entry| document.text(entry.title));
+    check(
+        parsed.outcome == core::CoreOutcome::Published && title == Some(Ok("Smoke heading")),
+        "core model v2 parse",
+    )?;
+    let handles = core::live_handles().map_err(|error| error.to_string())?;
+    check(handles.total() == 0, "core handles released")?;
+    note(&format!(
+        "core checked ({} package, model v2)",
+        core::PACKAGE_CONFIGURATION
+    ));
     Ok(())
 }
 

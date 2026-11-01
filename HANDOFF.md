@@ -1,8 +1,9 @@
 # Agent Session and Platform Handoff
 
-Updated: 2026-10-31 (America/Denver), after LNX-001A (PR #49).
-Source baseline: `develop` after PR #49; reviewed head `f4b9f36`, nit fixes
-at `b84db0d`, followed by one state/docs closeout.
+Updated: 2026-11-01 (America/Denver), after LNX-001B (PR #50).
+Source baseline: `develop` after PR #50; reviewed head `d4f20b1`, review
+fixes at `0526c9b`, a CI fixture-tooling step at `b8d7de0`, followed by one
+state/docs closeout.
 Preserve intended source, lock/spec/golden files, docs and state together. Never transfer caches, environments, build
 products, private runtime state or user documents.
 
@@ -173,8 +174,27 @@ done list is in [the memory archive](agents/Memory-Archive.md#handoffmd-phase-ha
   `f4b9f36` found 0 blockers, 0 concerns and 2 nits; both fixed at `b84db0d`
   without re-review. One review was used. Physical keys, window controls and
   the About dialog's appearance are the README's unrun manual check.
-- **Next on Linux:** LNX-001B (model-v2 core package and Rust facade adapter,
-  release consumer, session/source bounds, flat-view and retained RSS).
+- **Done:** LNX-001B in [PR #50](https://github.com/awesomejt/markdown/pull/50):
+  [model-v2 core library package and Rust adapter](docs/Linux-Core-Integration.md).
+  `package_core.py` stages the cdylib (24 exports exactly; the staticlib's
+  private `std` breaks the LTO release link); `apps/linux/core` negotiates
+  the ABI, requests model v2 under 5 MiB/500k/1M/128 MiB host limits, runs
+  all heavy work on one worker with two process-wide admitted parses, and
+  copies owned, index-checked values. 15 consumer tests passed in debug and
+  release, plus both smokes with an in-app core parse, on Wayland and under
+  `xvfb-run` X11. Release 5 MiB prose: parse 355 ms, encode 113 ms, copy
+  8.7 ms (median); retained RSS 130 MiB is glibc caching (46 MiB after
+  `malloc_trim`); dense 8 MiB default peak 652 MiB, 5 MiB host 379 MiB.
+  [Grok review 1](https://github.com/awesomejt/markdown/pull/50) at
+  `d4f20b1` found 0 blockers, 1 concern (blocking `close()` on the GTK main
+  thread) and 2 nits (process-wide admission; cross-table validation); all
+  three fixed at `0526c9b` without re-review. One review was used. Hosted
+  `linux-native` then needed PyYAML for the fixture generator (`b8d7de0`);
+  [run 41282215270](https://github.com/awesomejt/markdown/actions/runs/41282215270)
+  passed every job.
+- **Next on Linux:** LNX-001C (file open/association, permission capability
+  and typed errors, generation-safe off-thread load). Use `close_then` or a
+  drop for window teardown, and coalesce or retry on `CoreError::Busy`.
 - **Next:** `desktop-apps` is active. No Mac task is eligible until
   DESK-001 (it needs WIN-001 and LNX-001). On this Mac the next step is the
   D-030 milestone review: the macOS skeleton (rule 3) and the overdue
