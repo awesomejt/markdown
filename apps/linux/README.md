@@ -15,8 +15,11 @@ shell in two places:
   `io.github.awesomejt.markdown` (the macOS bundle ID). Launching it again
   opens another window in the running process.
 
-There is no core adapter, document loader, file association or renderer yet.
-Those begin in LNX-001B/001C/001D, and LNX-001D1 must prove AT-SPI and Orca
+Since LNX-001B the app links the model-v2 core library through a UI-free Rust
+adapter, `apps/linux/core` ([integration report](../../docs/Linux-Core-Integration.md)),
+and refuses to start against an incompatible core. There is no document
+loader, file association or renderer yet. Those begin in LNX-001C/001D, and
+LNX-001D1 must prove AT-SPI and Orca
 behaviour before the renderer is deepened (D-017). The accepted baseline is
 x86-64 KDE Plasma on Wayland (D-018); libadwaita is not used, and other
 desktops and architectures are not claimed.
@@ -27,17 +30,24 @@ Install Rust 1.99.1 (the root `rust-toolchain.toml`), the GTK 4 development
 files (`gtk4` on Arch, `libgtk-4-dev` on Debian and Ubuntu) and `pkg-config`.
 The app is its own Cargo workspace with its own `Cargo.lock`. The root
 workspace and its dependency policy cover only the portable core, and gtk-rs
-is not a core dependency.
+is not a core dependency. The app does not depend on the core's Rust crates
+either: it links the core's C ABI library from a staged package.
 
-From the repository root:
+From the repository root, stage the core package for the configuration you
+build, then build and launch:
 
 ```sh
-cargo build --manifest-path apps/linux/Cargo.toml --locked --target-dir build/linux/target
+python3 apps/linux/tools/package_core.py --configuration debug
+cargo build --manifest-path apps/linux/Cargo.toml --workspace --locked --target-dir build/linux/target
 build/linux/target/debug/markdown-linux
 ```
 
-Add `--release` for an optimized build, at `build/linux/target/release/`.
-Build output stays under the ignored `build/linux/`. This is a local
+For an optimized build, stage with `--configuration release` and add
+`--release`; the output is at `build/linux/target/release/`. A build refuses
+a core package of the other configuration. Re-stage after changing core
+sources. Build output and packages stay under the ignored `build/linux/`; the
+binaries find `libmarkdown_ffi.so` through a `RUNPATH` relative to their own
+directory, so keep the `build/linux/` layout together. This is a local
 development binary, not a package: there is no desktop entry, icon, Flatpak
 or Arch package yet, and nothing is installed or registered. The binary name
 `markdown-linux` is a development name; packaging (LNX-001I and later) picks
@@ -51,11 +61,17 @@ Run in a graphical session (Wayland or X11):
 python3 apps/linux/tools/check.py
 ```
 
-It runs `cargo fmt --check`, Clippy with warnings denied, and the
+It generates the performance fixtures, stages the debug and release core
+packages, then runs `cargo fmt --check`, Clippy with warnings denied over the
+workspace, and the
 [dependency/license policy](../../docs/Dependencies.md#linux-app-graph-lnx-001a)
-for the Linux graph. Then it builds debug and release with `--locked` and runs
-each binary's two smoke modes as child processes, with a 30-second timeout
-each:
+for the Linux graph. Then, for debug and then release, it builds the
+workspace with `--locked`, runs the 14 core consumer tests against the
+matching core package (negotiation, typed errors, owned v2 values, parse
+failures, copy budget, queued and running cancellation, bounded admission,
+close and drop, availability, repeated lifecycle and every corpus and
+performance profile), re-verifies the package hash and runs each binary's two
+smoke modes as child processes, with a 30-second timeout each:
 
 - `--smoke-test` checks the application ID, one mapped, resizable window with
   a menu bar, the empty-state label (text, accessible role, mapped), every
@@ -65,6 +81,13 @@ each:
   with two windows open.
 - `--smoke-test=last-window` closes the only window and expects the
   application to exit.
+- The commands smoke also parses a heading off the main thread through the
+  core adapter, checks the published model-v2 outline and the package
+  configuration, and expects zero live native handles afterwards.
+
+Last, it runs the release measurement probe once over the 1 MiB prose
+profile; the [integration report](../../docs/Linux-Core-Integration.md#reproduce)
+has the full measurement commands.
 
 Each run must print its pass marker, then report that the GTK main loop ended,
 and exit zero. A smoke run uses `NON_UNIQUE`, so it never hands its checks to
@@ -120,3 +143,20 @@ gtk-rs (gtk4 0.11.5), Rust 1.99.1, Python 3.14.8.
 
 Physical key presses, the window controls, the About dialog's appearance and
 Orca were not exercised in this pass; the manual check above covers them.
+
+## LNX-001B local evidence
+
+Checked on 2026-10-31 on the host above (CachyOS, kernel 7.3.0, KDE Plasma
+6.8.2 Wayland, GTK 4.24.1, glibc 2.44, Rust 1.99.1, Python 3.14.8):
+
+- `python3 apps/linux/tools/check.py` passed on Wayland, and under
+  `GDK_BACKEND=x11 dbus-run-session -- xvfb-run -a` as CI runs it: package
+  staging and audit (24 exports), format, Clippy, the license policy, 14
+  consumer tests in debug and in release, both smoke modes with the core
+  check in each configuration, and the release probe.
+- A debug build pointed at the release package (`MARKDOWN_CORE_PACKAGE`)
+  failed in the build script with a configuration mismatch.
+- The release app's `RUNPATH` is `$ORIGIN`-relative only, and the packaged
+  library contains no checkout or home path.
+- Measurements, host limits and the dense 8 MiB peak are in the
+  [integration report](../../docs/Linux-Core-Integration.md#measurements).

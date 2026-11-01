@@ -173,7 +173,11 @@ earlier ABI v1 content-budget default change, and preserves native package
 consumers and host performance as separate 001B evidence.
 
 The Linux Rust host consumes the same public C facade as the other apps;
-it does not depend on the core's internal Rust models or lifetimes.
+it does not depend on the core's internal Rust models or lifetimes. The
+[Linux consumer](Linux-Core-Integration.md) links the core's shared library
+(a Rust static archive would bring a second `std` into the Rust binary),
+copies the v2 flat values into owned Rust data on one bounded worker and
+records host limits, encode/copy costs, retained RSS and the dense-input peak.
 
 The FEAS-006 checkpoints exercise one experimental C ABI on
 [Windows](Shared-Core-Windows-Evaluation.md),

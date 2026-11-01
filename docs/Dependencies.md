@@ -203,6 +203,14 @@ LGPL-2.1 or MPL-1.1, and Graphene, MIT). They are not redistributed by a
 development build. Packaging (LNX-001I, Flatpak and Arch) adds the Linux
 runtime inventory and the notices those libraries need.
 
+Since LNX-001B the workspace also has `markdown-linux-core` (`apps/linux/core`,
+Apache-2.0, unpublished, no dependencies), so the graph resolves 66 packages
+with no new third-party package. The app does not resolve the core's Rust
+crates: it links the staged `libmarkdown_ffi.so`, built from the core graph
+above with `model-v2` ([integration report](Linux-Core-Integration.md)). Its
+linked Rust packages and their notices join the runtime inventory in
+LNX-001I.
+
 ## Development tooling and feasibility
 
 MAC-001A's [SwiftPM AppKit shell](../apps/macos/Package.swift) has no external
