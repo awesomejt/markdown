@@ -31,7 +31,10 @@ recorded; repeated-load RSS remains an open MAC-001G gate. MAC-001C added file
 access and background loading, and MAC-001D renders headings, prose, lists,
 links and code on TextKit 2 with an outline sidebar. The
 [Linux GTK shell](apps/linux/README.md) (LNX-001A) provides native windows,
-commands and a debug/release CI smoke. Accessibility and whole-app performance
+commands and a debug/release CI smoke. LNX-001B integrates the model-v2 core;
+LNX-001C adds native file opening, Reload, desktop file delivery and bounded
+background loading with typed access errors. Document rendering begins in
+LNX-001D. Accessibility and whole-app performance
 still require platform evidence; the core alone
 delivers no working reader UI. The closed shared track also reaches the next
 owner-reviewed milestone into `main` (D-030). The accepted

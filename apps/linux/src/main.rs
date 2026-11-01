@@ -1,5 +1,6 @@
 //! Native GTK 4 shell for the Markdown reader (LNX-001A).
 
+mod files;
 mod smoke;
 
 use gtk::prelude::*;
@@ -10,6 +11,8 @@ pub const EMPTY_LABEL_NAME: &str = "empty-document-label";
 
 /// Menu entries and their accelerators, in menu order.
 pub const COMMANDS: &[(&str, &str, &str, Option<&str>)] = &[
+    ("File", "Open…", "app.open", Some("<Control>o")),
+    ("File", "Reload", "win.reload", Some("<Control>r")),
     ("File", "New Window", "app.new-window", Some("<Control>n")),
     ("File", "Close Window", "window.close", Some("<Control>w")),
     ("File", "Quit", "app.quit", Some("<Control>q")),
@@ -22,31 +25,42 @@ fn main() -> glib::ExitCode {
         eprintln!("Markdown cannot use its core library: {error}");
         return glib::ExitCode::FAILURE;
     }
-    let smoke = smoke::Mode::from_args(std::env::args().skip(1));
-    // A smoke run must never hand its checks to an already-running reader over D-Bus.
+    let smoke = smoke::Mode::from_args(std::env::args_os().skip(1));
+    // Shell smokes are independent; the isolated association smoke must exercise
+    // real single-instance forwarding on the private bus provided by its helper.
     let flags = match smoke {
-        Some(_) => gio::ApplicationFlags::NON_UNIQUE,
-        None => gio::ApplicationFlags::empty(),
+        Some(smoke::Mode::Association) => gio::ApplicationFlags::HANDLES_OPEN,
+        Some(_) => gio::ApplicationFlags::NON_UNIQUE | gio::ApplicationFlags::HANDLES_OPEN,
+        None => gio::ApplicationFlags::HANDLES_OPEN,
     };
     let app = gtk::Application::builder()
         .application_id(APP_ID)
         .flags(flags)
         .build();
     app.connect_startup(install_commands);
+    if matches!(smoke, Some(smoke::Mode::Association)) {
+        app.connect_startup(|app| smoke::start(app, smoke::Mode::Association));
+    }
+    app.connect_open(|app, files, _| files::deliver(app, files));
+    app.connect_shutdown(|_| files::shutdown());
     app.connect_activate(move |app| {
         // A second launch activates the primary instance, which opens another window.
         new_window(app);
-        if let Some(mode) = smoke {
+        if let Some(mode) = smoke.filter(|mode| !matches!(mode, smoke::Mode::Association)) {
             smoke::start(app, mode);
         }
     });
     // GApplication would reject the smoke flag, so a smoke run passes on only the program
-    // name; normal launches keep GApplication's own options (and, later, files to open).
-    let arguments: Vec<String> = match smoke {
-        Some(_) => std::env::args().take(1).collect(),
-        None => std::env::args().collect(),
+    // name; normal launches preserve GApplication options and exact OS file names.
+    let arguments: Vec<std::ffi::OsString> = match smoke {
+        Some(smoke::Mode::Association) => std::env::args_os()
+            .enumerate()
+            .filter_map(|(index, arg)| (index != 1).then_some(arg))
+            .collect(),
+        Some(_) => std::env::args_os().take(1).collect(),
+        None => std::env::args_os().collect(),
     };
-    let status = app.run_with_args(&arguments);
+    let status = app.run_with_args_os(&arguments);
     if smoke.is_some() {
         println!("shell-smoke: event loop exited");
     }
@@ -65,7 +79,10 @@ fn install_commands(app: &gtk::Application) {
     let about = gio::ActionEntry::builder("about")
         .activate(|app: &gtk::Application, _, _| show_about(app))
         .build();
-    app.add_action_entries([new, quit, about]);
+    let open = gio::ActionEntry::builder("open")
+        .activate(|app: &gtk::Application, _, _| files::choose(app))
+        .build();
+    app.add_action_entries([new, quit, about, open]);
 
     let menubar = gio::Menu::new();
     for section in ["File", "Help"] {
@@ -91,6 +108,9 @@ fn install_commands(app: &gtk::Application) {
 pub fn new_window(app: &gtk::Application) -> gtk::ApplicationWindow {
     let label = gtk::Label::builder()
         .label("No document open")
+        .wrap(true)
+        .margin_start(24)
+        .margin_end(24)
         .name(EMPTY_LABEL_NAME)
         .halign(gtk::Align::Center)
         .valign(gtk::Align::Center)
@@ -112,6 +132,7 @@ pub fn new_window(app: &gtk::Application) -> gtk::ApplicationWindow {
         .child(&label)
         .build();
     window.set_size_request(480, 320);
+    files::attach(&window, &label);
     window.present();
     window
 }

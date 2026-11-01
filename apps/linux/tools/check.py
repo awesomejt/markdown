@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 import subprocess
 import sys
+import tempfile
 
 from package_core import prepare_core, verify
 
@@ -35,7 +36,17 @@ def build(configuration: str) -> Path:
 
 def smoke(binary: Path, flag: str, marker: str) -> None:
     try:
-        result = subprocess.run([str(binary), flag], text=True, capture_output=True, timeout=30)
+        environment = os.environ.copy()
+        # Native fallback is controllable by the smoke; real portal selection is manual.
+        environment["GDK_DEBUG"] = ",".join(filter(None, [environment.get("GDK_DEBUG"), "no-portals"]))
+        environment["GSETTINGS_BACKEND"] = "memory"
+        with tempfile.TemporaryDirectory(prefix="markdown-shell-smoke-") as scratch:
+            for name in ("DATA", "CONFIG", "CACHE"):
+                directory = Path(scratch) / name.lower()
+                directory.mkdir()
+                environment[f"XDG_{name}_HOME"] = str(directory)
+            result = subprocess.run([str(binary), flag], text=True, capture_output=True,
+                                    timeout=30, env=environment)
     except subprocess.TimeoutExpired as error:
         # TimeoutExpired can carry bytes even when text=True was requested.
         for output in (error.stdout, error.stderr):
@@ -68,7 +79,8 @@ def main() -> None:
         verify(configuration)
         for flag, marker in SMOKES.items():
             smoke(binary, flag, marker)
-        print(f"{configuration}: core consumer tests and GTK shell smoke passed", flush=True)
+        run(sys.executable, str(APP_ROOT / "tools" / "check_association.py"), str(binary))
+        print(f"{configuration}: core/document tests, GTK shell and isolated association smokes passed", flush=True)
     # The measurement probe refuses anything but the release package; one short run.
     run(str(TARGET_DIR / "release" / "core-probe"), "single",
         str(REPO_ROOT / "build" / "fixtures" / "performance" / "prose-1mib.md"))

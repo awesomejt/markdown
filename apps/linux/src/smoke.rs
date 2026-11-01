@@ -9,6 +9,8 @@ use crate::{APP_ID, EMPTY_LABEL_NAME};
 
 /// Written out independently of `crate::COMMANDS`, so a changed menu or shortcut fails here.
 const EXPECTED: &[(&str, &str, &str, &[&str])] = &[
+    ("File", "Open…", "app.open", &["<Control>o"]),
+    ("File", "Reload", "win.reload", &["<Control>r"]),
     ("File", "New Window", "app.new-window", &["<Control>n"]),
     ("File", "Close Window", "window.close", &["<Control>w"]),
     ("File", "Quit", "app.quit", &["<Control>q"]),
@@ -19,13 +21,16 @@ const EXPECTED: &[(&str, &str, &str, &[&str])] = &[
 pub enum Mode {
     /// Windows, menus, accelerators, About and Quit with windows still open.
     Commands,
+    /// Isolated unique-instance desktop-entry/second-process test.
+    Association,
     /// Closing the only window ends the application.
     LastWindow,
 }
 
 impl Mode {
-    pub fn from_args(mut args: impl Iterator<Item = String>) -> Option<Mode> {
-        match args.next().as_deref() {
+    pub fn from_args(mut args: impl Iterator<Item = std::ffi::OsString>) -> Option<Mode> {
+        match args.next().as_ref().and_then(|a| a.to_str()) {
+            Some("--association-test") => Some(Mode::Association),
             Some("--smoke-test") => Some(Mode::Commands),
             Some("--smoke-test=last-window") => Some(Mode::LastWindow),
             _ => None,
@@ -39,6 +44,7 @@ pub fn start(app: &gtk::Application, mode: Mode) {
     glib::spawn_future_local(async move {
         let result = match mode {
             Mode::Commands => commands(&app).await,
+            Mode::Association => association(&app).await,
             Mode::LastWindow => last_window(&app).await,
         };
         if let Err(message) = result {
@@ -73,6 +79,7 @@ async fn commands(app: &gtk::Application) -> Result<(), String> {
         )?;
     }
     note("menus/accelerators checked");
+    documents(app, &first).await?;
 
     app.activate_action("new-window", None);
     check(
@@ -262,4 +269,136 @@ fn check(value: bool, message: &str) -> Result<(), String> {
     } else {
         Err(message.to_string())
     }
+}
+
+async fn association(app: &gtk::Application) -> Result<(), String> {
+    check(
+        !app.flags().contains(gio::ApplicationFlags::NON_UNIQUE),
+        "association remains single-instance",
+    )?;
+    println!("association-smoke: ready");
+    let deadline = Instant::now() + Duration::from_secs(20);
+    loop {
+        if crate::files::loaded_sources(app)
+            == [
+                b"# Desktop one\n".to_vec(),
+                b"# Desktop two\n".to_vec(),
+                b"# First delivery\n".to_vec(),
+            ]
+        {
+            break;
+        }
+        check(
+            Instant::now() < deadline,
+            "desktop startup and second-process deliveries loaded exact bytes in three windows",
+        )?;
+        glib::timeout_future(Duration::from_millis(20)).await;
+    }
+    println!("association-smoke: pass (startup, desktop entry, second process, exact bytes)");
+    app.quit();
+    Ok(())
+}
+
+async fn documents(app: &gtk::Application, window: &gtk::ApplicationWindow) -> Result<(), String> {
+    let directory = std::env::temp_dir().join(format!("markdown-gtk-smoke-{}", std::process::id()));
+    std::fs::create_dir(&directory).map_err(|_| "create smoke fixture")?;
+    struct Cleanup(std::path::PathBuf);
+    impl Drop for Cleanup {
+        fn drop(&mut self) {
+            let _ = std::fs::remove_dir_all(&self.0);
+        }
+    }
+    let _cleanup = Cleanup(directory.clone());
+    let path = directory.join("文 space.md");
+    std::fs::write(&path, b"# Native open\n").map_err(|_| "write fixture")?;
+    check(
+        !crate::files::reload_enabled(window),
+        "Reload disabled without a file",
+    )?;
+    app.activate_action("open", None);
+    check(
+        crate::files::chooser_visible(window),
+        "Open presents a native chooser",
+    )?;
+    wait_until("native fallback chooser is ready for Cancel", || {
+        crate::files::chooser_ready(window)
+    })
+    .await?;
+    crate::files::chooser_cancel(window)?;
+    wait_until("Cancel dismisses the native chooser", || {
+        !crate::files::chooser_visible(window) && !crate::files::chooser_ready(window)
+    })
+    .await?;
+    check(
+        !crate::files::reload_enabled(window),
+        "chooser cancel retains empty state",
+    )?;
+    // Programmatic acceptance uses the same response callback as a real picker.
+    app.activate_action("open", None);
+    glib::timeout_future(Duration::from_millis(250)).await;
+    crate::files::chooser_select(window, &gio::File::for_path(&path))?;
+    wait_until("chooser file selection settles", || {
+        crate::files::chooser_selected(window, &gio::File::for_path(&path))
+    })
+    .await?;
+    crate::files::chooser_accept(window)?;
+    wait_until("picker file loads", || {
+        crate::files::source(window).as_deref() == Some(b"# Native open\n")
+    })
+    .await?;
+    check(
+        crate::files::reload_enabled(window),
+        "Reload enabled after selection",
+    )?;
+    std::fs::write(&path, b"# Changed\n").map_err(|_| "modify fixture")?;
+    WidgetExt::activate_action(window, "win.reload", None).map_err(|_| "Reload action")?;
+    wait_until("Reload publishes changed bytes", || {
+        crate::files::source(window).as_deref() == Some(b"# Changed\n")
+    })
+    .await?;
+    std::fs::remove_file(&path).map_err(|_| "remove fixture")?;
+    WidgetExt::activate_action(window, "win.reload", None).map_err(|_| "Reload missing")?;
+    wait_until("missing file has path-free recovery", || {
+        crate::files::status(window).starts_with("The file is missing.")
+    })
+    .await?;
+    std::fs::write(&path, b"# Recovered\n").map_err(|_| "restore fixture")?;
+    WidgetExt::activate_action(window, "win.reload", None).map_err(|_| "Reload recovery")?;
+    wait_until("Reload recovers access", || {
+        crate::files::source(window).as_deref() == Some(b"# Recovered\n")
+    })
+    .await?;
+    // Reject remote delivery after starting another load: no obsolete result may win.
+    crate::files::open_for_smoke(window, &gio::File::for_path(&path));
+    crate::files::open_for_smoke(
+        window,
+        &gio::File::for_uri("https://invalid.example/document.md"),
+    );
+    glib::timeout_future(Duration::from_millis(100)).await;
+    check(
+        crate::files::status(window).starts_with("Only local files"),
+        "remote rejection invalidates previous load",
+    )?;
+    check(
+        !crate::files::reload_enabled(window),
+        "remote selection grants no reload capability",
+    )?;
+    let large = directory.join("large.md");
+    std::fs::write(&large, b"a ".repeat(2_500_000)).map_err(|_| "large fixture")?;
+    // Opening a new window while a large load is pending proves event-loop progress.
+    crate::files::open_for_smoke(window, &gio::File::for_path(&large));
+    let closing = crate::new_window(app);
+    crate::files::open_for_smoke(&closing, &gio::File::for_path(&large));
+    closing.close();
+    glib::timeout_future(Duration::from_millis(1)).await;
+    check(
+        window.is_mapped(),
+        "GTK remains responsive during load/close",
+    )?;
+    // Leave one large pending load for the commands smoke's explicit Quit path.
+    crate::files::open_for_smoke(window, &gio::File::for_path(&path));
+    note(
+        "documents checked (native chooser routing/cancel, Reload, recovery, unsupported URI, load/close)",
+    );
+    Ok(())
 }

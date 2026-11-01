@@ -3,5 +3,5 @@
 fn main() {
     let runpath =
         std::env::var("DEP_MARKDOWN_FFI_RUNPATH").expect("markdown-linux-core build script");
-    println!("cargo:rustc-link-arg-bins=-Wl,-rpath,{runpath}");
+    println!("cargo:rustc-link-arg=-Wl,-rpath,{runpath}");
 }
