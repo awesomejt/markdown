@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
-"""Lint, license-check, build and run the real GTK shell smoke in debug and release."""
+"""Stage the core packages, lint, license-check, then build, run the core consumer tests
+and the real GTK shell smoke in debug and release."""
 import argparse
 import os
 from pathlib import Path
 import subprocess
 import sys
+
+from package_core import prepare_core, verify
 
 APP_ROOT = Path(__file__).resolve().parents[1]
 REPO_ROOT = APP_ROOT.parents[1]
@@ -23,7 +26,10 @@ def cargo(command: str, *arguments: str) -> None:
 
 
 def build(configuration: str) -> Path:
-    cargo("build", *(["--release"] if configuration == "release" else []))
+    profile = ["--release"] if configuration == "release" else []
+    cargo("build", "--workspace", *profile)
+    # Release-mode and debug-mode consumers of the matching core package.
+    cargo("test", "--workspace", *profile)
     return TARGET_DIR / configuration / "markdown-linux"
 
 
@@ -51,14 +57,21 @@ def main() -> None:
     parser.parse_args()
     if not (os.environ.get("WAYLAND_DISPLAY") or os.environ.get("DISPLAY")):
         raise SystemExit("A graphical session is required: run under Wayland, X11 or xvfb-run")
-    run("cargo", "fmt", "--check")
-    cargo("clippy", "--all-targets", "--", "-D", "warnings")
+    run(sys.executable, "tools/generate_performance_fixtures.py", cwd=REPO_ROOT)
+    for configuration in ("debug", "release"):
+        prepare_core(configuration)
+    run("cargo", "fmt", "--all", "--check")
+    cargo("clippy", "--workspace", "--all-targets", "--", "-D", "warnings")
     run(sys.executable, "tools/check_dependencies.py", "linux", cwd=REPO_ROOT)
     for configuration in ("debug", "release"):
         binary = build(configuration)
+        verify(configuration)
         for flag, marker in SMOKES.items():
             smoke(binary, flag, marker)
-        print(f"{configuration}: GTK shell smoke passed", flush=True)
+        print(f"{configuration}: core consumer tests and GTK shell smoke passed", flush=True)
+    # The measurement probe refuses anything but the release package; one short run.
+    run(str(TARGET_DIR / "release" / "core-probe"), "single",
+        str(REPO_ROOT / "build" / "fixtures" / "performance" / "prose-1mib.md"))
 
 
 if __name__ == "__main__":

@@ -17,6 +17,11 @@ pub const COMMANDS: &[(&str, &str, &str, Option<&str>)] = &[
 ];
 
 fn main() -> glib::ExitCode {
+    // Refuse to start against a core library with another ABI, model set or layout.
+    if let Err(error) = markdown_linux_core::validate() {
+        eprintln!("Markdown cannot use its core library: {error}");
+        return glib::ExitCode::FAILURE;
+    }
     let smoke = smoke::Mode::from_args(std::env::args().skip(1));
     // A smoke run must never hand its checks to an already-running reader over D-Bus.
     let flags = match smoke {
