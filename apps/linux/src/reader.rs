@@ -139,10 +139,12 @@ impl Reader {
                 row.first_child().and_downcast::<gtk::Label>().unwrap(),
                 row.last_child().and_downcast::<gtk::Label>().unwrap(),
             ];
-            let label = &labels[usize::from(fragment.heading == 0)];
+            let label = &labels[usize::from(!fragment.heading_start)];
             label.set_markup(&fragment.markup(state.epoch, index));
-            if fragment.heading > 0 {
+            if fragment.heading_start {
                 label.update_property(&[gtk::accessible::Property::Level(fragment.heading as i32)]);
+            }
+            if fragment.heading > 0 {
                 let attrs = gtk::pango::AttrList::new();
                 attrs.insert(gtk::pango::AttrInt::new_weight(gtk::pango::Weight::Bold));
                 attrs.insert(gtk::pango::AttrFloat::new_scale(1.6));
@@ -328,7 +330,11 @@ impl Reader {
             state.plan.take()
         };
         if let Some(old) = old {
-            std::thread::spawn(move || drop(old));
+            // Builder::spawn reports failure instead of panicking. If no thread
+            // can start, dropping the rejected closure releases the plan here.
+            let _ = std::thread::Builder::new()
+                .name("markdown-plan-dispose".into())
+                .spawn(move || drop(old));
         }
         self.widget.set_visible(false);
     }

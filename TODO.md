@@ -510,6 +510,13 @@ Low findings and nits from Grok reviews that were merged under D-029 without
 being fixed. A later pass fixes them or records why not; remove each entry
 when it is resolved.
 
+- **LNX-001D (PR #52, Grok review 5729937327), nit:** Reload clears the
+  current reader and returns to the top, including unchanged content. Preserve
+  the shown revision and restore an anchor/selection in LNX-001H, alongside
+  external refresh and reading restoration. Basic D loading still invalidates
+  stale navigation immediately; keeping an older view alive needs the H
+  lifecycle and position policy rather than a partial implementation here.
+
 - **LNX-001C (PR #51, Grok review 5727226665):** the single file dispatcher
   permits cross-window delays from a stalled FUSE/network read or a Busy
   admission retry (up to 30 seconds for the latter). The limitation and

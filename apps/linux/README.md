@@ -69,7 +69,7 @@ packages, then runs `cargo fmt --check`, Clippy with warnings denied over the
 workspace, and the
 [dependency/license policy](../../docs/Dependencies.md#linux-app-graph-lnx-001a)
 for the Linux graph. Then, for debug and then release, it builds the
-workspace with `--locked`, runs 12 document tests, five renderer tests and the
+workspace with `--locked`, runs 12 document tests, eight renderer tests and the
 15 core consumer tests against the
 matching core package (negotiation, typed errors, owned v2 values, parse
 failures, copy budget, queued and running cancellation, bounded admission,
@@ -306,8 +306,10 @@ they are not implemented by this slice.
 ## Native reader (LNX-001D)
 
 The reader uses a lazy `GtkListView` of bounded UTF-8 text fragments, with a
-separate native outline. Headings have native heading roles/levels and body
-labels have paragraph roles. Headings, prose, ordered/unordered lists, nested
+separate native outline. Each heading's first fragment has its native heading
+role/level; continuations retain heading styling with paragraph roles. Body
+labels also have paragraph roles. Ordinary soft line breaks flow as spaces;
+explicit Markdown hard breaks remain newlines. Headings, prose, ordered/unordered lists, nested
 items, emphasis/strong/strike, inline code and code blocks are presented from
 owned model-v2 values. Code wraps in monospace. Outline entries use core titles,
 levels and anchors; activation reveals and focuses the heading, including
@@ -388,3 +390,13 @@ Rust 1.99.1 and Python 3.14.8:
 No browser/mail client was launched and the user's clipboard was untouched.
 Physical input, continuous/global selection, cold/warm content presentation,
 scroll pacing, complete memory budgets and mixed scaling remain unmeasured.
+
+After Grok review 1 (PR #52), both full native commands passed again in debug
+and release with 12 document/loader, 8 renderer and 15 core tests per backend
+and profile (140 test executions). New checks distinguish soft/hard breaks,
+prove mixed-case source schemes become core canonical targets, and verify a
+1,103-byte heading occupies three fragments with one semantic Heading role and
+styled Paragraph continuations. Native fragment limits remain unchanged.
+Plan disposal now reports thread-creation failure without panicking; resource
+exhaustion was not fault-injected. Reload position preservation is recorded
+for LNX-001H. These role checks do not replace the LNX-001D1 AT-SPI/Orca gate.

@@ -25,6 +25,9 @@ pub struct Run {
 pub struct Fragment {
     pub runs: Vec<Run>,
     pub heading: u32,
+    /// Only the first fragment represents a semantic heading; continuations
+    /// retain the heading level for visual styling.
+    pub heading_start: bool,
     pub code: bool,
 }
 impl Fragment {
@@ -296,7 +299,8 @@ impl<F: Fn() -> bool> Builder<'_, F> {
             link
         };
         match n.kind {
-            MD_NODE_SOFT_BREAK | MD_NODE_HARD_BREAK => self.run(runs, "\n".into(), style, link)?,
+            MD_NODE_SOFT_BREAK => self.run(runs, " ".into(), style, link)?,
+            MD_NODE_HARD_BREAK => self.run(runs, "\n".into(), style, link)?,
             MD_NODE_TEXT | MD_NODE_CODE_SPAN | MD_NODE_FOOTNOTE_REFERENCE => {
                 let text = self.text(n.text)?;
                 self.run(runs, text, style, link)?;
@@ -398,6 +402,7 @@ impl<F: Fn() -> bool> Builder<'_, F> {
         let mut fragment = Fragment {
             runs: Vec::new(),
             heading,
+            heading_start: heading > 0,
             code,
         };
         let mut used = 0;
@@ -418,11 +423,13 @@ impl<F: Fn() -> bool> Builder<'_, F> {
                 {
                     end = i + c.len_utf8();
                 }
-                if end == 0 || used + end > 1024 {
+                debug_assert!(used + end <= 512);
+                if end == 0 {
                     self.push(fragment)?;
                     fragment = Fragment {
                         runs: Vec::new(),
                         heading,
+                        heading_start: false,
                         code,
                     };
                     used = 0;
@@ -441,6 +448,7 @@ impl<F: Fn() -> bool> Builder<'_, F> {
                     fragment = Fragment {
                         runs: Vec::new(),
                         heading,
+                        heading_start: false,
                         code,
                     };
                     used = 0;

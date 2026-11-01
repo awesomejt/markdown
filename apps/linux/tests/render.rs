@@ -177,3 +177,52 @@ fn nul_and_xml_controls_become_visible_replacement_in_native_text() {
         assert!(!f.markup(1, i as u32).contains('\0'));
     }
 }
+
+#[test]
+fn soft_breaks_flow_as_spaces_and_hard_breaks_preserve_newlines() {
+    let p = plan("ordinary\nwrapped\n\nexplicit  \nbreak\n\nbackslash\\\nbreak\n");
+    let text = p.fragments.iter().map(|f| f.text()).collect::<Vec<_>>();
+    assert_eq!(
+        text,
+        ["ordinary wrapped", "explicit\nbreak", "backslash\nbreak"]
+    );
+}
+
+#[test]
+fn long_heading_keeps_one_semantic_start_and_bounded_styled_continuations() {
+    let title = format!("{}end", "word 文 ".repeat(220));
+    let p = plan(&format!("## {title}\n"));
+    assert!(p.fragments.len() > 2);
+    assert_eq!(
+        p.fragments.iter().map(|f| f.text()).collect::<String>(),
+        title
+    );
+    assert!(
+        p.fragments
+            .iter()
+            .all(|f| f.heading == 2 && f.text().len() <= 512)
+    );
+    assert_eq!(p.fragments.iter().filter(|f| f.heading_start).count(), 1);
+    assert!(p.fragments[0].heading_start);
+    assert_eq!(p.outline.len(), 1);
+    assert_eq!(p.outline[0].fragment, 0);
+}
+
+#[test]
+fn mixed_case_source_schemes_use_the_core_canonical_external_target() {
+    let doc = document(
+        "[secure](HTTPS://example.com/a) [web](HtTp://example.com/b) [mail](MAILTO:Person@example.com) [mixed](MailTo:Other@example.com)",
+    );
+    let p = RenderPlan::build(&doc, || false).unwrap();
+    assert_eq!(p.targets.len(), 4);
+    for (target, intent) in p.targets.iter().zip(&doc.links) {
+        let canonical = doc.text(intent.target).unwrap();
+        assert_eq!(target, &Target::External(canonical.to_owned()));
+        assert!(
+            ["https:", "http:", "mailto:"]
+                .iter()
+                .any(|scheme| canonical.starts_with(scheme)),
+            "core scheme must be canonical: {canonical}"
+        );
+    }
+}

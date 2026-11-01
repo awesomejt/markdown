@@ -531,6 +531,47 @@ async fn reader(window: &gtk::ApplicationWindow) -> Result<(), String> {
         "reload invalidates row bindings",
     )?;
     wait_until("reader reload completes", || !crate::files::polling(window)).await?;
+    let long_title = format!("{}end", "word ".repeat(220));
+    let heading_source = format!("## {long_title}\n");
+    std::fs::write(&path, &heading_source).map_err(|_| "long heading fixture")?;
+    crate::files::open_for_smoke(window, &gio::File::for_path(&path));
+    wait_until("long heading publishes", || {
+        crate::files::source(window).as_deref() == Some(heading_source.as_bytes())
+    })
+    .await?;
+    wait_until("long heading fragments realized", || {
+        reader.observed().len() == 3
+    })
+    .await?;
+    let mut labels = reader.observed();
+    labels.sort_by_key(|(index, _)| *index);
+    check(
+        labels
+            .iter()
+            .map(|(_, label)| label.text().to_string())
+            .collect::<String>()
+            == long_title,
+        "long heading text reconstructed",
+    )?;
+    check(
+        labels
+            .iter()
+            .filter(|(_, label)| label.accessible_role() == gtk::AccessibleRole::Heading)
+            .count()
+            == 1,
+        "one semantic heading across native fragments",
+    )?;
+    check(
+        labels[0].1.accessible_role() == gtk::AccessibleRole::Heading,
+        "first fragment is heading",
+    )?;
+    for (_, label) in labels.iter().skip(1) {
+        check(
+            label.accessible_role() == gtk::AccessibleRole::Paragraph
+                && label.attributes().is_some(),
+            "continuation retains heading style with paragraph role",
+        )?;
+    }
     std::fs::remove_dir_all(directory).map_err(|_| "remove reader fixtures")?;
     note(
         "reader checked (native text, escaping, bounded rows, fragment/outline jumps, selection, recycling, reload)",
