@@ -2,7 +2,7 @@ use crate::ffi::{self, md_diagnostic, md_intent, md_node, md_outline_entry, md_p
 use crate::runtime::CoreError;
 
 /// Immutable values copied out of one model-v2 snapshot view before its handle
-/// is released. No pointer, handle or borrowed core memory is kept: the records
+/// is released, with every cross-table index and string range bounds-checked. No pointer, handle or borrowed core memory is kept: the records
 /// are fixed-width integers and string-table ranges (frozen ABI v1), so the
 /// document is `Send + Sync` and outlives its session.
 #[derive(Clone, Debug)]
@@ -97,7 +97,7 @@ impl CoreDocument {
             0 => None,
             _ => Some(text(view.title)?),
         };
-        Ok(CoreDocument {
+        let document = CoreDocument {
             generation: view.generation,
             source: records(view.source, view.source_length)?,
             nodes: records(view.nodes, view.node_count.into())?,
@@ -120,7 +120,67 @@ impl CoreDocument {
             title,
             strings,
             copied_bytes: bytes,
-        })
+        };
+        document.check_indices()?;
+        Ok(document)
+    }
+
+    /// Cross-table bounds, so a core bug surfaces as `InvalidSnapshot` here and
+    /// never as an index panic in a later consumer.
+    fn check_indices(&self) -> Result<(), CoreError> {
+        let nodes = self.nodes.len();
+        let node = |index: u32| (index as usize) < nodes;
+        let span = |start: u32, end: u32| start <= end && end as usize <= self.source.len();
+        let string = |range: md_str| {
+            (range.offset as usize)
+                .checked_add(range.length as usize)
+                .is_some_and(|end| end <= self.strings.len())
+        };
+        let valid = self.roots.iter().all(|&root| node(root))
+            && self.children.iter().all(|&child| node(child))
+            && self.nodes.iter().all(|entry| {
+                (entry.parent == ffi::MD_NONE || node(entry.parent))
+                    && (entry.first_child as usize)
+                        .checked_add(entry.child_count as usize)
+                        .is_some_and(|end| end <= self.children.len())
+                    && span(entry.span_start, entry.span_end)
+                    && string(entry.id)
+                    && string(entry.text)
+                    && string(entry.extra)
+            })
+            && self
+                .outline
+                .iter()
+                .all(|entry| node(entry.node) && string(entry.title) && string(entry.anchor))
+            && self.diagnostics.iter().all(|entry| {
+                (entry.node == ffi::MD_NONE || node(entry.node))
+                    && string(entry.code)
+                    && string(entry.message)
+            })
+            && self.links.iter().chain(&self.resources).all(|intent| {
+                span(intent.span_start, intent.span_end)
+                    && [
+                        intent.id,
+                        intent.destination,
+                        intent.target,
+                        intent.fragment,
+                    ]
+                    .into_iter()
+                    .all(string)
+            })
+            && self.properties.iter().all(|property| {
+                string(property.key)
+                    && string(property.string)
+                    && (property.first_string as usize)
+                        .checked_add(property.string_count as usize)
+                        .is_some_and(|end| end <= self.string_list.len())
+            })
+            && self.string_list.iter().all(|&range| string(range));
+        if valid {
+            Ok(())
+        } else {
+            Err(CoreError::InvalidSnapshot)
+        }
     }
 
     /// A string-table entry, checked for range and UTF-8.

@@ -498,3 +498,28 @@ fn corpus_and_performance_profiles() {
         session.close().unwrap();
     }
 }
+
+#[test]
+fn close_then_does_not_block_and_reports_the_release() {
+    let _isolated = isolated();
+    let session = CoreSession::new("close-then").unwrap();
+    session
+        .parse_blocking(b"# Ready\n".to_vec(), None, true)
+        .unwrap();
+    let release = hold_worker();
+    let (sender, closed) = channel();
+    session.close_then(move |result| sender.send(result).unwrap());
+    // Detached at once, while the release still waits behind the held worker.
+    assert_eq!(session.cancel(), Err(CoreError::Closed));
+    assert!(closed.try_recv().is_err());
+    drop(release);
+    closed
+        .recv_timeout(Duration::from_secs(30))
+        .unwrap()
+        .unwrap();
+    // A later caller sees the shared result immediately.
+    let (sender, again) = channel();
+    session.close_then(move |result| sender.send(result).unwrap());
+    again.try_recv().unwrap().unwrap();
+    session.close().unwrap();
+}

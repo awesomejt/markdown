@@ -105,36 +105,65 @@ fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
         .unwrap_or_else(|poisoned| poisoned.into_inner())
 }
 
-/// A one-shot result shared by concurrent waiters.
+/// A one-shot result shared by concurrent waiters and callbacks.
 struct Completion<T> {
-    value: Mutex<Option<T>>,
+    state: Mutex<CompletionState<T>>,
     ready: Condvar,
+}
+
+type Waiter<T> = Box<dyn FnOnce(T) + Send>;
+
+struct CompletionState<T> {
+    value: Option<T>,
+    callbacks: Vec<Waiter<T>>,
 }
 
 impl<T: Clone> Completion<T> {
     fn new() -> Self {
         Completion {
-            value: Mutex::new(None),
+            state: Mutex::new(CompletionState {
+                value: None,
+                callbacks: Vec::new(),
+            }),
             ready: Condvar::new(),
         }
     }
 
     fn set(&self, value: T) {
-        *lock(&self.value) = Some(value);
+        let callbacks = {
+            let mut state = lock(&self.state);
+            state.value = Some(value.clone());
+            std::mem::take(&mut state.callbacks)
+        };
         self.ready.notify_all();
+        for callback in callbacks {
+            callback(value.clone());
+        }
     }
 
     fn wait(&self) -> T {
-        let mut value = lock(&self.value);
+        let mut state = lock(&self.state);
         loop {
-            if let Some(value) = value.as_ref() {
+            if let Some(value) = state.value.as_ref() {
                 return value.clone();
             }
-            value = self
+            state = self
                 .ready
-                .wait(value)
+                .wait(state)
                 .unwrap_or_else(|poisoned| poisoned.into_inner());
         }
+    }
+
+    /// Run `callback` with the value: now if it is set, otherwise from `set`.
+    fn then(&self, callback: impl FnOnce(T) + Send + 'static) {
+        let value = {
+            let mut state = lock(&self.state);
+            match state.value.clone() {
+                Some(value) => value,
+                None => return state.callbacks.push(Box::new(callback)),
+            }
+        };
+        callback(value);
     }
 }
 
@@ -199,28 +228,37 @@ impl CoreSession {
 
     /// Detach and cancel now, then wait for model destruction on the worker.
     /// Concurrent and repeated calls share one result.
+    ///
+    /// The release queues behind every call already on the shared worker,
+    /// including other sessions' parses, so this can block for a full large
+    /// parse. Never call it on the GTK main thread: use [`CoreSession::close_then`]
+    /// or drop the session there.
     pub fn close(&self) -> Result<(), CoreError> {
         if runtime::on_worker() {
             return Err(CoreError::OnWorker);
         }
-        let completion = {
-            let mut state = lock(&self.inner.state);
-            match &state.closing {
-                Some(closing) => closing.clone(),
-                None => {
-                    let completion = Arc::new(Completion::new());
-                    let old = detach(&mut state);
-                    state.closing = Some(completion.clone());
-                    let done = completion.clone();
-                    // SAFETY: release takes a handle value; a stale one is rejected.
-                    runtime::submit(move || {
-                        done.set(checked(unsafe { ffi::md_session_release(old) }))
-                    });
-                    completion
-                }
-            }
-        };
-        completion.wait()
+        self.begin_close().wait()
+    }
+
+    /// [`CoreSession::close`] without blocking: the session is detached and
+    /// refuses new work at once, and `done` runs once the release has finished,
+    /// on the worker (or at once, on this thread, if it already has).
+    pub fn close_then(&self, done: impl FnOnce(Result<(), CoreError>) + Send + 'static) {
+        self.begin_close().then(done);
+    }
+
+    fn begin_close(&self) -> Arc<Completion<Result<(), CoreError>>> {
+        let mut state = lock(&self.inner.state);
+        if let Some(closing) = &state.closing {
+            return closing.clone();
+        }
+        let completion = Arc::new(Completion::new());
+        let old = detach(&mut state);
+        state.closing = Some(completion.clone());
+        let done = completion.clone();
+        // SAFETY: release takes a handle value; a stale one is rejected.
+        runtime::submit(move || done.set(checked(unsafe { ffi::md_session_release(old) })));
+        completion
     }
 
     /// Cancel the session's in-flight job, if any.

@@ -66,10 +66,10 @@ packages, then runs `cargo fmt --check`, Clippy with warnings denied over the
 workspace, and the
 [dependency/license policy](../../docs/Dependencies.md#linux-app-graph-lnx-001a)
 for the Linux graph. Then, for debug and then release, it builds the
-workspace with `--locked`, runs the 14 core consumer tests against the
+workspace with `--locked`, runs the 15 core consumer tests against the
 matching core package (negotiation, typed errors, owned v2 values, parse
 failures, copy budget, queued and running cancellation, bounded admission,
-close and drop, availability, repeated lifecycle and every corpus and
+close, non-blocking `close_then` and drop, availability, repeated lifecycle and every corpus and
 performance profile), re-verifies the package hash and runs each binary's two
 smoke modes as child processes, with a 30-second timeout each:
 
@@ -151,7 +151,7 @@ Checked on 2026-10-31 on the host above (CachyOS, kernel 7.3.0, KDE Plasma
 
 - `python3 apps/linux/tools/check.py` passed on Wayland, and under
   `GDK_BACKEND=x11 dbus-run-session -- xvfb-run -a` as CI runs it: package
-  staging and audit (24 exports), format, Clippy, the license policy, 14
+  staging and audit (24 exports), format, Clippy, the license policy, 15
   consumer tests in debug and in release, both smoke modes with the core
   check in each configuration, and the release probe.
 - A debug build pointed at the release package (`MARKDOWN_CORE_PACKAGE`)

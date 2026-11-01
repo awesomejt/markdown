@@ -200,8 +200,10 @@ pub fn run_on_worker(work: impl FnOnce() + Send + 'static) {
     submit(work);
 }
 
-/// One running parse plus at most one queued call; reject rather than retaining
-/// an unbounded series of caller byte buffers behind the serial worker.
+/// One running parse plus at most one queued call **across every session in the
+/// process**, not per session; reject rather than retaining an unbounded series
+/// of caller byte buffers behind the serial worker. Two windows reparsing at once
+/// make a third window's parse return `Busy`, so callers coalesce or retry.
 pub(crate) struct Admission {
     count: Mutex<usize>,
 }

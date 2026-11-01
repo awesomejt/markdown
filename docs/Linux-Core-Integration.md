@@ -73,7 +73,12 @@ index array out of the view while the snapshot handle is live, then the
 handle is released. The records are the header's fixed-width scalar and
 string-offset structs, with no pointers, so the document is plain owned data
 (`Send + Sync`) that outlives its session. View arrays must be non-null and
-aligned when non-empty; string access checks range and UTF-8. Spans remain
+aligned when non-empty. After copying, one pass bounds-checks every
+cross-table index and range (roots, children, parents, child ranges, node and
+intent spans, outline and diagnostic nodes, property string lists and every
+string range) and returns `CoreError::InvalidSnapshot` on any violation, so a
+core bug cannot become an index panic in the renderer. String access also
+checks UTF-8. Spans remain
 UTF-8 byte offsets and node IDs stay snapshot-local (D-021). LNX-001H decides
 whether a document keeps its snapshot handle for anchors, as MAC-001H did.
 
@@ -81,8 +86,11 @@ whether a document keeps its snapshot handle for anchors, as MAC-001H did.
 
 One process-wide worker thread (`markdown-core`) runs submission, parse,
 flat-view encode, copy and every session release, never the GTK main thread.
-At most two parse calls are admitted (one running, one queued); another
-returns `CoreError::Busy` rather than queuing more source buffers. The
+At most two parse calls are admitted **process-wide**, across every window
+and session (one running, one queued); another returns `CoreError::Busy`
+rather than queuing more source buffers. Two windows reparsing at once make a
+third window's parse busy, so LNX-001C coalesces or retries rather than
+reporting `Busy` to the reader. The
 caller's source moves into the request and is dropped as soon as the core has
 copied it.
 
@@ -98,7 +106,11 @@ callback and is refused on the worker (`CoreError::OnWorker`), as is `close`.
 
 `close()` detaches the handle and cancels in-flight work immediately, then
 waits for the release on the worker; concurrent and repeated callers share
-one result. Dropping an unclosed session detaches and queues the release
+one result. That release queues behind every call already on the shared
+worker, including another window's parse of up to about half a second, so
+`close()` must not run on the GTK main thread. `close_then` detaches the same
+way but returns at once and calls back when the release has finished; window
+teardown uses it or a plain drop. Dropping an unclosed session detaches and queues the release
 without waiting. Work queued before a close finds the handle detached and
 returns `CoreError::Closed`. LNX-001C owns permission checks, bounded reads,
 newest-request UI ordering and ignoring results for closed windows.
@@ -138,11 +150,14 @@ launch-to-content measurements.
 | --- | ---: | ---: | ---: |
 | Native job run (parse and model) | 345.0 | 356.7 | 386.2 |
 | First flat-view encode | 103.7 | 116.8 | 120.5 |
-| Owned Rust copy | 6.2 | 6.4 | 8.4 |
+| Owned Rust copy and index check | 7.8 | 8.7 | 9.2 |
 | Blocking host parse call | 460.0 | 483.3 | 513.0 |
 | Awaited close and destruction | 25.1 | 26.6 | 28.0 |
 
-The copy is 50,086,584 bytes (47.8 MiB) for all tables and the source, the
+The copy row was re-measured (five more fresh processes) after the review
+added the index check, which costs about 2.3 ms over the 6.4 ms median copy
+alone; the other rows of that run matched within 3%. The copy is
+50,086,584 bytes (47.8 MiB) for all tables and the source, the
 same as macOS. Process RSS is 8.1 MiB before the session, 214–216 MiB with the
 result held, and peaks at 245–246 MiB. After dropping the result and closing
 the session, RSS is 129.7–129.8 MiB, but glibc's in-use heap (`mallinfo2`) is
