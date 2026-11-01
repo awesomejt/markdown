@@ -8,6 +8,17 @@ read.
 
 ## Current posture
 
+- WIN-001A (PR #53) delivers the
+  [Windows shell](apps/windows/README.md) uses C# Native AOT/WinUI with native
+  New Window/Close/Exit commands, locally deployed App SDK and Debug/Release
+  smoke checks. Core/file integration remains B/C. The Windows CI gate is
+  required when selected; Git Bash is explicitly resolved in gate tests to
+  avoid Windows selecting WSL's launcher. Grok review 1 at `bc000d7` had no
+  serious finding; `357a27d` fixes its Bash concern and shortcut-binding nit.
+  Both threads are resolved; all-host CI run 41363512342 is green. D-029
+  approves closeout/merge. WIN-001B is next on Windows. The host's UTC clock
+  is unsynchronized and about six hours ahead of GitHub; the owner time-sync
+  follow-up is in TODO.md before another cross-machine handoff.
 - Phase: `desktop-apps`; the portable-core shared track is complete through
   CORE-006 (GATE-001 approved, D-018). Native chains are now eligible (D-027).
 - Product: local-first, read-only native Markdown reader. Windows, macOS and

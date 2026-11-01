@@ -507,6 +507,13 @@ CORE-006 no longer carry. The three host chains are independent.
 
 ## Deferred review findings
 
+- **WIN-001A / PR #53 clock nit:** before the next cross-machine pass handoff,
+  the owner should check Windows time synchronization. `w32tm /query /status`
+  reports unsynchronized / Local CMOS Clock, and host-generated UTC pass
+  timestamps were about six hours ahead of GitHub review/CI timestamps on
+  2026-11-01. Keep helper-generated records intact; do not infer elapsed
+  cross-host time from this pass. No OS time settings were changed by the agent.
+
 Low findings and nits from Grok reviews that were merged under D-029 without
 being fixed. A later pass fixes them or records why not; remove each entry
 when it is resolved.

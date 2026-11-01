@@ -142,8 +142,13 @@ LNX-001A adds the path-filtered `linux-native` job on `ubuntu-24.04`: format,
 Clippy, the Linux dependency/license policy and the debug/release GTK shell
 smoke under Xvfb. The completion gate requires it whenever Linux is selected.
 See [the Linux build/check instructions](../apps/linux/README.md).
-The Windows native build job is added in WIN-001A when that app exists;
-running a portable Rust suite on a hosted runner does not prove native UI,
+WIN-001A adds the path-filtered `windows-native` job with Debug/Release C#
+Native AOT publish and native shell command/lifecycle smokes. Its selected
+result is required by `complete`; see the [Windows instructions](../apps/windows/README.md).
+The common gate test finds Git Bash beside Git on Windows, rejects the
+System32/SysWOW64 WSL launchers, and fails if no suitable Bash is available.
+This avoids CreateProcess choosing WSL and dropping test variables.
+Running a portable Rust suite on a hosted runner does not prove native UI,
 minimum-OS packaging, accessibility or performance acceptance.
 
 CORE-001A includes GATE-001's approved documentation/state closeout in its PR,

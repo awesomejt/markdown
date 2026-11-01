@@ -96,6 +96,24 @@ jobs:
       - run: python tools/check.py core-extended
         if: needs.changes.outputs[matrix.host] == 'true' && (github.event_name != 'pull_request' || github.base_ref == 'main')
 
+  windows-native:
+    needs: changes
+    if: needs.changes.outputs.windows == 'true'
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
+        with:
+          dotnet-version: '10.0.402'
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.14'
+      - run: dotnet --info
+      - run: python apps/windows/tools/check.py
+
   macos-native:
     needs: changes
     if: needs.changes.outputs.macos == 'true'
@@ -151,7 +169,7 @@ jobs:
 
   complete:
     if: always()
-    needs: [changes, common, core, macos-native, linux-native]
+    needs: [changes, common, core, macos-native, linux-native, windows-native]
     runs-on: ubuntu-latest
     steps:
       - env:
@@ -162,11 +180,19 @@ jobs:
           MACOS_NATIVE: ${{ needs.macos-native.result }}
           LINUX_SELECTED: ${{ needs.changes.outputs.linux }}
           LINUX_NATIVE: ${{ needs.linux-native.result }}
+          WINDOWS_SELECTED: ${{ needs.changes.outputs.windows }}
+          WINDOWS_NATIVE: ${{ needs.windows-native.result }}
         run: |
           set -e
           test "$CHANGES" = success
           test "$COMMON" = success
           test "$CORE" = success
+          if [ "$WINDOWS_SELECTED" = true ]; then
+            test "$WINDOWS_NATIVE" = success
+          else
+            test "$WINDOWS_SELECTED" = false
+            test "$WINDOWS_NATIVE" = skipped
+          fi
           if [ "$MACOS_SELECTED" = true ]; then
             test "$MACOS_NATIVE" = success
           else

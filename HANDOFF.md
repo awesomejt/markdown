@@ -1,7 +1,28 @@
 # Agent Session and Platform Handoff
 
-Updated: 2026-11-01 (America/Denver), after LNX-001D (PR #52).
-Source baseline: `develop` after PR #52; reviewed head `f12d2e5`, non-serious
+Updated: 2026-11-01 (America/Denver), WIN-001A approved closeout (PR #53).
+Completed Windows task: `WIN-001A`, branch `feat/win-001a-native-shell`, based on
+`4b06bdf` (green develop CI run 41345106827). Native AOT Debug/Release shell
+smokes pass; native menu/window/keyboard and UIA shell checks are recorded in
+[the Windows README](apps/windows/README.md#win-001a-local-evidence).
+Native checks and `python tools/check.py all` passed. Grok review 1 at
+`bc000d7` has no serious finding:
+[review](https://github.com/awesomejt/markdown/pull/53#pullrequestreview-5730825360).
+`357a27d` fixes its Bash concern and adds the requested root shortcut-binding
+assertions; both inline threads are resolved. The clock nit is deferred to
+the owner in TODO.md: Windows reports unsynchronized / Local CMOS Clock and
+helper UTC timestamps are about six hours ahead of GitHub. No system time
+settings or historical timestamps were edited.
+[Fixed-head all-host CI](https://github.com/awesomejt/markdown/actions/runs/41363512342)
+is green, including Windows Debug/Release, macOS/Linux native and all core
+jobs. One actual Grok review; non-serious fixes are exempt from re-review.
+The completed pass records D-029 approval; exactly one state/docs closeout
+follows `357a27d`, then green CI, merge into `develop` and branch deletion.
+The merge SHA is not known at closeout time. No live pass or unowned working
+task remains. Next Windows task is WIN-001B: packaged model-v2 core, owned
+C ABI adapter, session/memory validation and mandatory MSVC C smoke.
+
+Previous Linux handoff baseline: `develop` after PR #52; reviewed head `f12d2e5`, non-serious
 review fixes at `27e84df`, followed by one state/docs closeout. The merge SHA is
 not known at closeout time.
 Preserve intended source, lock/spec/golden files, docs and state together. Never transfer caches, environments, build
@@ -233,7 +254,7 @@ done list is in [the memory archive](agents/Memory-Archive.md#handoffmd-phase-ha
   D-030 milestone review: the macOS skeleton (rule 3) and the overdue
   8-PR cap since `m-core-fix`. Fix the hosted `macos-native` flakiness
   (TODO.md) first if it keeps failing `develop`; it recurred on PR #49.
-  WIN-001A starts on its host; the host chains remain independent.
+  WIN-001B follows the approved WIN-001A merge; the host chains remain independent.
   The shared-core milestone boundary is reached. Per MEMORY.md, Claude writes
   the combined packet for CORE-001–CORE-006 (plus CORE-003F since `m-core-fix`),
   including MAC-001A/B if freezing current `develop`; name the exact snapshot and

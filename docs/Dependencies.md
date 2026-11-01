@@ -232,3 +232,39 @@ font audit or distribution approval. Preserve dependency notices. The macOS
 app has a runtime inventory (above); the Windows and Linux packages add theirs
 in their own 001I phases.
 Signing, release publishing and production deployment still need owner approval.
+
+## Windows shell NuGet graph
+
+WIN-001A uses the locked graph in `apps/windows/packages.lock.json` (19
+unique package/version pairs, including build-only Native AOT tools). These
+Microsoft platform packages are reviewed separately from the core Rust
+allowlist. They are used for Windows development and local testing under
+their supplied terms; this is not distribution approval. WIN-001I must stage
+all required notices and redistribution terms for the actual package.
+
+| Package | Version | License source |
+| --- | --- | --- |
+| Microsoft.DotNet.ILCompiler | 10.0.13 | MIT (.NET); bundled third-party notices |
+| Microsoft.NET.ILLink.Tasks | 10.0.13 | MIT (.NET); bundled third-party notices |
+| Microsoft.Web.WebView2 | 1.0.3719.77 | Microsoft terms in LICENSE.txt |
+| Microsoft.Windows.AI.MachineLearning | 2.1.74 | Microsoft terms in license.txt |
+| Microsoft.Windows.SDK.BuildTools | 10.0.28000.2705 | Microsoft Windows SDK license terms (build tooling) |
+| Microsoft.Windows.SDK.BuildTools.MSIX | 1.7.251221100 | Microsoft terms in sdk_license.txt |
+| Microsoft.WindowsAppSDK | 2.5.1 | Microsoft terms in license.txt |
+| Microsoft.WindowsAppSDK.AI | 2.5.5 | Microsoft terms in license.txt |
+| Microsoft.WindowsAppSDK.Base | 2.0.4 | Microsoft terms in license.txt |
+| Microsoft.WindowsAppSDK.DWrite | 2.1.0 | Microsoft terms in license.txt |
+| Microsoft.WindowsAppSDK.Foundation | 2.3.12 | Microsoft terms in license.txt |
+| Microsoft.WindowsAppSDK.InteractiveExperiences | 2.1.9 | Microsoft terms in license.txt |
+| Microsoft.WindowsAppSDK.ML | 2.1.94 | Microsoft terms in license.txt |
+| Microsoft.WindowsAppSDK.Runtime | 2.5.1 | Microsoft terms in license.txt |
+| Microsoft.WindowsAppSDK.Search | 2.5.5 | Microsoft terms in license.txt |
+| Microsoft.WindowsAppSDK.Widgets | 2.0.5 | Microsoft terms in license.txt |
+| Microsoft.WindowsAppSDK.WinUI | 2.3.9 | Microsoft terms in license.txt |
+| System.Numerics.Tensors | 9.0.0 | MIT |
+| runtime.win-x64.Microsoft.DotNet.ILCompiler | 10.0.13 | MIT (.NET); bundled third-party notices |
+
+The Windows App SDK metapackage includes AI, ML, Widgets, Search and WebView2
+transitives. The shell invokes none of those features and does no network
+fetching. Future package trimming must preserve WinUI deployment support;
+no second renderer or language is introduced.
