@@ -145,8 +145,9 @@ See [the Linux build/check instructions](../apps/linux/README.md).
 WIN-001A adds the path-filtered `windows-native` job with Debug/Release C#
 Native AOT publish and native shell command/lifecycle smokes. Its selected
 result is required by `complete`; see the [Windows instructions](../apps/windows/README.md).
-The common gate test resolves Bash from PATH explicitly on Windows, avoiding
-CreateProcess selecting System32's WSL launcher and dropping test variables.
+The common gate test finds Git Bash beside Git on Windows, rejects the
+System32/SysWOW64 WSL launchers, and fails if no suitable Bash is available.
+This avoids CreateProcess choosing WSL and dropping test variables.
 Running a portable Rust suite on a hosted runner does not prove native UI,
 minimum-OS packaging, accessibility or performance acceptance.
 

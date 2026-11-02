@@ -61,6 +61,13 @@ public sealed partial class ReaderApp : Application
             if (windows.Count != 1 || first.Title != "Markdown" ||
                 AutomationProperties.GetName(first.Welcome) != "Markdown reader")
                 throw new InvalidOperationException("Initial shell contract failed.");
+            var shortcuts = ((Grid)first.Content).KeyboardAccelerators;
+            if (shortcuts.Count != 3 ||
+                !shortcuts.Any(k => k.Key == VirtualKey.N && k.Modifiers == VirtualKeyModifiers.Control) ||
+                !shortcuts.Any(k => k.Key == VirtualKey.W && k.Modifiers == VirtualKeyModifiers.Control) ||
+                !shortcuts.Any(k => k.Key == VirtualKey.W &&
+                    k.Modifiers == (VirtualKeyModifiers.Control | VirtualKeyModifiers.Shift)))
+                throw new InvalidOperationException("Root shortcut bindings failed.");
             first.NewCommand();
             if (windows.Count != 2) throw new InvalidOperationException("New Window failed.");
             windows[1].CloseCommand();

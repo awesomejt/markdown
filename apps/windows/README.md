@@ -31,7 +31,7 @@ python apps/windows/tools/check.py
 
 The checker verifies formatting, publishes **Native AOT in Debug and Release**, and runs each
 executable's `--smoke` mode with a 60-second timeout. It checks the initial
-window/accessibility name, New Window, Close, Exit and last-window process
+window/accessibility name, the three root key/modifier bindings, New Window, Close, Exit and last-window process
 termination using the command delegates. It rejects CoreCLR output. The smoke
 opens only its own windows and neither edits preferences nor accesses files.
 Unknown arguments exit with status 2. A failed smoke returns nonzero.
