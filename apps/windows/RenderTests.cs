@@ -33,6 +33,8 @@ internal static class RenderTests
                 ("text_scale_clamped_and_steps", TextScaleClampedAndSteps),
                 ("preferences_memory_and_local_settings", PreferencesMemoryAndLocalSettings),
                 ("document_find_unicode_mappings_and_wrapping", DocumentFindUnicodeMappingsAndWrapping),
+                ("global_selection_and_text_between", GlobalSelectionAndTextBetween),
+                ("native_clipboard_roundtrip", NativeClipboardRoundtrip),
             };
 
             foreach (var (name, run) in tests)
@@ -844,4 +846,102 @@ internal static class RenderTests
         session.Close();
     }
 
+    private static void GlobalSelectionAndTextBetween()
+    {
+        var p0 = new DocumentPosition(0, 0);
+        var p1 = new DocumentPosition(0, 5);
+        var p2 = new DocumentPosition(1, 0);
+        var p3 = new DocumentPosition(1, 10);
+
+        Assert(p0 < p1, "p0 < p1");
+        var p1Copy = new DocumentPosition(0, 5);
+        Assert(p1 <= p1Copy && p1 >= p1Copy, "p1 <= p1Copy");
+        Assert(p2 > p1, "p2 > p1");
+        Assert(p3 >= p2, "p3 >= p2");
+        Assert(p0.CompareTo(p0) == 0, "p0 compare");
+
+        var selEmpty = new DocumentSelection(p1, p1);
+        Assert(selEmpty.IsEmpty, "selEmpty is empty");
+        Assert(selEmpty.Start == p1 && selEmpty.End == p1, "empty start and end");
+
+        var selForward = new DocumentSelection(p0, p3);
+        Assert(!selForward.IsEmpty, "selForward not empty");
+        Assert(selForward.Start == p0 && selForward.End == p3, "forward start and end");
+
+        var selReverse = new DocumentSelection(p3, p0);
+        Assert(!selReverse.IsEmpty, "selReverse not empty");
+        Assert(selReverse.Start == p0 && selReverse.End == p3, "reverse start and end");
+
+        var doc = Document("# Title\n\nFirst paragraph.\n\nSecond paragraph with **bold** text.\n\n| Col A | Col B |\n| :--- | :--- |\n| Val 1 | Val 2 |\n");
+        var plan = RenderPlan.Build(doc, () => false);
+
+        // Full document text
+        var fullText = plan.TextBetween(new DocumentPosition(0, 0), new DocumentPosition(plan.Fragments.Count - 1, plan.Fragments[^1].Text.Length));
+        Assert(fullText.Contains("Title"), "contains Title");
+        Assert(fullText.Contains("First paragraph."), "contains First paragraph");
+        Assert(fullText.Contains("Second paragraph with bold text."), "contains Second paragraph");
+        Assert(fullText.Contains("Val 1	Val 2"), "table row contains tab separator");
+
+        // Full document source returns doc.Source exactly
+        var fullSource = plan.SourceBetween(new DocumentPosition(0, 0), new DocumentPosition(plan.Fragments.Count - 1, plan.Fragments[^1].Text.Length), doc);
+        Assert(fullSource.SequenceEqual(doc.Source), "full source equals doc.Source");
+
+        // Sub-range within first fragment
+        var subFirst = plan.TextBetween(new DocumentPosition(0, 0), new DocumentPosition(0, 5));
+        Assert(subFirst == "Title", $"expected 'Title', got '{subFirst}'");
+
+        // Sub-range across paragraph fragments
+        var subRange = plan.TextBetween(new DocumentPosition(1, 0), new DocumentPosition(2, 6));
+        Assert(subRange.StartsWith("First paragraph."), "starts with First paragraph.");
+        Assert(subRange.Contains("\n\n"), "contains block separator");
+        Assert(subRange.EndsWith("Second"), "ends with Second");
+
+        // 1. Mid-paragraph literal text selection: narrows exact source bytes
+        var midText = plan.TextBetween(new DocumentPosition(1, 6), new DocumentPosition(1, 15));
+        Assert(midText == "paragraph", $"expected 'paragraph', got '{midText}'");
+
+        var midSource = plan.SourceBetween(new DocumentPosition(1, 6), new DocumentPosition(1, 15), doc);
+        var expectedSource = Encoding.UTF8.GetBytes("paragraph");
+        Assert(midSource.SequenceEqual(expectedSource), $"midSource expected 'paragraph', got '{Encoding.UTF8.GetString(midSource)}'");
+
+        // 2. Mid-paragraph selection across code span, escapes, and entities:
+        // verifies fallback to whole-node spans without byte offset drift or splitting
+        var doc2 = Document("Word with `code` and \\*star\\* and &amp; entity.\n");
+        var plan2 = RenderPlan.Build(doc2, () => false);
+        var frag2Text = plan2.Fragments[0].Text;
+        Assert(frag2Text.Contains("code"), "contains code");
+
+        // Select across `code` and \*star\*
+        var codeIdx = frag2Text.IndexOf("code", StringComparison.Ordinal);
+        var starIdx = frag2Text.IndexOf("*star*", StringComparison.Ordinal);
+        var subText2 = plan2.TextBetween(new DocumentPosition(0, codeIdx), new DocumentPosition(0, starIdx + 6));
+        Assert(subText2.StartsWith("code") && subText2.EndsWith("*star*"), $"subText2 unexpected: '{subText2}'");
+
+        var subSource2 = plan2.SourceBetween(new DocumentPosition(0, codeIdx), new DocumentPosition(0, starIdx + 6), doc2);
+        var subSource2Str = Encoding.UTF8.GetString(subSource2);
+        Assert(subSource2Str == "`code` and \\*star\\*", $"subSource2Str expected exact range '`code` and \\*star\\*', got '{subSource2Str}'");
+
+        // AccessibleItemType verification
+        Assert(RowItem.AccessibleItemType(FragmentKind.Heading) == "heading", "accessible heading");
+        Assert(RowItem.AccessibleItemType(FragmentKind.Paragraph) == "paragraph", "accessible paragraph");
+        Assert(RowItem.AccessibleItemType(FragmentKind.Code) == "code block", "accessible code block");
+        Assert(RowItem.AccessibleItemType(FragmentKind.ThematicBreak) == "thematic break", "accessible thematic break");
+        Assert(RowItem.AccessibleItemType(FragmentKind.TableRow) == "table row", "accessible table row");
+        Assert(RowItem.AccessibleItemType(FragmentKind.Image) == "image", "accessible image");
+        Assert(RowItem.AccessibleItemType(FragmentKind.Fallback) == "raw html fallback", "accessible fallback");
+    }
+
+    private static void NativeClipboardRoundtrip()
+    {
+        var testText = "Rendered Markdown Line 1\nLine 2 ❤";
+        var testMarkdown = Encoding.UTF8.GetBytes("# Header\n\nMarkdown source with ❤.\n");
+
+        var ok = NativeClipboard.TrySet(0, testText, testMarkdown);
+        Assert(ok, "TrySet returned true");
+        var readText = NativeClipboard.ReadUnicodeText();
+        var readMarkdown = NativeClipboard.ReadMarkdownBytes();
+
+        Assert(readText == testText, $"clipboard plain text roundtrip expected '{testText}', got '{readText}'");
+        Assert(readMarkdown is not null && readMarkdown.SequenceEqual(testMarkdown), "clipboard markdown bytes roundtrip failed");
+    }
 }

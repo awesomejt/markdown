@@ -24,12 +24,16 @@ public sealed partial class RowItem : ListViewItem
 
     private static readonly SolidColorBrush s_findHighlightBrush = new(global::Windows.UI.Color.FromArgb(0x80, 0xFF, 0xEB, 0x3B));
     private static readonly SolidColorBrush s_currentFindHighlightBrush = new(global::Windows.UI.Color.FromArgb(0xC0, 0xFF, 0x98, 0x00));
+    private static readonly SolidColorBrush s_selectionBrush = new(global::Windows.UI.Color.FromArgb(0x66, 0x00, 0x78, 0xD4));
+
+    private readonly List<(int Start, int Length, bool IsCurrent)> _findHighlights = [];
+    private (int Start, int Length)? _selectionHighlight;
 
     public Grid Root { get; } = new();
     public RichTextBlock TextBlock { get; } = new()
     {
         TextWrapping = TextWrapping.Wrap,
-        IsTextSelectionEnabled = true,
+        IsTextSelectionEnabled = false,
     };
     public StackPanel ImagesPanel { get; } = new()
     {
@@ -50,7 +54,20 @@ public sealed partial class RowItem : ListViewItem
 
         Root.Children.Add(TextBlock);
         Root.Children.Add(ImagesPanel);
+        AutomationProperties.SetAccessibilityView(TextBlock, AccessibilityView.Raw);
     }
+
+    public static string AccessibleItemType(FragmentKind kind) => kind switch
+    {
+        FragmentKind.Heading => "heading",
+        FragmentKind.Paragraph => "paragraph",
+        FragmentKind.Code => "code block",
+        FragmentKind.ThematicBreak => "thematic break",
+        FragmentKind.TableRow => "table row",
+        FragmentKind.Image => "image",
+        FragmentKind.Fallback => "raw html fallback",
+        _ => "item",
+    };
 
     public static T? TryAs<T>(object? value) where T : class
     {
@@ -80,34 +97,73 @@ public sealed partial class RowItem : ListViewItem
     }
 
     /// <summary>
-    /// Resets row state when recycled or unbound.
+    /// Updates the row's selection highlight range.
+    /// </summary>
+    public void SetSelectionRange(int? start, int? length)
+    {
+        if (start.HasValue && length.HasValue && length.Value > 0)
+        {
+            _selectionHighlight = (start.Value, length.Value);
+        }
+        else
+        {
+            _selectionHighlight = null;
+        }
+        UpdateHighlighters();
+    }
+
+    /// <summary>
+    /// Sets find match highlight ranges on this row.
     /// </summary>
     public void SetHighlights(IReadOnlyList<(int Start, int Length, bool IsCurrent)>? highlights)
     {
-        TextBlock.TextHighlighters.Clear();
-        if (highlights is null || highlights.Count == 0) return;
-        var normal = new TextHighlighter { Background = s_findHighlightBrush };
-        var current = new TextHighlighter { Background = s_currentFindHighlightBrush };
-        foreach (var (start, length, isCurrent) in highlights)
+        _findHighlights.Clear();
+        if (highlights is not null && highlights.Count > 0)
         {
-            var range = new TextRange { StartIndex = start, Length = length };
-            if (isCurrent) current.Ranges.Add(range);
-            else normal.Ranges.Add(range);
+            _findHighlights.AddRange(highlights);
         }
-        if (normal.Ranges.Count > 0) TextBlock.TextHighlighters.Add(normal);
-        if (current.Ranges.Count > 0) TextBlock.TextHighlighters.Add(current);
+        UpdateHighlighters();
+    }
+
+    private void UpdateHighlighters()
+    {
+        TextBlock.TextHighlighters.Clear();
+        if (_findHighlights.Count > 0)
+        {
+            var normal = new TextHighlighter { Background = s_findHighlightBrush };
+            var current = new TextHighlighter { Background = s_currentFindHighlightBrush };
+            foreach (var (start, length, isCurrent) in _findHighlights)
+            {
+                var range = new TextRange { StartIndex = start, Length = length };
+                if (isCurrent) current.Ranges.Add(range);
+                else normal.Ranges.Add(range);
+            }
+            if (normal.Ranges.Count > 0) TextBlock.TextHighlighters.Add(normal);
+            if (current.Ranges.Count > 0) TextBlock.TextHighlighters.Add(current);
+        }
+        if (_selectionHighlight is { } sel && sel.Length > 0)
+        {
+            var selHighlighter = new TextHighlighter { Background = s_selectionBrush };
+            selHighlighter.Ranges.Add(new TextRange { StartIndex = sel.Start, Length = sel.Length });
+            TextBlock.TextHighlighters.Add(selHighlighter);
+        }
     }
 
     public void Unbind()
     {
         ItemIndex = -1;
         ShownText = string.Empty;
+        _findHighlights.Clear();
+        _selectionHighlight = null;
         TextBlock.Blocks.Clear();
         TextBlock.TextHighlighters.Clear();
         TextBlock.Visibility = Visibility.Visible;
         ImagesPanel.Children.Clear();
         ImagesPanel.Visibility = Visibility.Collapsed;
         AutomationProperties.SetName(this, string.Empty);
+        AutomationProperties.SetItemType(this, string.Empty);
+        AutomationProperties.SetPositionInSet(this, 0);
+        AutomationProperties.SetSizeOfSet(this, 0);
         AutomationProperties.SetHeadingLevel(this, AutomationHeadingLevel.None);
         AutomationProperties.SetHeadingLevel(TextBlock, AutomationHeadingLevel.None);
     }
@@ -115,7 +171,7 @@ public sealed partial class RowItem : ListViewItem
     /// <summary>
     /// Binds the container to the given fragment from the current render plan.
     /// </summary>
-    public void Bind(int index, RenderFragment fragment, Action<int, int>? onLinkActivated, ImageSourceCache? imageCache = null, double textScale = 1.0)
+    public void Bind(int index, RenderFragment fragment, Action<int, int>? onLinkActivated, ImageSourceCache? imageCache = null, double textScale = 1.0, int totalFragments = 0)
     {
         ItemIndex = index;
         TextBlock.Blocks.Clear();
@@ -267,7 +323,19 @@ public sealed partial class RowItem : ListViewItem
 
         ShownText = fragment.Text;
 
-        AutomationProperties.SetName(this, ShownText);
+        // UIA: Set Name on the container so Narrator announces the item text when focused.
+        // Cap length at 512 characters to prevent massive cross-process UIA payloads on long lines.
+        // Child RichTextBlock has AccessibilityView.Raw so Narrator does not double-read
+        // the text as both the ListViewItem and child TextBlock.
+        var uiaName = ShownText.Length <= 512 ? ShownText : ShownText[..512] + "…";
+        AutomationProperties.SetName(this, uiaName);
+        AutomationProperties.SetItemType(this, AccessibleItemType(fragment.Kind));
+        AutomationProperties.SetPositionInSet(this, index + 1);
+        if (totalFragments > 0)
+        {
+            AutomationProperties.SetSizeOfSet(this, totalFragments);
+        }
+
         var autoHeadingLevel = fragment.HeadingStart && headingLevel is >= 1 and <= 6
             ? (AutomationHeadingLevel)headingLevel
             : AutomationHeadingLevel.None;

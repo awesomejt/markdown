@@ -60,7 +60,7 @@ required MSVC C smoke, 5 MiB host source bound and measured encode/copy/working-
 costs. WIN-001C closed in PR #55 with native file opening, association delivery and
 generation-safe background loading. WIN-001D closed in PR #56 with native virtualized
 presentation and outline navigation. WIN-001E closed in PR #57 with tables, task lists,
-and folder-contained image resource policy. WIN-001F closed in PR #58 with native document find, theme switching, and text scaling; WIN-001G is next on Windows.
+and folder-contained image resource policy. WIN-001F closed in PR #58 with native document find, theme switching, and text scaling; WIN-001G delivers large-document selection, native clipboard, UIA accessibility fixes, and performance budgets.
 The shared-core milestone boundary is reached:
 Claude prepares the combined packet for the owner under D-030; only the owner
 merges that milestone into `main`.
@@ -97,7 +97,7 @@ and explicit reference-syntax boundaries. CORE-006 closed in PR #38 with
 history and fresh three-OS all-feature release CI. The desktop chains are
 eligible; MAC-001A to MAC-001I closed in PRs #39 to #47 and the MAC-001 aggregate in PR #48. The macOS
 skeleton milestone review is next on this Mac. LNX-001A through LNX-001D closed in PRs #49 through #52, and LNX-001D1
-is next on Linux; WIN-001A through WIN-001F closed in PRs #53 to #58, and WIN-001G is next on Windows. Inspect
+is next on Linux; WIN-001A through WIN-001F closed in PRs #53 to #58, and WIN-001G is in review on Windows. Inspect
 state and `HANDOFF.md` before any pass. Scoped commits, pushes, PR updates and
 review requests are authorized; a Grok review with no serious finding approves
 a merge into `develop` (D-029); only the owner merges into `main` (D-030);
@@ -526,12 +526,25 @@ Low findings and nits from Grok reviews that were merged under D-029 without
 being fixed. A later pass fixes them or records why not; remove each entry
 when it is resolved.
 
+- **WIN-001G (PR #59, Grok review 5741891496):** `SourceBetween` narrows leaf
+  text runs to exact selected UTF-8 source bytes for literal text, and falls
+  back to whole-node spans when a node contains escapes, entities or inline
+  code formatting where decoded text length differs from raw source. Verified
+  in `RenderTests` that partial selection across code and backslash escapes
+  copies the exact selected range (`code` followed by `and \*star\*`), without byte drift
+  or over-copying trailing text. If sub-escape or sub-entity character slicing
+  is ever required, core model-v2 can provide a per-node char-to-source-byte
+  mapping in a future pass.
+
 - **WIN-001C (PR #55, Grok review 5731847930):** `Busy` admission retries now
   yield off the `markdown-files` worker thread so other windows' file reads do
   not stall behind admission backoff, while file reads themselves remain
-  serialized on `markdown-files`. In WIN-001G, evaluate a bounded cross-window
-  file read pool alongside the large-document and multi-window performance
-  measurements if concurrent slow-disk reads show cross-window latency.
+  serialized on `markdown-files`. In WIN-001G, evaluated cross-window file read
+  pooling alongside large-document measurements: 5 MiB file read overhead is
+  negligible (< 5ms on disk vs ~860ms parse in core), while busy retries yield
+  cooperatively without stalling `markdown-files`. Serialized file reads remain
+  the accepted design, avoiding cross-thread race complexity for capability
+  revocation and revision tokens.
 
 - **LNX-001D (PR #52, Grok review 5729937327), nit:** Reload clears the
   current reader and returns to the top, including unchanged content. Preserve

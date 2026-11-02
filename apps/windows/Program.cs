@@ -46,6 +46,10 @@ internal static class Program
         {
             return CoreProbe.Run(args[1..]);
         }
+        if (args.Length >= 2 && args[0] == "--measure")
+        {
+            return Measurement.Run(args[1..]);
+        }
         if (args.Length >= 4 && args[0] == "--association-smoke")
         {
             AssociationSmoke = true;
@@ -469,19 +473,22 @@ public sealed partial class ReaderApp : Application
             }
 
             var shortcuts = ((Grid)first.Content).KeyboardAccelerators;
-            if (shortcuts.Count != 12 ||
+            if (shortcuts.Count != 15 ||
                 !shortcuts.Any(k => k.Key == VirtualKey.O && k.Modifiers == VirtualKeyModifiers.Control) ||
                 !shortcuts.Any(k => k.Key == VirtualKey.R && k.Modifiers == VirtualKeyModifiers.Control) ||
                 !shortcuts.Any(k => k.Key == VirtualKey.N && k.Modifiers == VirtualKeyModifiers.Control) ||
                 !shortcuts.Any(k => k.Key == VirtualKey.W && k.Modifiers == VirtualKeyModifiers.Control) ||
                 !shortcuts.Any(k => k.Key == VirtualKey.W &&
                     k.Modifiers == (VirtualKeyModifiers.Control | VirtualKeyModifiers.Shift)) ||
+                !shortcuts.Any(k => k.Key == VirtualKey.C && k.Modifiers == VirtualKeyModifiers.Control) ||
+                !shortcuts.Any(k => k.Key == VirtualKey.A && k.Modifiers == VirtualKeyModifiers.Control) ||
+                !shortcuts.Any(k => k.Key == VirtualKey.Escape && k.Modifiers == VirtualKeyModifiers.None) ||
                 !shortcuts.Any(k => k.Key == VirtualKey.F && k.Modifiers == VirtualKeyModifiers.Control) ||
                 !shortcuts.Any(k => k.Key == VirtualKey.F3 && k.Modifiers == VirtualKeyModifiers.None) ||
                 !shortcuts.Any(k => k.Key == VirtualKey.F3 && k.Modifiers == VirtualKeyModifiers.Shift) ||
                 !shortcuts.Any(k => k.Key == VirtualKey.Number0 && k.Modifiers == VirtualKeyModifiers.Control))
             {
-                throw new InvalidOperationException("Root shortcut bindings failed.");
+                throw new InvalidOperationException($"Root shortcut bindings failed: count={shortcuts.Count}");
             }
 
             // 2. Exercise native Win32 file open dialog (GetOpenFileNameW) Cancel path.
@@ -754,7 +761,103 @@ public sealed partial class ReaderApp : Application
             }
             SettingsWindow.Close();
 
-            // 10. Verify New Window, Close Window, and Exit commands close all windows cleanly.
+            // 10. Global Selection, Copy to clipboard (CF_UNICODETEXT & text/markdown), Escape clear, and UIA accessibility.
+            first.SelectAllCommand();
+            if (first.Reader.Selection is null || first.Reader.Selection.Value.IsEmpty)
+            {
+                throw new InvalidOperationException("SelectAllCommand must establish a non-empty selection.");
+            }
+
+            var copyRes = first.Reader.CopySelection(first.Loader.Document);
+            if (copyRes is null)
+            {
+                throw new InvalidOperationException("CopySelection must return copied plain and markdown contents.");
+            }
+
+            var cbPlain = NativeClipboard.ReadUnicodeText();
+            var cbMarkdown = NativeClipboard.ReadMarkdownBytes();
+            if (cbPlain != copyRes.Value.PlainText)
+            {
+                throw new InvalidOperationException("Clipboard CF_UNICODETEXT does not match copied text.");
+            }
+            if (cbMarkdown is null || !cbMarkdown.SequenceEqual(first.Loader.Document.Source))
+            {
+                throw new InvalidOperationException("Clipboard text/markdown does not match document source.");
+            }
+
+            first.Reader.ClearSelection();
+            if (first.Reader.Selection is not null)
+            {
+                throw new InvalidOperationException("ClearSelection must clear active selection.");
+            }
+
+            // UIA accessibility verification:
+            // Ensure RowItem container exposes ShownText as its Name for focus announcements,
+            // while child TextBlock uses AccessibilityView.Raw so Narrator ignores duplicate text.
+            // Expose item type, position in set, size of set, and heading level.
+            if (first.Reader.WindowHandle == 0)
+            {
+                throw new InvalidOperationException("Reader WindowHandle must be non-zero for native clipboard ownership.");
+            }
+
+            foreach (var row in first.Reader.BoundRows)
+            {
+                if (row.ItemIndex < 0) continue;
+                var rowName = AutomationProperties.GetName(row);
+                var expectedName = row.ShownText.Length <= 512 ? row.ShownText : row.ShownText[..512] + "…";
+                if (rowName != expectedName)
+                {
+                    throw new InvalidOperationException($"RowItem Name expected '{expectedName}', got '{rowName}'.");
+                }
+                var textBlockView = AutomationProperties.GetAccessibilityView(row.TextBlock);
+                if (textBlockView != Microsoft.UI.Xaml.Automation.Peers.AccessibilityView.Raw)
+                {
+                    throw new InvalidOperationException("RowItem TextBlock must have AccessibilityView.Raw to prevent Narrator double reading.");
+                }
+                var itemType = AutomationProperties.GetItemType(row);
+                if (string.IsNullOrEmpty(itemType))
+                {
+                    throw new InvalidOperationException("RowItem must expose ItemType for screen readers.");
+                }
+                var posInSet = AutomationProperties.GetPositionInSet(row);
+                if (posInSet != row.ItemIndex + 1)
+                {
+                    throw new InvalidOperationException($"RowItem PositionInSet expected {row.ItemIndex + 1}, got {posInSet}.");
+                }
+                var sizeOfSet = AutomationProperties.GetSizeOfSet(row);
+                if (sizeOfSet <= 0)
+                {
+                    throw new InvalidOperationException("RowItem SizeOfSet must be greater than 0.");
+                }
+            }
+
+            // Verify selection highlight and find highlight coexist without interference.
+            if (first.Reader.BoundRows.Count > 0)
+            {
+                var testRow = first.Reader.BoundRows.First();
+                testRow.SetHighlights([(0, 2, false)]);
+                if (testRow.TextBlock.TextHighlighters.Count != 1)
+                {
+                    throw new InvalidOperationException("Find highlighter failed to attach.");
+                }
+                testRow.SetSelectionRange(2, 3);
+                if (testRow.TextBlock.TextHighlighters.Count != 2)
+                {
+                    throw new InvalidOperationException("Selection highlighter failed to attach alongside find highlighter.");
+                }
+                testRow.SetSelectionRange(null, null);
+                if (testRow.TextBlock.TextHighlighters.Count != 1)
+                {
+                    throw new InvalidOperationException("Selection highlighter clear removed find highlighter.");
+                }
+                testRow.SetHighlights([]);
+                if (testRow.TextBlock.TextHighlighters.Count != 0)
+                {
+                    throw new InvalidOperationException("Find highlighters failed to clear.");
+                }
+            }
+
+            // 11. Verify New Window, Close Window, and Exit commands close all windows cleanly.
             first.NewCommand();
             if (windows.Count != 2)
             {
@@ -825,6 +928,8 @@ internal sealed class ReaderWindow : Window
     internal Action NewCommand { get; }
     internal Action CloseCommand { get; }
     internal Action ExitCommand { get; }
+    internal Action CopyCommand { get; }
+    internal Action SelectAllCommand { get; }
     internal Action FindCommand { get; }
     internal Action FindNextCommand { get; }
     internal Action FindPreviousCommand { get; }
@@ -854,12 +959,21 @@ internal sealed class ReaderWindow : Window
         Preferences = preferences;
         Title = "Markdown";
         AppWindow.Resize(new global::Windows.Graphics.SizeInt32(960, 700));
+        Reader.WindowHandle = WinRT.Interop.WindowNative.GetWindowHandle(this);
 
         OpenCommand = PickAndOpenFile;
         ReloadCommand = ReloadDocument;
         NewCommand = () => app.NewWindow();
         CloseCommand = Close;
         ExitCommand = app.CloseAll;
+        CopyCommand = () =>
+        {
+            _ = Reader.CopySelection(Loader.Document);
+        };
+        SelectAllCommand = () =>
+        {
+            Reader.SelectAll();
+        };
         FindCommand = ShowFind;
         FindNextCommand = NavigateFindNext;
         FindPreviousCommand = NavigateFindPrevious;
@@ -905,10 +1019,29 @@ internal sealed class ReaderWindow : Window
         menu.Items.Add(file);
 
         var edit = new MenuBarItem { Title = "Edit", AccessKey = "E" };
+        edit.Items.Add(Command(root, "Copy", "Ctrl+C", VirtualKey.C, VirtualKeyModifiers.Control, CopyCommand, bypassWhenTextFocused: true));
+        edit.Items.Add(Command(root, "Select All", "Ctrl+A", VirtualKey.A, VirtualKeyModifiers.Control, SelectAllCommand, bypassWhenTextFocused: true));
+        edit.Items.Add(new MenuFlyoutSeparator());
         edit.Items.Add(Command(root, "Find…", "Ctrl+F", VirtualKey.F, VirtualKeyModifiers.Control, FindCommand));
         edit.Items.Add(Command(root, "Find Next", "F3", VirtualKey.F3, VirtualKeyModifiers.None, FindNextCommand));
         edit.Items.Add(Command(root, "Find Previous", "Shift+F3", VirtualKey.F3, VirtualKeyModifiers.Shift, FindPreviousCommand));
         menu.Items.Add(edit);
+
+        var escAccelerator = new KeyboardAccelerator { Key = VirtualKey.Escape };
+        escAccelerator.Invoked += (_, args) =>
+        {
+            if (IsFindBarVisible)
+            {
+                args.Handled = true;
+                CloseFind();
+            }
+            else if (Reader.Selection is not null && !Reader.Selection.Value.IsEmpty)
+            {
+                args.Handled = true;
+                Reader.ClearSelection();
+            }
+        };
+        root.KeyboardAccelerators.Add(escAccelerator);
 
         var view = new MenuBarItem { Title = "View", AccessKey = "V" };
         view.Items.Add(Command(root, "Actual Size", "Ctrl+0", VirtualKey.Number0, VirtualKeyModifiers.Control, ActualSizeCommand));
@@ -1196,12 +1329,24 @@ internal sealed class ReaderWindow : Window
     }
 
     private static MenuFlyoutItem Command(Grid root, string text, string shortcut, VirtualKey key,
-        VirtualKeyModifiers modifiers, Action invoke)
+        VirtualKeyModifiers modifiers, Action invoke, bool bypassWhenTextFocused = false)
     {
         var item = new MenuFlyoutItem { Text = text, KeyboardAcceleratorTextOverride = shortcut };
         item.Click += (_, _) => invoke();
         var accelerator = new KeyboardAccelerator { Key = key, Modifiers = modifiers };
-        accelerator.Invoked += (_, args) => { args.Handled = true; invoke(); };
+        accelerator.Invoked += (_, args) =>
+        {
+            if (bypassWhenTextFocused)
+            {
+                var focused = FocusManager.GetFocusedElement(root.XamlRoot);
+                if (focused is TextBox or PasswordBox)
+                {
+                    return; // Do NOT handle: let the focused text control handle Ctrl+C / Ctrl+A
+                }
+            }
+            args.Handled = true;
+            invoke();
+        };
         root.KeyboardAccelerators.Add(accelerator);
         return item;
     }
