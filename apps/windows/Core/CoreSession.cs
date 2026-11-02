@@ -51,7 +51,7 @@ public sealed record CoreResult(
     CoreDocument? Document,
     CoreTimings Timings);
 
-public sealed unsafe class CoreSession : IDisposable
+public sealed unsafe partial class CoreSession : IDisposable
 {
     private readonly SessionInner _inner;
 
@@ -286,7 +286,7 @@ internal sealed class Completion<T>
     }
 }
 
-internal sealed unsafe class SessionInner
+internal sealed unsafe partial class SessionInner
 {
     private readonly object _lock = new();
     private readonly List<Request> _requests = [];

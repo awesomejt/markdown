@@ -30,6 +30,9 @@ internal static class RenderTests
                 ("task_markers_and_accessible_text", TaskMarkersAndAccessibleText),
                 ("images_follow_resource_policy_and_limits", ImagesFollowResourcePolicyAndLimits),
                 ("document_resources_filesystem_security", DocumentResourcesFilesystemSecurity),
+                ("text_scale_clamped_and_steps", TextScaleClampedAndSteps),
+                ("preferences_memory_and_local_settings", PreferencesMemoryAndLocalSettings),
+                ("document_find_unicode_mappings_and_wrapping", DocumentFindUnicodeMappingsAndWrapping),
             };
 
             foreach (var (name, run) in tests)
@@ -677,4 +680,138 @@ internal static class RenderTests
             throw new InvalidOperationException(message);
         }
     }
+
+    private static void TextScaleClampedAndSteps()
+    {
+        Assert(Math.Abs(TextScale.Clamped(1.0) - 1.0) < 0.001, "clamped standard");
+        Assert(Math.Abs(TextScale.Clamped(1.04) - 1.0) < 0.001, "clamped near 1.0");
+        Assert(Math.Abs(TextScale.Clamped(9.0) - TextScale.Steps[^1]) < 0.001, "clamped max");
+        Assert(Math.Abs(TextScale.Clamped(-1.0) - TextScale.Steps[0]) < 0.001, "clamped min");
+        Assert(Math.Abs(TextScale.Clamped(double.NaN) - TextScale.Standard) < 0.001, "clamped NaN");
+        Assert(Math.Abs(TextScale.Clamped(double.PositiveInfinity) - TextScale.Standard) < 0.001, "clamped inf");
+
+        var larger = TextScale.Larger(1.0);
+        Assert(larger.HasValue && Math.Abs(larger.Value - 1.15) < 0.001, "larger step");
+        var smaller = TextScale.Smaller(1.0);
+        Assert(smaller.HasValue && Math.Abs(smaller.Value - 0.85) < 0.001, "smaller step");
+
+        Assert(TextScale.Larger(TextScale.Steps[^1]) is null, "larger at max is null");
+        Assert(TextScale.Smaller(TextScale.Steps[0]) is null, "smaller at min is null");
+    }
+
+    private static void PreferencesMemoryAndLocalSettings()
+    {
+        var store = new MemoryPreferenceStore();
+        var prefs = new ReaderPreferences(store);
+        Assert(prefs.Theme == AppTheme.System, "default theme system");
+        Assert(Math.Abs(prefs.TextScaleValue - 1.0) < 0.001, "default text scale 1.0");
+
+        var changedCount = 0;
+        prefs.Changed += () => changedCount++;
+
+        prefs.Theme = AppTheme.Dark;
+        Assert(changedCount == 1, "theme change fired event");
+        Assert(prefs.Theme == AppTheme.Dark, "theme is Dark");
+        Assert(prefs.ToElementTheme() == Microsoft.UI.Xaml.ElementTheme.Dark, "element theme dark");
+
+        prefs.TextScaleValue = 1.5;
+        Assert(changedCount == 2, "scale change fired event");
+        Assert(Math.Abs(prefs.TextScaleValue - 1.5) < 0.001, "scale is 1.5");
+
+        // Reread from same store
+        var prefs2 = new ReaderPreferences(store);
+        Assert(prefs2.Theme == AppTheme.Dark, "persisted theme Dark");
+        Assert(Math.Abs(prefs2.TextScaleValue - 1.5) < 0.001, "persisted scale 1.5");
+    }
+
+    private static void DocumentFindUnicodeMappingsAndWrapping()
+    {
+        var source =
+            "# Find 𝒳 heading\n\n" +
+            "Plain foo **bar** baz, 𝒳𝒴 target, AT&amp;T and `code span`.\n" +
+            "soft\nbreak and hard\\\nline.\n\n" +
+            "> ```\n> quoted code\n> second line\n> ```\n\n" +
+            "![alt words](missing.png) and <span>raw html</span>\n\n" +
+            "| Cell one | Cell two |\n| - | - |\n| table value | 中文 |\n\n" +
+            "Café and cafe\u0301; 👨\u200D👩\u200D👧 family; עברית שלום.\n";
+
+        using var session = new CoreSession("render-find-test");
+        var parseRes = session.ParseBlocking(Encoding.UTF8.GetBytes(source), null, copyUnchanged: true);
+        Assert(parseRes.Document is not null, "parsed doc");
+        var doc = parseRes.Document;
+        var plan = RenderPlan.Build(doc, () => false);
+
+        FindMatches DoFind(string query, CoreFindOptions? options = null)
+        {
+            var res = session.Find(query, options, doc.Generation);
+            return DocumentFind.MapMatches(plan, doc, res);
+        }
+
+        List<string> MatchTexts(FindMatches matches)
+        {
+            var list = new List<string>(matches.Count);
+            foreach (var m in matches.Matches)
+            {
+                var sb = new StringBuilder();
+                foreach (var r in m.Ranges)
+                {
+                    var frag = plan.Fragments[r.FragmentIndex];
+                    sb.Append(frag.Text.Substring(r.Start, r.Length));
+                }
+                list.Add(sb.ToString());
+            }
+            return list;
+        }
+
+        var cases = new (string Query, string[] Expected)[]
+        {
+            ("foo bar", ["foo bar"]),
+            ("target", ["target"]),
+            ("𝒳", ["𝒳", "𝒳"]),
+            ("AT&T", ["AT&T"]),
+            ("code span", ["code span"]),
+            ("soft break", ["soft break"]),
+            ("alt words", ["[alt words]"]),
+            ("table value", ["table value"]),
+            ("中文", ["中文"]),
+            ("café", ["Café"]),
+            ("cafe\u0301", ["cafe\u0301"]),
+            ("family", ["family"]),
+            ("שלום", ["שלום"]),
+            ("heading", ["heading"]),
+            ("missing", []),
+        };
+
+        foreach (var (query, expected) in cases)
+        {
+            var matches = DoFind(query);
+            var texts = MatchTexts(matches);
+            Assert(texts.SequenceEqual(expected), $"query '{query}' expected [{string.Join(", ", expected)}] got [{string.Join(", ", texts)}]");
+        }
+
+        // Navigation wrapping and status
+        var multiMatches = DoFind("𝒳");
+        Assert(multiMatches.Count == 2, "2 matches for 𝒳");
+        Assert(multiMatches.Status(null) == "2 matches", "status plural");
+        Assert(multiMatches.Status(0) == "1 of 2", "status 1 of 2");
+        Assert(multiMatches.Status(1) == "2 of 2", "status 2 of 2");
+
+        Assert(multiMatches.IndexAtOrAfter(0, 0) == 0, "at or after 0");
+        Assert(multiMatches.IndexAfter(0, backwards: false) == 1, "next after 0");
+        Assert(multiMatches.IndexAfter(1, backwards: false) == 0, "next wraps to 0");
+        Assert(multiMatches.IndexAfter(0, backwards: true) == 1, "prev wraps to 1");
+
+        var emptyMatches = DoFind("nonexistentquery");
+        Assert(emptyMatches.Count == 0, "0 matches");
+        Assert(emptyMatches.Status(null) == "Not found", "not found status");
+        Assert(emptyMatches.IndexAtOrAfter(0) is null, "empty index is null");
+
+        // Stale generation
+        var staleResult = new CoreFindResult(doc.Generation + 1, [], [], false);
+        var staleMatches = DocumentFind.MapMatches(plan, doc, staleResult);
+        Assert(staleMatches.Count == 0, "stale generation returns 0 matches");
+
+        session.Close();
+    }
+
 }

@@ -39,6 +39,9 @@ public sealed partial class ReaderControl : UserControl
     public IReadOnlyCollection<RowItem> BoundRows => _boundRows;
     public RenderPlan? CurrentPlan => _plan;
     public ulong CurrentGeneration { get; private set; }
+    public double TextScale { get; private set; } = 1.0;
+    public FindMatches? CurrentFindMatches { get; private set; }
+    public int? CurrentMatchIndex { get; private set; }
 
     public ReaderControl()
     {
@@ -94,6 +97,68 @@ public sealed partial class ReaderControl : UserControl
         return minIndex == int.MaxValue ? 0 : minIndex;
     }
 
+    public void SetTextScale(double scale)
+    {
+        TextScale = Markdown.Windows.Render.TextScale.Clamped(scale);
+        if (_plan is null) return;
+        foreach (var row in _boundRows)
+        {
+            if (row.ItemIndex >= 0 && row.ItemIndex < _plan.Fragments.Count)
+            {
+                row.Bind(row.ItemIndex, _plan.Fragments[row.ItemIndex], OnLinkActivated, ImageCache, TextScale);
+                UpdateRowHighlights(row);
+            }
+        }
+    }
+
+    public void SetFindMatches(FindMatches? matches, int? currentMatchIndex = null)
+    {
+        CurrentFindMatches = matches;
+        CurrentMatchIndex = currentMatchIndex;
+        foreach (var row in _boundRows)
+        {
+            UpdateRowHighlights(row);
+        }
+    }
+
+    public void NavigateToMatch(int matchIndex)
+    {
+        if (CurrentFindMatches is null || matchIndex < 0 || matchIndex >= CurrentFindMatches.Matches.Count)
+        {
+            return;
+        }
+        CurrentMatchIndex = matchIndex;
+        var match = CurrentFindMatches.Matches[matchIndex];
+        ScrollToFragment(match.PrimaryFragmentIndex);
+        foreach (var row in _boundRows)
+        {
+            UpdateRowHighlights(row);
+        }
+    }
+
+    private void UpdateRowHighlights(RowItem row)
+    {
+        if (CurrentFindMatches is null || row.ItemIndex < 0)
+        {
+            row.SetHighlights(null);
+            return;
+        }
+        var list = new List<(int Start, int Length, bool IsCurrent)>();
+        for (var mIdx = 0; mIdx < CurrentFindMatches.Matches.Count; mIdx++)
+        {
+            var match = CurrentFindMatches.Matches[mIdx];
+            var isCurrent = (CurrentMatchIndex.HasValue && CurrentMatchIndex.Value == mIdx);
+            foreach (var range in match.Ranges)
+            {
+                if (range.FragmentIndex == row.ItemIndex)
+                {
+                    list.Add((range.Start, range.Length, isCurrent));
+                }
+            }
+        }
+        row.SetHighlights(list.Count > 0 ? list : null);
+    }
+
     public void InstallPlan(RenderPlan plan, ulong generation = 0)
     {
         if (generation != 0 && generation == CurrentGeneration && _plan is not null)
@@ -141,6 +206,8 @@ public sealed partial class ReaderControl : UserControl
         _boundRows.Clear();
         ImageCache.Clear();
 
+        CurrentFindMatches = null;
+        CurrentMatchIndex = null;
         _plan = null;
         CurrentGeneration = 0;
         Visibility = Visibility.Collapsed;
@@ -228,7 +295,8 @@ public sealed partial class ReaderControl : UserControl
             row.Attach();
             if (_plan is not null && args.ItemIndex >= 0 && args.ItemIndex < _plan.Fragments.Count)
             {
-                row.Bind(args.ItemIndex, _plan.Fragments[args.ItemIndex], OnLinkActivated, ImageCache);
+                row.Bind(args.ItemIndex, _plan.Fragments[args.ItemIndex], OnLinkActivated, ImageCache, TextScale);
+                UpdateRowHighlights(row);
                 _boundRows.Add(row);
                 if (args.ItemIndex == _pendingFocusIndex)
                 {

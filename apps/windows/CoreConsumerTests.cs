@@ -32,6 +32,7 @@ internal static unsafe class CoreConsumerTests
             ("blocking_calls_are_refused_on_the_worker", BlockingCallsAreRefusedOnTheWorker),
             ("corpus_and_performance_profiles", CorpusAndPerformanceProfiles),
             ("close_then_does_not_block_and_reports_the_release", CloseThenDoesNotBlockAndReportsRelease),
+            ("find_over_current_snapshot", FindOverCurrentSnapshot),
         };
 
         Console.WriteLine($"running {tests.Length} Windows core consumer tests ({CoreRuntime.ExpectedConfiguration})");
@@ -741,5 +742,112 @@ internal static unsafe class CoreConsumerTests
         Check(
             CoreRuntime.TakeLastCallbackException()?.Message == "simulated close callback exception",
             "worker captured throwing CloseThen callback exception");
+    }
+
+    private static void FindOverCurrentSnapshot()
+    {
+        using var session = new CoreSession("find-test");
+        var source = "# Straße\n\nCafé and cafe\u0301 and CAFÉ.\n\n𝒳𝒴 target\n\n" +
+                     "👨\u200D👩\u200D👧 family, 中文 and עברית.\n\n`code café` and **caf**é\n";
+        var bytes = Encoding.UTF8.GetBytes(source);
+        var first = session.ParseBlocking(bytes, null, copyUnchanged: true);
+        Check(first.Outcome == CoreOutcome.Published, "parse succeeded");
+        var generation = first.Generation;
+
+        List<string> Find(string query, CoreFindOptions? options = null)
+        {
+            var res = session.Find(query, options, generation);
+            Check(res.Generation == generation, "find generation matches");
+            foreach (var match in res.Matches)
+            {
+                Check(match.SegmentCount > 0 && match.FirstSegment + match.SegmentCount <= res.Segments.Count, "match segments in bounds");
+            }
+            var list = new List<string>(res.Matches.Count);
+            foreach (var m in res.Matches)
+            {
+                list.Add(Encoding.UTF8.GetString(bytes, m.Source.Start.Value, m.Source.End.Value - m.Source.Start.Value));
+            }
+            return list;
+        }
+
+        var cafe = Find("café");
+        Check(cafe.SequenceEqual(["Café", "CAFÉ", "café", "caf**é"]), "café matches");
+        var sensitive = Find("café", new CoreFindOptions(CaseSensitive: true));
+        Check(sensitive.SequenceEqual(["café", "caf**é"]), "case sensitive café");
+        var nfd = Find("cafe\u0301");
+        Check(nfd.SequenceEqual(["cafe\u0301"]), "decomposed cafe");
+        Check(Find("cafe").Count == 0, "no match inside a combining sequence");
+        Check(Find("STRAßE").SequenceEqual(["Straße"]), "Straße case folded");
+        Check(Find("STRASSE").Count == 0, "simple folding only");
+        Check(Find("𝒳𝒴").SequenceEqual(["𝒳𝒴"]), "astral chars matched");
+        Check(Find("👨").Count == 0, "no match inside emoji sequence");
+        Check(Find("👨\u200D👩\u200D👧").SequenceEqual(["👨\u200D👩\u200D👧"]), "emoji sequence matched");
+        Check(Find("family", new CoreFindOptions(WholeWord: true)).SequenceEqual(["family"]), "whole word matched");
+        Check(Find("fam", new CoreFindOptions(WholeWord: true)).Count == 0, "subword not matched with WholeWord");
+        Check(Find("中文").SequenceEqual(["中文"]), "CJK matched");
+        Check(Find("עברית").SequenceEqual(["עברית"]), "RTL Hebrew matched");
+        Check(Find("   ").Count == 0, "whitespace query returns empty");
+
+        var limited = session.Find("caf", new CoreFindOptions(MaxMatches: 2), generation);
+        Check(limited.Matches.Count == 2 && limited.Truncated, "truncated at maxMatches");
+
+        try
+        {
+            _ = session.Find(new string('a', 4097), generation: generation);
+            throw new InvalidOperationException("over-long query should throw");
+        }
+        catch (CoreException ex) when (ex.Kind == CoreErrorKind.InvalidArgument)
+        {
+        }
+
+        try
+        {
+            _ = session.Find("café", generation: generation + 10);
+            throw new InvalidOperationException("unpublished generation should throw");
+        }
+        catch (CoreException ex) when (ex.Kind == CoreErrorKind.Superseded)
+        {
+        }
+
+        var second = session.ParseBlocking("café again\n"u8.ToArray(), null, copyUnchanged: true);
+        Check(second.Generation > generation, "second generation increased");
+
+        try
+        {
+            _ = session.Find("café", generation: generation);
+            throw new InvalidOperationException("superseded generation should throw");
+        }
+        catch (CoreException ex) when (ex.Kind == CoreErrorKind.Superseded)
+        {
+        }
+
+        var current = session.Find("café", generation: second.Generation);
+        Check(current.Matches.Count == 1, "find over current generation");
+
+        using (var hold = HoldWorker())
+        using (var cts = new CancellationTokenSource())
+        {
+            var queuedTask = session.FindAsync("café", generation: second.Generation, cancellationToken: cts.Token);
+            cts.Cancel();
+            hold.Dispose();
+            try
+            {
+                queuedTask.GetAwaiter().GetResult();
+                throw new InvalidOperationException("cancelled find should throw");
+            }
+            catch (OperationCanceledException)
+            {
+            }
+        }
+
+        session.Close();
+        try
+        {
+            _ = session.Find("café", generation: second.Generation);
+            throw new InvalidOperationException("closed session should throw");
+        }
+        catch (CoreException ex) when (ex.Kind == CoreErrorKind.SessionClosed)
+        {
+        }
     }
 }

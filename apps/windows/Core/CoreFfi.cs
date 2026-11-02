@@ -142,6 +142,13 @@ internal static unsafe class CoreFfi
     internal const uint MD_TARGET_DENIED = 4;
 
     // D-022 ABI size constants.
+    internal const uint MD_FIND_MAX_QUERY_BYTES = 4096;
+    internal const uint MD_FIND_DEFAULT_MAX_MATCHES = 10000;
+    internal const uint MD_FIND_MAX_MATCHES = 1000000;
+    internal const uint MD_FIND_CASE_SENSITIVE = 1;
+    internal const uint MD_FIND_WHOLE_WORD = 2;
+    internal const uint MD_FIND_TRUNCATED = 1;
+    internal const uint MD_MATCH_EXACT = 1;
     internal const uint MD_FIND_OPTIONS_SIZE = 24;
     internal const uint MD_FIND_RESULT_SIZE = 24;
     internal const uint MD_FIND_MATCH_SIZE = 24;
@@ -584,6 +591,9 @@ internal static unsafe class CoreFfi
         md_session_status_info* out_status);
 
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+    internal static extern uint md_session_current(ulong session, ulong* out_snapshot);
+
+    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
     internal static extern uint md_job_run(ulong job, md_job_result* out_result);
 
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
@@ -594,6 +604,18 @@ internal static unsafe class CoreFfi
 
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
     internal static extern uint md_snapshot_get_view(ulong snapshot, md_snapshot_view* out_view);
+
+    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+    internal static extern uint md_snapshot_find(
+        ulong snapshot,
+        byte* query,
+        nuint query_length,
+        md_find_options* options,
+        md_find_match* matches,
+        nuint match_capacity,
+        md_match_segment* segments,
+        nuint segment_capacity,
+        md_find_result* out_result);
 
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
     internal static extern uint md_snapshot_release(ulong snapshot);

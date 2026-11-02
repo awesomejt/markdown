@@ -59,7 +59,13 @@ public readonly record struct LinkTarget(TargetKind Kind, int Fragment, string? 
     public static LinkTarget Inert { get; } = new(TargetKind.Inert, -1, null);
 }
 
-public sealed record RenderRun(string Text, RunStyle Style, int Link)
+public sealed record RenderRun(
+    string Text,
+    RunStyle Style,
+    int Link,
+    int NodeId = -1,
+    int NodeCharOffset = 0,
+    bool Atomic = false)
 {
     public const int NoLink = -1;
 }
@@ -144,13 +150,15 @@ public sealed class RenderPlan
     public List<RenderedImage> Images { get; } = [];
     public long AccountedBytes { get; private set; }
     public ulong Generation { get; private init; }
+    public double Scale { get; private init; } = 1.0;
 
     public static RenderPlan Build(
         CoreDocument document,
         Func<bool> cancelled,
         long budget = DefaultBudget,
         Func<string, int, (byte[]? Data, ResourceError? Error)>? imageLoader = null,
-        ImageBudget? imageBudget = null)
+        ImageBudget? imageBudget = null,
+        double scale = 1.0)
     {
         ArgumentNullException.ThrowIfNull(document);
         ArgumentNullException.ThrowIfNull(cancelled);
@@ -160,7 +168,7 @@ public sealed class RenderPlan
             budget,
             imageLoader,
             imageBudget ?? new ImageBudget(),
-            new RenderPlan { Generation = document.Generation });
+            new RenderPlan { Generation = document.Generation, Scale = TextScale.Clamped(scale) });
         return builder.Run();
     }
 
@@ -332,7 +340,7 @@ public sealed class RenderPlan
             c is (>= '\u0000' and <= '\u0008') or '\u000B' or '\u000C' or (>= '\u000E' and <= '\u001F')
                 or '\uFFFE' or '\uFFFF';
 
-        private void AddRun(List<RenderRun> runs, string text, RunStyle style, int link)
+        private void AddRun(List<RenderRun> runs, string text, RunStyle style, int link, int nodeId = -1, int nodeCharOffset = 0, bool atomic = false)
         {
             Charge(48 + 2L * text.Length);
             // NUL and other C0 controls would truncate or corrupt native text; keep a visible
@@ -349,7 +357,7 @@ public sealed class RenderPlan
             }
             if (text.Length > 0)
             {
-                runs.Add(new RenderRun(text, style, link));
+                runs.Add(new RenderRun(text, style, link, nodeId, nodeCharOffset, atomic));
             }
         }
 
@@ -379,18 +387,18 @@ public sealed class RenderPlan
                     HandleImage(id, in n, depth, style, runs);
                     break;
                 case CoreFfi.MD_NODE_SOFT_BREAK:
-                    AddRun(runs, " ", style, link);
+                    AddRun(runs, " ", style, link, (int)id, 0, atomic: true);
                     break;
                 case CoreFfi.MD_NODE_HARD_BREAK:
-                    AddRun(runs, "\n", style, link);
+                    AddRun(runs, "\n", style, link, (int)id, 0, atomic: true);
                     break;
                 case CoreFfi.MD_NODE_TEXT:
                 case CoreFfi.MD_NODE_CODE_SPAN:
                 case CoreFfi.MD_NODE_FOOTNOTE_REFERENCE:
-                    AddRun(runs, Owned(doc.NodeText((int)id)), style, link);
+                    AddRun(runs, Owned(doc.NodeText((int)id)), style, link, (int)id, 0, atomic: false);
                     break;
                 case CoreFfi.MD_NODE_UNSUPPORTED_INLINE:
-                    AddRun(runs, Fallback(in n), style, link);
+                    AddRun(runs, Fallback(in n), style, link, (int)id, 0, atomic: false);
                     break;
                 default:
                     foreach (var child in ChildrenOf(in n))
@@ -518,7 +526,7 @@ public sealed class RenderPlan
             _currentBlockImages.Add(renderedImage);
             _first[id] = plan.Fragments.Count;
 
-            AddRun(runs, string.IsNullOrEmpty(alt) ? "[image]" : $"[{alt}]", style, RenderRun.NoLink);
+            AddRun(runs, string.IsNullOrEmpty(alt) ? "[image]" : $"[{alt}]", style, RenderRun.NoLink, (int)id, 0, atomic: true);
         }
 
         private void Table(uint id, in CoreFfi.md_node n, int depth, int indent, int quote)
@@ -541,7 +549,7 @@ public sealed class RenderPlan
                 {
                     if (c > 0)
                     {
-                        AddRun(rowRuns, "\t", RunStyle.None, RenderRun.NoLink);
+                        AddRun(rowRuns, "\t", RunStyle.None, RenderRun.NoLink, (int)rowId, 0, atomic: true);
                     }
                     if (c < cells.Length)
                     {
@@ -571,7 +579,7 @@ public sealed class RenderPlan
             {
                 // A list item that starts with a nested list, or has no content, keeps its marker visible.
                 var runs = new List<RenderRun>();
-                AddRun(runs, marker, RunStyle.Marker | markerStyle, RenderRun.NoLink);
+                AddRun(runs, marker, RunStyle.Marker | markerStyle, RenderRun.NoLink, (int)id, 0, atomic: true);
                 Emit(runs, FragmentKind.Paragraph, 0, indent, quote);
                 marker = null;
             }
@@ -617,7 +625,7 @@ public sealed class RenderPlan
                 var runs = new List<RenderRun>();
                 if (marker is not null)
                 {
-                    AddRun(runs, marker, RunStyle.Marker | markerStyle, RenderRun.NoLink);
+                    AddRun(runs, marker, RunStyle.Marker | markerStyle, RenderRun.NoLink, (int)id, 0, atomic: true);
                 }
 
                 FragmentKind fragmentKind;
@@ -631,16 +639,16 @@ public sealed class RenderPlan
                             // The final line terminator would render as an empty trailing line.
                             code = code[..^1];
                         }
-                        AddRun(runs, code, RunStyle.Code, RenderRun.NoLink);
+                        AddRun(runs, code, RunStyle.Code, RenderRun.NoLink, (int)id, 0, atomic: false);
                         break;
                     case CoreFfi.MD_NODE_UNSUPPORTED_BLOCK:
                         // Raw HTML and unsupported blocks are shown as literal, inert source text.
                         fragmentKind = FragmentKind.Fallback;
-                        AddRun(runs, Fallback(in n).TrimEnd('\r', '\n'), RunStyle.Code, RenderRun.NoLink);
+                        AddRun(runs, Fallback(in n).TrimEnd('\r', '\n'), RunStyle.Code, RenderRun.NoLink, (int)id, 0, atomic: false);
                         break;
                     case CoreFfi.MD_NODE_THEMATIC_BREAK:
                         fragmentKind = FragmentKind.ThematicBreak;
-                        AddRun(runs, "—", RunStyle.Marker, RenderRun.NoLink);
+                        AddRun(runs, "—", RunStyle.Marker, RenderRun.NoLink, (int)id, 0, atomic: true);
                         break;
                     default:
                         fragmentKind = kind == CoreFfi.MD_NODE_HEADING ? FragmentKind.Heading : FragmentKind.Paragraph;
@@ -777,7 +785,7 @@ public sealed class RenderPlan
 
                     var piece = pos == 0 && end == text.Length ? text : text[pos..end];
                     Charge(48 + 2L * piece.Length);
-                    fragment.Runs.Add(new RenderRun(piece, run.Style, run.Link));
+                    fragment.Runs.Add(new RenderRun(piece, run.Style, run.Link, run.NodeId, run.NodeCharOffset + pos, run.Atomic));
                     used += bytes;
                     pos = end;
                     if (forced || used >= MaxFragmentBytes)

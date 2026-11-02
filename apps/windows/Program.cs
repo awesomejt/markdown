@@ -196,8 +196,48 @@ public sealed partial class ReaderApp : Application
     private bool _shuttingDown;
 
     internal IReadOnlyList<ReaderWindow> Windows => windows;
+    internal ReaderPreferences Preferences { get; } = new(
+        Program.Smoke ? new MemoryPreferenceStore() : new LocalSettingsPreferenceStore());
+    internal SettingsWindow? SettingsWindow { get; private set; }
 
-    public ReaderApp() => InitializeComponent();
+    public ReaderApp()
+    {
+        InitializeComponent();
+        Preferences.Changed += () =>
+        {
+            foreach (var w in windows.ToArray())
+            {
+                ApplyPreferences(w);
+            }
+            SettingsWindow?.Refresh();
+        };
+    }
+
+    internal void ShowSettings()
+    {
+        if (SettingsWindow is not null)
+        {
+            SettingsWindow.Activate();
+            SettingsWindow.Refresh();
+            return;
+        }
+        SettingsWindow = new SettingsWindow(Preferences);
+        SettingsWindow.Closed += (_, _) => SettingsWindow = null;
+        if (SettingsWindow.Content is FrameworkElement fe)
+        {
+            fe.RequestedTheme = Preferences.ToElementTheme();
+        }
+        SettingsWindow.Activate();
+    }
+
+    internal void ApplyPreferences(ReaderWindow window)
+    {
+        if (window.Content is FrameworkElement fe)
+        {
+            fe.RequestedTheme = Preferences.ToElementTheme();
+        }
+        window.Reader.SetTextScale(Preferences.TextScaleValue);
+    }
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
@@ -227,16 +267,18 @@ public sealed partial class ReaderApp : Application
 
     internal ReaderWindow NewWindow()
     {
-        var window = new ReaderWindow(this);
+        var window = new ReaderWindow(this, Preferences);
         windows.Add(window);
         window.Closed += (_, _) =>
         {
             windows.Remove(window);
             if (windows.Count == 0)
             {
+                SettingsWindow?.Close();
                 Volatile.Write(ref _shuttingDown, true);
             }
         };
+        ApplyPreferences(window);
         window.Activate();
         return window;
     }
@@ -244,6 +286,7 @@ public sealed partial class ReaderApp : Application
     internal void CloseAll()
     {
         Volatile.Write(ref _shuttingDown, true);
+        SettingsWindow?.Close();
         foreach (var window in windows.ToArray())
         {
             window.Close();
@@ -426,13 +469,17 @@ public sealed partial class ReaderApp : Application
             }
 
             var shortcuts = ((Grid)first.Content).KeyboardAccelerators;
-            if (shortcuts.Count != 5 ||
+            if (shortcuts.Count != 12 ||
                 !shortcuts.Any(k => k.Key == VirtualKey.O && k.Modifiers == VirtualKeyModifiers.Control) ||
                 !shortcuts.Any(k => k.Key == VirtualKey.R && k.Modifiers == VirtualKeyModifiers.Control) ||
                 !shortcuts.Any(k => k.Key == VirtualKey.N && k.Modifiers == VirtualKeyModifiers.Control) ||
                 !shortcuts.Any(k => k.Key == VirtualKey.W && k.Modifiers == VirtualKeyModifiers.Control) ||
                 !shortcuts.Any(k => k.Key == VirtualKey.W &&
-                    k.Modifiers == (VirtualKeyModifiers.Control | VirtualKeyModifiers.Shift)))
+                    k.Modifiers == (VirtualKeyModifiers.Control | VirtualKeyModifiers.Shift)) ||
+                !shortcuts.Any(k => k.Key == VirtualKey.F && k.Modifiers == VirtualKeyModifiers.Control) ||
+                !shortcuts.Any(k => k.Key == VirtualKey.F3 && k.Modifiers == VirtualKeyModifiers.None) ||
+                !shortcuts.Any(k => k.Key == VirtualKey.F3 && k.Modifiers == VirtualKeyModifiers.Shift) ||
+                !shortcuts.Any(k => k.Key == VirtualKey.Number0 && k.Modifiers == VirtualKeyModifiers.Control))
             {
                 throw new InvalidOperationException("Root shortcut bindings failed.");
             }
@@ -619,7 +666,76 @@ public sealed partial class ReaderApp : Application
                 throw new InvalidOperationException("Stale slow-load supersession failed.");
             }
 
-            // 9. Verify New Window, Close Window, and Exit commands close all windows cleanly.
+            // 9. Document find, text scale, theme switching, and Settings window.
+            first.FindCommand();
+            if (!first.IsFindBarVisible)
+            {
+                throw new InvalidOperationException("Find command must show FindBar.");
+            }
+
+            first.FindBar.Query = "Second Smoke";
+            first.ExecuteFind();
+            await WaitWindowIdleAsync(first);
+            var swFind = Stopwatch.StartNew();
+            while (swFind.ElapsedMilliseconds < 3000 && (first.Reader.CurrentFindMatches is null || first.Reader.CurrentFindMatches.Count == 0))
+            {
+                await Task.Delay(20);
+            }
+            if (first.Reader.CurrentFindMatches is null ||
+                first.Reader.CurrentFindMatches.Count != 1 ||
+                first.FindBar.StatusText.Text != "1 of 1")
+            {
+                throw new InvalidOperationException($"Find failed: matches={first.Reader.CurrentFindMatches?.Count}, status={first.FindBar.StatusText.Text}");
+            }
+
+            first.FindNextCommand();
+            first.FindPreviousCommand();
+
+            first.FindBar.MatchCase = true;
+            first.ExecuteFind();
+            await Task.Delay(50);
+            if (first.Reader.CurrentFindMatches?.Count != 1)
+            {
+                throw new InvalidOperationException("Case sensitive find failed.");
+            }
+
+            first.CloseFindCommand();
+            if (first.IsFindBarVisible || first.Reader.CurrentFindMatches is not null)
+            {
+                throw new InvalidOperationException("Close find must hide FindBar and clear highlights.");
+            }
+
+            // Text scaling
+            first.BiggerCommand();
+            if (Math.Abs(first.Preferences.TextScaleValue - 1.15) > 0.001 ||
+                Math.Abs(first.Reader.TextScale - 1.15) > 0.001)
+            {
+                throw new InvalidOperationException("Bigger command failed.");
+            }
+
+            first.SmallerCommand();
+            if (Math.Abs(first.Preferences.TextScaleValue - 1.0) > 0.001)
+            {
+                throw new InvalidOperationException("Smaller command failed.");
+            }
+
+            // Appearance & theme
+            first.Preferences.Theme = AppTheme.Dark;
+            if (first.Preferences.Theme != AppTheme.Dark)
+            {
+                throw new InvalidOperationException("Theme switch to Dark failed.");
+            }
+            first.Preferences.Theme = AppTheme.System;
+
+            // Settings window
+            first.SettingsCommand();
+            if (SettingsWindow is null)
+            {
+                throw new InvalidOperationException("Settings window not opened.");
+            }
+            SettingsWindow.Close();
+
+            // 10. Verify New Window, Close Window, and Exit commands close all windows cleanly.
             first.NewCommand();
             if (windows.Count != 2)
             {
@@ -684,14 +800,25 @@ public sealed partial class ReaderApp : Application
 internal sealed class ReaderWindow : Window
 {
     internal DocumentLoader Loader { get; } = new();
+    internal ReaderPreferences Preferences { get; }
     internal Action OpenCommand { get; }
     internal Action ReloadCommand { get; }
     internal Action NewCommand { get; }
     internal Action CloseCommand { get; }
     internal Action ExitCommand { get; }
+    internal Action FindCommand { get; }
+    internal Action FindNextCommand { get; }
+    internal Action FindPreviousCommand { get; }
+    internal Action CloseFindCommand { get; }
+    internal Action ActualSizeCommand { get; }
+    internal Action BiggerCommand { get; }
+    internal Action SmallerCommand { get; }
+    internal Action SettingsCommand { get; }
+
     internal MenuFlyoutItem ReloadItem { get; }
     internal TextBlock Welcome { get; }
     internal ReaderControl Reader { get; } = new();
+    internal FindBar FindBar { get; } = new();
     internal InfoBar ErrorBanner { get; } = new()
     {
         IsOpen = false,
@@ -699,8 +826,12 @@ internal sealed class ReaderWindow : Window
         IsClosable = true,
     };
 
-    internal ReaderWindow(ReaderApp app)
+    public bool IsFindBarVisible => FindBar.Visibility == Visibility.Visible;
+    private uint _findRequestId;
+
+    internal ReaderWindow(ReaderApp app, ReaderPreferences preferences)
     {
+        Preferences = preferences;
         Title = "Markdown";
         AppWindow.Resize(new global::Windows.Graphics.SizeInt32(960, 700));
 
@@ -709,6 +840,14 @@ internal sealed class ReaderWindow : Window
         NewCommand = () => app.NewWindow();
         CloseCommand = Close;
         ExitCommand = app.CloseAll;
+        FindCommand = ShowFind;
+        FindNextCommand = NavigateFindNext;
+        FindPreviousCommand = NavigateFindPrevious;
+        CloseFindCommand = CloseFind;
+        ActualSizeCommand = () => Preferences.TextScaleValue = 1.0;
+        BiggerCommand = () => Preferences.TextScaleValue = TextScale.Larger(Preferences.TextScaleValue) ?? Preferences.TextScaleValue;
+        SmallerCommand = () => Preferences.TextScaleValue = TextScale.Smaller(Preferences.TextScaleValue) ?? Preferences.TextScaleValue;
+        SettingsCommand = () => app.ShowSettings();
 
         Loader.OnReady = () =>
         {
@@ -720,7 +859,15 @@ internal sealed class ReaderWindow : Window
             Reader.Clear();
         };
 
+        FindBar.Visibility = Visibility.Collapsed;
+        FindBar.QueryChanged += (_, _, _) => ExecuteFind();
+        FindBar.FindNext += NavigateFindNext;
+        FindBar.FindPrevious += NavigateFindPrevious;
+        FindBar.CloseRequested += CloseFind;
+
         var root = new Grid();
+        var menu = new MenuBar();
+
         var file = new MenuBarItem { Title = "File", AccessKey = "F" };
         file.Items.Add(Command(root, "Open…", "Ctrl+O", VirtualKey.O, VirtualKeyModifiers.Control, OpenCommand));
         ReloadItem = Command(root, "Reload", "Ctrl+R", VirtualKey.R, VirtualKeyModifiers.Control, ReloadCommand);
@@ -732,8 +879,36 @@ internal sealed class ReaderWindow : Window
         file.Items.Add(new MenuFlyoutSeparator());
         file.Items.Add(Command(root, "Exit", "Ctrl+Shift+W", VirtualKey.W,
             VirtualKeyModifiers.Control | VirtualKeyModifiers.Shift, ExitCommand));
-        var menu = new MenuBar();
         menu.Items.Add(file);
+
+        var edit = new MenuBarItem { Title = "Edit", AccessKey = "E" };
+        edit.Items.Add(Command(root, "Find…", "Ctrl+F", VirtualKey.F, VirtualKeyModifiers.Control, FindCommand));
+        edit.Items.Add(Command(root, "Find Next", "F3", VirtualKey.F3, VirtualKeyModifiers.None, FindNextCommand));
+        edit.Items.Add(Command(root, "Find Previous", "Shift+F3", VirtualKey.F3, VirtualKeyModifiers.Shift, FindPreviousCommand));
+        menu.Items.Add(edit);
+
+        var view = new MenuBarItem { Title = "View", AccessKey = "V" };
+        view.Items.Add(Command(root, "Actual Size", "Ctrl+0", VirtualKey.Number0, VirtualKeyModifiers.Control, ActualSizeCommand));
+        view.Items.Add(Command(root, "Make Text Bigger", "Ctrl+Plus", (VirtualKey)187, VirtualKeyModifiers.Control, BiggerCommand));
+        view.Items.Add(Command(root, "Make Text Smaller", "Ctrl+Minus", (VirtualKey)189, VirtualKeyModifiers.Control, SmallerCommand));
+        view.Items.Add(new MenuFlyoutSeparator());
+
+        var themeSub = new MenuFlyoutSubItem { Text = "Theme" };
+        var sysItem = new MenuFlyoutItem { Text = "System" };
+        sysItem.Click += (_, _) => Preferences.Theme = AppTheme.System;
+        var lightItem = new MenuFlyoutItem { Text = "Light" };
+        lightItem.Click += (_, _) => Preferences.Theme = AppTheme.Light;
+        var darkItem = new MenuFlyoutItem { Text = "Dark" };
+        darkItem.Click += (_, _) => Preferences.Theme = AppTheme.Dark;
+        themeSub.Items.Add(sysItem);
+        themeSub.Items.Add(lightItem);
+        themeSub.Items.Add(darkItem);
+        view.Items.Add(themeSub);
+
+        view.Items.Add(new MenuFlyoutSeparator());
+        view.Items.Add(Command(root, "Settings…", "Ctrl+,", (VirtualKey)188, VirtualKeyModifiers.Control, SettingsCommand));
+        menu.Items.Add(view);
+
         Welcome = new TextBlock
         {
             Text = "Markdown\n\nA native Markdown reader.\nChoose File > Open (Ctrl+O) to open a Markdown document.",
@@ -744,17 +919,128 @@ internal sealed class ReaderWindow : Window
         AutomationProperties.SetName(Welcome, "Markdown reader");
         AutomationProperties.SetName(Reader, "Document reader");
         Reader.Visibility = Visibility.Collapsed;
+
+        root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         root.RowDefinitions.Add(new RowDefinition());
+
         root.Children.Add(menu);
-        Grid.SetRow(ErrorBanner, 1);
+        Grid.SetRow(FindBar, 1);
+        root.Children.Add(FindBar);
+        Grid.SetRow(ErrorBanner, 2);
         root.Children.Add(ErrorBanner);
-        Grid.SetRow(Welcome, 2);
-        Grid.SetRow(Reader, 2);
+        Grid.SetRow(Welcome, 3);
+        Grid.SetRow(Reader, 3);
         root.Children.Add(Welcome);
         root.Children.Add(Reader);
         Content = root;
+    }
+
+    internal void ShowFind()
+    {
+        FindBar.Visibility = Visibility.Visible;
+        FindBar.FocusQuery();
+        if (!string.IsNullOrEmpty(FindBar.Query))
+        {
+            ExecuteFind();
+        }
+    }
+
+    internal void CloseFind()
+    {
+        FindBar.Visibility = Visibility.Collapsed;
+        Reader.SetFindMatches(null);
+        FindBar.SetStatus(string.Empty);
+        Reader.Focus(FocusState.Programmatic);
+    }
+
+    internal void NavigateFindNext()
+    {
+        if (!IsFindBarVisible)
+        {
+            ShowFind();
+            return;
+        }
+        var matches = Reader.CurrentFindMatches;
+        if (matches is null || matches.Count == 0)
+        {
+            return;
+        }
+        var current = Reader.CurrentMatchIndex ?? -1;
+        var next = matches.IndexAfter(current, backwards: false);
+        if (next.HasValue)
+        {
+            Reader.NavigateToMatch(next.Value);
+            FindBar.SetStatus(matches.Status(next.Value));
+        }
+    }
+
+    internal void NavigateFindPrevious()
+    {
+        if (!IsFindBarVisible)
+        {
+            ShowFind();
+            return;
+        }
+        var matches = Reader.CurrentFindMatches;
+        if (matches is null || matches.Count == 0)
+        {
+            return;
+        }
+        var current = Reader.CurrentMatchIndex ?? 0;
+        var prev = matches.IndexAfter(current, backwards: true);
+        if (prev.HasValue)
+        {
+            Reader.NavigateToMatch(prev.Value);
+            FindBar.SetStatus(matches.Status(prev.Value));
+        }
+    }
+
+    internal void ExecuteFind()
+    {
+        var doc = Loader.Document;
+        var plan = Loader.Plan;
+        var session = Loader.Session;
+        var query = FindBar.Query;
+        if (doc is null || plan is null || session is null || string.IsNullOrEmpty(query))
+        {
+            Reader.SetFindMatches(null);
+            FindBar.SetStatus(string.Empty);
+            return;
+        }
+
+        var reqId = unchecked(++_findRequestId);
+        var generation = doc.Generation;
+        var options = new CoreFindOptions(CaseSensitive: FindBar.MatchCase, WholeWord: FindBar.WholeWord);
+
+        _ = DispatcherQueue?.TryEnqueue(async () =>
+        {
+            try
+            {
+                var result = await session.FindAsync(query, options, generation);
+                if (reqId != _findRequestId || doc != Loader.Document)
+                {
+                    return;
+                }
+
+                var matches = DocumentFind.MapMatches(plan, doc, result);
+                var currentIndex = matches.Count > 0 ? (int?)0 : null;
+                Reader.SetFindMatches(matches, currentIndex);
+                FindBar.SetStatus(matches.Status(currentIndex));
+                if (currentIndex.HasValue)
+                {
+                    Reader.NavigateToMatch(currentIndex.Value);
+                }
+            }
+            catch (OperationCanceledException)
+            {
+            }
+            catch
+            {
+                FindBar.SetStatus("Not found");
+            }
+        });
     }
 
     internal void OpenCapability(DocumentCapability capability)
@@ -850,8 +1136,13 @@ internal sealed class ReaderWindow : Window
             if (Loader.Plan is { } plan)
             {
                 Reader.InstallPlan(plan, doc.Generation);
+                Reader.SetTextScale(Preferences.TextScaleValue);
                 Reader.Visibility = Visibility.Visible;
                 Welcome.Visibility = Visibility.Collapsed;
+                if (IsFindBarVisible && !string.IsNullOrEmpty(FindBar.Query))
+                {
+                    ExecuteFind();
+                }
             }
             return;
         }
