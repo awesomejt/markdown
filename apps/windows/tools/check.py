@@ -9,6 +9,7 @@ import subprocess
 import sys
 import tempfile
 
+from check_association import check_association
 from package_core import prepare_core, verify
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -89,17 +90,24 @@ def main() -> None:
 
         exe = str(output / "Markdown.Windows.exe")
         run_app([exe, "--core-tests"], cwd=output, env=env, timeout=180)
+        run_app([exe, "--document-tests"], cwd=output, env=env, timeout=120)
         run_app([exe, "--smoke"], cwd=output, env=env, timeout=60)
-        print(f"{profile}: core consumer tests and Native AOT window/commands smoke passed", flush=True)
+        check_association(output / "Markdown.Windows.exe")
+        print(
+            f"{profile}: core consumer tests, document tests, Native AOT smoke, and association check passed",
+            flush=True,
+        )
 
     release_output = ROOT / "build/windows/Release"
     with tempfile.TemporaryDirectory(prefix="markdown-windows-relocated-") as temp_root:
         relocated = Path(temp_root) / "app"
         shutil.copytree(release_output, relocated)
         relocated_exe = str(relocated / "Markdown.Windows.exe")
+        run_app([relocated_exe, "--document-tests"], cwd=relocated, env=env, timeout=120)
         run_app([relocated_exe, "--smoke"], cwd=relocated, env=env, timeout=60)
+        check_association(relocated / "Markdown.Windows.exe")
         run_app([relocated_exe, "--core-probe", "single"], cwd=relocated, env=env, timeout=60)
-        print("Release: relocated Native AOT smoke and core-probe passed without checkout", flush=True)
+        print("Release: relocated Native AOT document tests, smoke, association, and core-probe passed", flush=True)
 
 
 if __name__ == "__main__":

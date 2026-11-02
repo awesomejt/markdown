@@ -1,0 +1,26 @@
+Windows Registry Editor Version 5.00
+
+; Development-only per-user file association template for Markdown (Windows).
+; The build and test harnesses validate and instantiate this template in an
+; isolated temporary directory without modifying the host Windows registry.
+
+[HKEY_CURRENT_USER\Software\Classes\Io.Github.Awesomejt.Markdown]
+@="Markdown Document"
+
+[HKEY_CURRENT_USER\Software\Classes\Io.Github.Awesomejt.Markdown\shell\open\command]
+@="\"@EXE@\" \"%1\""
+
+[HKEY_CURRENT_USER\Software\Classes\.md\OpenWithProgids]
+"Io.Github.Awesomejt.Markdown"=""
+
+[HKEY_CURRENT_USER\Software\Classes\.markdown\OpenWithProgids]
+"Io.Github.Awesomejt.Markdown"=""
+
+[HKEY_CURRENT_USER\Software\Classes\.mdown\OpenWithProgids]
+"Io.Github.Awesomejt.Markdown"=""
+
+[HKEY_CURRENT_USER\Software\Classes\.mkd\OpenWithProgids]
+"Io.Github.Awesomejt.Markdown"=""
+
+[HKEY_CURRENT_USER\Software\Classes\.txt\OpenWithProgids]
+"Io.Github.Awesomejt.Markdown"=""
