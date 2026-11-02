@@ -1,6 +1,6 @@
 # Agent Session and Platform Handoff
 
-Updated: 2026-11-02 (America/Denver), WIN-001G review 2 findings addressed.
+Updated: 2026-11-02 (America/Denver), WIN-001G review 3 findings addressed; ready to close and merge under D-029.
 Active Windows task: `WIN-001G` (`35bb5a1b-3eec-44c3-b149-73b037c4f30d`), pass
 `1ab71944-3ce1-495e-b10b-608ac702eda1` (sequence 121, `project.yaml` revision 742),
 branch `feat/win-001g-large-document-accessibility`, based on `develop` at `a3fecba` (PR #58 merge).
@@ -31,7 +31,8 @@ association checks, and relocated core probe with 0 leaked handles).
 
 [Grok review 1](https://github.com/awesomejt/markdown/pull/59#pullrequestreview-5741476785) at `c290a6f`
 reported 0 Blockers, 7 Concerns, 4 Nits. [Grok review 2](https://github.com/awesomejt/markdown/pull/59#pullrequestreview-5741731288)
-at `d499edc` reported 0 Blockers, 2 Concerns, 2 Nits (uncommitted Review 1 changes from Windows CRLF script match failure, offset drift on escapes/entities in partial Markdown copy, TrySet usage, and measure magic numbers); all findings were addressed and verified locally.
+at `d499edc` reported 0 Blockers, 2 Concerns, 2 Nits. [Grok review 3](https://github.com/awesomejt/markdown/pull/59#pullrequestreview-5741891496)
+at `1f664dc` reported 0 Blockers, 1 Concern, 2 Nits (clean approval under D-029). All earlier items were confirmed addressed; the remaining items (pinning partial copy assertion proving exact bounds without over-copy, capping long-line UIA Name to 512 chars, and dropping redundant broad try/catch in CopyCommand) were addressed in follow-up commit and verified with zero failures across all local checks.
 
 Next Windows task after WIN-001G merge: `WIN-001H` (External change detection, auto-refresh and conflict recovery).
 

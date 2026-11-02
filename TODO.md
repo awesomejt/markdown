@@ -526,6 +526,16 @@ Low findings and nits from Grok reviews that were merged under D-029 without
 being fixed. A later pass fixes them or records why not; remove each entry
 when it is resolved.
 
+- **WIN-001G (PR #59, Grok review 5741891496):** `SourceBetween` narrows leaf
+  text runs to exact selected UTF-8 source bytes for literal text, and falls
+  back to whole-node spans when a node contains escapes, entities or inline
+  code formatting where decoded text length differs from raw source. Verified
+  in `RenderTests` that partial selection across code and backslash escapes
+  copies the exact selected range (`code` followed by `and \*star\*`), without byte drift
+  or over-copying trailing text. If sub-escape or sub-entity character slicing
+  is ever required, core model-v2 can provide a per-node char-to-source-byte
+  mapping in a future pass.
+
 - **WIN-001C (PR #55, Grok review 5731847930):** `Busy` admission retries now
   yield off the `markdown-files` worker thread so other windows' file reads do
   not stall behind admission backoff, while file reads themselves remain
