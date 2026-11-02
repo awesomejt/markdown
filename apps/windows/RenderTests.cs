@@ -919,8 +919,7 @@ internal static class RenderTests
 
         var subSource2 = plan2.SourceBetween(new DocumentPosition(0, codeIdx), new DocumentPosition(0, starIdx + 6), doc2);
         var subSource2Str = Encoding.UTF8.GetString(subSource2);
-        Assert(subSource2Str.Contains("`code`"), $"source must contain full code span with backticks: '{subSource2Str}'");
-        Assert(subSource2Str.Contains("\\*star\\*"), $"source must contain full escape without drift: '{subSource2Str}'");
+        Assert(subSource2Str == "`code` and \\*star\\*", $"subSource2Str expected exact range '`code` and \\*star\\*', got '{subSource2Str}'");
 
         // AccessibleItemType verification
         Assert(RowItem.AccessibleItemType(FragmentKind.Heading) == "heading", "accessible heading");

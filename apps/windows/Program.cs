@@ -804,9 +804,10 @@ public sealed partial class ReaderApp : Application
             {
                 if (row.ItemIndex < 0) continue;
                 var rowName = AutomationProperties.GetName(row);
-                if (rowName != row.ShownText)
+                var expectedName = row.ShownText.Length <= 512 ? row.ShownText : row.ShownText[..512] + "…";
+                if (rowName != expectedName)
                 {
-                    throw new InvalidOperationException($"RowItem Name expected '{row.ShownText}', got '{rowName}'.");
+                    throw new InvalidOperationException($"RowItem Name expected '{expectedName}', got '{rowName}'.");
                 }
                 var textBlockView = AutomationProperties.GetAccessibilityView(row.TextBlock);
                 if (textBlockView != Microsoft.UI.Xaml.Automation.Peers.AccessibilityView.Raw)
@@ -967,27 +968,10 @@ internal sealed class ReaderWindow : Window
         ExitCommand = app.CloseAll;
         CopyCommand = () =>
         {
-            var focused = FocusManager.GetFocusedElement(Content?.XamlRoot);
-            if (focused is TextBox or PasswordBox)
-            {
-                return;
-            }
-            try
-            {
-                _ = Reader.CopySelection(Loader.Document);
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Copy failed softly: {ex.Message}");
-            }
+            _ = Reader.CopySelection(Loader.Document);
         };
         SelectAllCommand = () =>
         {
-            var focused = FocusManager.GetFocusedElement(Content?.XamlRoot);
-            if (focused is TextBox or PasswordBox)
-            {
-                return;
-            }
             Reader.SelectAll();
         };
         FindCommand = ShowFind;

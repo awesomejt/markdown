@@ -324,9 +324,11 @@ public sealed partial class RowItem : ListViewItem
         ShownText = fragment.Text;
 
         // UIA: Set Name on the container so Narrator announces the item text when focused.
+        // Cap length at 512 characters to prevent massive cross-process UIA payloads on long lines.
         // Child RichTextBlock has AccessibilityView.Raw so Narrator does not double-read
         // the text as both the ListViewItem and child TextBlock.
-        AutomationProperties.SetName(this, ShownText);
+        var uiaName = ShownText.Length <= 512 ? ShownText : ShownText[..512] + "…";
+        AutomationProperties.SetName(this, uiaName);
         AutomationProperties.SetItemType(this, AccessibleItemType(fragment.Kind));
         AutomationProperties.SetPositionInSet(this, index + 1);
         if (totalFragments > 0)
