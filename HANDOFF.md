@@ -7,6 +7,7 @@ branch `feat/win-001g-large-document-accessibility`, based on `develop` at `a3fe
 `apps/windows/` (`Render/DocumentSelection.cs`, `Render/NativeClipboard.cs`,
 `Render/RenderPlan.cs`, `Render/RowItem.cs`, `Render/ReaderControl.cs`, `Program.cs`,
 `Measurement.cs`, `tools/measure.py`, `RenderTests.cs`) delivers:
+
 - Global multi-fragment text selection across virtualized rows with pointer drag,
   edge auto-scrolling, Shift+arrow/Home/End keyboard extension, Escape to clear,
   and Ctrl+A to select all.
