@@ -1,6 +1,6 @@
 # Windows native shell
 
-WIN-001A, WIN-001B, and WIN-001C provide an unpackaged Windows 11 x64 WinUI 3
+WIN-001A, WIN-001B, WIN-001C, and WIN-001D provide an unpackaged Windows 11 x64 WinUI 3
 application in C# Native AOT linked against the local shared-core C ABI package
 (`markdown_ffi.dll`, model v2). It opens a native window with a File menu,
 Open… (Ctrl+O), Reload (Ctrl+R), New Window (Ctrl+N), Close Window (Ctrl+W),
@@ -34,8 +34,21 @@ with per-window queue deduplication, generation/serial guards
 NTFS ACL withdrawal promotion (`DocumentError.AccessRevoked`), and
 detached-volume promotion (`DocumentError.VolumeUnavailable`). No document
 contents, full file paths, recent files, settings, network requests or resource
-permissions are logged or persisted. Rendering, Narrator document reading,
-mixed-DPI validation and distribution acceptance remain later Windows tasks.
+permissions are logged or persisted.
+
+The native presentation layer (`apps/windows/Render/`) renders model-v2 documents
+in a virtualized WinUI 3 `ListView` over an off-thread bounded presentation plan
+(`RenderPlan.cs`). Model nodes are split into 512-byte fragments with accounted budget
+ceilings (128 MiB default) and cooperative cancellation checks. Headings, prose,
+ordered and bullet lists, code blocks and fallback raw HTML are rendered into
+recycled `RowItem` containers using `RichTextBlock` (`IsTextSelectionEnabled = true`),
+styled inlines, Cascadia Mono fonts for code/fallback, blockquote borders and
+UIA heading level automation properties (`AutomationProperties.SetHeadingLevel`).
+Link targets are resolved to internal heading fragment indices, safe external URIs
+(`http`, `https`, `mailto`), or inert text. `ReaderControl` provides a two-column
+layout with an outline sidebar (`ListView`) and document virtualized list, outline jump
+navigation, and safe link activation. Tables, images, full multi-row selection, and
+Narrator continuous reading proof remain later tasks.
 
 ## Build and check
 
@@ -59,9 +72,9 @@ python apps/windows/tools/check.py
 `debug` and `release` core packages via `apps/windows/tools/package_core.py`,
 verifies C# formatting, publishes **Native AOT in Debug and Release**, verifies
 the staged core manifests and PE export tables, runs `--core-tests`,
-`--document-tests`, `--smoke`, and `apps/windows/tools/check_association.py` in
+`--document-tests`, `--render-tests`, `--smoke`, and `apps/windows/tools/check_association.py` in
 both configurations, and copies the `Release` output to a temporary directory
-outside the checkout to run relocated `--document-tests`, `--smoke`,
+outside the checkout to run relocated `--document-tests`, `--render-tests`, `--smoke`,
 `check_association.py`, and `--core-probe single` without a repository at
 runtime.
 
@@ -76,6 +89,7 @@ dotnet publish apps/windows/Markdown.Windows.csproj --no-restore -c Release -p:P
 dotnet format apps/windows/Markdown.Windows.csproj --no-restore --verify-no-changes --severity warn
 & ./build/windows/Release/Markdown.Windows.exe --core-tests | Out-String -Stream
 & ./build/windows/Release/Markdown.Windows.exe --document-tests | Out-String -Stream
+& ./build/windows/Release/Markdown.Windows.exe --render-tests | Out-String -Stream
 python apps/windows/tools/check_association.py build/windows/Release/Markdown.Windows.exe
 & ./build/windows/Release/Markdown.Windows.exe --core-probe single | Out-String -Stream
 ```
@@ -147,3 +161,13 @@ Validated on Windows 11 Pro build 26300.9711, Ryzen 9 5950X x64, Rust 1.99.1,
   `apps/windows/resources/io.github.awesomejt.markdown.reg.in` for `.md`,
   `.markdown`, `.mdown`, `.mkd`, and `.txt`, including paths with spaces,
   Unicode filenames, and existing-window reuse).
+- **WIN-001D**: Debug, Release, and relocated Release Native AOT builds passed
+  9 render and navigation unit tests (`--render-tests`: styled inlines, lists,
+  fenced code, html fallback, safe link target resolution, token resolution,
+  unicode fragmentation, budget ceiling exhaustion, cooperative cancellation,
+  8 frozen corpus outline regressions matching model-v2 contracts, empty list markers,
+  control character replacement, soft/hard line break flow, long heading fragmentation
+  preserving single semantic start, and plan barrier cancellation/close suppression).
+  The Native AOT smoke (`--smoke`) was extended to verify `ReaderControl` presentation,
+  outline hierarchy, outline heading jump navigation, safe link interception delegate,
+  and within-fragment text selection with zero leaked core handles.

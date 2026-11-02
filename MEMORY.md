@@ -44,7 +44,15 @@ read.
   each pass 17 core tests, 12 document tests, shell/picker/reload smoke, and
   4-delivery multi-process association check (`apps/windows/tools/check_association.py`).
   Grok review 1 at `3915231` had 0 blockers, 4 concerns and 1 nit; all 5 findings
-  were fixed at `60f0970` and all 5 threads resolved. WIN-001D is next on Windows.
+  were fixed at `60f0970` and all 5 threads resolved.
+- WIN-001D (PR #56) delivers the native WinUI 3 virtualized presentation and outline
+  navigation view in C# Native AOT linked against the model-v2 core package
+  (`apps/windows/Render/`: `RenderPlan.cs`, `IndexList.cs`, `RowItem.cs`,
+  `ReaderControl.cs`, `ErrorBanner` InfoBar, within-fragment selection,
+  UIA heading level automation properties, 9 `--render-tests` unit tests, and
+  extended native smoke). Grok review 1 at `8db9048` reported 0 Blockers, 5 Concerns,
+  3 Nits; all findings were addressed at `046178b`, all review threads resolved, and
+  fixed-head CI run 41394098208 passed all checks under D-029. WIN-001E is next on Windows.
 - Phase: `desktop-apps`; the portable-core shared track is complete through
   CORE-006 (GATE-001 approved, D-018). Native chains are now eligible (D-027).
 - Product: local-first, read-only native Markdown reader. Windows, macOS and

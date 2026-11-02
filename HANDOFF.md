@@ -1,37 +1,29 @@
 # Agent Session and Platform Handoff
 
-Updated: 2026-11-01 (America/Denver), WIN-001C approved closeout (PR #55).
-Completed Windows task: `WIN-001C` (`205b667b-5e55-4abb-8ce7-d705e6c1c2c0`), pass
-`8a208399-df50-4372-b0b7-13b62f10c925` (sequence 116, `project.yaml` revision 733),
-branch `feat/win-001c-document-loading`, based on `develop` at `2b9b24e` (PR #54 merge).
-`apps/windows/Document/` (`DocumentAccess.cs`, `DocumentLoader.cs`, plus
-`apps/windows/DocumentPicker.cs`) delivers native Win32 `GetOpenFileNameW`
-file opening (`File > Open?`, `Ctrl+O`), `File > Reload` (`Ctrl+R`), startup
-file arguments and per-user file-association template
-`apps/windows/resources/io.github.awesomejt.markdown.reg.in` (`.md`, `.markdown`,
-`.mdown`, `.mkd`, `.txt`) with primary-instance mutex and current-user named-pipe
-forwarding, path-free `DocumentCapability` with explicit `Revoke()`, NTFS ACL
-withdrawal (`AccessRevoked`), volume-detachment promotion (`VolumeUnavailable`),
-device/non-regular/remote-handle rejection (`GetFileType`,
-`GetFileInformationByHandle`, `GetFinalPathNameByHandleW`), 64 KiB chunked bounded
-reads, and serial-tagged `DocumentLoader` cancellation with off-thread `Busy`
-admission retries. Local `apps/windows/tools/check.py` passes in Debug, Release,
-and relocated Release (17 core consumer tests, 12 document tests, shell/picker/reload
-smoke, and 4-delivery multi-process association check via
-`apps/windows/tools/check_association.py`).
-[Grok review 1](https://github.com/awesomejt/markdown/pull/55#pullrequestreview-5731847930)
-at `3915231` had 0 blockers, 4 concerns and 1 nit; all 5 findings were fixed at
-`60f0970` without re-review (exempt under step 7) and all 5 review threads are
-resolved. [Fixed-head CI](https://github.com/awesomejt/markdown/actions/runs/41385009602)
+Updated: 2026-11-01 (America/Denver), WIN-001D approved closeout (PR #56).
+Completed Windows task: `WIN-001D` (`2cffeb46-9f11-449f-8597-5250e02fb1c2`), pass
+`56be78c0-bbf9-4bb4-8572-c481dd884c59` (sequence 117, `project.yaml` revision 735),
+branch `feat/win-001d-native-reader`, based on `develop` at `13a6798` (PR #55 merge).
+`apps/windows/Render/` (`RenderPlan.cs`, `IndexList.cs`, `RowItem.cs`, `ReaderControl.cs`)
+delivers native WinUI virtualized `ListView` presentation over off-thread bounded
+render plans (512-byte fragments, 128 MiB budget ceiling, cooperative cancellation,
+headings, prose, ordered/bullet lists, fenced code, raw HTML fallback, and safe link target
+resolution to internal fragment, safe external URI, or inert text), outline sidebar
+`ListView` with heading navigation, within-fragment selection, UIA heading level
+automation properties, and `ErrorBanner` `InfoBar` for reload issue reporting while
+preserving active document state. Local `apps/windows/tools/check.py` passes in Debug,
+Release, and relocated Release (17 core consumer tests, 12 document tests, 9 render tests,
+Native AOT smoke, and 4-delivery multi-process association check).
+[Grok review 1](https://github.com/awesomejt/markdown/pull/56#pullrequestreview-5732355126)
+at `8db9048` had 0 blockers, 5 concerns and 3 nits; all findings were addressed and fixed
+at `046178b` and all review threads resolved. [Fixed-head CI](https://github.com/awesomejt/markdown/actions/runs/41394098208)
 is green (`changes`, `common`, `core` on Linux/Windows/macOS, `windows-native`,
-and `complete`). One state/docs closeout commit follows `60f0970`, then green CI,
-merge into `develop` and branch deletion. The merge SHA is not known at closeout
-time. No live pass or unowned working task remains. Next Windows task is
-`WIN-001D`: native virtualized reading view, outline sidebar, and heading/link
-navigation.
+and `complete`). One state/docs closeout commit follows `046178b`, then merge into `develop`
+and branch deletion. Next Windows task is `WIN-001E`: tables, task lists, images,
+and resource policy.
 
-Previous Windows task: `WIN-001B` merged in [PR #54](https://github.com/awesomejt/markdown/pull/54)
-(`2b9b24e`), delivering the model-v2 core DLL package and C# Native AOT adapter.
+Previous Windows task: `WIN-001C` merged in [PR #55](https://github.com/awesomejt/markdown/pull/55)
+(`13a6798`), delivering native file open, file associations, Reload, and generation-safe background loading.
 
 Previous Linux handoff baseline: `develop` after PR #52; reviewed head `f12d2e5`, non-serious
 review fixes at `27e84df`, followed by one state/docs closeout. The merge SHA is
