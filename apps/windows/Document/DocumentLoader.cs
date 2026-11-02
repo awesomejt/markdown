@@ -263,6 +263,7 @@ public sealed class DocumentLoader : IDisposable
 
     /// <summary>Accounted payload ceiling for each prepared render plan.</summary>
     public long PlanBudget { get; set; } = RenderPlan.DefaultBudget;
+    public ImageBudget ImageBudget { get; set; } = new();
     public Func<string, HostLimits, CoreSession>? SessionFactory { get; set; }
     public Func<string?, uint, bool>? VolumeGoneCheck { get; set; }
 
@@ -787,8 +788,9 @@ public sealed class DocumentLoader : IDisposable
                 RenderPlan plan;
                 try
                 {
+                    var imageBudget = ImageBudget;
                     var resources = new DocumentResources(capability);
-                    plan = RenderPlan.Build(document, Stale, planBudget, (path, limit) => resources.ReadImage(path, limit));
+                    plan = RenderPlan.Build(document, Stale, planBudget, (path, limit) => resources.ReadImage(path, limit, imageBudget), imageBudget);
                 }
                 catch (RenderException ex) when (ex.Kind == RenderErrorKind.Cancelled)
                 {

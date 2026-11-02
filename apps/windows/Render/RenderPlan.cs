@@ -557,6 +557,8 @@ public sealed class RenderPlan
 
                 Emit(rowRuns, FragmentKind.TableRow, 0, indent, quote, isHeader: isHeader);
             }
+            // Images within table cells have their [alt] text rendered into cell runs;
+            // block images are cleared so they do not leak into following paragraphs.
             _currentBlockImages.Clear();
         }
 

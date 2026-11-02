@@ -610,11 +610,9 @@ internal static class RenderTests
                 UseShellExecute = false,
             });
             mklink?.WaitForExit();
-            if (Directory.Exists(juncDir))
-            {
-                var (dj, ej) = resources.ReadImage("junc/outside.png");
-                Assert(ej == ResourceError.OutsideFolder, "junction escape outside document folder must fail with OutsideFolder");
-            }
+            Assert(Directory.Exists(juncDir), "junction directory creation must succeed");
+            var (dj, ej) = resources.ReadImage("junc/outside.png");
+            Assert(ej == ResourceError.OutsideFolder, "junction escape outside document folder must fail with OutsideFolder");
         }
         finally
         {

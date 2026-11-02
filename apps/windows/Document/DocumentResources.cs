@@ -365,12 +365,11 @@ public sealed class DocumentResources
 
         if (handle == -1 || handle == 0)
         {
+            var err = Marshal.GetLastWin32Error();
             if (Directory.Exists(candidatePath))
             {
                 return (null, ResourceError.NotRegularFile);
             }
-
-            var err = Marshal.GetLastWin32Error();
             return (null, err switch
             {
                 2 or 3 => ResourceError.NotFound,       // ERROR_FILE_NOT_FOUND, ERROR_PATH_NOT_FOUND
