@@ -1,15 +1,22 @@
 using System.Diagnostics;
+using Markdown.Windows.Core;
 using Markdown.Windows.Render;
+using Microsoft.UI.Dispatching;
+using Microsoft.UI.Input;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Input;
+using Windows.Foundation;
 using Windows.System;
+using Windows.UI.Core;
 
 namespace Markdown.Windows.Render;
 
 /// <summary>
 /// Native WinUI presentation control: a virtualized document ListView with recycled RowItems,
-/// and an outline ListView sidebar for jumping to headings.
+/// an outline ListView sidebar for jumping to headings, and global multi-row selection with
+/// Win32 clipboard copying.
 /// </summary>
 public sealed partial class ReaderControl : UserControl
 {
@@ -25,12 +32,18 @@ public sealed partial class ReaderControl : UserControl
         IsItemClickEnabled = true,
     };
     private readonly HashSet<RowItem> _boundRows = [];
+    private readonly Microsoft.UI.Dispatching.DispatcherQueueTimer? _autoScrollTimer;
+
     public ImageSourceCache ImageCache { get; } = new();
 
     private RenderPlan? _plan;
     private ScrollViewer? _scrollViewer;
     private bool _suppressOutlineSelection;
     private int _pendingFocusIndex = -1;
+
+    private DocumentPosition? _dragAnchor;
+    private bool _isDragging;
+    private Point _lastPointerPosition;
 
     public Func<Uri, bool>? ExternalUriLauncher { get; set; }
 
@@ -42,6 +55,7 @@ public sealed partial class ReaderControl : UserControl
     public double TextScale { get; private set; } = 1.0;
     public FindMatches? CurrentFindMatches { get; private set; }
     public int? CurrentMatchIndex { get; private set; }
+    public DocumentSelection? Selection { get; private set; }
 
     public ReaderControl()
     {
@@ -69,7 +83,21 @@ public sealed partial class ReaderControl : UserControl
         _documentList.ItemTemplate = (DataTemplate)Microsoft.UI.Xaml.Markup.XamlReader.Load(
             "<DataTemplate xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation'><Grid/></DataTemplate>");
         _documentList.ContainerContentChanging += OnContainerContentChanging;
+        _documentList.PointerPressed += OnDocumentListPointerPressed;
+        _documentList.PointerMoved += OnDocumentListPointerMoved;
+        _documentList.PointerReleased += OnDocumentListPointerReleased;
+        _documentList.PointerCaptureLost += OnDocumentListPointerCaptureLost;
         AutomationProperties.SetName(_documentList, "Document content");
+
+        PreviewKeyDown += OnPreviewKeyDown;
+
+        var queue = Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread();
+        if (queue is not null)
+        {
+            _autoScrollTimer = queue.CreateTimer();
+            _autoScrollTimer.Interval = TimeSpan.FromMilliseconds(16);
+            _autoScrollTimer.Tick += OnAutoScrollTick;
+        }
 
         Grid.SetColumn(_outlineList, 0);
         Grid.SetColumn(_documentList, 1);
@@ -107,6 +135,7 @@ public sealed partial class ReaderControl : UserControl
             {
                 row.Bind(row.ItemIndex, _plan.Fragments[row.ItemIndex], OnLinkActivated, ImageCache, TextScale);
                 UpdateRowHighlights(row);
+                UpdateRowSelection(row);
             }
         }
     }
@@ -160,6 +189,77 @@ public sealed partial class ReaderControl : UserControl
         row.SetHighlights(list);
     }
 
+    public void SetSelection(DocumentSelection? selection)
+    {
+        Selection = selection;
+        foreach (var row in _boundRows)
+        {
+            UpdateRowSelection(row);
+        }
+    }
+
+    public void ClearSelection() => SetSelection(null);
+
+    public void SelectAll()
+    {
+        if (_plan is null || _plan.Fragments.Count == 0)
+        {
+            return;
+        }
+
+        var lastFrag = _plan.Fragments.Count - 1;
+        var lastLen = _plan.Fragments[lastFrag].Text.Length;
+        SetSelection(new DocumentSelection(new DocumentPosition(0, 0), new DocumentPosition(lastFrag, lastLen)));
+    }
+
+    public (string PlainText, byte[] MarkdownBytes)? CopySelection(CoreDocument? document)
+    {
+        if (Selection is not { } sel || sel.IsEmpty || _plan is null)
+        {
+            return null;
+        }
+
+        var plain = _plan.TextBetween(sel.Start, sel.End);
+        var sourceSpan = _plan.SourceBetween(sel.Start, sel.End, document);
+        var markdownBytes = sourceSpan.IsEmpty ? System.Text.Encoding.UTF8.GetBytes(plain) : sourceSpan.ToArray();
+
+        NativeClipboard.Set(0, plain, markdownBytes);
+        return (plain, markdownBytes);
+    }
+
+    private void UpdateRowSelection(RowItem row)
+    {
+        if (Selection is not { } sel || sel.IsEmpty || row.ItemIndex < 0 || _plan is null)
+        {
+            row.SetSelectionRange(null, null);
+            return;
+        }
+
+        var start = sel.Start;
+        var end = sel.End;
+
+        if (row.ItemIndex < start.FragmentIndex || row.ItemIndex > end.FragmentIndex)
+        {
+            row.SetSelectionRange(null, null);
+            return;
+        }
+
+        var fragment = _plan.Fragments[row.ItemIndex];
+        var textLen = fragment.Text.Length;
+
+        var s = (row.ItemIndex == start.FragmentIndex) ? Math.Clamp(start.CharOffset, 0, textLen) : 0;
+        var e = (row.ItemIndex == end.FragmentIndex) ? Math.Clamp(end.CharOffset, 0, textLen) : textLen;
+
+        if (e > s)
+        {
+            row.SetSelectionRange(s, e - s);
+        }
+        else
+        {
+            row.SetSelectionRange(null, null);
+        }
+    }
+
     public void InstallPlan(RenderPlan plan, ulong generation = 0)
     {
         if (generation != 0 && generation == CurrentGeneration && _plan is not null)
@@ -207,6 +307,7 @@ public sealed partial class ReaderControl : UserControl
         _boundRows.Clear();
         ImageCache.Clear();
 
+        ClearSelection();
         CurrentFindMatches = null;
         CurrentMatchIndex = null;
         _plan = null;
@@ -298,6 +399,7 @@ public sealed partial class ReaderControl : UserControl
             {
                 row.Bind(args.ItemIndex, _plan.Fragments[args.ItemIndex], OnLinkActivated, ImageCache, TextScale);
                 UpdateRowHighlights(row);
+                UpdateRowSelection(row);
                 _boundRows.Add(row);
                 if (args.ItemIndex == _pendingFocusIndex)
                 {
@@ -346,6 +448,335 @@ public sealed partial class ReaderControl : UserControl
             default:
                 break;
         }
+    }
+
+    public DocumentPosition? HitTest(Point point)
+    {
+        if (_plan is null || _plan.Fragments.Count == 0 || _boundRows.Count == 0)
+        {
+            return null;
+        }
+
+        RowItem? best = null;
+        var bestDistance = double.MaxValue;
+
+        foreach (var row in _boundRows)
+        {
+            if (row.ItemIndex < 0 || row.ActualHeight <= 0)
+            {
+                continue;
+            }
+
+            var transform = row.TransformToVisual(_documentList);
+            var top = transform.TransformPoint(default).Y;
+            var height = row.ActualHeight;
+
+            double distance;
+            if (point.Y < top)
+            {
+                distance = top - point.Y;
+            }
+            else if (point.Y > top + height)
+            {
+                distance = point.Y - top - height;
+            }
+            else
+            {
+                distance = 0;
+            }
+
+            if (distance < bestDistance)
+            {
+                best = row;
+                bestDistance = distance;
+                if (distance == 0)
+                {
+                    break;
+                }
+            }
+        }
+
+        if (best is null)
+        {
+            return null;
+        }
+
+        var localPoint = _documentList.TransformToVisual(best.TextBlock).TransformPoint(point);
+        return PositionInRow(best, localPoint);
+    }
+
+    public DocumentPosition PositionInRow(RowItem row, Point local)
+    {
+        if (_plan is null || row.ItemIndex < 0 || row.ItemIndex >= _plan.Fragments.Count)
+        {
+            return default;
+        }
+
+        var fragment = _plan.Fragments[row.ItemIndex];
+        var text = fragment.Text;
+        if (text.Length == 0)
+        {
+            return new DocumentPosition(row.ItemIndex, 0);
+        }
+
+        if (local.Y < 0)
+        {
+            return new DocumentPosition(row.ItemIndex, 0);
+        }
+        if (local.Y >= row.TextBlock.ActualHeight)
+        {
+            return new DocumentPosition(row.ItemIndex, text.Length);
+        }
+
+        var x = Math.Clamp(local.X, 0, Math.Max(0, row.TextBlock.ActualWidth - 1));
+        var pointer = row.TextBlock.GetPositionFromPoint(new Point(x, local.Y));
+        var charOffset = pointer is not null ? Math.Clamp(pointer.Offset, 0, text.Length) : 0;
+
+        // Ensure we do not split a surrogate pair
+        if (charOffset > 0 && charOffset < text.Length && char.IsLowSurrogate(text[charOffset]))
+        {
+            charOffset--;
+        }
+
+        return new DocumentPosition(row.ItemIndex, charOffset);
+    }
+
+    private void OnDocumentListPointerPressed(object sender, PointerRoutedEventArgs e)
+    {
+        var point = e.GetCurrentPoint(_documentList);
+        if (!point.Properties.IsLeftButtonPressed || _plan is null || _plan.Fragments.Count == 0)
+        {
+            return;
+        }
+
+        var hit = HitTest(point.Position);
+        if (hit is null)
+        {
+            return;
+        }
+
+        var shift = (InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Shift) & CoreVirtualKeyStates.Down) != 0;
+        if (shift && Selection is { } sel)
+        {
+            _dragAnchor = sel.Anchor;
+            SetSelection(new DocumentSelection(sel.Anchor, hit.Value));
+        }
+        else
+        {
+            _dragAnchor = hit.Value;
+            SetSelection(null);
+        }
+
+        _isDragging = true;
+        _lastPointerPosition = point.Position;
+        _ = _documentList.CapturePointer(e.Pointer);
+
+        if (_documentList.ContainerFromIndex(hit.Value.FragmentIndex) is RowItem row)
+        {
+            _ = row.Focus(FocusState.Pointer);
+        }
+    }
+
+    private void OnDocumentListPointerMoved(object sender, PointerRoutedEventArgs e)
+    {
+        if (!_isDragging || _dragAnchor is null)
+        {
+            return;
+        }
+
+        _lastPointerPosition = e.GetCurrentPoint(_documentList).Position;
+        UpdateDrag();
+
+        if (_lastPointerPosition.Y < 0 || _lastPointerPosition.Y > _documentList.ActualHeight)
+        {
+            _autoScrollTimer?.Start();
+        }
+        else
+        {
+            _autoScrollTimer?.Stop();
+        }
+    }
+
+    private void OnDocumentListPointerReleased(object sender, PointerRoutedEventArgs e)
+    {
+        if (!_isDragging)
+        {
+            return;
+        }
+
+        _documentList.ReleasePointerCapture(e.Pointer);
+        _isDragging = false;
+        _autoScrollTimer?.Stop();
+    }
+
+    private void OnDocumentListPointerCaptureLost(object sender, PointerRoutedEventArgs e)
+    {
+        _isDragging = false;
+        _autoScrollTimer?.Stop();
+    }
+
+    private void UpdateDrag()
+    {
+        if (_dragAnchor is not { } anchor || _plan is null)
+        {
+            return;
+        }
+
+        var clamped = new Point(
+            _lastPointerPosition.X,
+            Math.Clamp(_lastPointerPosition.Y, 0, Math.Max(0, _documentList.ActualHeight - 1)));
+
+        if (HitTest(clamped) is not { } hit)
+        {
+            return;
+        }
+
+        SetSelection(new DocumentSelection(anchor, hit));
+    }
+
+    private void OnAutoScrollTick(Microsoft.UI.Dispatching.DispatcherQueueTimer sender, object args)
+    {
+        if (!_isDragging || _scrollViewer is null)
+        {
+            _autoScrollTimer?.Stop();
+            return;
+        }
+
+        var delta = _lastPointerPosition.Y < 0
+            ? _lastPointerPosition.Y
+            : _lastPointerPosition.Y - _documentList.ActualHeight;
+
+        var step = Math.Clamp(delta, -60, 60);
+        var targetOffset = Math.Clamp(_scrollViewer.VerticalOffset + step, 0, _scrollViewer.ScrollableHeight);
+        _ = _scrollViewer.ChangeView(null, targetOffset, null, disableAnimation: true);
+        _documentList.UpdateLayout();
+        UpdateDrag();
+    }
+
+    private void OnPreviewKeyDown(object sender, KeyRoutedEventArgs e)
+    {
+        var shift = (InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Shift) & CoreVirtualKeyStates.Down) != 0;
+        var ctrl = (InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Control) & CoreVirtualKeyStates.Down) != 0;
+
+        if (shift)
+        {
+            if (ctrl && e.Key == VirtualKey.Home)
+            {
+                ExtendSelectionToEdge(toEnd: false);
+                e.Handled = true;
+            }
+            else if (ctrl && e.Key == VirtualKey.End)
+            {
+                ExtendSelectionToEdge(toEnd: true);
+                e.Handled = true;
+            }
+            else if (e.Key == VirtualKey.Left)
+            {
+                ExtendSelectionByChar(backwards: true);
+                e.Handled = true;
+            }
+            else if (e.Key == VirtualKey.Right)
+            {
+                ExtendSelectionByChar(backwards: false);
+                e.Handled = true;
+            }
+            else if (e.Key == VirtualKey.Up)
+            {
+                ExtendSelectionByFragment(delta: -1);
+                e.Handled = true;
+            }
+            else if (e.Key == VirtualKey.Down)
+            {
+                ExtendSelectionByFragment(delta: 1);
+                e.Handled = true;
+            }
+        }
+    }
+
+    public void ExtendSelectionByChar(bool backwards)
+    {
+        if (_plan is null || _plan.Fragments.Count == 0) return;
+        var anchor = Selection?.Anchor ?? CurrentCaretPosition();
+        var active = Selection?.Active ?? anchor;
+
+        var frag = active.FragmentIndex;
+        var offset = active.CharOffset;
+        var text = _plan.Fragments[frag].Text;
+
+        if (backwards)
+        {
+            if (offset > 0)
+            {
+                var step = (offset >= 2 && char.IsLowSurrogate(text[offset - 1]) && char.IsHighSurrogate(text[offset - 2])) ? 2 : 1;
+                active = new DocumentPosition(frag, offset - step);
+            }
+            else if (frag > 0)
+            {
+                var prevText = _plan.Fragments[frag - 1].Text;
+                active = new DocumentPosition(frag - 1, prevText.Length);
+            }
+        }
+        else
+        {
+            if (offset < text.Length)
+            {
+                var step = (offset + 1 < text.Length && char.IsHighSurrogate(text[offset]) && char.IsLowSurrogate(text[offset + 1])) ? 2 : 1;
+                active = new DocumentPosition(frag, offset + step);
+            }
+            else if (frag + 1 < _plan.Fragments.Count)
+            {
+                active = new DocumentPosition(frag + 1, 0);
+            }
+        }
+
+        SetSelection(new DocumentSelection(anchor, active));
+        ScrollToFragment(active.FragmentIndex);
+    }
+
+    public void ExtendSelectionByFragment(int delta)
+    {
+        if (_plan is null || _plan.Fragments.Count == 0) return;
+        var anchor = Selection?.Anchor ?? CurrentCaretPosition();
+        var active = Selection?.Active ?? anchor;
+
+        var targetFrag = Math.Clamp(active.FragmentIndex + delta, 0, _plan.Fragments.Count - 1);
+        var targetText = _plan.Fragments[targetFrag].Text;
+        var targetOffset = Math.Min(active.CharOffset, targetText.Length);
+        if (targetOffset > 0 && targetOffset < targetText.Length && char.IsLowSurrogate(targetText[targetOffset]))
+        {
+            targetOffset--;
+        }
+
+        active = new DocumentPosition(targetFrag, targetOffset);
+        SetSelection(new DocumentSelection(anchor, active));
+        ScrollToFragment(targetFrag);
+    }
+
+    public void ExtendSelectionToEdge(bool toEnd)
+    {
+        if (_plan is null || _plan.Fragments.Count == 0) return;
+        var anchor = Selection?.Anchor ?? CurrentCaretPosition();
+        DocumentPosition active;
+        if (toEnd)
+        {
+            var lastFrag = _plan.Fragments.Count - 1;
+            active = new DocumentPosition(lastFrag, _plan.Fragments[lastFrag].Text.Length);
+        }
+        else
+        {
+            active = new DocumentPosition(0, 0);
+        }
+
+        SetSelection(new DocumentSelection(anchor, active));
+        ScrollToFragment(active.FragmentIndex);
+    }
+
+    private DocumentPosition CurrentCaretPosition()
+    {
+        var focused = Microsoft.UI.Xaml.Input.FocusManager.GetFocusedElement(XamlRoot) as RowItem;
+        var idx = focused?.ItemIndex ?? FirstVisibleFragmentIndex();
+        idx = Math.Clamp(idx, 0, Math.Max(0, (_plan?.Fragments.Count ?? 1) - 1));
+        return new DocumentPosition(idx, 0);
     }
 
     private static ScrollViewer? FindScrollViewer(DependencyObject node)

@@ -1,10 +1,10 @@
 # Windows native shell
 
-WIN-001A, WIN-001B, WIN-001C, WIN-001D, WIN-001E, and WIN-001F provide an unpackaged Windows 11 x64 WinUI 3
+WIN-001A, WIN-001B, WIN-001C, WIN-001D, WIN-001E, WIN-001F, and WIN-001G provide an unpackaged Windows 11 x64 WinUI 3
 application in C# Native AOT linked against the local shared-core C ABI package
 (`markdown_ffi.dll`, model v2). It opens a native window with a menu bar: File
 (Open… Ctrl+O, Reload Ctrl+R, New Window Ctrl+N, Close Window Ctrl+W, Exit Ctrl+Shift+W),
-Edit (Find… Ctrl+F, Find Next F3, Find Previous Shift+F3), View (Reset Text Size Ctrl+0,
+Edit (Copy Ctrl+C, Select All Ctrl+A, Find… Ctrl+F, Find Next F3, Find Previous Shift+F3), View (Reset Text Size Ctrl+0,
 Increase Text Size Ctrl++, Decrease Text Size Ctrl+-, and Theme: System, Light, Dark),
 and Settings… (Ctrl+,). Alt+F opens the File menu; Alt+F4 retains the Windows
 close-window behavior. Closing the final window ends the process. Each window
@@ -49,7 +49,7 @@ UIA heading level automation properties (`AutomationProperties.SetHeadingLevel`)
 Link targets are resolved to internal heading fragment indices, safe external URIs
 (`http`, `https`, `mailto`), or inert text. `ReaderControl` provides a two-column
 layout with an outline sidebar (`ListView`) and document virtualized list, outline jump
-navigation, and safe link activation. Full multi-row selection and Narrator continuous reading proof remain later tasks.
+navigation, and safe link activation. Global multi-fragment selection across virtualized rows is supported with pointer drag, edge auto-scrolling, Shift+arrow/Home/End keyboard extension, Escape to clear, Ctrl+A to select all, and Ctrl+C dual-format native clipboard copy (CF_UNICODETEXT plain text and registered "text/markdown" UTF-8 source bytes). Narrator double-reading is eliminated by clearing AutomationProperties.Name on recycled row containers while keeping semantic ItemType, PositionInSet, and child TextBlock heading levels.
 
 ## Build and check
 
@@ -192,3 +192,22 @@ Validated on Windows 11 Pro build 26300.9711, Ryzen 9 5950X x64, Rust 1.99.1,
   (`--smoke`: native FindBar with search input, Previous/Next match cycling, match status,
   text scaling across 9 steps with Ctrl++/Ctrl--/Ctrl+0 and scroll retention, appearance switching
   [System/Light/Dark], and Settings window).
+
+- **WIN-001G**: Debug, Release, and relocated Release Native AOT builds passed
+  all 18 core consumer tests (`--core-tests`), 12 document access tests
+  (`--document-tests`), 18 render tests (`--render-tests`, including
+  `global_selection_and_text_between` and `native_clipboard_roundtrip`), and
+  the extended Native AOT smoke (`--smoke`: 15 accelerators verified,
+  Select All [Ctrl+A], Copy [Ctrl+C] with `CF_UNICODETEXT` and `text/markdown`
+  clipboard formats, clipboard read-back verification against document source,
+  Clear Selection [Escape], UIA double-reading elimination on `RowItem` containers,
+  and independent selection vs find text highlighters). Automated performance
+  measurements on Release Native AOT (`apps/windows/tools/measure.py`):
+  - **Launch**: `prose-1mib` median 169.31ms (min 150.96ms, max 170.91ms, target <= 400ms: PASS);
+    `long-lines-1mib` median 22.23ms (target <= 400ms: PASS); `prose-5mib` median 1042.51ms.
+  - **Jump navigation**: `prose-1mib` 0.02ms, `prose-5mib` 0.03ms, `long-lines-1mib` 0.02ms (target <= 150ms: PASS).
+  - **Copy selection**: 1 MiB prose text/markdown extraction in 7.77ms, Win32 clipboard write in 1.81ms;
+    5 MiB prose in 64.04ms, clipboard write in 6.93ms.
+  - **Memory retention**: repeated 5x load/close cycles demonstrated complete memory reclamation
+    with no unbounded growth (final RSS ~19.3 MiB for 1 MiB prose, ~24.3 MiB for 5 MiB prose,
+    ~17.2 MiB for 1 MiB long lines).

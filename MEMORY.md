@@ -70,7 +70,21 @@ read.
   using `%LOCALAPPDATA%` JSON storage. Grok review 1 at `b6070ad` reported 0 Blockers, 5 Concerns, 2 Nits;
   follow-up review 2 at `292e868` reported 0 Blockers, 1 Concern, 2 Nits; follow-up review 3 at `2fcac41`
   reported 0 Blockers, 0 Concerns, 0 Nits (clean approval under D-029). All checks in CI run 41487555337
-  passed. WIN-001G (large-document layout, global selection, accessibility) is next on Windows.
+  passed.
+- WIN-001G delivers Windows large-document layout, global multi-fragment
+  selection across virtualized rows (`DocumentPosition`, `DocumentSelection`,
+  `ReaderControl`), pointer drag selection with edge auto-scrolling, keyboard selection
+  extension (Shift+arrows, Shift+Home/End, Escape), Select All (`Ctrl+A`), dual-format
+  native Win32 clipboard copy (`CF_UNICODETEXT` plain text with block/table separators and
+  registered `"text/markdown"` UTF-8 source bytes, `NativeClipboard.cs`), UIA accessibility
+  single-reading fix (`AutomationProperties.SetName(this, string.Empty)` on container with
+  `ItemType`, `PositionInSet`, and child `TextBlock` heading levels, resolving the Narrator
+  double-reading defect), and independent selection vs find text highlighters. Automated
+  performance measurements (`apps/windows/tools/measure.py`) confirm: warm launch median
+  169.31ms for 1 MiB prose and 22.23ms for 1 MiB long lines (both within 400ms target);
+  outline jump navigation 0.02ms (budget 150ms); copy slice 7.77ms and clipboard write 1.81ms
+  for 1 MiB prose (< 10ms total); repeated 5x load/close cycles confirm full memory reclamation
+  (RSS drops back to baseline ~19 MiB).
 - Phase: `desktop-apps`; the portable-core shared track is complete through
   CORE-006 (GATE-001 approved, D-018). Native chains are now eligible (D-027).
 - Product: local-first, read-only native Markdown reader. Windows, macOS and

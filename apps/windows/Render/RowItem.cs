@@ -24,12 +24,16 @@ public sealed partial class RowItem : ListViewItem
 
     private static readonly SolidColorBrush s_findHighlightBrush = new(global::Windows.UI.Color.FromArgb(0x80, 0xFF, 0xEB, 0x3B));
     private static readonly SolidColorBrush s_currentFindHighlightBrush = new(global::Windows.UI.Color.FromArgb(0xC0, 0xFF, 0x98, 0x00));
+    private static readonly SolidColorBrush s_selectionBrush = new(global::Windows.UI.Color.FromArgb(0x66, 0x00, 0x78, 0xD4));
+
+    private readonly List<(int Start, int Length, bool IsCurrent)> _findHighlights = [];
+    private (int Start, int Length)? _selectionHighlight;
 
     public Grid Root { get; } = new();
     public RichTextBlock TextBlock { get; } = new()
     {
         TextWrapping = TextWrapping.Wrap,
-        IsTextSelectionEnabled = true,
+        IsTextSelectionEnabled = false,
     };
     public StackPanel ImagesPanel { get; } = new()
     {
@@ -80,28 +84,64 @@ public sealed partial class RowItem : ListViewItem
     }
 
     /// <summary>
-    /// Resets row state when recycled or unbound.
+    /// Updates the row's selection highlight range.
+    /// </summary>
+    public void SetSelectionRange(int? start, int? length)
+    {
+        if (start.HasValue && length.HasValue && length.Value > 0)
+        {
+            _selectionHighlight = (start.Value, length.Value);
+        }
+        else
+        {
+            _selectionHighlight = null;
+        }
+        UpdateHighlighters();
+    }
+
+    /// <summary>
+    /// Sets find match highlight ranges on this row.
     /// </summary>
     public void SetHighlights(IReadOnlyList<(int Start, int Length, bool IsCurrent)>? highlights)
     {
-        TextBlock.TextHighlighters.Clear();
-        if (highlights is null || highlights.Count == 0) return;
-        var normal = new TextHighlighter { Background = s_findHighlightBrush };
-        var current = new TextHighlighter { Background = s_currentFindHighlightBrush };
-        foreach (var (start, length, isCurrent) in highlights)
+        _findHighlights.Clear();
+        if (highlights is not null && highlights.Count > 0)
         {
-            var range = new TextRange { StartIndex = start, Length = length };
-            if (isCurrent) current.Ranges.Add(range);
-            else normal.Ranges.Add(range);
+            _findHighlights.AddRange(highlights);
         }
-        if (normal.Ranges.Count > 0) TextBlock.TextHighlighters.Add(normal);
-        if (current.Ranges.Count > 0) TextBlock.TextHighlighters.Add(current);
+        UpdateHighlighters();
+    }
+
+    private void UpdateHighlighters()
+    {
+        TextBlock.TextHighlighters.Clear();
+        if (_findHighlights.Count > 0)
+        {
+            var normal = new TextHighlighter { Background = s_findHighlightBrush };
+            var current = new TextHighlighter { Background = s_currentFindHighlightBrush };
+            foreach (var (start, length, isCurrent) in _findHighlights)
+            {
+                var range = new TextRange { StartIndex = start, Length = length };
+                if (isCurrent) current.Ranges.Add(range);
+                else normal.Ranges.Add(range);
+            }
+            if (normal.Ranges.Count > 0) TextBlock.TextHighlighters.Add(normal);
+            if (current.Ranges.Count > 0) TextBlock.TextHighlighters.Add(current);
+        }
+        if (_selectionHighlight is { } sel && sel.Length > 0)
+        {
+            var selHighlighter = new TextHighlighter { Background = s_selectionBrush };
+            selHighlighter.Ranges.Add(new TextRange { StartIndex = sel.Start, Length = sel.Length });
+            TextBlock.TextHighlighters.Add(selHighlighter);
+        }
     }
 
     public void Unbind()
     {
         ItemIndex = -1;
         ShownText = string.Empty;
+        _findHighlights.Clear();
+        _selectionHighlight = null;
         TextBlock.Blocks.Clear();
         TextBlock.TextHighlighters.Clear();
         TextBlock.Visibility = Visibility.Visible;
@@ -267,7 +307,13 @@ public sealed partial class RowItem : ListViewItem
 
         ShownText = fragment.Text;
 
-        AutomationProperties.SetName(this, ShownText);
+        // UIA: Set name on this container to string.Empty so screen readers (Narrator) do not read
+        // the text twice (once as the ListViewItem name and once as the RichTextBlock text).
+        // Expose item type, position in set, and heading level where Narrator looks.
+        AutomationProperties.SetName(this, string.Empty);
+        AutomationProperties.SetItemType(this, fragment.Kind.ToString().ToLowerInvariant());
+        AutomationProperties.SetPositionInSet(this, index + 1);
+
         var autoHeadingLevel = fragment.HeadingStart && headingLevel is >= 1 and <= 6
             ? (AutomationHeadingLevel)headingLevel
             : AutomationHeadingLevel.None;

@@ -114,6 +114,10 @@ public sealed class RenderFragment
 
     public bool IsHeader { get; internal set; }
 
+    public bool StartsBlock { get; internal set; }
+
+    public string SeparatorBefore { get; internal set; } = string.Empty;
+
     public List<RenderedImage> Images { get; } = [];
 
     public RenderedImage? Image => Images.Count > 0 ? Images[0] : null;
@@ -183,6 +187,103 @@ public sealed class RenderPlan
             return null;
         }
         return Fragments[fragment].HasLink(link) ? Targets[link] : null;
+    }
+
+    /// <summary>
+    /// Computes the plain rendered text between two document positions.
+    /// </summary>
+    public string TextBetween(DocumentPosition start, DocumentPosition end)
+    {
+        if (Fragments.Count == 0)
+        {
+            return string.Empty;
+        }
+
+        var (s, e) = start <= end ? (start, end) : (end, start);
+        var sFrag = Math.Clamp(s.FragmentIndex, 0, Fragments.Count - 1);
+        var eFrag = Math.Clamp(e.FragmentIndex, 0, Fragments.Count - 1);
+
+        var sChar = Math.Clamp(s.CharOffset, 0, Fragments[sFrag].Text.Length);
+        var eChar = Math.Clamp(e.CharOffset, 0, Fragments[eFrag].Text.Length);
+
+        if (sFrag == eFrag)
+        {
+            return eChar > sChar ? Fragments[sFrag].Text[sChar..eChar] : string.Empty;
+        }
+
+        var sb = new StringBuilder();
+        for (var f = sFrag; f <= eFrag; f++)
+        {
+            var frag = Fragments[f];
+            var from = (f == sFrag) ? sChar : 0;
+            var to = (f == eFrag) ? eChar : frag.Text.Length;
+
+            if (f > sFrag && !string.IsNullOrEmpty(frag.SeparatorBefore))
+            {
+                sb.Append(frag.SeparatorBefore);
+            }
+
+            if (to > from)
+            {
+                sb.Append(frag.Text.AsSpan(from, to - from));
+            }
+        }
+
+        return sb.ToString();
+    }
+
+    /// <summary>
+    /// Computes the Markdown source bytes covering the given selection range.
+    /// For a whole-document selection, returns the exact source bytes.
+    /// </summary>
+    public ReadOnlySpan<byte> SourceBetween(DocumentPosition start, DocumentPosition end, CoreDocument? document)
+    {
+        if (document is null || document.SourceByteCount == 0 || Fragments.Count == 0)
+        {
+            return default;
+        }
+
+        var (s, e) = start <= end ? (start, end) : (end, start);
+        var lastFrag = Fragments.Count - 1;
+        var lastLen = Fragments[lastFrag].Text.Length;
+
+        // Whole-document selection returns the source bytes exactly
+        if (s.FragmentIndex == 0 && s.CharOffset == 0 &&
+            e.FragmentIndex == lastFrag && e.CharOffset >= lastLen)
+        {
+            return document.Source;
+        }
+
+        var sFrag = Math.Clamp(s.FragmentIndex, 0, lastFrag);
+        var eFrag = Math.Clamp(e.FragmentIndex, 0, lastFrag);
+
+        uint minSpan = uint.MaxValue;
+        uint maxSpan = 0;
+        var found = false;
+
+        for (var f = sFrag; f <= eFrag; f++)
+        {
+            foreach (var run in Fragments[f].Runs)
+            {
+                if (run.NodeId >= 0 && run.NodeId < document.NodeCount)
+                {
+                    ref readonly var node = ref document.Nodes[run.NodeId];
+                    if (node.span_start <= node.span_end && node.span_end <= (uint)document.SourceByteCount)
+                    {
+                        if (node.span_start < minSpan) minSpan = node.span_start;
+                        if (node.span_end > maxSpan) maxSpan = node.span_end;
+                        found = true;
+                    }
+                }
+            }
+        }
+
+        if (found && minSpan <= maxSpan && maxSpan <= (uint)document.SourceByteCount)
+        {
+            return document.Source.AsSpan((int)minSpan, (int)(maxSpan - minSpan));
+        }
+
+        return default;
     }
 
     private sealed class Builder(
@@ -701,9 +802,29 @@ public sealed class RenderPlan
             RenderedImage[]? images = null)
         {
             var initial = plan.Fragments.Count;
+            string sepBefore;
+            if (initial == 0)
+            {
+                sepBefore = string.Empty;
+            }
+            else if (kind == FragmentKind.TableRow)
+            {
+                sepBefore = isHeader || plan.Fragments[initial - 1].Kind != FragmentKind.TableRow ? "\n\n" : "\n";
+            }
+            else if (indent > 0 || (initial > 0 && plan.Fragments[initial - 1].Indent > 0))
+            {
+                sepBefore = "\n";
+            }
+            else
+            {
+                sepBefore = "\n\n";
+            }
+
             var fragment = new RenderFragment(kind, headingLevel, headingLevel > 0, indent, quote)
             {
                 IsHeader = isHeader,
+                StartsBlock = true,
+                SeparatorBefore = sepBefore,
             };
             if (images is not null && images.Length > 0)
             {
@@ -719,6 +840,8 @@ public sealed class RenderPlan
                 fragment = new RenderFragment(kind, headingLevel, headingStart: false, indent, quote)
                 {
                     IsHeader = isHeader,
+                    StartsBlock = false,
+                    SeparatorBefore = string.Empty,
                 };
                 used = 0;
             }

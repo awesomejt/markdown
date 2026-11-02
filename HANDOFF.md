@@ -1,29 +1,33 @@
 # Agent Session and Platform Handoff
 
-Updated: 2026-11-02 (America/Denver), WIN-001F approved closeout (PR #58).
-Completed Windows task: `WIN-001F` (`f52ec302-4df5-4a47-a627-e1c48d25feab`), pass
-`273ed98d-76e6-4060-8b19-fd731f44d3ab` (sequence 120, `project.yaml` revision 741),
-branch `feat/win-001f-find-theme-text`, based on `develop` at `5b9f67e` (PR #57 merge).
-`apps/windows/` (`CoreFfi.cs`, `CoreFind.cs`, `DocumentFind.cs`, `FindBar.cs`, `RowItem.cs`,
-`ReaderControl.cs`, `TextScale.cs`, `ReaderPreferences.cs`, `SettingsWindow.cs`, `Program.cs`)
-delivers Windows native document find (`md_snapshot_find` C ABI binding, UI-free core find
-integration, UTF-8 byte to UTF-16 char match mapping across fragments and runs, WinUI 3 FindBar
-UI with search box, match cycling, status text, and `TextHighlighter` highlights), discrete text
-scaling across 9 steps (0.75x–2.5x) with scroll retention and keyboard shortcuts (`Ctrl++`/`Ctrl--`/`Ctrl+0`),
-theme switching (System, Light, Dark), and persistent settings via `LocalSettingsPreferenceStore`
-using `%LOCALAPPDATA%\MarkdownReader\preferences.json`.
-Local `apps/windows/tools/check.py` passes in Debug, Release, and relocated Release
-(18 core consumer tests, 12 document tests, 16 render tests, Native AOT WinUI smoke, association checks,
-and relocated core probe with 0 leaked handles).
-[Grok review 1](https://github.com/awesomejt/markdown/pull/58#pullrequestreview-5740036229) at `b6070ad`
-reported 0 Blockers, 5 Concerns, 2 Nits; follow-up [Grok review 2](https://github.com/awesomejt/markdown/pull/58#pullrequestreview-5740098494)
-at `292e868` reported 0 Blockers, 1 Concern, 2 Nits; follow-up [Grok review 3](https://github.com/awesomejt/markdown/pull/58#pullrequestreview-5740134914)
-at `2fcac41` reported 0 Blockers, 0 Concerns, 0 Nits, approving merge under D-029.
-Hosted CI run 41487555337 passed all required checks. One state/docs closeout commit follows `2fcac41`,
-then merge into `develop` and branch deletion. Next eligible Windows task is `WIN-001G` (`6d691079-b1c2-4767-9372-2bbdf1cbebbd`):
-large-document layout, global selection and accessibility.
+Updated: 2026-11-02 (America/Denver), WIN-001G ready for review.
+Active Windows task: `WIN-001G` (`35bb5a1b-3eec-44c3-b149-73b037c4f30d`), pass
+`1ab71944-3ce1-495e-b10b-608ac702eda1` (sequence 121, `project.yaml` revision 742),
+branch `feat/win-001g-large-document-accessibility`, based on `develop` at `a3fecba` (PR #58 merge).
+`apps/windows/` (`Render/DocumentSelection.cs`, `Render/NativeClipboard.cs`,
+`Render/RenderPlan.cs`, `Render/RowItem.cs`, `Render/ReaderControl.cs`, `Program.cs`,
+`Measurement.cs`, `tools/measure.py`, `RenderTests.cs`) delivers:
+- Global multi-fragment text selection across virtualized rows with pointer drag,
+  edge auto-scrolling, Shift+arrow/Home/End keyboard extension, Escape to clear,
+  and Ctrl+A to select all.
+- Native Win32 clipboard copy (Ctrl+C) providing dual formats: standard `CF_UNICODETEXT`
+  plain text (with paragraph and table separators) and registered `"text/markdown"`
+  with full UTF-8 Markdown source bytes.
+- UIA accessibility double-reading elimination on virtualized row items: container
+  clears `AutomationProperties.SetName` while exposing `ItemType` and `PositionInSet`,
+  leaving text content to child `TextBlock` and preserving heading levels.
+- Independent selection vs find `TextHighlighter` ranges without interference.
+- Automated performance measurement runner (`apps/windows/tools/measure.py`) confirming
+  launch, jump navigation (< 0.03ms, target <= 150ms), copy slice (< 8ms for 1 MiB),
+  and 5x repeated load memory reclamation.
 
-Previous Windows task: `WIN-001E` merged in [PR #57](https://github.com/awesomejt/markdown/pull/57) (`5b9f67e`).
+Local `apps/windows/tools/check.py` passes in Debug, Release, and relocated Release
+(18 core consumer tests, 12 document tests, 18 render tests, Native AOT WinUI smoke,
+association checks, and relocated core probe with 0 leaked handles).
+
+Next Windows task after WIN-001G merge: `WIN-001H` (External change detection, auto-refresh and conflict recovery).
+
+Previous Windows task: `WIN-001F` merged in [PR #58](https://github.com/awesomejt/markdown/pull/58).
 
 Previous Linux handoff baseline: `develop` after PR #52; reviewed head `f12d2e5`, non-serious
 review fixes at `27e84df`, followed by one state/docs closeout. The merge SHA is
