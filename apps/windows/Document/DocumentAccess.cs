@@ -438,6 +438,11 @@ public static unsafe class DocumentReader
                 return ReadResult.Fail(DocumentError.NotRegularFile);
             }
 
+            if (IsRemoteHandle(handle))
+            {
+                return ReadResult.Fail(DocumentError.NonLocalFile);
+            }
+
             var fileSize = ((ulong)info.nFileSizeHigh << 32) | info.nFileSizeLow;
             if (fileSize > maxBytes)
             {
@@ -647,6 +652,19 @@ public static unsafe class DocumentReader
         return false;
     }
 
+    private static bool IsRemoteHandle(nint handle)
+    {
+        const int capacity = 4096;
+        char* buffer = stackalloc char[capacity];
+        var len = GetFinalPathNameByHandleW(handle, buffer, capacity, 0);
+        if (len == 0 || len >= capacity)
+        {
+            return false;
+        }
+        var finalPath = new ReadOnlySpan<char>(buffer, (int)len);
+        return finalPath.StartsWith(@"\\?\UNC\".AsSpan(), StringComparison.OrdinalIgnoreCase);
+    }
+
     private static bool IsDirectoryOnDisk(string path)
     {
         uint attrs;
@@ -769,6 +787,13 @@ public static unsafe class DocumentReader
 
     [DllImport("kernel32.dll", ExactSpelling = true, SetLastError = true)]
     private static extern uint GetFileAttributesW(char* lpFileName);
+
+    [DllImport("kernel32.dll", ExactSpelling = true, SetLastError = true)]
+    private static extern uint GetFinalPathNameByHandleW(
+        nint hFile,
+        char* lpszFilePath,
+        uint cchFilePath,
+        uint dwFlags);
 
     [DllImport("kernel32.dll", ExactSpelling = true, SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]

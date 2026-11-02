@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -56,6 +57,8 @@ def check_association(exe_path: Path) -> None:
 
         pipe_name = f"markdown-assoc-{uuid.uuid4().hex}"
         report_path = tmp_dir / "report.json"
+        env = dict(os.environ)
+        env["MARKDOWN_INSTANCE_KEY"] = pipe_name
 
         # Launch primary process with startup file argument (alpha.md).
         primary_cmd = [
@@ -70,6 +73,7 @@ def check_association(exe_path: Path) -> None:
         primary = subprocess.Popen(
             primary_cmd,
             cwd=exe_path.parent,
+            env=env,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,
@@ -80,21 +84,18 @@ def check_association(exe_path: Path) -> None:
         try:
             # Give the primary process a brief moment to acquire the primary mutex and start
             # its named-pipe listener, then invoke secondary processes for beta, gamma, and
-            # a duplicate alpha (verifying existing-window reuse).
+            # a duplicate alpha using the exact ' "@EXE@" "%1" ' command shape from the .reg.in template.
             time.sleep(0.25)
             for secondary_file in (beta, gamma, alpha):
                 secondary_cmd = [
                     str(exe_path),
-                    "--association-smoke",
-                    pipe_name,
-                    str(report_path),
-                    "4",
                     str(secondary_file),
                 ]
                 log_cmd(secondary_cmd)
                 res = subprocess.run(
                     secondary_cmd,
                     cwd=exe_path.parent,
+                    env=env,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.STDOUT,
                     text=True,

@@ -46,13 +46,13 @@ internal static unsafe class DocumentPicker
     internal static void EnqueueAutomationSelect(string fullPath) =>
         s_automationQueue.Enqueue(new PickerAutomationStep(PickerAutomationAction.SelectPath, fullPath));
 
-    public static DocumentCapability? PickFile(Window ownerWindow)
+    public static string? PickFile(Window ownerWindow)
     {
         var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(ownerWindow);
         return PickFileForHwnd(hwnd);
     }
 
-    public static DocumentCapability? PickFileForHwnd(nint ownerHwnd)
+    public static string? PickFileForHwnd(nint ownerHwnd)
     {
         const int maxChars = 32768;
         var fileBuffer = new char[maxChars];
@@ -111,8 +111,7 @@ internal static unsafe class DocumentPicker
                     return null;
                 }
 
-                var selectedPath = new string(filePtr, 0, len);
-                return DocumentCapability.FromPickerPath(selectedPath);
+                return new string(filePtr, 0, len);
             }
         }
         finally

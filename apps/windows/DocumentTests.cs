@@ -363,18 +363,38 @@ internal static class DocumentTests
             "expected Reload after failed first open to succeed");
         Assert(loader.Document!.OutlineTitle(0) == "First", $"unexpected outline title: {loader.Document.OutlineTitle(0)}");
 
-        // 2. Replacement open fails session creation -> preserves existing first capability, session, and document.
-        var serialBefore = loader.Serial;
-        loader.SessionFactory = (_, _) => throw new CoreException(CoreErrorKind.Status, "simulated replacement failure");
-        var secondCap = DocumentCapability.FromPickerPath(secondPath);
-        loader.Open(secondCap);
+        // 2. Replacement open fails session creation while an in-flight reload of the first file is active ->
+        //    cancels the in-flight reload, revokes the rejected capability, and preserves the first selection/document/error.
+        using (var enteredReload = new ManualResetEventSlim(false))
+        using (var releaseReload = new ManualResetEventSlim(false))
+        {
+            loader.ReadBarrier = () =>
+            {
+                enteredReload.Set();
+                releaseReload.Wait(TimeSpan.FromSeconds(5));
+            };
+            loader.Reload();
+            Assert(enteredReload.Wait(TimeSpan.FromSeconds(5)), "timed out waiting for reload barrier");
+            loader.ReadBarrier = null;
 
-        Assert(ReferenceEquals(loader.Capability, firstCap), "replacement failure must preserve previous capability");
-        Assert(!firstCap.IsRevoked, "previous capability must not be revoked when replacement session creation fails");
-        Assert(loader.Document is not null && loader.Document.OutlineTitle(0) == "First",
-            "replacement failure must preserve previous document");
-        Assert(loader.Serial == serialBefore, "replacement failure must not advance serial");
-        Assert(loader.Error == DocumentError.ParseFailed, "expected ParseFailed error");
+            var serialBefore = loader.Serial;
+            loader.SessionFactory = (_, _) => throw new CoreException(CoreErrorKind.Status, "simulated replacement failure");
+            var secondCap = DocumentCapability.FromPickerPath(secondPath);
+            loader.Open(secondCap);
+
+            releaseReload.Set();
+            Thread.Sleep(25);
+            _ = loader.Poll();
+
+            Assert(ReferenceEquals(loader.Capability, firstCap), "replacement failure must preserve previous capability");
+            Assert(!firstCap.IsRevoked, "previous capability must not be revoked when replacement session creation fails");
+            Assert(secondCap.IsRevoked, "rejected replacement capability must be revoked");
+            Assert(loader.Document is not null && loader.Document.OutlineTitle(0) == "First",
+                "replacement failure must preserve previous document");
+            Assert(loader.Serial > serialBefore, "replacement failure must advance serial to cancel in-flight load");
+            Assert(loader.Error == DocumentError.ParseFailed, "expected ParseFailed error preserved after in-flight reload finishes");
+            Assert(loader.LastErrorWasOpenFailure, "expected LastErrorWasOpenFailure == true on replacement open failure");
+        }
 
         loader.SessionFactory = null;
         loader.CloseAndWait();
@@ -597,15 +617,28 @@ internal static class DocumentTests
             loader.CloseAndWait();
             releaseThread.Join();
 
-            // Now hold all slots again and verify a short BusyRetryTimeout reports DocumentError.Busy cleanly.
+            // Now hold all slots again and verify:
+            // (a) another window's file read executes on markdown-files without waiting behind the first window's Busy retry, and
+            // (b) a short BusyRetryTimeout reports DocumentError.Busy cleanly.
             Assert(CoreRuntime.TryAcquireSlot(), "expected to re-acquire released slot");
             acquired++;
 
+            var missingPath = System.IO.Path.Combine(temp.Path, "other-window-missing.md");
+            using var otherWindowLoader = new DocumentLoader();
             using var timeoutLoader = new DocumentLoader
             {
-                BusyRetryTimeout = TimeSpan.FromMilliseconds(40),
+                BusyRetryTimeout = TimeSpan.FromMilliseconds(150),
             };
             timeoutLoader.Open(DocumentCapability.FromPickerPath(path));
+
+            // While timeoutLoader is actively waiting in its Busy admission retry, a second window's file read
+            // (which completes on markdown-files before parse submission) must finish promptly without waiting 150 ms.
+            otherWindowLoader.Open(DocumentCapability.FromPickerPath(missingPath));
+            WaitForIdle(otherWindowLoader, timeoutMs: 100);
+            Assert(otherWindowLoader.Error == DocumentError.NotFound,
+                $"expected second window read to complete with NotFound while first window retries Busy, got {otherWindowLoader.Error}");
+            otherWindowLoader.CloseAndWait();
+
             WaitForIdle(timeoutLoader);
 
             Assert(timeoutLoader.Error == DocumentError.Busy,

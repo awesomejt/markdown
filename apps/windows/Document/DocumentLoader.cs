@@ -103,6 +103,44 @@ internal static class FileWorkDispatcher
         }
     }
 
+    public static bool EnqueueRetryIfCurrent(ulong ownerId, Cancellation cancellation, Action work)
+    {
+        lock (s_lock)
+        {
+            if (cancellation.IsCancelled)
+            {
+                return false;
+            }
+            foreach (var existing in s_queue)
+            {
+                if (existing.OwnerId == ownerId)
+                {
+                    // A newer load for the same owner is already queued.
+                    return false;
+                }
+            }
+            EnsureThreadStartedLocked();
+            s_queue.AddLast(new QueuedJob(ownerId, work));
+            Monitor.Pulse(s_lock);
+            return true;
+        }
+    }
+
+    public static bool HasOtherOwnerQueued(ulong ownerId)
+    {
+        lock (s_lock)
+        {
+            foreach (var job in s_queue)
+            {
+                if (job.OwnerId != ownerId)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+    }
+
     public static int Remove(ulong ownerId)
     {
         lock (s_lock)
@@ -188,6 +226,7 @@ public sealed class DocumentLoader : IDisposable
     private CoreSession? _session;
     private Cancellation? _active;
     private bool _closed;
+    private ulong _serial;
     private bool _hadSuccessfulRead;
     private uint _lastVolumeSerial;
     private string? _lastVolumeRoot;
@@ -201,8 +240,9 @@ public sealed class DocumentLoader : IDisposable
     public DocumentCapability? Capability { get; private set; }
     public CoreDocument? Document { get; private set; }
     public DocumentError? Error { get; private set; }
+    public bool LastErrorWasOpenFailure { get; private set; }
     public bool IsLoading { get; private set; }
-    public ulong Serial { get; private set; }
+    public ulong Serial => Volatile.Read(ref _serial);
     public ulong DiscardedResults => Volatile.Read(ref _discardedResults);
 
     public bool HasFile => Capability is not null;
@@ -230,7 +270,7 @@ public sealed class DocumentLoader : IDisposable
     public void Open(DocumentCapability capability)
     {
         ArgumentNullException.ThrowIfNull(capability);
-        if (_closed)
+        if (Volatile.Read(ref _closed))
         {
             return;
         }
@@ -249,7 +289,14 @@ public sealed class DocumentLoader : IDisposable
         {
             if (_session is not null)
             {
-                // Preserve the active selection, session, and published document when replacement session creation fails.
+                // Preserve the active selection, session, and published document when replacement session creation
+                // fails, while cancelling any in-flight load of the old selection and revoking the rejected capability.
+                CancelCurrent();
+                if (!ReferenceEquals(Capability, capability))
+                {
+                    capability.Revoke();
+                }
+                LastErrorWasOpenFailure = true;
                 Error = DocumentErrorExtensions.FromCoreException(ex);
                 IsLoading = false;
                 return;
@@ -263,6 +310,7 @@ public sealed class DocumentLoader : IDisposable
             }
             Capability = capability;
             Document = null;
+            LastErrorWasOpenFailure = false;
             Error = DocumentErrorExtensions.FromCoreException(ex);
             IsLoading = false;
             _hadSuccessfulRead = false;
@@ -284,6 +332,7 @@ public sealed class DocumentLoader : IDisposable
 
         Capability = capability;
         Document = null;
+        LastErrorWasOpenFailure = false;
         Error = null;
         IsLoading = true;
         _hadSuccessfulRead = false;
@@ -295,7 +344,7 @@ public sealed class DocumentLoader : IDisposable
 
     public void Reload()
     {
-        if (_closed || Capability is null)
+        if (Volatile.Read(ref _closed) || Capability is null)
         {
             return;
         }
@@ -307,6 +356,7 @@ public sealed class DocumentLoader : IDisposable
         }
 
         CancelCurrent();
+        LastErrorWasOpenFailure = false;
         Error = null;
         IsLoading = true;
 
@@ -315,13 +365,14 @@ public sealed class DocumentLoader : IDisposable
 
     public void RejectSelection(DocumentError error)
     {
-        if (_closed)
+        if (Volatile.Read(ref _closed))
         {
             return;
         }
 
         CancelCurrent();
         IsLoading = false;
+        LastErrorWasOpenFailure = _session is not null;
         Error = error;
     }
 
@@ -339,7 +390,7 @@ public sealed class DocumentLoader : IDisposable
                 }
             }
 
-            if (_closed || item.Serial != Serial)
+            if (Volatile.Read(ref _closed) || item.Serial != Serial)
             {
                 RecordDiscarded();
                 continue;
@@ -352,6 +403,7 @@ public sealed class DocumentLoader : IDisposable
             if (item.Document is not null)
             {
                 Document = item.Document;
+                LastErrorWasOpenFailure = false;
                 Error = null;
                 _hadSuccessfulRead = true;
                 _lastVolumeSerial = item.VolumeSerial;
@@ -361,6 +413,7 @@ public sealed class DocumentLoader : IDisposable
 
             var rawError = item.Error ?? DocumentError.ReadFailed;
             var effectiveError = PromoteContextualError(rawError);
+            LastErrorWasOpenFailure = false;
             Error = effectiveError;
 
             if (effectiveError.UnavailableReason() is { } reason && _session is not null)
@@ -380,16 +433,17 @@ public sealed class DocumentLoader : IDisposable
 
     public void Close()
     {
-        if (_closed)
+        if (Volatile.Read(ref _closed))
         {
             return;
         }
-        _closed = true;
+        Volatile.Write(ref _closed, true);
         CancelCurrent();
 
         Capability?.Revoke();
         Capability = null;
         Document = null;
+        LastErrorWasOpenFailure = false;
         Error = null;
         IsLoading = false;
 
@@ -434,7 +488,7 @@ public sealed class DocumentLoader : IDisposable
 
     private void CancelCurrent()
     {
-        Serial++;
+        _ = Interlocked.Increment(ref _serial);
         var oldActive = _active;
         _active = null;
         oldActive?.Cancel();
@@ -496,41 +550,117 @@ public sealed class DocumentLoader : IDisposable
             var readDoc = readResult.Document!;
             var startTick = Stopwatch.GetTimestamp();
 
-            while (!cancellation.IsCancelled)
+            if (TrySubmitParse(serial, session, readDoc, cancellation, startTick, retryTimeout))
+            {
+                return;
+            }
+
+            // Core admission is currently saturated (Busy). Continue bounded retry off the
+            // markdown-files thread so other windows' file reads never stall behind admission backoff.
+            _ = ThreadPool.QueueUserWorkItem(_ =>
             {
                 try
                 {
-                    var request = session.Parse(
-                        readDoc.Bytes,
-                        readDoc.RevisionToken,
-                        copyUnchanged: true,
-                        (coreResult, coreError) =>
+                    while (!cancellation.IsCancelled)
+                    {
+                        if (cancellation.WaitCancelled(TimeSpan.FromMilliseconds(15)))
                         {
-                            cancellation.MarkCompleted();
-                            if (cancellation.IsCancelled)
-                            {
-                                RecordDiscarded();
-                                return;
-                            }
+                            RecordDiscarded();
+                            return;
+                        }
 
-                            if (coreError is not null)
+                        if (TrySubmitParse(serial, session, readDoc, cancellation, startTick, retryTimeout))
+                        {
+                            return;
+                        }
+                    }
+
+                    RecordDiscarded();
+                }
+                catch (Exception ex)
+                {
+                    CoreRuntime.ReportCallbackException(ex);
+                }
+            });
+        });
+    }
+
+    /// <summary>
+    /// Attempts to submit <paramref name="readDoc"/> to <paramref name="session"/>.
+    /// Returns <c>true</c> if submission completed (published, failed, or timed out on Busy),
+    /// or <c>false</c> if <see cref="CoreErrorKind.Busy"/> was encountered before <paramref name="retryTimeout"/>.
+    /// </summary>
+    private bool TrySubmitParse(
+        ulong serial,
+        CoreSession session,
+        ReadDocument readDoc,
+        Cancellation cancellation,
+        long startTick,
+        TimeSpan retryTimeout)
+    {
+        if (cancellation.IsCancelled)
+        {
+            RecordDiscarded();
+            return true;
+        }
+
+        try
+        {
+            var request = session.Parse(
+                readDoc.Bytes,
+                readDoc.RevisionToken,
+                copyUnchanged: true,
+                (coreResult, coreError) =>
+                {
+                    cancellation.MarkCompleted();
+                    if (cancellation.IsCancelled)
+                    {
+                        RecordDiscarded();
+                        return;
+                    }
+
+                    if (coreError is not null)
+                    {
+                        var mapped = DocumentErrorExtensions.FromCoreException(coreError);
+                        if (mapped == DocumentError.Cancelled)
+                        {
+                            RecordDiscarded();
+                            return;
+                        }
+                        PushCompleted(new CompletedLoad(
+                            serial,
+                            null,
+                            mapped,
+                            readDoc.VolumeSerial,
+                            readDoc.VolumeRoot));
+                        return;
+                    }
+
+                    if (coreResult is null)
+                    {
+                        PushCompleted(new CompletedLoad(
+                            serial,
+                            null,
+                            DocumentError.ParseFailed,
+                            readDoc.VolumeSerial,
+                            readDoc.VolumeRoot));
+                        return;
+                    }
+
+                    switch (coreResult.Outcome)
+                    {
+                        case CoreOutcome.Published:
+                        case CoreOutcome.Unchanged:
+                            if (coreResult.Document is not null)
                             {
-                                var mapped = DocumentErrorExtensions.FromCoreException(coreError);
-                                if (mapped == DocumentError.Cancelled)
-                                {
-                                    RecordDiscarded();
-                                    return;
-                                }
                                 PushCompleted(new CompletedLoad(
                                     serial,
+                                    coreResult.Document,
                                     null,
-                                    mapped,
                                     readDoc.VolumeSerial,
                                     readDoc.VolumeRoot));
-                                return;
                             }
-
-                            if (coreResult is null)
+                            else
                             {
                                 PushCompleted(new CompletedLoad(
                                     serial,
@@ -538,104 +668,72 @@ public sealed class DocumentLoader : IDisposable
                                     DocumentError.ParseFailed,
                                     readDoc.VolumeSerial,
                                     readDoc.VolumeRoot));
-                                return;
                             }
+                            break;
 
-                            switch (coreResult.Outcome)
-                            {
-                                case CoreOutcome.Published:
-                                case CoreOutcome.Unchanged:
-                                    if (coreResult.Document is not null)
-                                    {
-                                        PushCompleted(new CompletedLoad(
-                                            serial,
-                                            coreResult.Document,
-                                            null,
-                                            readDoc.VolumeSerial,
-                                            readDoc.VolumeRoot));
-                                    }
-                                    else
-                                    {
-                                        PushCompleted(new CompletedLoad(
-                                            serial,
-                                            null,
-                                            DocumentError.ParseFailed,
-                                            readDoc.VolumeSerial,
-                                            readDoc.VolumeRoot));
-                                    }
-                                    break;
-
-                                case CoreOutcome.Failed:
-                                    var failureError = coreResult.Failure is { } failure
-                                        ? DocumentErrorExtensions.FromParseFailure(failure)
-                                        : DocumentError.ParseFailed;
-                                    PushCompleted(new CompletedLoad(
-                                        serial,
-                                        null,
-                                        failureError,
-                                        readDoc.VolumeSerial,
-                                        readDoc.VolumeRoot));
-                                    break;
-
-                                case CoreOutcome.Cancelled:
-                                case CoreOutcome.Superseded:
-                                case CoreOutcome.Closed:
-                                    RecordDiscarded();
-                                    break;
-                            }
-                        });
-
-                    cancellation.Install(request);
-                    return;
-                }
-                catch (CoreException ex) when (ex.Kind == CoreErrorKind.Busy)
-                {
-                    if (Stopwatch.GetElapsedTime(startTick) >= retryTimeout)
-                    {
-                        if (!cancellation.IsCancelled)
-                        {
+                        case CoreOutcome.Failed:
+                            var failureError = coreResult.Failure is { } failure
+                                ? DocumentErrorExtensions.FromParseFailure(failure)
+                                : DocumentError.ParseFailed;
                             PushCompleted(new CompletedLoad(
                                 serial,
                                 null,
-                                DocumentError.Busy,
+                                failureError,
                                 readDoc.VolumeSerial,
                                 readDoc.VolumeRoot));
-                        }
-                        else
-                        {
-                            RecordDiscarded();
-                        }
-                        return;
-                    }
+                            break;
 
-                    if (cancellation.WaitCancelled(TimeSpan.FromMilliseconds(15)))
-                    {
-                        RecordDiscarded();
-                        return;
+                        case CoreOutcome.Cancelled:
+                        case CoreOutcome.Superseded:
+                        case CoreOutcome.Closed:
+                            RecordDiscarded();
+                            break;
                     }
-                }
-                catch (CoreException ex)
+                });
+
+            cancellation.Install(request);
+            return true;
+        }
+        catch (CoreException ex) when (ex.Kind == CoreErrorKind.Busy)
+        {
+            if (Stopwatch.GetElapsedTime(startTick) >= retryTimeout)
+            {
+                if (!cancellation.IsCancelled)
                 {
-                    var mapped = DocumentErrorExtensions.FromCoreException(ex);
-                    if (mapped != DocumentError.Cancelled && !cancellation.IsCancelled)
-                    {
-                        PushCompleted(new CompletedLoad(
-                            serial,
-                            null,
-                            mapped,
-                            readDoc.VolumeSerial,
-                            readDoc.VolumeRoot));
-                    }
-                    else
-                    {
-                        RecordDiscarded();
-                    }
-                    return;
+                    PushCompleted(new CompletedLoad(
+                        serial,
+                        null,
+                        DocumentError.Busy,
+                        readDoc.VolumeSerial,
+                        readDoc.VolumeRoot));
                 }
+                else
+                {
+                    RecordDiscarded();
+                }
+                return true;
             }
 
-            RecordDiscarded();
-        });
+            return false;
+        }
+        catch (CoreException ex)
+        {
+            var mapped = DocumentErrorExtensions.FromCoreException(ex);
+            if (mapped != DocumentError.Cancelled && !cancellation.IsCancelled)
+            {
+                PushCompleted(new CompletedLoad(
+                    serial,
+                    null,
+                    mapped,
+                    readDoc.VolumeSerial,
+                    readDoc.VolumeRoot));
+            }
+            else
+            {
+                RecordDiscarded();
+            }
+            return true;
+        }
     }
 
     private void RecordDiscarded() =>
@@ -643,7 +741,7 @@ public sealed class DocumentLoader : IDisposable
 
     private void PushCompleted(CompletedLoad item)
     {
-        if (_closed || item.Serial != Serial)
+        if (Volatile.Read(ref _closed) || item.Serial != Serial)
         {
             RecordDiscarded();
             return;

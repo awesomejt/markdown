@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.IO;
 using System.IO.Pipes;
+using System.Security.Principal;
 using System.Text;
 using System.Text.Json;
 using Markdown.Windows.Core;
@@ -15,6 +16,7 @@ namespace Markdown.Windows;
 
 internal static class Program
 {
+    internal const string NewWindowCommand = "__NEW_WINDOW__";
     internal static bool Smoke;
     internal static bool AssociationSmoke;
     internal static string? AssociationPipeName;
@@ -50,17 +52,6 @@ internal static class Program
                 return 2;
             }
             StartupInputs = [.. args[4..]];
-
-            s_associationPrimaryMutex = new Mutex(
-                initiallyOwned: true,
-                name: $@"Local\markdown-assoc-mutex-{AssociationPipeName}",
-                createdNew: out var isPrimary);
-            if (!isPrimary)
-            {
-                s_associationPrimaryMutex.Dispose();
-                s_associationPrimaryMutex = null;
-                return ForwardToPrimaryPipe(AssociationPipeName, StartupInputs) ? 0 : 1;
-            }
         }
         else if (args.SequenceEqual(["--smoke"]))
         {
@@ -75,6 +66,28 @@ internal static class Program
                     return 2;
                 }
                 StartupInputs.Add(arg);
+            }
+
+            var envInstanceKey = Environment.GetEnvironmentVariable("MARKDOWN_INSTANCE_KEY");
+            AssociationPipeName = !string.IsNullOrWhiteSpace(envInstanceKey)
+                ? envInstanceKey.Trim()
+                : DefaultInstancePipeName();
+        }
+
+        if (!Smoke && !string.IsNullOrEmpty(AssociationPipeName))
+        {
+            s_associationPrimaryMutex = new Mutex(
+                initiallyOwned: true,
+                name: $@"Local\markdown-assoc-mutex-{AssociationPipeName}",
+                createdNew: out var isPrimary);
+            if (!isPrimary)
+            {
+                s_associationPrimaryMutex.Dispose();
+                s_associationPrimaryMutex = null;
+                var payloads = StartupInputs.Count > 0
+                    ? StartupInputs
+                    : (IReadOnlyList<string>)[NewWindowCommand];
+                return ForwardToPrimaryPipe(AssociationPipeName, payloads) ? 0 : 1;
             }
         }
 
@@ -118,6 +131,17 @@ internal static class Program
         }
     }
 
+    private static string DefaultInstancePipeName()
+    {
+        var sid = WindowsIdentity.GetCurrent().User?.Value ?? Environment.UserName;
+        var sb = new StringBuilder("markdown-win-assoc-", 64);
+        foreach (var ch in sid)
+        {
+            sb.Append(char.IsLetterOrDigit(ch) || ch == '-' ? ch : '_');
+        }
+        return sb.ToString();
+    }
+
     private static bool ForwardToPrimaryPipe(string pipeName, IReadOnlyList<string> inputs)
     {
         try
@@ -126,7 +150,7 @@ internal static class Program
                 ".",
                 pipeName,
                 PipeDirection.Out,
-                PipeOptions.None);
+                PipeOptions.CurrentUserOnly);
             client.Connect(timeout: 5000);
             using var writer = new StreamWriter(client, new UTF8Encoding(false)) { AutoFlush = true };
             foreach (var input in inputs)
@@ -164,6 +188,7 @@ public sealed partial class ReaderApp : Application
     private readonly List<ReaderWindow> windows = [];
     private Microsoft.UI.Dispatching.DispatcherQueue? _dispatcher;
     private int _externalDeliveries;
+    private bool _shuttingDown;
 
     internal IReadOnlyList<ReaderWindow> Windows => windows;
 
@@ -180,13 +205,17 @@ public sealed partial class ReaderApp : Application
             _externalDeliveries++;
         }
 
+        if (!Program.Smoke && Program.AssociationPipeName is not null)
+        {
+            StartAssociationPipeServer(Program.AssociationPipeName);
+        }
+
         if (Program.Smoke)
         {
             ((FrameworkElement)window.Content).Loaded += async (_, _) => await RunSmokeAsync(window);
         }
-        else if (Program.AssociationSmoke && Program.AssociationPipeName is not null)
+        else if (Program.AssociationSmoke)
         {
-            StartAssociationPipeServer(Program.AssociationPipeName);
             ((FrameworkElement)window.Content).Loaded += async (_, _) => await RunAssociationSmokeAsync();
         }
     }
@@ -195,13 +224,21 @@ public sealed partial class ReaderApp : Application
     {
         var window = new ReaderWindow(this);
         windows.Add(window);
-        window.Closed += (_, _) => windows.Remove(window);
+        window.Closed += (_, _) =>
+        {
+            windows.Remove(window);
+            if (windows.Count == 0)
+            {
+                Volatile.Write(ref _shuttingDown, true);
+            }
+        };
         window.Activate();
         return window;
     }
 
     internal void CloseAll()
     {
+        Volatile.Write(ref _shuttingDown, true);
         foreach (var window in windows.ToArray())
         {
             window.Close();
@@ -210,6 +247,11 @@ public sealed partial class ReaderApp : Application
 
     internal ReaderWindow OpenExternalInput(string rawInput)
     {
+        if (string.Equals(rawInput, Program.NewWindowCommand, StringComparison.Ordinal))
+        {
+            return NewWindow();
+        }
+
         if (!DocumentCapability.TryFromUserInput(rawInput, out var capability, out var error) ||
             capability is null)
         {
@@ -249,7 +291,7 @@ public sealed partial class ReaderApp : Application
     {
         var serverThread = new Thread(() =>
         {
-            while (true)
+            while (!Volatile.Read(ref _shuttingDown))
             {
                 try
                 {
@@ -258,8 +300,12 @@ public sealed partial class ReaderApp : Application
                         PipeDirection.In,
                         NamedPipeServerStream.MaxAllowedServerInstances,
                         PipeTransmissionMode.Byte,
-                        PipeOptions.None);
+                        PipeOptions.CurrentUserOnly);
                     server.WaitForConnection();
+                    if (Volatile.Read(ref _shuttingDown))
+                    {
+                        break;
+                    }
                     using var reader = new StreamReader(server, Encoding.UTF8);
                     while (reader.ReadLine() is { } line)
                     {
@@ -277,7 +323,11 @@ public sealed partial class ReaderApp : Application
                 }
                 catch
                 {
-                    break;
+                    if (Volatile.Read(ref _shuttingDown))
+                    {
+                        break;
+                    }
+                    Thread.Sleep(20);
                 }
             }
         })
@@ -665,12 +715,18 @@ internal sealed class ReaderWindow : Window
 
     private void PickAndOpenFile()
     {
-        var picked = DocumentPicker.PickFile(this);
-        if (picked is null)
+        var pickedPath = DocumentPicker.PickFile(this);
+        if (pickedPath is null)
         {
             return;
         }
-        OpenCapability(picked);
+        if (!DocumentCapability.TryFromUserInput(pickedPath, out var capability, out var error) ||
+            capability is null)
+        {
+            RejectSelection(error);
+            return;
+        }
+        OpenCapability(capability);
     }
 
     private void ReloadDocument()
@@ -714,9 +770,10 @@ internal sealed class ReaderWindow : Window
                 $"Document: {Loader.Capability?.DisplayName ?? "Untitled"}\n" +
                 $"Generation: {doc.Generation} · Nodes: {doc.NodeCount} · Headings: {doc.OutlineCount} · Bytes: {doc.SourceByteCount}";
 
-            if (Loader.Error is { } reloadError)
+            if (Loader.Error is { } activeError)
             {
-                summary += $"\n\nReload issue:\n{reloadError.ToDisplayString()}";
+                var label = Loader.LastErrorWasOpenFailure ? "Open issue" : "Reload issue";
+                summary += $"\n\n{label}:\n{activeError.ToDisplayString()}";
             }
 
             Welcome.Text = summary;
