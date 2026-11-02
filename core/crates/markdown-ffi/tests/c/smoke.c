@@ -13,10 +13,17 @@
  */
 /* dladdr/Dl_info are GNU extensions in glibc's <dlfcn.h>; macOS declares them
    unconditionally under -std=c11. Define before any system header. */
+#ifndef _WIN32
 #define _GNU_SOURCE 1
+#endif
 #include "markdown_core.h"
 
+#ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#else
 #include <dlfcn.h>
+#endif
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -554,6 +561,34 @@ static void check_workspace_content(void) {
    staged library (not one from a search path) was loaded. ISO C has no
    function-to-object pointer conversion, so copy the representation. */
 static int report_library(void) {
+#ifdef _WIN32
+    /* On Windows without __declspec(dllimport), a function pointer in the
+       executable points to the import thunk inside smoke.exe. Calling
+       md_status_name returns a static string pointer residing inside
+       markdown_ffi.dll, which resolves the loaded DLL module handle. */
+    const char *inside_dll = md_status_name(MD_OK);
+    HMODULE module = NULL;
+    if (!GetModuleHandleExW(
+            GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+            (LPCWSTR)(const void *)inside_dll, &module) ||
+        module == NULL || GetProcAddress(module, "md_abi_negotiate") == NULL) {
+        fprintf(stderr, "GetModuleHandleExW failed\n");
+        return 1;
+    }
+    WCHAR wide[4096];
+    DWORD len = GetModuleFileNameW(module, wide, (DWORD)(sizeof wide / sizeof wide[0]));
+    if (len == 0 || len >= (DWORD)(sizeof wide / sizeof wide[0])) {
+        fprintf(stderr, "GetModuleFileNameW failed\n");
+        return 1;
+    }
+    char utf8[16384];
+    if (WideCharToMultiByte(CP_UTF8, 0, wide, -1, utf8, (int)sizeof utf8, NULL, NULL) <= 0) {
+        fprintf(stderr, "WideCharToMultiByte failed\n");
+        return 1;
+    }
+    printf("library %s\n", utf8);
+    return 0;
+#else
     md_status (*symbol)(uint32_t, md_abi_info *) = md_abi_negotiate;
     void *address = NULL;
     memcpy(&address, &symbol, sizeof address);
@@ -564,6 +599,7 @@ static int report_library(void) {
     }
     printf("library %s\n", found.dli_fname);
     return 0;
+#endif
 }
 
 static int run(uint32_t expected_models) {

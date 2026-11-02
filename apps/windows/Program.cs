@@ -1,3 +1,4 @@
+using Markdown.Windows.Core;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
@@ -14,8 +15,22 @@ internal static class Program
     [STAThread]
     private static int Main(string[] args)
     {
-        Smoke = args.SequenceEqual(new[] { "--smoke" });
-        if (args.Length != 0 && !Smoke) return 2;
+        if (args.SequenceEqual(["--core-tests"]))
+        {
+            return CoreConsumerTests.RunAll();
+        }
+        if (args.Length >= 1 && args[0] == "--core-probe")
+        {
+            return CoreProbe.Run(args[1..]);
+        }
+
+        Smoke = args.SequenceEqual(["--smoke"]);
+        if (args.Length != 0 && !Smoke)
+        {
+            return 2;
+        }
+
+        CoreRuntime.Validate();
         WinRT.ComWrappersSupport.InitializeComWrappers();
         Application.Start(initialization =>
         {
@@ -30,13 +45,16 @@ internal static class Program
 
 public sealed partial class ReaderApp : Application
 {
-    private readonly List<ReaderWindow> windows = new();
+    private readonly List<ReaderWindow> windows = [];
     public ReaderApp() => InitializeComponent();
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
         var window = NewWindow();
-        if (Program.Smoke) ((FrameworkElement)window.Content).Loaded += (_, _) => RunSmoke(window);
+        if (Program.Smoke)
+        {
+            ((FrameworkElement)window.Content).Loaded += (_, _) => RunSmoke(window);
+        }
     }
 
     internal ReaderWindow NewWindow()
@@ -50,32 +68,63 @@ public sealed partial class ReaderApp : Application
 
     internal void CloseAll()
     {
-        foreach (var window in windows.ToArray()) window.Close();
+        foreach (var window in windows.ToArray())
+        {
+            window.Close();
+        }
     }
 
     private void RunSmoke(ReaderWindow first)
     {
-        // Exercise the same command delegates used by menus and accelerators.
+        // Exercise the same command delegates used by menus and accelerators,
+        // plus an in-app shared-core model v2 parse and clean session close.
         try
         {
+            using (var session = new CoreSession("windows-smoke"))
+            {
+                var parsed = session.ParseBlocking("# Windows Smoke\n\nShared core model v2.\n", "smoke-rev", copyUnchanged: true);
+                if (parsed.Outcome != CoreOutcome.Published ||
+                    parsed.Document is null ||
+                    parsed.Document.ModelVersion != 2 ||
+                    parsed.Document.OutlineCount != 1 ||
+                    parsed.Document.OutlineTitle(0) != "Windows Smoke")
+                {
+                    throw new InvalidOperationException("In-app shared-core smoke parse failed.");
+                }
+                session.Close();
+            }
+
             if (windows.Count != 1 || first.Title != "Markdown" ||
                 AutomationProperties.GetName(first.Welcome) != "Markdown reader")
+            {
                 throw new InvalidOperationException("Initial shell contract failed.");
+            }
             var shortcuts = ((Grid)first.Content).KeyboardAccelerators;
             if (shortcuts.Count != 3 ||
                 !shortcuts.Any(k => k.Key == VirtualKey.N && k.Modifiers == VirtualKeyModifiers.Control) ||
                 !shortcuts.Any(k => k.Key == VirtualKey.W && k.Modifiers == VirtualKeyModifiers.Control) ||
                 !shortcuts.Any(k => k.Key == VirtualKey.W &&
                     k.Modifiers == (VirtualKeyModifiers.Control | VirtualKeyModifiers.Shift)))
+            {
                 throw new InvalidOperationException("Root shortcut bindings failed.");
+            }
             first.NewCommand();
-            if (windows.Count != 2) throw new InvalidOperationException("New Window failed.");
+            if (windows.Count != 2)
+            {
+                throw new InvalidOperationException("New Window failed.");
+            }
             windows[1].CloseCommand();
-            if (windows.Count != 1) throw new InvalidOperationException("Close failed.");
+            if (windows.Count != 1)
+            {
+                throw new InvalidOperationException("Close failed.");
+            }
             first.NewCommand();
             Program.Result = 0;
             first.ExitCommand();
-            if (windows.Count != 0) Program.Result = 1;
+            if (windows.Count != 0)
+            {
+                Program.Result = 1;
+            }
         }
         catch
         {

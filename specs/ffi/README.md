@@ -483,10 +483,12 @@ in practice.
   per-run directory (with an `@rpath` install name on macOS; DT_RPATH via
   `--disable-new-dtags` on Linux), compiles
   `tests/c/smoke.c` with the host C compiler (`-std=c11 -Wall -Wextra -Werror
-  -pedantic`), compares every struct size and field offset with Rust and runs
+  -pedantic` on macOS/Linux; MSVC `cl.exe /std:c11 /W4 /WX /O1` linked against
+  `markdown_ffi.dll.lib` on Windows), compares every struct size and field offset with Rust and runs
   the C smoke with `LD_LIBRARY_PATH`, `DYLD_LIBRARY_PATH` and
   `DYLD_FALLBACK_LIBRARY_PATH` removed. The smoke reports the file that
-  provides `md_abi_negotiate` via `dladdr`, which must canonicalize to the
+  provides `md_abi_negotiate` via `dladdr` (or `GetModuleHandleExW` and
+  `GetModuleFileNameW` on Windows), which must canonicalize to the
   staged copy, and asserts the library's model mask matches the build: negotiation, v1 and (when built) v2 sessions, bulk copy, two-call
   find with segment highlighting checked against the view, reading statistics
   and their argument checks, workspace path classification, name search over
@@ -501,9 +503,9 @@ in practice.
   Release evidence covers the all-feature build; default-feature-only release
   is not a separately tested configuration.
   `all` runs both tiers locally. Push/manual CI runs both tiers on selected
-  hosts; task PR CI normally runs only `core`. The checks require the C smoke on macOS/Linux.
-  Windows runs the Rust tests and constant check but skips the C smoke until
-  the WIN-001B consumer wires MSVC and the import library.
+  hosts; task PR CI normally runs only `core`. The checks set
+  `MD_REQUIRE_C_SMOKE=1` on macOS, Linux and Windows so the C smoke is required
+  on all three platforms.
 
 Not covered here: Swift/AppKit, C# Native AOT and gtk-rs consumers, install
 names/rpaths for relocated packages, symbol visibility audits on Windows/Linux,

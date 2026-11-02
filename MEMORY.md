@@ -9,16 +9,24 @@ read.
 ## Current posture
 
 - WIN-001A (PR #53) delivers the
-  [Windows shell](apps/windows/README.md) uses C# Native AOT/WinUI with native
+  [Windows shell](apps/windows/README.md) in C# Native AOT/WinUI with native
   New Window/Close/Exit commands, locally deployed App SDK and Debug/Release
-  smoke checks. Core/file integration remains B/C. The Windows CI gate is
-  required when selected; Git Bash is explicitly resolved in gate tests to
-  avoid Windows selecting WSL's launcher. Grok review 1 at `bc000d7` had no
-  serious finding; `357a27d` fixes its Bash concern and shortcut-binding nit.
-  Both threads are resolved; all-host CI run 41363512342 is green. D-029
-  approves closeout/merge. WIN-001B is next on Windows. The host's UTC clock
-  is unsynchronized and about six hours ahead of GitHub; the owner time-sync
-  follow-up is in TODO.md before another cross-machine handoff.
+  smoke checks.
+- WIN-001B (`feat/win-001b-core-adapter`) adds `apps/windows/tools/package_core.py`
+  (`build/windows/core-package/<debug|release>/` with the model-v2
+  `markdown_ffi.dll`, import library, header, license, manifest, PE32+ export
+  audit of the exact 24 `md_` symbols, and `--remap-path-prefix` / `/PDBALTPATH`
+  path-leak checks), the UI-free C# Native AOT adapter under `apps/windows/Core/`
+  (5 MiB source, 500k nodes, 1M events, 16 MiB text, 128 MiB copied payload;
+  one worker thread per session, two process-wide admitted parses, prompt
+  queued cancellation and non-blocking `CloseThen`/`Dispose`), 17 consumer tests
+  in Debug/Release, relocated Release smoke/probe and required MSVC `cl.exe` C
+  smoke (`MD_REQUIRE_C_SMOKE=1` on all three OSes). Release 5 MiB prose: median
+  parse 528.5 ms, encode 169.0 ms, copy 18.2 ms (47.77 MiB copied); retained
+  working set after 20 sessions is flat at 51.6–52.5 MiB (GC heap 5.13 MiB,
+  handles 0,0,0); dense `*a` peaks at 796.9 MiB (8 MiB default) and 502.9 MiB
+  (5 MiB host). See [Windows-Core-Integration.md](docs/Windows-Core-Integration.md).
+  WIN-001C is next on Windows.
 - Phase: `desktop-apps`; the portable-core shared track is complete through
   CORE-006 (GATE-001 approved, D-018). Native chains are now eligible (D-027).
 - Product: local-first, read-only native Markdown reader. Windows, macOS and

@@ -23,7 +23,10 @@ hand-written [C ABI](specs/ffi/README.md). Aggregate acceptance evidence is
 linked from [HANDOFF.md](HANDOFF.md) and [Architecture.md](docs/Architecture.md).
 
 The [Windows WinUI shell](apps/windows/README.md) provides a C# Native AOT
-window, commands and Debug/Release lifecycle smoke (WIN-001A).
+window, commands and Debug/Release lifecycle smoke (WIN-001A), plus the
+[model-v2 core DLL package and owned C ABI adapter](docs/Windows-Core-Integration.md)
+with Debug/Release consumer tests, relocated smoke/probe and required MSVC C
+smoke (WIN-001B).
 The active phase is **desktop-apps**: each host begins its own native walking
 skeleton (D-027). The [macOS AppKit shell](apps/macos/README.md) now provides
 native windows/commands, a matching model-v2 static core package and an owned

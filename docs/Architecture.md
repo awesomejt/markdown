@@ -179,6 +179,13 @@ it does not depend on the core's internal Rust models or lifetimes. The
 copies the v2 flat values into owned Rust data on one bounded worker and
 records host limits, encode/copy costs, retained RSS and the dense-input peak.
 
+The [Windows consumer](Windows-Core-Integration.md) links the matching
+`markdown_ffi.dll` import library from C# Native AOT, verifies the PE32+
+export table for the exact 24 `md_` symbols, copies the v2 flat values into
+owned C# storage on one bounded worker per session with two process-wide
+admitted parses, and records host limits, encode/copy costs, retained working
+set and the dense-input peak.
+
 The FEAS-006 checkpoints exercise one experimental C ABI on
 [Windows](Shared-Core-Windows-Evaluation.md),
 [macOS](Shared-Core-macOS-Evaluation.md), and
