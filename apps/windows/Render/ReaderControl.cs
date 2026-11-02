@@ -138,6 +138,7 @@ public sealed partial class ReaderControl : UserControl
             row.Unbind();
         }
         _boundRows.Clear();
+        ImageSourceCache.Clear();
 
         _plan = null;
         CurrentGeneration = 0;

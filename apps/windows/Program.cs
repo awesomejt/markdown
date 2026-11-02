@@ -476,11 +476,17 @@ public sealed partial class ReaderApp : Application
             first.Reader.ExternalUriLauncher = uri => { smokeLaunchedUri = uri; return true; };
 
             // 4. Exercise Reload (Ctrl+R command delegate) after modifying file on disk.
+            var smokeImgPath = Path.Combine(tempDir, "smoke-img.png");
+            File.WriteAllBytes(smokeImgPath, RenderTests.CreatePng(64, 64));
+
             var richSmokeDoc =
                 "# Windows Smoke v2\n\n" +
                 "Updated body with [Internal](#windows-smoke-v2) and [External](https://example.com).\n\n" +
-                "- List item 1\n" +
-                "- List item 2\n\n" +
+                "- [x] Task done\n" +
+                "- [ ] Task open\n" +
+                "- List item 1\n\n" +
+                "| Header 1 | Header 2 |\n| :--- | ---: |\n| Val 1 | 100 |\n\n" +
+                "![smoke alt](smoke-img.png)\n\n" +
                 "```csharp\nvar answer = 42;\n```\n\n" +
                 "> Blockquote line\n";
             File.WriteAllText(smokeDocPath, richSmokeDoc, new UTF8Encoding(false));
@@ -494,9 +500,13 @@ public sealed partial class ReaderApp : Application
                 first.Loader.Plan is null ||
                 first.Reader.Visibility != Visibility.Visible ||
                 first.Reader.OutlineList.Items.Count != 1 ||
-                first.Reader.DocumentList.Items.Count < 5)
+                first.Reader.DocumentList.Items.Count < 5 ||
+                first.Loader.Plan.Images.Count != 1 ||
+                first.Loader.Plan.Images[0].Failure is not null ||
+                !first.Loader.Plan.Fragments.Any(f => f.Kind == FragmentKind.TableRow) ||
+                !first.Loader.Plan.Fragments.Any(f => f.Runs.Any(r => (r.Style & RunStyle.TaskChecked) != 0)))
             {
-                throw new InvalidOperationException("Reload after edit failed.");
+                throw new InvalidOperationException("Reload after edit with rich blocks (tables, tasks, images) failed.");
             }
 
             first.Reader.ActivateOutline(0);

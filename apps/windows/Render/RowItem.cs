@@ -17,7 +17,9 @@ public sealed partial class RowItem : ListViewItem
 {
     private static readonly FontFamily s_monoFont = new("Cascadia Mono, Consolas, Courier New");
     private static readonly SolidColorBrush s_quoteBrush = new(Colors.Gray);
+    private static readonly SolidColorBrush s_checkedBrush = new(global::Windows.UI.Color.FromArgb(0xFF, 0x00, 0x78, 0xD4));
     private static readonly SolidColorBrush s_codeBackground = new(global::Windows.UI.Color.FromArgb(0x18, 0x80, 0x80, 0x80));
+    private static readonly SolidColorBrush s_altRowBackground = new(global::Windows.UI.Color.FromArgb(0x0C, 0x80, 0x80, 0x80));
     private static readonly double[] s_headingSizes = [28, 24, 20, 18, 16, 15];
 
     public Grid Root { get; } = new();
@@ -25,6 +27,17 @@ public sealed partial class RowItem : ListViewItem
     {
         TextWrapping = TextWrapping.Wrap,
         IsTextSelectionEnabled = true,
+    };
+    public Image ImageControl { get; } = new()
+    {
+        Stretch = Stretch.Uniform,
+        HorizontalAlignment = HorizontalAlignment.Left,
+        Visibility = Visibility.Collapsed,
+    };
+    public TextBlock StatusBlock { get; } = new()
+    {
+        TextWrapping = TextWrapping.Wrap,
+        Visibility = Visibility.Collapsed,
     };
 
     public int ItemIndex { get; private set; } = -1;
@@ -39,6 +52,8 @@ public sealed partial class RowItem : ListViewItem
         HorizontalContentAlignment = HorizontalAlignment.Stretch;
 
         Root.Children.Add(TextBlock);
+        Root.Children.Add(ImageControl);
+        Root.Children.Add(StatusBlock);
     }
 
     public static T? TryAs<T>(object? value) where T : class
@@ -76,6 +91,11 @@ public sealed partial class RowItem : ListViewItem
         ItemIndex = -1;
         ShownText = string.Empty;
         TextBlock.Blocks.Clear();
+        TextBlock.Visibility = Visibility.Visible;
+        ImageControl.Source = null;
+        ImageControl.Visibility = Visibility.Collapsed;
+        StatusBlock.Text = string.Empty;
+        StatusBlock.Visibility = Visibility.Collapsed;
         AutomationProperties.SetName(this, string.Empty);
         AutomationProperties.SetHeadingLevel(this, AutomationHeadingLevel.None);
         AutomationProperties.SetHeadingLevel(TextBlock, AutomationHeadingLevel.None);
@@ -113,7 +133,15 @@ public sealed partial class RowItem : ListViewItem
             {
                 inlineRun.FontFamily = s_monoFont;
             }
-            if ((run.Style & RunStyle.Marker) != 0)
+            if ((run.Style & RunStyle.TaskChecked) != 0)
+            {
+                inlineRun.Foreground = s_checkedBrush;
+            }
+            else if ((run.Style & RunStyle.TaskUnchecked) != 0)
+            {
+                inlineRun.Foreground = s_quoteBrush;
+            }
+            else if ((run.Style & RunStyle.Marker) != 0)
             {
                 inlineRun.Foreground = s_quoteBrush;
             }
@@ -150,15 +178,70 @@ public sealed partial class RowItem : ListViewItem
             TextBlock.FontWeight = FontWeights.Normal;
         }
 
-        var isMono = fragment.Kind is FragmentKind.Code or FragmentKind.Fallback;
+        var isMono = fragment.Kind is FragmentKind.Code or FragmentKind.Fallback or FragmentKind.TableRow;
         TextBlock.FontFamily = isMono ? s_monoFont : FontFamily.XamlAutoFontFamily;
-        Root.Background = isMono ? s_codeBackground : null;
 
-        var topMargin = isHeading ? 14 : 6;
-        var bottomMargin = 6;
-        Root.Padding = new Thickness(16 + 24 * fragment.Indent, topMargin, 16, bottomMargin);
-        Root.BorderThickness = new Thickness(fragment.Quote > 0 ? 3 : 0, 0, 0, 0);
-        Root.BorderBrush = s_quoteBrush;
+        if (fragment.Kind == FragmentKind.TableRow)
+        {
+            TextBlock.FontSize = 14;
+            if (fragment.IsHeader)
+            {
+                Root.Background = s_codeBackground;
+                Root.BorderThickness = new Thickness(0, 0, 0, 2);
+                Root.BorderBrush = s_quoteBrush;
+            }
+            else
+            {
+                Root.Background = (index % 2 == 1) ? s_altRowBackground : null;
+                Root.BorderThickness = new Thickness(0, 0, 0, 1);
+                Root.BorderBrush = s_quoteBrush;
+            }
+            Root.Padding = new Thickness(16 + 24 * fragment.Indent, 4, 16, 4);
+        }
+        else
+        {
+            Root.Background = (fragment.Kind is FragmentKind.Code or FragmentKind.Fallback) ? s_codeBackground : null;
+            var topMargin = isHeading ? 14 : 6;
+            var bottomMargin = 6;
+            Root.Padding = new Thickness(16 + 24 * fragment.Indent, topMargin, 16, bottomMargin);
+            Root.BorderThickness = new Thickness(fragment.Quote > 0 ? 3 : 0, 0, 0, 0);
+            Root.BorderBrush = s_quoteBrush;
+        }
+
+        // Image presentation
+        if (fragment.Image is { } img)
+        {
+            if (img.Failure is not null || img.Data is null)
+            {
+                ImageControl.Visibility = Visibility.Collapsed;
+                StatusBlock.Visibility = Visibility.Visible;
+                StatusBlock.Text = string.IsNullOrEmpty(img.Alt)
+                    ? $"[{img.FailureMessage}]"
+                    : $"[{img.Alt} ({img.FailureMessage})]";
+                StatusBlock.Foreground = s_quoteBrush;
+                StatusBlock.FontStyle = global::Windows.UI.Text.FontStyle.Italic;
+                StatusBlock.FontSize = 14;
+                TextBlock.Visibility = Visibility.Collapsed;
+                ShownText = StatusBlock.Text;
+            }
+            else
+            {
+                ImageControl.Visibility = Visibility.Visible;
+                ImageControl.MaxWidth = Math.Min(img.Width, 800);
+                ImageControl.MaxHeight = Math.Min(img.Height, 600);
+                AutomationProperties.SetName(ImageControl, img.Alt);
+                StatusBlock.Visibility = Visibility.Collapsed;
+                TextBlock.Visibility = Visibility.Collapsed;
+                ImageControl.Source = ImageSourceCache.GetOrCreate(img);
+                ShownText = string.IsNullOrEmpty(img.Alt) ? "[image]" : $"[{img.Alt}]";
+            }
+        }
+        else
+        {
+            ImageControl.Visibility = Visibility.Collapsed;
+            StatusBlock.Visibility = Visibility.Collapsed;
+            TextBlock.Visibility = Visibility.Visible;
+        }
 
         AutomationProperties.SetName(this, ShownText);
         var autoHeadingLevel = fragment.HeadingStart && headingLevel is >= 1 and <= 6

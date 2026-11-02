@@ -1,5 +1,6 @@
 using System.Text;
 using Markdown.Windows.Core;
+using Markdown.Windows.Document;
 
 namespace Markdown.Windows.Render;
 
@@ -28,6 +29,8 @@ public enum RunStyle : byte
     Strikethrough = 4,
     Code = 8,
     Marker = 16,
+    TaskChecked = 32,
+    TaskUnchecked = 64,
 }
 
 public enum FragmentKind : byte
@@ -37,6 +40,8 @@ public enum FragmentKind : byte
     Code,
     ThematicBreak,
     Fallback,
+    TableRow,
+    Image,
 }
 
 public enum TargetKind : byte
@@ -57,6 +62,23 @@ public readonly record struct LinkTarget(TargetKind Kind, int Fragment, string? 
 public sealed record RenderRun(string Text, RunStyle Style, int Link)
 {
     public const int NoLink = -1;
+}
+
+public sealed class RenderedImage(
+    string target,
+    string alt,
+    ResourceError? failure,
+    byte[]? data,
+    int width,
+    int height)
+{
+    public string Target { get; } = target;
+    public string Alt { get; } = alt;
+    public ResourceError? Failure { get; } = failure;
+    public byte[]? Data { get; } = data;
+    public int Width { get; } = width;
+    public int Height { get; } = height;
+    public string FailureMessage => Failure.HasValue ? Failure.Value.Message() : string.Empty;
 }
 
 public sealed class RenderFragment
@@ -83,6 +105,12 @@ public sealed class RenderFragment
 
     /// <summary>Block quote / alert nesting depth.</summary>
     public int Quote { get; }
+
+    public bool IsHeader { get; internal set; }
+
+    public List<RenderedImage> Images { get; } = [];
+
+    public RenderedImage? Image => Images.Count > 0 ? Images[0] : null;
 
     public List<RenderRun> Runs { get; } = [];
 
@@ -113,14 +141,26 @@ public sealed class RenderPlan
     public List<RenderFragment> Fragments { get; } = [];
     public List<OutlineItem> Outline { get; } = [];
     public List<LinkTarget> Targets { get; } = [];
+    public List<RenderedImage> Images { get; } = [];
     public long AccountedBytes { get; private set; }
     public ulong Generation { get; private init; }
 
-    public static RenderPlan Build(CoreDocument document, Func<bool> cancelled, long budget = DefaultBudget)
+    public static RenderPlan Build(
+        CoreDocument document,
+        Func<bool> cancelled,
+        long budget = DefaultBudget,
+        Func<string, int, (byte[]? Data, ResourceError? Error)>? imageLoader = null,
+        ImageBudget? imageBudget = null)
     {
         ArgumentNullException.ThrowIfNull(document);
         ArgumentNullException.ThrowIfNull(cancelled);
-        var builder = new Builder(document, cancelled, budget, new RenderPlan { Generation = document.Generation });
+        var builder = new Builder(
+            document,
+            cancelled,
+            budget,
+            imageLoader,
+            imageBudget ?? new ImageBudget(),
+            new RenderPlan { Generation = document.Generation });
         return builder.Run();
     }
 
@@ -137,9 +177,20 @@ public sealed class RenderPlan
         return Fragments[fragment].HasLink(link) ? Targets[link] : null;
     }
 
-    private sealed class Builder(CoreDocument doc, Func<bool> cancelled, long budget, RenderPlan plan)
+    private sealed class Builder(
+        CoreDocument doc,
+        Func<bool> cancelled,
+        long budget,
+        Func<string, int, (byte[]? Data, ResourceError? Error)>? imageLoader,
+        ImageBudget imageBudget,
+        RenderPlan plan)
     {
+        private static readonly CoreFfi.md_intent s_emptyIntent = default;
         private readonly int[] _first = CreateFirst(doc);
+        private readonly Dictionary<string, RenderedImage> _imageCache = new(StringComparer.Ordinal);
+        private readonly HashSet<string> _distinctImages = new(StringComparer.Ordinal);
+        private readonly List<RenderedImage> _currentBlockImages = [];
+        private long _decodedBytes;
         private long _visits;
 
         private static int[] CreateFirst(CoreDocument doc)
@@ -324,6 +375,9 @@ public sealed class RenderPlan
 
             switch (n.kind)
             {
+                case CoreFfi.MD_NODE_IMAGE:
+                    HandleImage(id, in n, depth, style, runs);
+                    break;
                 case CoreFfi.MD_NODE_SOFT_BREAK:
                     AddRun(runs, " ", style, link);
                     break;
@@ -339,22 +393,169 @@ public sealed class RenderPlan
                     AddRun(runs, Fallback(in n), style, link);
                     break;
                 default:
-                    var image = n.kind == CoreFfi.MD_NODE_IMAGE;
-                    var childCount = n.child_count;
                     foreach (var child in ChildrenOf(in n))
                     {
                         Inline(child, depth + 1, style, link, runs);
-                    }
-                    if (image && childCount == 0)
-                    {
-                        // Images are never fetched here; their readable alternative text stands in.
-                        AddRun(runs, Owned(doc.NodeText((int)id)), style, RenderRun.NoLink);
                     }
                     break;
             }
         }
 
-        private void Block(uint id, int depth, string? marker, int indent, int quote)
+        private void HandleImage(uint id, in CoreFfi.md_node n, int depth, RunStyle style, List<RenderRun> runs)
+        {
+            var resourceIndex = (int)n.aux;
+            var target = resourceIndex < doc.ResourceCount ? doc.ResourceDestination(resourceIndex) : string.Empty;
+            ref readonly var intent = ref (resourceIndex < doc.ResourceCount ? ref doc.Resources[resourceIndex] : ref s_emptyIntent);
+
+            string alt;
+            if (n.child_count > 0)
+            {
+                var altRuns = new List<RenderRun>();
+                foreach (var child in ChildrenOf(in n))
+                {
+                    Inline(child, depth + 1, RunStyle.None, RenderRun.NoLink, altRuns);
+                }
+                alt = string.Concat(altRuns.Select(r => r.Text));
+            }
+            else
+            {
+                alt = doc.NodeText((int)id);
+            }
+
+            ResourceError? failure = null;
+            byte[]? rawData = null;
+            var w = 0;
+            var h = 0;
+
+            if (intent.target_kind == CoreFfi.MD_TARGET_EXTERNAL ||
+                target.StartsWith("http:", StringComparison.OrdinalIgnoreCase) ||
+                target.StartsWith("https:", StringComparison.OrdinalIgnoreCase))
+            {
+                failure = ResourceError.Remote;
+            }
+            else if (intent.target_kind == CoreFfi.MD_TARGET_DENIED)
+            {
+                failure = ResourceError.Blocked;
+            }
+            else if (string.IsNullOrWhiteSpace(target) ||
+                     target.StartsWith('/') ||
+                     target.StartsWith('\\') ||
+                     target.Contains('\0') ||
+                     target.Contains(':') ||
+                     target.StartsWith("..", StringComparison.Ordinal) ||
+                     target.Contains("/..") ||
+                     target.Contains("\\.."))
+            {
+                failure = ResourceError.OutsideFolder;
+            }
+            else
+            {
+                // Relative local image
+                if (_imageCache.TryGetValue(target, out var cached))
+                {
+                    failure = cached.Failure;
+                    rawData = cached.Data;
+                    w = cached.Width;
+                    h = cached.Height;
+                }
+                else if (_distinctImages.Count >= imageBudget.MaxImages)
+                {
+                    failure = ResourceError.Limit;
+                }
+                else if (_decodedBytes >= imageBudget.MaxDecodedBytes)
+                {
+                    failure = ResourceError.Limit;
+                }
+                else if (imageLoader is null)
+                {
+                    failure = ResourceError.NotLoaded;
+                }
+                else
+                {
+                    _distinctImages.Add(target);
+                    var (loadedData, loadErr) = imageLoader(target, imageBudget.MaxFileBytes);
+                    if (loadErr is not null)
+                    {
+                        failure = loadErr;
+                    }
+                    else if (loadedData is null || loadedData.Length == 0)
+                    {
+                        failure = ResourceError.NotFound;
+                    }
+                    else if (!ImageFormatInspector.Inspect(loadedData, imageBudget.MaxSourcePixels, out var inspectedW, out var inspectedH, out var inspectErr))
+                    {
+                        failure = inspectErr ?? ResourceError.Undecodable;
+                    }
+                    else
+                    {
+                        var mem = (long)inspectedW * inspectedH * 4;
+                        if (_decodedBytes + mem > imageBudget.MaxDecodedBytes)
+                        {
+                            failure = ResourceError.Limit;
+                        }
+                        else
+                        {
+                            _decodedBytes += mem;
+                            w = inspectedW;
+                            h = inspectedH;
+                            rawData = loadedData;
+                        }
+                    }
+                }
+            }
+
+            var renderedImage = new RenderedImage(target, alt, failure, rawData, w, h);
+            if (!_imageCache.ContainsKey(target) && failure != ResourceError.Remote && failure != ResourceError.Blocked && failure != ResourceError.OutsideFolder)
+            {
+                _imageCache[target] = renderedImage;
+            }
+
+            plan.Images.Add(renderedImage);
+            _currentBlockImages.Add(renderedImage);
+            _first[id] = plan.Fragments.Count;
+
+            AddRun(runs, string.IsNullOrEmpty(alt) ? "[image]" : $"[{alt}]", style, RenderRun.NoLink);
+        }
+
+        private void Table(uint id, in CoreFfi.md_node n, int depth, int indent, int quote)
+        {
+            _first[id] = plan.Fragments.Count;
+            var colCount = (int)n.aux_count;
+            var rows = ChildrenOf(in n);
+
+            for (var r = 0; r < rows.Length; r++)
+            {
+                var rowId = rows[r];
+                ref readonly var rowNode = ref Node(rowId, depth + 1);
+                _first[rowId] = plan.Fragments.Count;
+                var isHeader = (rowNode.flags & CoreFfi.MD_NODE_HEADER) != 0 || r == 0;
+                var cells = ChildrenOf(in rowNode);
+                var rowRuns = new List<RenderRun>();
+                var totalCols = Math.Max(colCount, cells.Length);
+
+                for (var c = 0; c < totalCols; c++)
+                {
+                    if (c > 0)
+                    {
+                        AddRun(rowRuns, "\t", RunStyle.None, RenderRun.NoLink);
+                    }
+                    if (c < cells.Length)
+                    {
+                        var cellId = cells[c];
+                        ref readonly var cellNode = ref Node(cellId, depth + 2);
+                        var inlines = ChildrenOf(in cellNode);
+                        foreach (var inline in inlines)
+                        {
+                            Inline(inline, depth + 3, isHeader ? RunStyle.Strong : RunStyle.None, RenderRun.NoLink, rowRuns);
+                        }
+                    }
+                }
+
+                Emit(rowRuns, FragmentKind.TableRow, 0, indent, quote, isHeader: isHeader);
+            }
+        }
+
+        private void Block(uint id, int depth, string? marker, int indent, int quote, RunStyle markerStyle = RunStyle.None)
         {
             ref readonly var n = ref Node(id, depth);
             var kind = n.kind;
@@ -363,9 +564,15 @@ public sealed class RenderPlan
             {
                 // A list item that starts with a nested list, or has no content, keeps its marker visible.
                 var runs = new List<RenderRun>();
-                AddRun(runs, marker, RunStyle.Marker, RenderRun.NoLink);
+                AddRun(runs, marker, RunStyle.Marker | markerStyle, RenderRun.NoLink);
                 Emit(runs, FragmentKind.Paragraph, 0, indent, quote);
                 marker = null;
+            }
+
+            if (kind == CoreFfi.MD_NODE_TABLE)
+            {
+                Table(id, in n, depth, indent, quote);
+                return;
             }
 
             if (kind == CoreFfi.MD_NODE_LIST)
@@ -375,10 +582,23 @@ public sealed class RenderPlan
                 var children = ChildrenOf(in n);
                 for (var i = 0; i < children.Length; i++)
                 {
-                    var itemMarker = ordered
-                        ? $"{unchecked(start + (ulong)i)}. "
-                        : "• ";
-                    Block(children[i], depth + 1, itemMarker, indent + 1, quote);
+                    var childId = children[i];
+                    ref readonly var childNode = ref Node(childId, depth + 1);
+                    string itemMarker;
+                    var taskStyle = RunStyle.None;
+                    if ((childNode.flags & CoreFfi.MD_NODE_HAS_CHECKED) != 0)
+                    {
+                        var isChecked = (childNode.flags & CoreFfi.MD_NODE_CHECKED) != 0;
+                        itemMarker = isChecked ? "☑ " : "☐ ";
+                        taskStyle = isChecked ? RunStyle.TaskChecked : RunStyle.TaskUnchecked;
+                    }
+                    else
+                    {
+                        itemMarker = ordered
+                            ? $"{unchecked(start + (ulong)i)}. "
+                            : "• ";
+                    }
+                    Block(childId, depth + 1, itemMarker, indent + 1, quote, taskStyle);
                 }
                 return;
             }
@@ -390,7 +610,7 @@ public sealed class RenderPlan
                 var runs = new List<RenderRun>();
                 if (marker is not null)
                 {
-                    AddRun(runs, marker, RunStyle.Marker, RenderRun.NoLink);
+                    AddRun(runs, marker, RunStyle.Marker | markerStyle, RenderRun.NoLink);
                 }
 
                 FragmentKind fragmentKind;
@@ -425,7 +645,9 @@ public sealed class RenderPlan
                 }
 
                 var level = kind == CoreFfi.MD_NODE_HEADING ? (int)Math.Clamp(n.value, 1u, 6u) : 0;
-                Emit(runs, fragmentKind, level, indent, quote);
+                var blockImgs = _currentBlockImages.ToArray();
+                _currentBlockImages.Clear();
+                Emit(runs, fragmentKind, level, indent, quote, images: blockImgs);
                 return;
             }
 
@@ -433,7 +655,7 @@ public sealed class RenderPlan
             var blockChildren = ChildrenOf(in n);
             for (var i = 0; i < blockChildren.Length; i++)
             {
-                Block(blockChildren[i], depth + 1, i == 0 ? marker : null, indent, childQuote);
+                Block(blockChildren[i], depth + 1, i == 0 ? marker : null, indent, childQuote, markerStyle);
             }
         }
 
@@ -454,10 +676,24 @@ public sealed class RenderPlan
         /// preferring the last whitespace break, and at most <see cref="MaxUnbreakableBytes"/> when a
         /// fragment would otherwise have no break opportunity. Never splits a surrogate pair.
         /// </summary>
-        private void Emit(List<RenderRun> runs, FragmentKind kind, int headingLevel, int indent, int quote)
+        private void Emit(
+            List<RenderRun> runs,
+            FragmentKind kind,
+            int headingLevel,
+            int indent,
+            int quote,
+            bool isHeader = false,
+            RenderedImage[]? images = null)
         {
             var initial = plan.Fragments.Count;
-            var fragment = new RenderFragment(kind, headingLevel, headingLevel > 0, indent, quote);
+            var fragment = new RenderFragment(kind, headingLevel, headingLevel > 0, indent, quote)
+            {
+                IsHeader = isHeader,
+            };
+            if (images is not null && images.Length > 0)
+            {
+                fragment.Images.AddRange(images);
+            }
             var used = 0;
 
             void Push()
@@ -465,7 +701,10 @@ public sealed class RenderPlan
                 Charge(64);
                 fragment.Utf8Length = used;
                 plan.Fragments.Add(fragment);
-                fragment = new RenderFragment(kind, headingLevel, headingStart: false, indent, quote);
+                fragment = new RenderFragment(kind, headingLevel, headingStart: false, indent, quote)
+                {
+                    IsHeader = isHeader,
+                };
                 used = 0;
             }
 

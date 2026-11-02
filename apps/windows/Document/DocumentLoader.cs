@@ -567,7 +567,7 @@ public sealed class DocumentLoader : IDisposable
             var readDoc = readResult.Document!;
             var startTick = Stopwatch.GetTimestamp();
 
-            if (TrySubmitParse(serial, session, readDoc, cancellation, startTick, retryTimeout, planBarrier, planBudget))
+            if (TrySubmitParse(serial, capability, session, readDoc, cancellation, startTick, retryTimeout, planBarrier, planBudget))
             {
                 return;
             }
@@ -586,7 +586,7 @@ public sealed class DocumentLoader : IDisposable
                             return;
                         }
 
-                        if (TrySubmitParse(serial, session, readDoc, cancellation, startTick, retryTimeout, planBarrier, planBudget))
+                        if (TrySubmitParse(serial, capability, session, readDoc, cancellation, startTick, retryTimeout, planBarrier, planBudget))
                         {
                             return;
                         }
@@ -609,6 +609,7 @@ public sealed class DocumentLoader : IDisposable
     /// </summary>
     private bool TrySubmitParse(
         ulong serial,
+        DocumentCapability capability,
         CoreSession session,
         ReadDocument readDoc,
         Cancellation cancellation,
@@ -674,7 +675,7 @@ public sealed class DocumentLoader : IDisposable
                         case CoreOutcome.Unchanged:
                             if (coreResult.Document is not null)
                             {
-                                PreparePlan(serial, coreResult.Document, readDoc, cancellation, planBarrier, planBudget);
+                                PreparePlan(serial, capability, coreResult.Document, readDoc, cancellation, planBarrier, planBudget);
                             }
                             else
                             {
@@ -763,6 +764,7 @@ public sealed class DocumentLoader : IDisposable
     /// </summary>
     private void PreparePlan(
         ulong serial,
+        DocumentCapability capability,
         CoreDocument document,
         ReadDocument readDoc,
         Cancellation cancellation,
@@ -785,7 +787,8 @@ public sealed class DocumentLoader : IDisposable
                 RenderPlan plan;
                 try
                 {
-                    plan = RenderPlan.Build(document, Stale, planBudget);
+                    var resources = new DocumentResources(capability);
+                    plan = RenderPlan.Build(document, Stale, planBudget, resources.ReadImage);
                 }
                 catch (RenderException ex) when (ex.Kind == RenderErrorKind.Cancelled)
                 {
