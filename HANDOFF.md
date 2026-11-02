@@ -1,34 +1,37 @@
 # Agent Session and Platform Handoff
 
-Updated: 2026-11-01 (America/Denver), WIN-001B approved closeout (PR #54).
-Completed Windows task: `WIN-001B` (`b15b9818-0bbc-4081-b4ab-d6b284bd44b8`), pass
-`b30d4690-4d1d-4a72-aff7-744255e4df2d` (sequence 115, `project.yaml` revision 731),
-branch `feat/win-001b-core-adapter`, based on `develop` at `203b67c` (PR #53 merge).
-`apps/windows/tools/package_core.py` builds and audits the matching Debug/Release
-model-v2 `markdown_ffi.dll` package (PE32+ export table of 24 `md_` symbols,
-remapped build paths across repo/cargo/sysroot in UTF-8 and UTF-16LE);
-`apps/windows/Core/` provides the UI-free C# Native AOT adapter with
-5 MiB/500k/1M/16 MiB/128 MiB host limits, one shared worker thread, process-wide
-two-parse admission, prompt queued cancellation and non-blocking `CloseThen`/`Dispose`.
-`MD_REQUIRE_C_SMOKE=1` is now set on all platforms, and `c_abi.rs`/`smoke.c`
-compile and run with MSVC `cl.exe` on Windows. Local `apps/windows/tools/check.py`
-(17 consumer tests in Debug/Release, Debug/Release shell + core smokes, and
-relocated Release smoke/probe) and `tools/check.py all` pass. Measurements are
-recorded in [docs/Windows-Core-Integration.md](docs/Windows-Core-Integration.md)
-and [apps/windows/README.md](apps/windows/README.md#core-integration-and-c-abi-adapter-win-001b).
-[Grok review 1](https://github.com/awesomejt/markdown/pull/54#pullrequestreview-5731262483)
-at `11aecab` had 0 blockers, 3 concerns and 2 nits; all 5 findings were fixed at
-`059d18c` without re-review (exempt under step 7) and all 4 review threads are
-resolved. [Fixed-head all-host CI](https://github.com/awesomejt/markdown/actions/runs/41375068539)
+Updated: 2026-11-01 (America/Denver), WIN-001C approved closeout (PR #55).
+Completed Windows task: `WIN-001C` (`205b667b-5e55-4abb-8ce7-d705e6c1c2c0`), pass
+`8a208399-df50-4372-b0b7-13b62f10c925` (sequence 116, `project.yaml` revision 733),
+branch `feat/win-001c-document-loading`, based on `develop` at `2b9b24e` (PR #54 merge).
+`apps/windows/Document/` (`DocumentAccess.cs`, `DocumentLoader.cs`, plus
+`apps/windows/DocumentPicker.cs`) delivers native Win32 `GetOpenFileNameW`
+file opening (`File > Open?`, `Ctrl+O`), `File > Reload` (`Ctrl+R`), startup
+file arguments and per-user file-association template
+`apps/windows/resources/io.github.awesomejt.markdown.reg.in` (`.md`, `.markdown`,
+`.mdown`, `.mkd`, `.txt`) with primary-instance mutex and current-user named-pipe
+forwarding, path-free `DocumentCapability` with explicit `Revoke()`, NTFS ACL
+withdrawal (`AccessRevoked`), volume-detachment promotion (`VolumeUnavailable`),
+device/non-regular/remote-handle rejection (`GetFileType`,
+`GetFileInformationByHandle`, `GetFinalPathNameByHandleW`), 64 KiB chunked bounded
+reads, and serial-tagged `DocumentLoader` cancellation with off-thread `Busy`
+admission retries. Local `apps/windows/tools/check.py` passes in Debug, Release,
+and relocated Release (17 core consumer tests, 12 document tests, shell/picker/reload
+smoke, and 4-delivery multi-process association check via
+`apps/windows/tools/check_association.py`).
+[Grok review 1](https://github.com/awesomejt/markdown/pull/55#pullrequestreview-5731847930)
+at `3915231` had 0 blockers, 4 concerns and 1 nit; all 5 findings were fixed at
+`60f0970` without re-review (exempt under step 7) and all 5 review threads are
+resolved. [Fixed-head CI](https://github.com/awesomejt/markdown/actions/runs/41385009602)
 is green (`changes`, `common`, `core` on Linux/Windows/macOS, `windows-native`,
-`macos-native`, `linux-native`, and `complete`). One state/docs closeout commit
-follows `059d18c`, then green CI, merge into `develop` and branch deletion. The
-merge SHA is not known at closeout time. No live pass or unowned working task
-remains. Next Windows task is `WIN-001C`: native file open, file associations,
-Reload, and generation-safe background loading.
+and `complete`). One state/docs closeout commit follows `60f0970`, then green CI,
+merge into `develop` and branch deletion. The merge SHA is not known at closeout
+time. No live pass or unowned working task remains. Next Windows task is
+`WIN-001D`: native virtualized reading view, outline sidebar, and heading/link
+navigation.
 
-Previous Windows task: `WIN-001A` merged in [PR #53](https://github.com/awesomejt/markdown/pull/53)
-(`203b67c`), delivering the WinUI 3 C# Native AOT shell and required `windows-native` CI.
+Previous Windows task: `WIN-001B` merged in [PR #54](https://github.com/awesomejt/markdown/pull/54)
+(`2b9b24e`), delivering the model-v2 core DLL package and C# Native AOT adapter.
 
 Previous Linux handoff baseline: `develop` after PR #52; reviewed head `f12d2e5`, non-serious
 review fixes at `27e84df`, followed by one state/docs closeout. The merge SHA is
@@ -268,6 +271,16 @@ done list is in [the memory archive](agents/Memory-Archive.md#handoffmd-phase-ha
   at `11aecab` had 0 blockers, 3 concerns and 2 nits; all 5 findings were fixed at
   `059d18c`, all 4 threads resolved, and [all-host CI](https://github.com/awesomejt/markdown/actions/runs/41375068539)
   passed.
+- **Done:** WIN-001C in [PR #55](https://github.com/awesomejt/markdown/pull/55):
+  [native file open, file associations, Reload, and generation-safe loading](apps/windows/README.md#local-files-and-loading-win-001c).
+  17 core consumer tests and 12 document tests pass in Debug, Release, and
+  relocated Release, plus Debug/Release/relocated shell+picker+reload smokes and
+  4-delivery multi-process association checks (`check_association.py`).
+  [Grok review 1](https://github.com/awesomejt/markdown/pull/55#pullrequestreview-5731847930)
+  at `3915231` had 0 blockers, 4 concerns and 1 nit; all 5 findings were fixed at
+  `60f0970` without re-review, all 5 threads resolved, and
+  [fixed-head CI](https://github.com/awesomejt/markdown/actions/runs/41385009602)
+  passed.
 - **Next on Linux:** LNX-001D1: prove document/heading semantics, off-screen
   heading navigation and owner-confirmed Orca continuous reading beyond visible
   rows on KDE Wayland. Preserve focus, reading order and basic selection.
@@ -280,7 +293,7 @@ done list is in [the memory archive](agents/Memory-Archive.md#handoffmd-phase-ha
   D-030 milestone review: the macOS skeleton (rule 3) and the overdue
   8-PR cap since `m-core-fix`. Fix the hosted `macos-native` flakiness
   (TODO.md) first if it keeps failing `develop`; it recurred on PR #49.
-  WIN-001C follows the approved WIN-001B merge; the host chains remain independent.
+  WIN-001D follows the approved WIN-001C merge; the host chains remain independent.
   The shared-core milestone boundary is reached. Per MEMORY.md, Claude writes
   the combined packet for CORE-001–CORE-006 (plus CORE-003F since `m-core-fix`),
   including MAC-001A/B if freezing current `develop`; name the exact snapshot and
