@@ -1,34 +1,105 @@
-"""Publish and exercise the native Windows x64 shell in both configurations."""
-from pathlib import Path
+#!/usr/bin/env python3
+"""Stage the Windows core packages, verify formatting, and publish/exercise the Native AOT shell."""
+from __future__ import annotations
+
 import os
+from pathlib import Path
+import shutil
 import subprocess
 import sys
+import tempfile
+
+from package_core import prepare_core, verify
 
 ROOT = Path(__file__).resolve().parents[3]
 PROJECT = ROOT / "apps/windows/Markdown.Windows.csproj"
 
 
-def main():
+def run(command: list[str], *, cwd: Path, env: dict[str, str], timeout: int | None = None) -> None:
+    print("+ " + " ".join(command), flush=True)
+    subprocess.run(command, cwd=cwd, env=env, check=True, timeout=timeout)
+
+
+def run_app(command: list[str], *, cwd: Path, env: dict[str, str], timeout: int) -> str:
+    print("+ " + " ".join(command), flush=True)
+    # Markdown.Windows.exe is a WinExe (GUI subsystem) binary; piping stdout/stderr
+    # attaches valid standard handles so Console output is captured and logged.
+    result = subprocess.run(
+        command,
+        cwd=cwd,
+        env=env,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        timeout=timeout,
+    )
+    if result.stdout:
+        print(result.stdout, end="", flush=True)
+    result.check_returncode()
+    return result.stdout
+
+
+def main() -> None:
     if sys.platform != "win32":
         raise SystemExit("Native Windows Python is required")
     installer = Path(os.environ.get("ProgramFiles(x86)", "C:/Program Files (x86)"))
     env = dict(os.environ)
     env["PATH"] = str(installer / "Microsoft Visual Studio/Installer") + os.pathsep + env["PATH"]
-    subprocess.run(["dotnet", "restore", str(PROJECT), "--locked-mode", "-p:Platform=x64"],
-                   cwd=PROJECT.parent, env=env, check=True)
-    subprocess.run(["dotnet", "format", str(PROJECT), "--no-restore", "--verify-no-changes",
-                    "--severity", "warn"], cwd=PROJECT.parent, env=env, check=True)
+
+    run([sys.executable, "tools/generate_performance_fixtures.py"], cwd=ROOT, env=env)
+    for configuration in ("debug", "release"):
+        prepare_core(configuration)
+
+    run(
+        ["dotnet", "restore", str(PROJECT), "--locked-mode", "-p:Platform=x64"],
+        cwd=PROJECT.parent,
+        env=env,
+    )
+    run(
+        ["dotnet", "format", str(PROJECT), "--no-restore", "--verify-no-changes", "--severity", "warn"],
+        cwd=PROJECT.parent,
+        env=env,
+    )
+
     for profile in ("Debug", "Release"):
+        configuration = profile.lower()
         output = ROOT / "build/windows" / profile
-        subprocess.run(["dotnet", "publish", str(PROJECT), "--no-restore", "-c", profile,
-                        "-p:Platform=x64", "--nologo", "-o", str(output)],
-                       cwd=PROJECT.parent, env=env, check=True)
+        run(
+            [
+                "dotnet",
+                "publish",
+                str(PROJECT),
+                "--no-restore",
+                "-c",
+                profile,
+                "-p:Platform=x64",
+                "--nologo",
+                "-o",
+                str(output),
+            ],
+            cwd=PROJECT.parent,
+            env=env,
+        )
+        verify(configuration)
         # No .NET runtime or globally installed App SDK is needed by this output.
         if (output / "coreclr.dll").exists():
             raise SystemExit("Expected Native AOT output, found CoreCLR")
-        subprocess.run([str(output / "Markdown.Windows.exe"), "--smoke"],
-                       cwd=output, env=env, check=True, timeout=60)
-        print(f"{profile}: Native AOT window/commands/last-window-close smoke passed", flush=True)
+        if not (output / "markdown_ffi.dll").is_file():
+            raise SystemExit(f"Missing staged markdown_ffi.dll in {output}")
+
+        exe = str(output / "Markdown.Windows.exe")
+        run_app([exe, "--core-tests"], cwd=output, env=env, timeout=180)
+        run_app([exe, "--smoke"], cwd=output, env=env, timeout=60)
+        print(f"{profile}: core consumer tests and Native AOT window/commands smoke passed", flush=True)
+
+    release_output = ROOT / "build/windows/Release"
+    with tempfile.TemporaryDirectory(prefix="markdown-windows-relocated-") as temp_root:
+        relocated = Path(temp_root) / "app"
+        shutil.copytree(release_output, relocated)
+        relocated_exe = str(relocated / "Markdown.Windows.exe")
+        run_app([relocated_exe, "--smoke"], cwd=relocated, env=env, timeout=60)
+        run_app([relocated_exe, "--core-probe", "single"], cwd=relocated, env=env, timeout=60)
+        print("Release: relocated Native AOT smoke and core-probe passed without checkout", flush=True)
 
 
 if __name__ == "__main__":

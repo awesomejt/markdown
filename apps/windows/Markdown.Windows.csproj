@@ -18,10 +18,18 @@
     <IsAotCompatible>true</IsAotCompatible>
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
     <BaseOutputPath>../../build/windows/bin/</BaseOutputPath>
+    <CorePackageConfiguration Condition="'$(Configuration)' == 'Release'">release</CorePackageConfiguration>
+    <CorePackageConfiguration Condition="'$(CorePackageConfiguration)' == ''">debug</CorePackageConfiguration>
+    <CorePackageDir>../../build/windows/core-package/$(CorePackageConfiguration)</CorePackageDir>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.5.1" />
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.2705" />
+    <Compile Include="$(CorePackageDir)/PackageIdentity.g.cs" Link="Core/PackageIdentity.g.cs" />
+    <Content Include="$(CorePackageDir)/bin/markdown_ffi.dll"
+             Link="markdown_ffi.dll"
+             CopyToOutputDirectory="PreserveNewest"
+             CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
   <!-- The WinUI targets generate these after publish items are collected. -->
   <Target Name="PublishShellResources" AfterTargets="Publish">

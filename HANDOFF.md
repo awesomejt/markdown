@@ -1,26 +1,34 @@
 # Agent Session and Platform Handoff
 
-Updated: 2026-11-01 (America/Denver), WIN-001A approved closeout (PR #53).
-Completed Windows task: `WIN-001A`, branch `feat/win-001a-native-shell`, based on
-`4b06bdf` (green develop CI run 41345106827). Native AOT Debug/Release shell
-smokes pass; native menu/window/keyboard and UIA shell checks are recorded in
-[the Windows README](apps/windows/README.md#win-001a-local-evidence).
-Native checks and `python tools/check.py all` passed. Grok review 1 at
-`bc000d7` has no serious finding:
-[review](https://github.com/awesomejt/markdown/pull/53#pullrequestreview-5730825360).
-`357a27d` fixes its Bash concern and adds the requested root shortcut-binding
-assertions; both inline threads are resolved. The clock nit is deferred to
-the owner in TODO.md: Windows reports unsynchronized / Local CMOS Clock and
-helper UTC timestamps are about six hours ahead of GitHub. No system time
-settings or historical timestamps were edited.
-[Fixed-head all-host CI](https://github.com/awesomejt/markdown/actions/runs/41363512342)
-is green, including Windows Debug/Release, macOS/Linux native and all core
-jobs. One actual Grok review; non-serious fixes are exempt from re-review.
-The completed pass records D-029 approval; exactly one state/docs closeout
-follows `357a27d`, then green CI, merge into `develop` and branch deletion.
-The merge SHA is not known at closeout time. No live pass or unowned working
-task remains. Next Windows task is WIN-001B: packaged model-v2 core, owned
-C ABI adapter, session/memory validation and mandatory MSVC C smoke.
+Updated: 2026-11-01 (America/Denver), WIN-001B approved closeout (PR #54).
+Completed Windows task: `WIN-001B` (`b15b9818-0bbc-4081-b4ab-d6b284bd44b8`), pass
+`b30d4690-4d1d-4a72-aff7-744255e4df2d` (sequence 115, `project.yaml` revision 731),
+branch `feat/win-001b-core-adapter`, based on `develop` at `203b67c` (PR #53 merge).
+`apps/windows/tools/package_core.py` builds and audits the matching Debug/Release
+model-v2 `markdown_ffi.dll` package (PE32+ export table of 24 `md_` symbols,
+remapped build paths across repo/cargo/sysroot in UTF-8 and UTF-16LE);
+`apps/windows/Core/` provides the UI-free C# Native AOT adapter with
+5 MiB/500k/1M/16 MiB/128 MiB host limits, one shared worker thread, process-wide
+two-parse admission, prompt queued cancellation and non-blocking `CloseThen`/`Dispose`.
+`MD_REQUIRE_C_SMOKE=1` is now set on all platforms, and `c_abi.rs`/`smoke.c`
+compile and run with MSVC `cl.exe` on Windows. Local `apps/windows/tools/check.py`
+(17 consumer tests in Debug/Release, Debug/Release shell + core smokes, and
+relocated Release smoke/probe) and `tools/check.py all` pass. Measurements are
+recorded in [docs/Windows-Core-Integration.md](docs/Windows-Core-Integration.md)
+and [apps/windows/README.md](apps/windows/README.md#core-integration-and-c-abi-adapter-win-001b).
+[Grok review 1](https://github.com/awesomejt/markdown/pull/54#pullrequestreview-5731262483)
+at `11aecab` had 0 blockers, 3 concerns and 2 nits; all 5 findings were fixed at
+`059d18c` without re-review (exempt under step 7) and all 4 review threads are
+resolved. [Fixed-head all-host CI](https://github.com/awesomejt/markdown/actions/runs/41375068539)
+is green (`changes`, `common`, `core` on Linux/Windows/macOS, `windows-native`,
+`macos-native`, `linux-native`, and `complete`). One state/docs closeout commit
+follows `059d18c`, then green CI, merge into `develop` and branch deletion. The
+merge SHA is not known at closeout time. No live pass or unowned working task
+remains. Next Windows task is `WIN-001C`: native file open, file associations,
+Reload, and generation-safe background loading.
+
+Previous Windows task: `WIN-001A` merged in [PR #53](https://github.com/awesomejt/markdown/pull/53)
+(`203b67c`), delivering the WinUI 3 C# Native AOT shell and required `windows-native` CI.
 
 Previous Linux handoff baseline: `develop` after PR #52; reviewed head `f12d2e5`, non-serious
 review fixes at `27e84df`, followed by one state/docs closeout. The merge SHA is
@@ -242,6 +250,24 @@ done list is in [the memory archive](agents/Memory-Archive.md#handoffmd-phase-ha
   12 loader + 8 renderer + 15 core tests per build and native/association smokes.
   Live AT-SPI Registry activation failed; no service/settings changes or Orca
   proof were attempted. Native role/navigation checks do not satisfy D1.
+- **Done:** WIN-001A in [PR #53](https://github.com/awesomejt/markdown/pull/53):
+  [WinUI 3 C# Native AOT shell, build/check instructions and `windows-native` CI](apps/windows/README.md#win-001a-local-evidence).
+  Debug and Release Native AOT shell smokes pass; native menu/window/keyboard
+  and UIA3 shell checks recorded. [Grok review 1](https://github.com/awesomejt/markdown/pull/53#pullrequestreview-5730825360)
+  at `bc000d7` had no serious finding; `357a27d` fixed its Bash concern and
+  shortcut-binding nit without re-review, and [all-host CI](https://github.com/awesomejt/markdown/actions/runs/41363512342)
+  passed.
+- **Done:** WIN-001B in [PR #54](https://github.com/awesomejt/markdown/pull/54):
+  [model-v2 core DLL package and C# Native AOT adapter](docs/Windows-Core-Integration.md).
+  17 consumer tests pass in Debug and Release, plus Debug/Release shell + core
+  smokes, relocated Release smoke/probe and required MSVC `cl.exe` C smoke.
+  Release 5 MiB prose: median parse 528.5 ms, encode 169.0 ms, copy 18.2 ms;
+  retained working set across 20 sessions is flat at 51.6–52.5 MiB (GC heap
+  5.13 MiB, handles 0,0,0); dense 8 MiB default peaks at 796.9 MiB and 5 MiB
+  host at 502.9 MiB. [Grok review 1](https://github.com/awesomejt/markdown/pull/54#pullrequestreview-5731262483)
+  at `11aecab` had 0 blockers, 3 concerns and 2 nits; all 5 findings were fixed at
+  `059d18c`, all 4 threads resolved, and [all-host CI](https://github.com/awesomejt/markdown/actions/runs/41375068539)
+  passed.
 - **Next on Linux:** LNX-001D1: prove document/heading semantics, off-screen
   heading navigation and owner-confirmed Orca continuous reading beyond visible
   rows on KDE Wayland. Preserve focus, reading order and basic selection.
@@ -254,7 +280,7 @@ done list is in [the memory archive](agents/Memory-Archive.md#handoffmd-phase-ha
   D-030 milestone review: the macOS skeleton (rule 3) and the overdue
   8-PR cap since `m-core-fix`. Fix the hosted `macos-native` flakiness
   (TODO.md) first if it keeps failing `develop`; it recurred on PR #49.
-  WIN-001B follows the approved WIN-001A merge; the host chains remain independent.
+  WIN-001C follows the approved WIN-001B merge; the host chains remain independent.
   The shared-core milestone boundary is reached. Per MEMORY.md, Claude writes
   the combined packet for CORE-001–CORE-006 (plus CORE-003F since `m-core-fix`),
   including MAC-001A/B if freezing current `develop`; name the exact snapshot and

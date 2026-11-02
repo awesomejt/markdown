@@ -53,6 +53,11 @@ debug/release consumer tests, a 5 MiB host source limit and measured
 encode/copy/RSS costs. LNX-001C closed in PR #51 with native file opening,
 association delivery and generation-safe loading. LNX-001D closed in PR #52
 with native fragments, outline and basic selection; LNX-001D1 is next on Linux.
+WIN-001A closed in PR #53 with the [WinUI 3 C# Native AOT shell](apps/windows/README.md)
+and required `windows-native` CI. WIN-001B closed in PR #54 with the
+[model-v2 core DLL package and C# Native AOT adapter](docs/Windows-Core-Integration.md),
+required MSVC C smoke, 5 MiB host source bound and measured encode/copy/working-set
+costs; WIN-001C is next on Windows.
 The shared-core milestone boundary is reached:
 Claude prepares the combined packet for the owner under D-030; only the owner
 merges that milestone into `main`.
@@ -89,7 +94,7 @@ and explicit reference-syntax boundaries. CORE-006 closed in PR #38 with
 history and fresh three-OS all-feature release CI. The desktop chains are
 eligible; MAC-001A to MAC-001I closed in PRs #39 to #47 and the MAC-001 aggregate in PR #48. The macOS
 skeleton milestone review is next on this Mac. LNX-001A through LNX-001D closed in PRs #49 through #52, and LNX-001D1
-is next on Linux; WIN-001A waits for its host. Inspect
+is next on Linux; WIN-001A and WIN-001B closed in PRs #53 and #54, and WIN-001C is next on Windows. Inspect
 state and `HANDOFF.md` before any pass. Scoped commits, pushes, PR updates and
 review requests are authorized; a Grok review with no serious finding approves
 a merge into `develop` (D-029); only the owner merges into `main` (D-030);

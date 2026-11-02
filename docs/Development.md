@@ -63,11 +63,11 @@ hits equal to find, snippet invariants, anchors, budget stops, cancellation
 and 4,096 generated inputs (`WORKSPACE_CASES` raises the count).
 CORE-006A adds `markdown-ffi` extern-function tests (negotiation, handles,
 ownership, panics, cancellation, bulk-view round trips) and `tests/c_abi.rs`:
-a header constant drift check and a C smoke compiled with the host `cc`
-against `core/include`, linked to the built library, comparing struct
-layouts and exercising the [C ABI](../specs/ffi/README.md). `check.py` sets
-`MD_REQUIRE_C_SMOKE=1` on macOS/Linux so a missing compiler fails; Windows
-skips the C smoke until WIN-001B wires MSVC.
+a header constant drift check and a C smoke compiled with the host C compiler
+(`cc` on macOS/Linux, MSVC `cl.exe` via `vswhere` on Windows) against
+`core/include`, linked to the built library, comparing struct layouts and
+exercising the [C ABI](../specs/ffi/README.md). `check.py` sets
+`MD_REQUIRE_C_SMOKE=1` on all three platforms so a missing compiler fails.
 CORE-003B4 adds `tests/conformance.rs` against the generated
 [conformance contract](../specs/parsing/conformance/README.md). Regenerate the
 contract with `python tools/generate_conformance.py` after changing fixture
@@ -143,8 +143,12 @@ Clippy, the Linux dependency/license policy and the debug/release GTK shell
 smoke under Xvfb. The completion gate requires it whenever Linux is selected.
 See [the Linux build/check instructions](../apps/linux/README.md).
 WIN-001A adds the path-filtered `windows-native` job with Debug/Release C#
-Native AOT publish and native shell command/lifecycle smokes. Its selected
-result is required by `complete`; see the [Windows instructions](../apps/windows/README.md).
+Native AOT publish and native shell command/lifecycle smokes. WIN-001B adds
+matching model-v2 Rust core DLL packages, PE32+ export/path audits, 17
+Debug/Release consumer tests and relocated Release smoke/probe checks; see
+[the Windows integration report](Windows-Core-Integration.md) and the
+[Windows instructions](../apps/windows/README.md). Its selected result is
+required by `complete`.
 The common gate test finds Git Bash beside Git on Windows, rejects the
 System32/SysWOW64 WSL launchers, and fails if no suitable Bash is available.
 This avoids CreateProcess choosing WSL and dropping test variables.
