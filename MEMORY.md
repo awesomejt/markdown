@@ -12,7 +12,7 @@ read.
   [Windows shell](apps/windows/README.md) in C# Native AOT/WinUI with native
   New Window/Close/Exit commands, locally deployed App SDK and Debug/Release
   smoke checks.
-- WIN-001B (`feat/win-001b-core-adapter`) adds `apps/windows/tools/package_core.py`
+- WIN-001B (PR #54) adds `apps/windows/tools/package_core.py`
   (`build/windows/core-package/<debug|release>/` with the model-v2
   `markdown_ffi.dll`, import library, header, license, manifest, PE32+ export
   audit of the exact 24 `md_` symbols, and `--remap-path-prefix` / `/PDBALTPATH`
@@ -25,7 +25,10 @@ read.
   parse 528.5 ms, encode 169.0 ms, copy 18.2 ms (47.77 MiB copied); retained
   working set after 20 sessions is flat at 51.6–52.5 MiB (GC heap 5.13 MiB,
   handles 0,0,0); dense `*a` peaks at 796.9 MiB (8 MiB default) and 502.9 MiB
-  (5 MiB host). See [Windows-Core-Integration.md](docs/Windows-Core-Integration.md).
+  (5 MiB host). Grok review 1 at `11aecab` had 0 blockers, 3 concerns and 2 nits;
+  all 5 findings were fixed at `059d18c`, threads resolved, and all-host CI run
+  41375068539 is green. D-029 approves closeout/merge. See
+  [Windows-Core-Integration.md](docs/Windows-Core-Integration.md).
   WIN-001C is next on Windows.
 - Phase: `desktop-apps`; the portable-core shared track is complete through
   CORE-006 (GATE-001 approved, D-018). Native chains are now eligible (D-027).
