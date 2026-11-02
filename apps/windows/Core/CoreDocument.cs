@@ -322,6 +322,45 @@ public sealed unsafe class CoreDocument
             }
         }
 
+        if (nodeCount > 0)
+        {
+            var visited = new bool[nodeCount];
+            var stack = new uint[nodeCount];
+            var sp = 0;
+            var visitedCount = 0u;
+            foreach (var root in Roots)
+            {
+                if (visited[root])
+                {
+                    throw CoreException.InvalidSnapshot($"duplicate root node {root}");
+                }
+                visited[root] = true;
+                visitedCount++;
+                stack[sp++] = root;
+            }
+            while (sp > 0)
+            {
+                var current = stack[--sp];
+                ref readonly var node = ref Nodes[current];
+                for (uint c = 0; c < node.child_count; c++)
+                {
+                    var childIdx = Children[node.first_child + c];
+                    if (visited[childIdx])
+                    {
+                        throw CoreException.InvalidSnapshot($"cycle or shared child at node {childIdx}");
+                    }
+                    visited[childIdx] = true;
+                    visitedCount++;
+                    stack[sp++] = childIdx;
+                }
+            }
+            if (visitedCount != nodeCount)
+            {
+                throw CoreException.InvalidSnapshot(
+                    $"disconnected or cyclic nodes in snapshot ({visitedCount} reachable of {nodeCount})");
+            }
+        }
+
         foreach (ref readonly var link in Links.AsSpan())
         {
             CheckIntent(in link, "link");

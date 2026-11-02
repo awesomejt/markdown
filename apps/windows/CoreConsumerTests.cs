@@ -364,6 +364,44 @@ internal static unsafe class CoreConsumerTests
         byte* unaligned = stackalloc byte[sizeof(CoreFfi.md_node) + 8];
         view.nodes = (CoreFfi.md_node*)(unaligned + 1);
         ExpectCoreError(() => _ = CoreDocument.CopyFromView(in view, 1024), CoreErrorKind.InvalidSnapshot);
+
+        // Two non-root nodes forming a cycle must be rejected even if parent/child pairs match locally.
+        Span<byte> shaBytes = stackalloc byte[64];
+        shaBytes.Fill((byte)'0');
+        CoreFfi.md_node* cyclicNodes = stackalloc CoreFfi.md_node[2];
+        cyclicNodes[0] = new CoreFfi.md_node
+        {
+            kind = CoreFfi.MD_NODE_PARAGRAPH,
+            parent = 1,
+            first_child = 0,
+            child_count = 1,
+        };
+        cyclicNodes[1] = new CoreFfi.md_node
+        {
+            kind = CoreFfi.MD_NODE_PARAGRAPH,
+            parent = 0,
+            first_child = 1,
+            child_count = 1,
+        };
+        uint* cyclicChildren = stackalloc uint[2];
+        cyclicChildren[0] = 1;
+        cyclicChildren[1] = 0;
+        fixed (byte* strPtr = shaBytes)
+        {
+            var cyclicView = new CoreFfi.md_snapshot_view
+            {
+                struct_size = (uint)sizeof(CoreFfi.md_snapshot_view),
+                model_version = CoreFfi.MD_MODEL_V2,
+                strings = strPtr,
+                strings_length = 64,
+                source_sha256 = new CoreFfi.md_str { offset = 0, length = 64 },
+                nodes = cyclicNodes,
+                node_count = 2,
+                children = cyclicChildren,
+                child_count = 2,
+            };
+            ExpectCoreError(() => _ = CoreDocument.CopyFromView(in cyclicView, 4096), CoreErrorKind.InvalidSnapshot);
+        }
     }
 
     private static void QueuedCancellationAdmitsReplacementAndQueueIsBounded()
@@ -388,14 +426,31 @@ internal static unsafe class CoreConsumerTests
 
             var (_, thirdTask) = ParseAsync(session, "# Three\n"u8.ToArray());
             first.Cancel();
+
+            // Session-wide Cancel() must also cancel queued requests for that session and release their slot.
+            using var otherSession = new CoreSession("queue-session-cancel");
+            ExpectCoreError(
+                () => _ = otherSession.Parse("# Blocked\n"u8.ToArray(), null, copyUnchanged: true, (_, _) => { }),
+                CoreErrorKind.Busy);
+            session.Cancel();
+            Check(secondTask.IsCompleted && thirdTask.IsCompleted, "session.Cancel completes queued requests immediately");
+            Check(
+                secondTask.Result.Error?.Kind == CoreErrorKind.Cancelled &&
+                thirdTask.Result.Error?.Kind == CoreErrorKind.Cancelled,
+                "session.Cancel reports Cancelled for queued requests");
+            Check(CoreRuntime.PendingParses == 0, "session.Cancel releases admission slots of queued requests");
+
+            var (_, fourthTask) = ParseAsync(session, "# Four\n"u8.ToArray());
+            var (_, fifthTask) = ParseAsync(otherSession, "# Five\n"u8.ToArray());
             hold.Dispose();
 
-            var second = secondTask.GetAwaiter().GetResult();
-            var third = thirdTask.GetAwaiter().GetResult();
-            Check(second.Error is null && third.Error is null, "second and third parses succeed");
+            var fourth = fourthTask.GetAwaiter().GetResult();
+            var fifth = fifthTask.GetAwaiter().GetResult();
+            Check(fourth.Error is null && fifth.Error is null, "fourth and fifth parses succeed");
             Check(
-                second.Result!.Generation == 1 && third.Result!.Generation == 2,
-                "cancelled queued request never consumed a core generation");
+                fourth.Result!.Generation == 1 && fifth.Result!.Generation == 1,
+                "cancelled queued requests never consumed a core generation");
+            otherSession.Close();
         }
         finally
         {
@@ -420,13 +475,19 @@ internal static unsafe class CoreConsumerTests
         var (_, err) = task.GetAwaiter().GetResult();
         Check(err?.Kind == CoreErrorKind.Cancelled, "in-flight request cancel reports Cancelled");
 
-        var (_, task2) = ParseAsync(session, source);
+        var (request2, task2) = ParseAsync(session, source);
+        sw.Restart();
+        while (!request2.IsRunning)
+        {
+            Check(sw.Elapsed < TimeSpan.FromSeconds(30), "worker never started second large parse");
+            Thread.SpinWait(200);
+        }
         session.Cancel();
         var (res2, err2) = task2.GetAwaiter().GetResult();
-        Check(err2 is null, $"session.Cancel should produce a CoreResult, got error {err2?.Message}");
         Check(
-            res2!.Outcome is CoreOutcome.Cancelled or CoreOutcome.Published,
-            $"unexpected outcome after session.Cancel: {res2.Outcome}");
+            err2?.Kind == CoreErrorKind.Cancelled ||
+            (err2 is null && res2!.Outcome is CoreOutcome.Cancelled or CoreOutcome.Published),
+            $"unexpected result after session.Cancel: outcome={res2?.Outcome} error={err2?.Message}");
 
         var after = session.ParseBlocking("# After\n"u8.ToArray(), null, copyUnchanged: true);
         Check(after.Outcome == CoreOutcome.Published, "session remains usable after cancel");
@@ -445,7 +506,7 @@ internal static unsafe class CoreConsumerTests
         {
             try
             {
-                session.Cancel();
+                _ = session.Availability();
             }
             catch (CoreException ex) when (ex.Kind == CoreErrorKind.SessionClosed)
             {
@@ -455,6 +516,7 @@ internal static unsafe class CoreConsumerTests
             Thread.Yield();
         }
 
+        ExpectCoreError(session.Cancel, CoreErrorKind.SessionClosed);
         ExpectCoreError(
             () => _ = session.Parse("# x\n"u8.ToArray(), null, copyUnchanged: true, (_, _) => { }),
             CoreErrorKind.SessionClosed);
@@ -647,5 +709,37 @@ internal static unsafe class CoreConsumerTests
         });
         Check(again.IsSet, "subsequent CloseThen runs immediately");
         session.Close();
+
+        // Throwing user callbacks must not terminate the shared worker thread.
+        _ = CoreRuntime.TakeLastCallbackException();
+        using var throwingSession = new CoreSession("throwing-callbacks");
+        using var parseThrown = new ManualResetEventSlim(false);
+        _ = throwingSession.Parse("# Throw\n"u8.ToArray(), null, copyUnchanged: true, (_, _) =>
+        {
+            parseThrown.Set();
+            throw new InvalidOperationException("simulated parse callback exception");
+        });
+        Check(parseThrown.Wait(TimeSpan.FromSeconds(10)), "throwing parse callback invoked");
+        DrainWorker();
+        Check(
+            CoreRuntime.TakeLastCallbackException()?.Message == "simulated parse callback exception",
+            "worker captured throwing parse callback exception");
+
+        var afterThrow = throwingSession.ParseBlocking("# Still alive\n"u8.ToArray(), null, copyUnchanged: true);
+        Check(afterThrow.Outcome == CoreOutcome.Published, "worker remains alive after throwing parse callback");
+
+        var holdCloseThrow = HoldWorker();
+        using var closeThrown = new ManualResetEventSlim(false);
+        throwingSession.CloseThen(_ =>
+        {
+            closeThrown.Set();
+            throw new InvalidOperationException("simulated close callback exception");
+        });
+        holdCloseThrow.Dispose();
+        Check(closeThrown.Wait(TimeSpan.FromSeconds(10)), "throwing CloseThen callback invoked");
+        DrainWorker();
+        Check(
+            CoreRuntime.TakeLastCallbackException()?.Message == "simulated close callback exception",
+            "worker captured throwing CloseThen callback exception");
     }
 }

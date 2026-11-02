@@ -153,9 +153,16 @@ public static unsafe class CoreRuntime
     private static readonly BlockingCollection<Action> s_queue = new();
     private static readonly object s_workerInitLock = new();
     private static Thread? s_workerThread;
+    private static Exception? s_lastCallbackException;
 
     [ThreadStatic]
     private static bool s_onWorker;
+
+    public static Exception? TakeLastCallbackException() =>
+        Interlocked.Exchange(ref s_lastCallbackException, null);
+
+    internal static void ReportCallbackException(Exception ex) =>
+        Interlocked.Exchange(ref s_lastCallbackException, ex);
 
     static CoreRuntime()
     {
@@ -419,7 +426,14 @@ public static unsafe class CoreRuntime
         s_onWorker = true;
         foreach (var work in s_queue.GetConsumingEnumerable())
         {
-            work();
+            try
+            {
+                work();
+            }
+            catch (Exception ex)
+            {
+                ReportCallbackException(ex);
+            }
         }
     }
 

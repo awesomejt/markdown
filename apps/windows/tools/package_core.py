@@ -144,10 +144,18 @@ def rustc_sysroots() -> list[Path]:
 
 def check_no_build_paths(library: Path) -> None:
     data = library.read_bytes()
-    forbidden = [str(REPO_ROOT).encode()] + [str(home).encode() for home in cargo_homes()]
-    for needle in forbidden:
-        if needle and needle in data:
-            raise SystemExit(f"build path {needle.decode(errors='replace')} leaked into {library}")
+    data_lower = data.lower()
+    roots = [REPO_ROOT, *cargo_homes(), *rustc_sysroots()]
+    candidates: list[tuple[str, bytes]] = []
+    for root in roots:
+        for text in {str(root), root.as_posix()}:
+            if not text:
+                continue
+            candidates.append((text, text.lower().encode("utf-8")))
+            candidates.append((text, text.lower().encode("utf-16-le")))
+    for label, needle in candidates:
+        if needle and needle in data_lower:
+            raise SystemExit(f"build path {label} leaked into {library}")
 
 
 def git_commit() -> str:

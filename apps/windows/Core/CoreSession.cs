@@ -239,7 +239,14 @@ internal sealed class Completion<T>
         {
             foreach (var callback in callbacks)
             {
-                callback(value);
+                try
+                {
+                    callback(value);
+                }
+                catch (Exception ex)
+                {
+                    CoreRuntime.ReportCallbackException(ex);
+                }
             }
         }
     }
@@ -268,14 +275,23 @@ internal sealed class Completion<T>
             }
             value = _value!;
         }
-        callback(value);
+        try
+        {
+            callback(value);
+        }
+        catch (Exception ex)
+        {
+            CoreRuntime.ReportCallbackException(ex);
+        }
     }
 }
 
 internal sealed unsafe class SessionInner
 {
     private readonly object _lock = new();
+    private readonly List<Request> _requests = [];
     private ulong _handle;
+    private ulong _cancelEpoch;
     private Completion<CoreException?>? _closing;
 
     public HostLimits Limits { get; }
@@ -300,6 +316,7 @@ internal sealed unsafe class SessionInner
     public Completion<CoreException?> BeginClose()
     {
         ulong old;
+        Request[] toCancel;
         Completion<CoreException?> completion;
         lock (_lock)
         {
@@ -308,8 +325,13 @@ internal sealed unsafe class SessionInner
                 return _closing;
             }
             completion = new Completion<CoreException?>();
-            old = DetachLocked();
+            old = DetachLocked(out toCancel);
             _closing = completion;
+        }
+
+        foreach (var request in toCancel)
+        {
+            request.CancelIfQueued(CoreException.SessionClosed());
         }
 
         CoreRuntime.EnqueueWork(() =>
@@ -323,6 +345,7 @@ internal sealed unsafe class SessionInner
     public void DropNonBlocking()
     {
         ulong old;
+        Request[] toCancel;
         Completion<CoreException?>? completion = null;
         lock (_lock)
         {
@@ -330,13 +353,18 @@ internal sealed unsafe class SessionInner
             {
                 return;
             }
-            old = DetachLocked();
+            old = DetachLocked(out toCancel);
             if (old == 0)
             {
                 return;
             }
             completion = new Completion<CoreException?>();
             _closing = completion;
+        }
+
+        foreach (var request in toCancel)
+        {
+            request.CancelIfQueued(CoreException.SessionClosed());
         }
 
         CoreRuntime.EnqueueWork(() =>
@@ -346,10 +374,13 @@ internal sealed unsafe class SessionInner
         });
     }
 
-    private ulong DetachLocked()
+    private ulong DetachLocked(out Request[] toCancel)
     {
         var old = _handle;
         _handle = 0;
+        _cancelEpoch++;
+        toCancel = _requests.Count == 0 ? [] : [.. _requests];
+        _requests.Clear();
         if (old != 0)
         {
             uint cancelled = 0;
@@ -360,18 +391,29 @@ internal sealed unsafe class SessionInner
 
     public void Cancel()
     {
+        Request[] toCancel;
+        uint status;
         lock (_lock)
         {
             if (_handle == 0)
             {
                 throw CoreException.SessionClosed();
             }
+            _cancelEpoch++;
+            toCancel = _requests.Count == 0 ? [] : [.. _requests];
+            _requests.Clear();
             uint cancelled = 0;
-            var status = CoreFfi.md_session_cancel(_handle, &cancelled);
-            if (status != CoreFfi.MD_OK)
-            {
-                throw CoreException.FromStatus("md_session_cancel", status);
-            }
+            status = CoreFfi.md_session_cancel(_handle, &cancelled);
+        }
+
+        foreach (var request in toCancel)
+        {
+            request.CancelIfQueued(CoreException.Cancelled(0));
+        }
+
+        if (status != CoreFfi.MD_OK)
+        {
+            throw CoreException.FromStatus("md_session_cancel", status);
         }
     }
 
@@ -474,7 +516,19 @@ internal sealed unsafe class SessionInner
         }
 
         var tokenCopy = revisionToken is null ? null : (byte[])revisionToken.Clone();
-        var request = new Request(source, tokenCopy, done);
+        Request request;
+        lock (_lock)
+        {
+            if (_handle == 0)
+            {
+                CoreRuntime.ReleaseSlot();
+                throw CoreException.SessionClosed();
+            }
+            request = new Request(source, tokenCopy, done, _cancelEpoch);
+            _requests.RemoveAll(static r => r.IsFinished);
+            _requests.Add(request);
+        }
+
         CoreRuntime.EnqueueWork(() =>
         {
             if (!request.TryBegin(out var reqSource, out var reqToken))
@@ -517,6 +571,10 @@ internal sealed unsafe class SessionInner
             if (_handle == 0)
             {
                 throw CoreException.SessionClosed();
+            }
+            if (request.SessionCancelEpoch != _cancelEpoch)
+            {
+                throw CoreException.Cancelled(0);
             }
 
             uint submitStatus;
@@ -667,11 +725,14 @@ internal sealed unsafe class Request
     private bool _cancelled;
     private ulong _job;
 
-    public Request(byte[] source, byte[]? token, Action<CoreResult?, CoreException?> done)
+    public ulong SessionCancelEpoch { get; }
+
+    public Request(byte[] source, byte[]? token, Action<CoreResult?, CoreException?> done, ulong sessionCancelEpoch)
     {
         _source = source;
         _token = token;
         _done = done;
+        SessionCancelEpoch = sessionCancelEpoch;
     }
 
     public bool IsRunning
@@ -681,6 +742,17 @@ internal sealed unsafe class Request
             lock (_lock)
             {
                 return _phase == RequestPhase.Running;
+            }
+        }
+    }
+
+    public bool IsFinished
+    {
+        get
+        {
+            lock (_lock)
+            {
+                return _phase == RequestPhase.Finished;
             }
         }
     }
@@ -739,6 +811,37 @@ internal sealed unsafe class Request
         }
     }
 
+    public void CancelIfQueued(CoreException reason)
+    {
+        Action<CoreResult?, CoreException?>? done = null;
+        lock (_lock)
+        {
+            if (_phase != RequestPhase.Queued)
+            {
+                return;
+            }
+            _cancelled = true;
+            _phase = RequestPhase.Finished;
+            _source = null;
+            _token = null;
+            CoreRuntime.ReleaseSlot();
+            done = _done;
+            _done = null;
+        }
+
+        if (done is not null)
+        {
+            try
+            {
+                done(null, reason);
+            }
+            catch (Exception ex)
+            {
+                CoreRuntime.ReportCallbackException(ex);
+            }
+        }
+    }
+
     public void Cancel()
     {
         Action<CoreResult?, CoreException?>? done = null;
@@ -766,7 +869,17 @@ internal sealed unsafe class Request
             }
         }
 
-        done?.Invoke(null, CoreException.Cancelled(0));
+        if (done is not null)
+        {
+            try
+            {
+                done(null, CoreException.Cancelled(0));
+            }
+            catch (Exception ex)
+            {
+                CoreRuntime.ReportCallbackException(ex);
+            }
+        }
     }
 
     public void Complete(CoreResult? result, CoreException? error)
@@ -793,6 +906,16 @@ internal sealed unsafe class Request
             _done = null;
         }
 
-        done?.Invoke(finalResult, finalError);
+        if (done is not null)
+        {
+            try
+            {
+                done(finalResult, finalError);
+            }
+            catch (Exception ex)
+            {
+                CoreRuntime.ReportCallbackException(ex);
+            }
+        }
     }
 }

@@ -18,8 +18,8 @@ read.
   audit of the exact 24 `md_` symbols, and `--remap-path-prefix` / `/PDBALTPATH`
   path-leak checks), the UI-free C# Native AOT adapter under `apps/windows/Core/`
   (5 MiB source, 500k nodes, 1M events, 16 MiB text, 128 MiB copied payload;
-  one worker thread per session, two process-wide admitted parses, prompt
-  queued cancellation and non-blocking `CloseThen`/`Dispose`), 17 consumer tests
+  one shared process-wide `markdown-core` worker thread, two process-wide admitted
+  parses, prompt queued cancellation and non-blocking `CloseThen`/`Dispose`), 17 consumer tests
   in Debug/Release, relocated Release smoke/probe and required MSVC `cl.exe` C
   smoke (`MD_REQUIRE_C_SMOKE=1` on all three OSes). Release 5 MiB prose: median
   parse 528.5 ms, encode 169.0 ms, copy 18.2 ms (47.77 MiB copied); retained
