@@ -1,12 +1,14 @@
 # Windows native shell
 
-WIN-001A, WIN-001B, WIN-001C, WIN-001D, and WIN-001E provide an unpackaged Windows 11 x64 WinUI 3
+WIN-001A, WIN-001B, WIN-001C, WIN-001D, WIN-001E, and WIN-001F provide an unpackaged Windows 11 x64 WinUI 3
 application in C# Native AOT linked against the local shared-core C ABI package
-(`markdown_ffi.dll`, model v2). It opens a native window with a File menu,
-Open… (Ctrl+O), Reload (Ctrl+R), New Window (Ctrl+N), Close Window (Ctrl+W),
-and Exit (Ctrl+Shift+W). Alt+F opens the File menu; Alt+F4 retains the Windows
+(`markdown_ffi.dll`, model v2). It opens a native window with a menu bar: File
+(Open… Ctrl+O, Reload Ctrl+R, New Window Ctrl+N, Close Window Ctrl+W, Exit Ctrl+Shift+W),
+Edit (Find… Ctrl+F, Find Next F3, Find Previous Shift+F3), View (Reset Text Size Ctrl+0,
+Increase Text Size Ctrl++, Decrease Text Size Ctrl+-, and Theme: System, Light, Dark),
+and Settings… (Ctrl+,). Alt+F opens the File menu; Alt+F4 retains the Windows
 close-window behavior. Closing the final window ends the process. Each window
-follows the system theme and declares PerMonitorV2 DPI awareness.
+follows the system or user-chosen theme and declares PerMonitorV2 DPI awareness.
 
 At startup, the host verifies the bundled `markdown_ffi.dll` path, build
 configuration and SHA-256 fingerprint against the compiled-in package identity
@@ -180,3 +182,13 @@ Validated on Windows 11 Pro build 26300.9711, Ryzen 9 5950X x64, Rust 1.99.1,
   and corrupt files with user-friendly alt-text status messages, off-thread decoding with UI-thread
   `BitmapImage` surface caching and lifecycle clearing). The Native AOT smoke (`--smoke`) was extended
   to verify rendering of rich blocks (table, task list, local image) with zero leaked core handles or crashes.
+- **WIN-001F**: Debug, Release, and relocated Release Native AOT builds passed
+  18 core consumer tests (`--core-tests`, including exact find, case sensitivity, NFD vs NFC,
+  simple folding without normalization, emoji ZWJ sequences, CJK, RTL Hebrew, `maxMatches`
+  truncation, 4096-byte query rejection, superseded generation, cancellation, and handle leak audits),
+  12 document tests (`--document-tests`), 16 render tests (`--render-tests`, including text scale clamping
+  and 9 steps, in-memory and local settings preferences persistence, and document find Unicode
+  byte-to-char mapping, segment handling, status, and wrapping), and the extended Native AOT smoke
+  (`--smoke`: native FindBar with search input, Previous/Next match cycling, match status,
+  text scaling across 9 steps with Ctrl++/Ctrl--/Ctrl+0 and scroll retention, appearance switching
+  [System/Light/Dark], and Settings window).

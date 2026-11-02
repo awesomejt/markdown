@@ -250,6 +250,7 @@ public sealed class DocumentLoader : IDisposable
     public ulong Serial => Volatile.Read(ref _serial);
     public ulong DiscardedResults => Volatile.Read(ref _discardedResults);
 
+    public CoreSession? Session => _session;
     public bool HasFile => Capability is not null;
 
     public string WindowTitle =>

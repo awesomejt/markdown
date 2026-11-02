@@ -60,7 +60,7 @@ required MSVC C smoke, 5 MiB host source bound and measured encode/copy/working-
 costs. WIN-001C closed in PR #55 with native file opening, association delivery and
 generation-safe background loading. WIN-001D closed in PR #56 with native virtualized
 presentation and outline navigation. WIN-001E closed in PR #57 with tables, task lists,
-and folder-contained image resource policy; WIN-001F is next on Windows.
+and folder-contained image resource policy. WIN-001F closed in PR #58 with native document find, theme switching, and text scaling; WIN-001G is next on Windows.
 The shared-core milestone boundary is reached:
 Claude prepares the combined packet for the owner under D-030; only the owner
 merges that milestone into `main`.
@@ -97,7 +97,7 @@ and explicit reference-syntax boundaries. CORE-006 closed in PR #38 with
 history and fresh three-OS all-feature release CI. The desktop chains are
 eligible; MAC-001A to MAC-001I closed in PRs #39 to #47 and the MAC-001 aggregate in PR #48. The macOS
 skeleton milestone review is next on this Mac. LNX-001A through LNX-001D closed in PRs #49 through #52, and LNX-001D1
-is next on Linux; WIN-001A through WIN-001E closed in PRs #53 to #57, and WIN-001F is next on Windows. Inspect
+is next on Linux; WIN-001A through WIN-001F closed in PRs #53 to #58, and WIN-001G is next on Windows. Inspect
 state and `HANDOFF.md` before any pass. Scoped commits, pushes, PR updates and
 review requests are authorized; a Grok review with no serious finding approves
 a merge into `develop` (D-029); only the owner merges into `main` (D-030);

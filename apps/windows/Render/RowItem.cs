@@ -22,6 +22,9 @@ public sealed partial class RowItem : ListViewItem
     private static readonly SolidColorBrush s_altRowBackground = new(global::Windows.UI.Color.FromArgb(0x0C, 0x80, 0x80, 0x80));
     private static readonly double[] s_headingSizes = [28, 24, 20, 18, 16, 15];
 
+    private static readonly SolidColorBrush s_findHighlightBrush = new(global::Windows.UI.Color.FromArgb(0x80, 0xFF, 0xEB, 0x3B));
+    private static readonly SolidColorBrush s_currentFindHighlightBrush = new(global::Windows.UI.Color.FromArgb(0xC0, 0xFF, 0x98, 0x00));
+
     public Grid Root { get; } = new();
     public RichTextBlock TextBlock { get; } = new()
     {
@@ -79,11 +82,28 @@ public sealed partial class RowItem : ListViewItem
     /// <summary>
     /// Resets row state when recycled or unbound.
     /// </summary>
+    public void SetHighlights(IReadOnlyList<(int Start, int Length, bool IsCurrent)>? highlights)
+    {
+        TextBlock.TextHighlighters.Clear();
+        if (highlights is null || highlights.Count == 0) return;
+        var normal = new TextHighlighter { Background = s_findHighlightBrush };
+        var current = new TextHighlighter { Background = s_currentFindHighlightBrush };
+        foreach (var (start, length, isCurrent) in highlights)
+        {
+            var range = new TextRange { StartIndex = start, Length = length };
+            if (isCurrent) current.Ranges.Add(range);
+            else normal.Ranges.Add(range);
+        }
+        if (normal.Ranges.Count > 0) TextBlock.TextHighlighters.Add(normal);
+        if (current.Ranges.Count > 0) TextBlock.TextHighlighters.Add(current);
+    }
+
     public void Unbind()
     {
         ItemIndex = -1;
         ShownText = string.Empty;
         TextBlock.Blocks.Clear();
+        TextBlock.TextHighlighters.Clear();
         TextBlock.Visibility = Visibility.Visible;
         ImagesPanel.Children.Clear();
         ImagesPanel.Visibility = Visibility.Collapsed;
@@ -95,7 +115,7 @@ public sealed partial class RowItem : ListViewItem
     /// <summary>
     /// Binds the container to the given fragment from the current render plan.
     /// </summary>
-    public void Bind(int index, RenderFragment fragment, Action<int, int>? onLinkActivated, ImageSourceCache? imageCache = null)
+    public void Bind(int index, RenderFragment fragment, Action<int, int>? onLinkActivated, ImageSourceCache? imageCache = null, double textScale = 1.0)
     {
         ItemIndex = index;
         TextBlock.Blocks.Clear();
@@ -156,16 +176,17 @@ public sealed partial class RowItem : ListViewItem
         ShownText = shownBuilder.ToString();
         TextBlock.Blocks.Add(paragraph);
 
+        var scale = TextScale.Clamped(textScale);
         var isHeading = fragment.Kind == FragmentKind.Heading;
         var headingLevel = fragment.HeadingLevel;
         if (isHeading && headingLevel >= 1 && headingLevel <= 6)
         {
-            TextBlock.FontSize = s_headingSizes[headingLevel - 1];
+            TextBlock.FontSize = s_headingSizes[headingLevel - 1] * scale;
             TextBlock.FontWeight = FontWeights.SemiBold;
         }
         else
         {
-            TextBlock.FontSize = 15;
+            TextBlock.FontSize = 15 * scale;
             TextBlock.FontWeight = FontWeights.Normal;
         }
 
@@ -174,7 +195,7 @@ public sealed partial class RowItem : ListViewItem
 
         if (fragment.Kind == FragmentKind.TableRow)
         {
-            TextBlock.FontSize = 14;
+            TextBlock.FontSize = 14 * scale;
             if (fragment.IsHeader)
             {
                 Root.Background = s_codeBackground;
