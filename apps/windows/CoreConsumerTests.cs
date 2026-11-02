@@ -611,13 +611,14 @@ internal static unsafe class CoreConsumerTests
     private static void BlockingCallsAreRefusedOnTheWorker()
     {
         using var session = new CoreSession("worker");
-        var tcs = new TaskCompletionSource<(CoreErrorKind? ParseErr, CoreErrorKind? CloseErr)>(
+        var tcs = new TaskCompletionSource<(CoreErrorKind? ParseErr, CoreErrorKind? CloseErr, CoreErrorKind? FindErr)>(
             TaskCreationOptions.RunContinuationsAsynchronously);
 
         CoreRuntime.EnqueueWork(() =>
         {
             CoreErrorKind? parseErr = null;
             CoreErrorKind? closeErr = null;
+            CoreErrorKind? findErr = null;
             try
             {
                 _ = session.ParseBlocking("# x\n"u8.ToArray(), null, copyUnchanged: true);
@@ -628,19 +629,29 @@ internal static unsafe class CoreConsumerTests
             }
             try
             {
+                _ = session.Find("x");
+            }
+            catch (CoreException ex)
+            {
+                findErr = ex.Kind;
+            }
+            try
+            {
                 session.Close();
             }
             catch (CoreException ex)
             {
                 closeErr = ex.Kind;
             }
-            tcs.SetResult((parseErr, closeErr));
+            tcs.SetResult((parseErr, closeErr, findErr));
         });
 
-        var (pErr, cErr) = tcs.Task.GetAwaiter().GetResult();
+        var (pErr, cErr, fErr) = tcs.Task.GetAwaiter().GetResult();
         Check(
-            pErr == CoreErrorKind.BlockingWaitOnWorker && cErr == CoreErrorKind.BlockingWaitOnWorker,
-            "ParseBlocking and Close must refuse on the worker thread");
+            pErr == CoreErrorKind.BlockingWaitOnWorker &&
+            cErr == CoreErrorKind.BlockingWaitOnWorker &&
+            fErr == CoreErrorKind.BlockingWaitOnWorker,
+            "ParseBlocking, Close, and Find must refuse on the worker thread");
         session.Close();
     }
 

@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text;
 using Markdown.Windows.Core;
 
 namespace Markdown.Windows.Render;
@@ -26,6 +27,8 @@ public sealed class FindMatch
 
 public sealed class FindMatches
 {
+    private readonly Dictionary<int, List<(int MatchIndex, FindMatchRange Range)>> _rangesByFragment;
+
     public ulong Generation { get; }
     public IReadOnlyList<FindMatch> Matches { get; }
     public bool Truncated { get; }
@@ -36,6 +39,31 @@ public sealed class FindMatches
         Generation = generation;
         Matches = matches;
         Truncated = truncated;
+
+        var byFrag = new Dictionary<int, List<(int MatchIndex, FindMatchRange Range)>>();
+        for (var i = 0; i < matches.Count; i++)
+        {
+            var m = matches[i];
+            foreach (var r in m.Ranges)
+            {
+                if (!byFrag.TryGetValue(r.FragmentIndex, out var list))
+                {
+                    list = new List<(int MatchIndex, FindMatchRange Range)>();
+                    byFrag[r.FragmentIndex] = list;
+                }
+                list.Add((i, r));
+            }
+        }
+        _rangesByFragment = byFrag;
+    }
+
+    public IReadOnlyList<(int MatchIndex, FindMatchRange Range)> RangesForFragment(int fragmentIndex)
+    {
+        if (_rangesByFragment.TryGetValue(fragmentIndex, out var list))
+        {
+            return list;
+        }
+        return Array.Empty<(int, FindMatchRange)>();
     }
 
     public int? IndexAtOrAfter(int fragmentIndex, int charOffset = 0)
@@ -110,22 +138,22 @@ public static class DocumentFind
             if (currentByte >= byteEnd)
             {
                 charEnd = i;
-                break;
+                return (charStart, charEnd);
             }
 
-            var c = text[i];
-            if (char.IsHighSurrogate(c) && i + 1 < text.Length && char.IsLowSurrogate(text[i + 1]))
-            {
-                currentByte += 4;
-                i++;
-            }
-            else if (c <= 0x7F)
+            var ch = text[i];
+            if (ch <= 0x7F)
             {
                 currentByte += 1;
             }
-            else if (c <= 0x7FF)
+            else if (ch <= 0x7FF)
             {
                 currentByte += 2;
+            }
+            else if (char.IsSurrogate(ch))
+            {
+                currentByte += 4;
+                i++; // skip trailing surrogate
             }
             else
             {
@@ -134,35 +162,71 @@ public static class DocumentFind
         }
 
         if (!foundStart) charStart = text.Length;
-        if (currentByte < byteEnd) charEnd = text.Length;
+        return (charStart, text.Length);
+    }
 
-        return (charStart, charEnd);
+    private static int[] BuildByteToCharMap(string text)
+    {
+        var byteCount = Encoding.UTF8.GetByteCount(text);
+        var map = new int[byteCount + 1];
+        var currentByte = 0;
+
+        for (var i = 0; i < text.Length; i++)
+        {
+            var ch = text[i];
+            int charBytes;
+            if (ch <= 0x7F)
+            {
+                charBytes = 1;
+            }
+            else if (ch <= 0x7FF)
+            {
+                charBytes = 2;
+            }
+            else if (char.IsSurrogate(ch))
+            {
+                charBytes = 4;
+                for (var b = 0; b < charBytes && currentByte < byteCount; b++)
+                {
+                    map[currentByte++] = i;
+                }
+                i++; // skip trailing surrogate
+                continue;
+            }
+            else
+            {
+                charBytes = 3;
+            }
+
+            for (var b = 0; b < charBytes && currentByte < byteCount; b++)
+            {
+                map[currentByte++] = i;
+            }
+        }
+
+        while (currentByte <= byteCount)
+        {
+            map[currentByte++] = text.Length;
+        }
+
+        return map;
     }
 
     public static FindMatches MapMatches(RenderPlan plan, CoreDocument document, CoreFindResult result)
     {
-        ArgumentNullException.ThrowIfNull(plan);
-        ArgumentNullException.ThrowIfNull(document);
-        ArgumentNullException.ThrowIfNull(result);
-
-        if (result.Generation != plan.Generation || result.Generation != document.Generation)
-        {
-            return new FindMatches(plan.Generation, [], truncated: false);
-        }
-
-        // Build index of runs by node id: node -> list of (fragmentIndex, fragmentCharOffset, run)
-        var nodeRunIndex = new Dictionary<int, List<(int FragmentIndex, int FragmentCharOffset, RenderRun Run)>>();
+        // Index fragments and runs by NodeId
+        var nodeRunIndex = new Dictionary<int, List<(int FragmentIndex, int FragCharOffset, RenderRun Run)>>();
         for (var f = 0; f < plan.Fragments.Count; f++)
         {
-            var fragment = plan.Fragments[f];
+            var frag = plan.Fragments[f];
             var fragCharOffset = 0;
-            foreach (var run in fragment.Runs)
+            foreach (var run in frag.Runs)
             {
                 if (run.NodeId >= 0)
                 {
                     if (!nodeRunIndex.TryGetValue(run.NodeId, out var list))
                     {
-                        list = [];
+                        list = new List<(int, int, RenderRun)>();
                         nodeRunIndex[run.NodeId] = list;
                     }
                     list.Add((f, fragCharOffset, run));
@@ -170,6 +234,9 @@ public static class DocumentFind
                 fragCharOffset += run.Text.Length;
             }
         }
+
+        var nodeTextCache = new Dictionary<int, string>();
+        var nodeByteToCharCache = new Dictionary<int, int[]>();
 
         var matches = new List<FindMatch>(result.Matches.Count);
         for (var mIndex = 0; mIndex < result.Matches.Count; mIndex++)
@@ -188,14 +255,24 @@ public static class DocumentFind
                     continue;
                 }
 
-                var nodeText = (nodeId >= 0 && nodeId < document.NodeCount)
-                    ? document.NodeText(nodeId)
-                    : string.Empty;
+                if (!nodeTextCache.TryGetValue(nodeId, out var nodeText))
+                {
+                    nodeText = (nodeId >= 0 && nodeId < document.NodeCount)
+                        ? document.NodeText(nodeId)
+                        : string.Empty;
+                    nodeTextCache[nodeId] = nodeText;
+                }
 
-                var (charStart, charEnd) = Utf8ByteRangeToCharRange(
-                    nodeText,
-                    segment.Text.Start.Value,
-                    segment.Text.End.Value);
+                if (!nodeByteToCharCache.TryGetValue(nodeId, out var byteMap))
+                {
+                    byteMap = BuildByteToCharMap(nodeText);
+                    nodeByteToCharCache[nodeId] = byteMap;
+                }
+
+                var byteStart = segment.Text.Start.Value;
+                var byteEnd = segment.Text.End.Value;
+                var charStart = byteStart >= byteMap.Length ? nodeText.Length : byteMap[byteStart];
+                var charEnd = byteEnd >= byteMap.Length ? nodeText.Length : byteMap[byteEnd];
 
                 foreach (var (fragmentIndex, fragCharOffset, run) in runEntries)
                 {

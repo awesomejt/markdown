@@ -143,20 +143,21 @@ public sealed partial class ReaderControl : UserControl
             row.SetHighlights(null);
             return;
         }
-        var list = new List<(int Start, int Length, bool IsCurrent)>();
-        for (var mIdx = 0; mIdx < CurrentFindMatches.Matches.Count; mIdx++)
+
+        var fragRanges = CurrentFindMatches.RangesForFragment(row.ItemIndex);
+        if (fragRanges.Count == 0)
         {
-            var match = CurrentFindMatches.Matches[mIdx];
-            var isCurrent = (CurrentMatchIndex.HasValue && CurrentMatchIndex.Value == mIdx);
-            foreach (var range in match.Ranges)
-            {
-                if (range.FragmentIndex == row.ItemIndex)
-                {
-                    list.Add((range.Start, range.Length, isCurrent));
-                }
-            }
+            row.SetHighlights(null);
+            return;
         }
-        row.SetHighlights(list.Count > 0 ? list : null);
+
+        var list = new List<(int Start, int Length, bool IsCurrent)>(fragRanges.Count);
+        foreach (var (mIdx, range) in fragRanges)
+        {
+            var isCurrent = (CurrentMatchIndex.HasValue && CurrentMatchIndex.Value == mIdx);
+            list.Add((range.Start, range.Length, isCurrent));
+        }
+        row.SetHighlights(list);
     }
 
     public void InstallPlan(RenderPlan plan, ulong generation = 0)

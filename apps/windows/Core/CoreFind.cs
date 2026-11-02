@@ -46,6 +46,11 @@ public sealed unsafe partial class CoreSession
         ulong generation = 0,
         CancellationToken cancellationToken = default)
     {
+        if (CoreRuntime.OnWorker)
+        {
+            throw CoreException.BlockingWaitOnWorker();
+        }
+
         return FindAsync(query, options, generation, cancellationToken)
             .GetAwaiter()
             .GetResult();
@@ -68,6 +73,11 @@ public sealed unsafe partial class CoreSession
         }
 
         var opt = options ?? new CoreFindOptions();
+        if (opt.MaxMatches > CoreFfi.MD_FIND_MAX_MATCHES)
+        {
+            throw CoreException.InvalidArgument(
+                $"MaxMatches {opt.MaxMatches} exceeds maximum {CoreFfi.MD_FIND_MAX_MATCHES}");
+        }
         var tcs = new TaskCompletionSource<CoreFindResult>(TaskCreationOptions.RunContinuationsAsynchronously);
 
         var gate = new FindCancellationGate(cancellationToken);
@@ -168,8 +178,10 @@ internal sealed unsafe partial class SessionInner
             };
 
             var limit = options.MaxMatches == 0 ? CoreFfi.MD_FIND_DEFAULT_MAX_MATCHES : options.MaxMatches;
-            var matches = new CoreFfi.md_find_match[limit];
-            var segments = new CoreFfi.md_match_segment[limit * 2];
+            var initialMatches = (int)Math.Min(limit, 256u);
+            var initialSegments = (int)Math.Min((long)limit * 2, 512L);
+            var matches = new CoreFfi.md_find_match[initialMatches];
+            var segments = new CoreFfi.md_match_segment[initialSegments];
             var result = new CoreFfi.md_find_result { struct_size = CoreFfi.MD_FIND_RESULT_SIZE };
 
             for (var attempt = 0; attempt < 2; attempt++)
@@ -192,7 +204,7 @@ internal sealed unsafe partial class SessionInner
 
                     if (status == CoreFfi.MD_ERR_BUFFER_TOO_SMALL && attempt == 0)
                     {
-                        if (result.match_count > limit || result.segment_count > (ulong)limit + 2UL * Limits.MaxNodes)
+                        if (result.match_count > limit || result.segment_count > (ulong)limit * 4UL + 2UL * Limits.MaxNodes)
                         {
                             throw CoreException.InvalidSnapshot("find required buffer sizes exceed safety bounds");
                         }

@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Markdown.Windows.Render;
 using Microsoft.UI.Xaml;
 
@@ -26,37 +27,126 @@ public sealed class MemoryPreferenceStore : IPreferenceStore
 
 public sealed class LocalSettingsPreferenceStore : IPreferenceStore
 {
-    private readonly Dictionary<string, object?> _fallback = new(StringComparer.Ordinal);
+    private readonly string _filePath;
+    private readonly object _lock = new();
+    private readonly Dictionary<string, object?> _cache = new(StringComparer.Ordinal);
+
+    public string FilePath => _filePath;
+
+    public LocalSettingsPreferenceStore(string? customPath = null)
+    {
+        if (customPath is not null)
+        {
+            _filePath = customPath;
+        }
+        else
+        {
+            var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+            _filePath = Path.Combine(localAppData, "MarkdownReader", "preferences.json");
+        }
+        Load();
+    }
+
+    private void Load()
+    {
+        lock (_lock)
+        {
+            try
+            {
+                if (File.Exists(_filePath))
+                {
+                    using var stream = File.OpenRead(_filePath);
+                    using var doc = JsonDocument.Parse(stream);
+                    if (doc.RootElement.ValueKind == JsonValueKind.Object)
+                    {
+                        foreach (var prop in doc.RootElement.EnumerateObject())
+                        {
+                            switch (prop.Value.ValueKind)
+                            {
+                                case JsonValueKind.Number when prop.Value.TryGetInt32(out var i):
+                                    _cache[prop.Name] = i;
+                                    break;
+                                case JsonValueKind.Number when prop.Value.TryGetDouble(out var d):
+                                    _cache[prop.Name] = d;
+                                    break;
+                                case JsonValueKind.String:
+                                    _cache[prop.Name] = prop.Value.GetString();
+                                    break;
+                                case JsonValueKind.True:
+                                    _cache[prop.Name] = true;
+                                    break;
+                                case JsonValueKind.False:
+                                    _cache[prop.Name] = false;
+                                    break;
+                            }
+                        }
+                    }
+                }
+            }
+            catch
+            {
+                // Unreadable or corrupt preferences; keep cache empty
+            }
+        }
+    }
 
     public object? Get(string key)
     {
-        try
+        lock (_lock)
         {
-            var localSettings = global::Windows.Storage.ApplicationData.Current.LocalSettings;
-            if (localSettings.Values.TryGetValue(key, out var val))
-            {
-                return val;
-            }
+            return _cache.TryGetValue(key, out var val) ? val : null;
         }
-        catch
-        {
-            // Unpackaged or LocalSettings unavailable
-        }
-
-        return _fallback.TryGetValue(key, out var fallbackVal) ? fallbackVal : null;
     }
 
     public void Set(string key, object? value)
     {
-        _fallback[key] = value;
-        try
+        lock (_lock)
         {
-            var localSettings = global::Windows.Storage.ApplicationData.Current.LocalSettings;
-            localSettings.Values[key] = value;
-        }
-        catch
-        {
-            // Unpackaged or LocalSettings unavailable
+            _cache[key] = value;
+            try
+            {
+                var dir = Path.GetDirectoryName(_filePath);
+                if (!string.IsNullOrEmpty(dir))
+                {
+                    Directory.CreateDirectory(dir);
+                }
+                var tmpPath = _filePath + ".tmp." + Guid.NewGuid().ToString("N");
+                using (var stream = File.Create(tmpPath))
+                using (var writer = new Utf8JsonWriter(stream, new JsonWriterOptions { Indented = true }))
+                {
+                    writer.WriteStartObject();
+                    foreach (var (k, v) in _cache)
+                    {
+                        switch (v)
+                        {
+                            case int i:
+                                writer.WriteNumber(k, i);
+                                break;
+                            case double d:
+                                writer.WriteNumber(k, d);
+                                break;
+                            case float f:
+                                writer.WriteNumber(k, f);
+                                break;
+                            case string s:
+                                writer.WriteString(k, s);
+                                break;
+                            case bool b:
+                                writer.WriteBoolean(k, b);
+                                break;
+                            case null:
+                                writer.WriteNull(k);
+                                break;
+                        }
+                    }
+                    writer.WriteEndObject();
+                }
+                File.Move(tmpPath, _filePath, overwrite: true);
+            }
+            catch
+            {
+                // In-memory cache continues to serve even if persistence fails
+            }
         }
     }
 }
@@ -102,19 +192,23 @@ public sealed class ReaderPreferences
         get
         {
             var raw = Store.Get(TextScaleKey);
-            if (raw is double d)
+            if (raw is double dVal)
             {
-                return TextScale.Clamped(d);
+                return TextScale.Clamped(dVal);
             }
-            if (raw is float f)
+            if (raw is float fVal)
             {
-                return TextScale.Clamped(f);
+                return TextScale.Clamped(fVal);
             }
-            if (raw is string s && double.TryParse(s, System.Globalization.CultureInfo.InvariantCulture, out var parsed))
+            if (raw is int iVal)
+            {
+                return TextScale.Clamped(iVal);
+            }
+            if (raw is string sVal && double.TryParse(sVal, System.Globalization.CultureInfo.InvariantCulture, out var parsed))
             {
                 return TextScale.Clamped(parsed);
             }
-            return TextScale.Standard;
+            return 1.0;
         }
         set
         {

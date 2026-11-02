@@ -92,6 +92,10 @@ public sealed partial class SettingsWindow : Window
 
     public void Refresh()
     {
+        if (Content is FrameworkElement fe)
+        {
+            fe.RequestedTheme = _preferences.ToElementTheme();
+        }
         _themeCombo.SelectedIndex = (int)_preferences.Theme;
         var scale = _preferences.TextScaleValue;
         var stepIndex = 0;

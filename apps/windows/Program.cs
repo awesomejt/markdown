@@ -673,11 +673,12 @@ public sealed partial class ReaderApp : Application
                 throw new InvalidOperationException("Find command must show FindBar.");
             }
 
-            first.FindBar.Query = "Second Smoke";
+            first.FindBar.Query = "second smoke";
+            first.FindBar.MatchCase = false;
             first.ExecuteFind();
             await WaitWindowIdleAsync(first);
             var swFind = Stopwatch.StartNew();
-            while (swFind.ElapsedMilliseconds < 3000 && (first.Reader.CurrentFindMatches is null || first.Reader.CurrentFindMatches.Count == 0))
+            while (swFind.ElapsedMilliseconds < 3000 && (first.Reader.CurrentFindMatches is null || first.Reader.CurrentFindMatches.Count != 1))
             {
                 await Task.Delay(20);
             }
@@ -685,7 +686,7 @@ public sealed partial class ReaderApp : Application
                 first.Reader.CurrentFindMatches.Count != 1 ||
                 first.FindBar.StatusText.Text != "1 of 1")
             {
-                throw new InvalidOperationException($"Find failed: matches={first.Reader.CurrentFindMatches?.Count}, status={first.FindBar.StatusText.Text}");
+                throw new InvalidOperationException($"Case-insensitive find failed: matches={first.Reader.CurrentFindMatches?.Count}, status={first.FindBar.StatusText.Text}");
             }
 
             first.FindNextCommand();
@@ -693,10 +694,28 @@ public sealed partial class ReaderApp : Application
 
             first.FindBar.MatchCase = true;
             first.ExecuteFind();
-            await Task.Delay(50);
-            if (first.Reader.CurrentFindMatches?.Count != 1)
+            await WaitWindowIdleAsync(first);
+            var swCase = Stopwatch.StartNew();
+            while (swCase.ElapsedMilliseconds < 3000 && (first.Reader.CurrentFindMatches is null || first.Reader.CurrentFindMatches.Count != 0))
             {
-                throw new InvalidOperationException("Case sensitive find failed.");
+                await Task.Delay(20);
+            }
+            if (first.Reader.CurrentFindMatches?.Count != 0 || first.FindBar.StatusText.Text != "Not found")
+            {
+                throw new InvalidOperationException($"Case sensitive find failed: expected 0 matches, got {first.Reader.CurrentFindMatches?.Count}");
+            }
+
+            first.FindBar.MatchCase = false;
+            first.ExecuteFind();
+            await WaitWindowIdleAsync(first);
+            var swRestore = Stopwatch.StartNew();
+            while (swRestore.ElapsedMilliseconds < 3000 && (first.Reader.CurrentFindMatches is null || first.Reader.CurrentFindMatches.Count != 1))
+            {
+                await Task.Delay(20);
+            }
+            if (first.Reader.CurrentFindMatches?.Count != 1 || first.FindBar.StatusText.Text != "1 of 1")
+            {
+                throw new InvalidOperationException("Restoring case-insensitive find failed.");
             }
 
             first.CloseFindCommand();
@@ -828,6 +847,7 @@ internal sealed class ReaderWindow : Window
 
     public bool IsFindBarVisible => FindBar.Visibility == Visibility.Visible;
     private uint _findRequestId;
+    private CancellationTokenSource? _findCts;
 
     internal ReaderWindow(ReaderApp app, ReaderPreferences preferences)
     {
@@ -855,6 +875,9 @@ internal sealed class ReaderWindow : Window
         };
         Closed += (_, _) =>
         {
+            _findCts?.Cancel();
+            _findCts?.Dispose();
+            _findCts = null;
             Loader.Close();
             Reader.Clear();
         };
@@ -1005,10 +1028,18 @@ internal sealed class ReaderWindow : Window
         var query = FindBar.Query;
         if (doc is null || plan is null || session is null || string.IsNullOrEmpty(query))
         {
+            _findCts?.Cancel();
+            _findCts?.Dispose();
+            _findCts = null;
             Reader.SetFindMatches(null);
             FindBar.SetStatus(string.Empty);
             return;
         }
+
+        _findCts?.Cancel();
+        _findCts?.Dispose();
+        var cts = new CancellationTokenSource();
+        _findCts = cts;
 
         var reqId = unchecked(++_findRequestId);
         var generation = doc.Generation;
@@ -1018,8 +1049,8 @@ internal sealed class ReaderWindow : Window
         {
             try
             {
-                var result = await session.FindAsync(query, options, generation);
-                if (reqId != _findRequestId || doc != Loader.Document)
+                var result = await session.FindAsync(query, options, generation, cts.Token);
+                if (reqId != _findRequestId || doc != Loader.Document || cts.IsCancellationRequested)
                 {
                     return;
                 }
@@ -1035,10 +1066,15 @@ internal sealed class ReaderWindow : Window
             }
             catch (OperationCanceledException)
             {
+                // Canceled by newer query or window close
             }
-            catch
+            catch (CoreException cex) when (cex.Kind == CoreErrorKind.Superseded)
             {
-                FindBar.SetStatus("Not found");
+                // Superseded by reload/new document
+            }
+            catch (Exception ex)
+            {
+                FindBar.SetStatus($"Find error: {ex.Message}");
             }
         });
     }

@@ -722,6 +722,36 @@ internal static class RenderTests
         var prefs2 = new ReaderPreferences(store);
         Assert(prefs2.Theme == AppTheme.Dark, "persisted theme Dark");
         Assert(Math.Abs(prefs2.TextScaleValue - 1.5) < 0.001, "persisted scale 1.5");
+
+        // File-backed LocalSettingsPreferenceStore persistence
+        var tempFile = Path.Combine(Path.GetTempPath(), $"prefs-{Guid.NewGuid():N}.json");
+        try
+        {
+            var fileStore = new LocalSettingsPreferenceStore(tempFile);
+            var filePrefs = new ReaderPreferences(fileStore);
+            filePrefs.Theme = AppTheme.Light;
+            filePrefs.TextScaleValue = 1.3;
+
+            // Reread from a fresh store pointing to the same file
+            var fileStore2 = new LocalSettingsPreferenceStore(tempFile);
+            var filePrefs2 = new ReaderPreferences(fileStore2);
+            Assert(filePrefs2.Theme == AppTheme.Light, "reloaded theme Light from file");
+            Assert(Math.Abs(filePrefs2.TextScaleValue - 1.3) < 0.001, "reloaded scale 1.3 from file");
+
+            // Corrupt file fallback
+            File.WriteAllText(tempFile, "{ broken json !!");
+            var corruptStore = new LocalSettingsPreferenceStore(tempFile);
+            var corruptPrefs = new ReaderPreferences(corruptStore);
+            Assert(corruptPrefs.Theme == AppTheme.System, "corrupt file falls back to default system theme");
+            Assert(Math.Abs(corruptPrefs.TextScaleValue - 1.0) < 0.001, "corrupt file falls back to 1.0 scale");
+        }
+        finally
+        {
+            if (File.Exists(tempFile))
+            {
+                try { File.Delete(tempFile); } catch { }
+            }
+        }
     }
 
     private static void DocumentFindUnicodeMappingsAndWrapping()
