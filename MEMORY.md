@@ -8,6 +8,12 @@ read.
 
 ## Current posture
 
+- WIN-001A is in progress on `feat/win-001a-native-shell`: the
+  [Windows shell](apps/windows/README.md) uses C# Native AOT/WinUI with native
+  New Window/Close/Exit commands, locally deployed App SDK and Debug/Release
+  smoke checks. Core/file integration remains B/C. The Windows CI gate is
+  required when selected; Git Bash is explicitly resolved in gate tests to
+  avoid Windows selecting WSL's launcher. Review/CI disposition is pending.
 - Phase: `desktop-apps`; the portable-core shared track is complete through
   CORE-006 (GATE-001 approved, D-018). Native chains are now eligible (D-027).
 - Product: local-first, read-only native Markdown reader. Windows, macOS and

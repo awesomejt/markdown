@@ -1,6 +1,14 @@
 # Agent Session and Platform Handoff
 
-Updated: 2026-11-01 (America/Denver), after LNX-001D (PR #52).
+Updated: 2026-11-01 (America/Denver), WIN-001A implementation in progress.
+Active Windows task: `WIN-001A`, branch `feat/win-001a-native-shell`, based on
+`4b06bdf` (green develop CI run 41345106827). Native AOT Debug/Release shell
+smokes pass; native menu/window/keyboard and UIA shell checks are recorded in
+[the Windows README](apps/windows/README.md#win-001a-local-evidence).
+Native checks and `python tools/check.py all` passed; hosted CI and Grok review
+disposition are pending. Resume this task
+before selecting a dependent; WIN-001B follows its approved merge.
+
 Source baseline: `develop` after PR #52; reviewed head `f12d2e5`, non-serious
 review fixes at `27e84df`, followed by one state/docs closeout. The merge SHA is
 not known at closeout time.

@@ -2,6 +2,7 @@
 import io
 import json
 import os
+import shutil
 from pathlib import Path
 import subprocess
 import unittest
@@ -91,13 +92,15 @@ class CompletionGateTests(unittest.TestCase):
         job = workflow["jobs"]["complete"]
         self.assertIn("macos-native", job["needs"])
         self.assertIn("linux-native", job["needs"])
+        self.assertIn("windows-native", job["needs"])
         # A later successful command must not mask any rejected gate state.
         gate = job["steps"][0]["run"] + "\ntrue\n"
         green = dict(CHANGES="success", COMMON="success", CORE="success",
                      MACOS_SELECTED="true", MACOS_NATIVE="success",
-                     LINUX_SELECTED="true", LINUX_NATIVE="success")
+                     LINUX_SELECTED="true", LINUX_NATIVE="success",
+                     WINDOWS_SELECTED="true", WINDOWS_NATIVE="success")
         cases = [({}, True)]
-        for host in ("MACOS", "LINUX"):
+        for host in ("MACOS", "LINUX", "WINDOWS"):
             selected, native = f"{host}_SELECTED", f"{host}_NATIVE"
             cases += [({selected: "false", native: "skipped"}, True),
                       ({selected: "", native: "skipped"}, False),
@@ -108,7 +111,9 @@ class CompletionGateTests(unittest.TestCase):
             cases.append(({name: "failure"}, False))
         for overrides, passed in cases:
             with self.subTest(overrides=overrides):
-                result = subprocess.run(["bash", "-c", gate],
+                # On Windows CreateProcess can choose System32's WSL bash
+                # before PATH, losing the test's environment. Resolve Git Bash.
+                result = subprocess.run([shutil.which("bash") or "bash", "-c", gate],
                                         env={**os.environ, **green, **overrides})
                 self.assertEqual(result.returncode == 0, passed)
 
