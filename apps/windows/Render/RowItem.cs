@@ -54,7 +54,20 @@ public sealed partial class RowItem : ListViewItem
 
         Root.Children.Add(TextBlock);
         Root.Children.Add(ImagesPanel);
+        AutomationProperties.SetAccessibilityView(TextBlock, AccessibilityView.Raw);
     }
+
+    public static string AccessibleItemType(FragmentKind kind) => kind switch
+    {
+        FragmentKind.Heading => "heading",
+        FragmentKind.Paragraph => "paragraph",
+        FragmentKind.Code => "code block",
+        FragmentKind.ThematicBreak => "thematic break",
+        FragmentKind.TableRow => "table row",
+        FragmentKind.Image => "image",
+        FragmentKind.Fallback => "raw html fallback",
+        _ => "item",
+    };
 
     public static T? TryAs<T>(object? value) where T : class
     {
@@ -148,6 +161,9 @@ public sealed partial class RowItem : ListViewItem
         ImagesPanel.Children.Clear();
         ImagesPanel.Visibility = Visibility.Collapsed;
         AutomationProperties.SetName(this, string.Empty);
+        AutomationProperties.SetItemType(this, string.Empty);
+        AutomationProperties.SetPositionInSet(this, 0);
+        AutomationProperties.SetSizeOfSet(this, 0);
         AutomationProperties.SetHeadingLevel(this, AutomationHeadingLevel.None);
         AutomationProperties.SetHeadingLevel(TextBlock, AutomationHeadingLevel.None);
     }
@@ -307,12 +323,16 @@ public sealed partial class RowItem : ListViewItem
 
         ShownText = fragment.Text;
 
-        // UIA: Set name on this container to string.Empty so screen readers (Narrator) do not read
-        // the text twice (once as the ListViewItem name and once as the RichTextBlock text).
-        // Expose item type, position in set, and heading level where Narrator looks.
-        AutomationProperties.SetName(this, string.Empty);
-        AutomationProperties.SetItemType(this, fragment.Kind.ToString().ToLowerInvariant());
+        // UIA: Set Name on the container so Narrator announces the item text when focused.
+        // Child RichTextBlock has AccessibilityView.Raw so Narrator does not double-read
+        // the text as both the ListViewItem and child TextBlock.
+        AutomationProperties.SetName(this, ShownText);
+        AutomationProperties.SetItemType(this, AccessibleItemType(fragment.Kind));
         AutomationProperties.SetPositionInSet(this, index + 1);
+        if (totalFragments > 0)
+        {
+            AutomationProperties.SetSizeOfSet(this, totalFragments);
+        }
 
         var autoHeadingLevel = fragment.HeadingStart && headingLevel is >= 1 and <= 6
             ? (AutomationHeadingLevel)headingLevel

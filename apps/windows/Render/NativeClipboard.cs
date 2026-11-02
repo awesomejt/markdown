@@ -120,8 +120,9 @@ public static unsafe partial class NativeClipboard
             Set(owner, plainText, markdownBytes);
             return true;
         }
-        catch (Exception)
+        catch (Exception ex) when (ex is IOException or Win32Exception)
         {
+            System.Diagnostics.Debug.WriteLine($"NativeClipboard.TrySet failed softly: {ex.Message}");
             return false;
         }
     }

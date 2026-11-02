@@ -792,15 +792,26 @@ public sealed partial class ReaderApp : Application
             }
 
             // UIA accessibility verification:
-            // Ensure RowItem does NOT duplicate the text as its AutomationProperties.Name,
-            // while TextBlock exposes the heading level and row exposes item type and position in set.
+            // Ensure RowItem container exposes ShownText as its Name for focus announcements,
+            // while child TextBlock uses AccessibilityView.Raw so Narrator ignores duplicate text.
+            // Expose item type, position in set, size of set, and heading level.
+            if (first.Reader.WindowHandle == 0)
+            {
+                throw new InvalidOperationException("Reader WindowHandle must be non-zero for native clipboard ownership.");
+            }
+
             foreach (var row in first.Reader.BoundRows)
             {
                 if (row.ItemIndex < 0) continue;
                 var rowName = AutomationProperties.GetName(row);
-                if (!string.IsNullOrEmpty(rowName))
+                if (rowName != row.ShownText)
                 {
-                    throw new InvalidOperationException($"RowItem must have empty Name to avoid double reading, got '{rowName}'.");
+                    throw new InvalidOperationException($"RowItem Name expected '{row.ShownText}', got '{rowName}'.");
+                }
+                var textBlockView = AutomationProperties.GetAccessibilityView(row.TextBlock);
+                if (textBlockView != Microsoft.UI.Xaml.Automation.Peers.AccessibilityView.Raw)
+                {
+                    throw new InvalidOperationException("RowItem TextBlock must have AccessibilityView.Raw to prevent Narrator double reading.");
                 }
                 var itemType = AutomationProperties.GetItemType(row);
                 if (string.IsNullOrEmpty(itemType))
@@ -811,6 +822,11 @@ public sealed partial class ReaderApp : Application
                 if (posInSet != row.ItemIndex + 1)
                 {
                     throw new InvalidOperationException($"RowItem PositionInSet expected {row.ItemIndex + 1}, got {posInSet}.");
+                }
+                var sizeOfSet = AutomationProperties.GetSizeOfSet(row);
+                if (sizeOfSet <= 0)
+                {
+                    throw new InvalidOperationException("RowItem SizeOfSet must be greater than 0.");
                 }
             }
 
@@ -942,14 +958,38 @@ internal sealed class ReaderWindow : Window
         Preferences = preferences;
         Title = "Markdown";
         AppWindow.Resize(new global::Windows.Graphics.SizeInt32(960, 700));
+        Reader.WindowHandle = WinRT.Interop.WindowNative.GetWindowHandle(this);
 
         OpenCommand = PickAndOpenFile;
         ReloadCommand = ReloadDocument;
         NewCommand = () => app.NewWindow();
         CloseCommand = Close;
         ExitCommand = app.CloseAll;
-        CopyCommand = () => Reader.CopySelection(Loader.Document);
-        SelectAllCommand = () => Reader.SelectAll();
+        CopyCommand = () =>
+        {
+            var focused = FocusManager.GetFocusedElement(Content?.XamlRoot);
+            if (focused is TextBox or PasswordBox)
+            {
+                return;
+            }
+            try
+            {
+                _ = Reader.CopySelection(Loader.Document);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Copy failed softly: {ex.Message}");
+            }
+        };
+        SelectAllCommand = () =>
+        {
+            var focused = FocusManager.GetFocusedElement(Content?.XamlRoot);
+            if (focused is TextBox or PasswordBox)
+            {
+                return;
+            }
+            Reader.SelectAll();
+        };
         FindCommand = ShowFind;
         FindNextCommand = NavigateFindNext;
         FindPreviousCommand = NavigateFindPrevious;
@@ -995,8 +1035,8 @@ internal sealed class ReaderWindow : Window
         menu.Items.Add(file);
 
         var edit = new MenuBarItem { Title = "Edit", AccessKey = "E" };
-        edit.Items.Add(Command(root, "Copy", "Ctrl+C", VirtualKey.C, VirtualKeyModifiers.Control, CopyCommand));
-        edit.Items.Add(Command(root, "Select All", "Ctrl+A", VirtualKey.A, VirtualKeyModifiers.Control, SelectAllCommand));
+        edit.Items.Add(Command(root, "Copy", "Ctrl+C", VirtualKey.C, VirtualKeyModifiers.Control, CopyCommand, bypassWhenTextFocused: true));
+        edit.Items.Add(Command(root, "Select All", "Ctrl+A", VirtualKey.A, VirtualKeyModifiers.Control, SelectAllCommand, bypassWhenTextFocused: true));
         edit.Items.Add(new MenuFlyoutSeparator());
         edit.Items.Add(Command(root, "Find…", "Ctrl+F", VirtualKey.F, VirtualKeyModifiers.Control, FindCommand));
         edit.Items.Add(Command(root, "Find Next", "F3", VirtualKey.F3, VirtualKeyModifiers.None, FindNextCommand));
@@ -1305,12 +1345,24 @@ internal sealed class ReaderWindow : Window
     }
 
     private static MenuFlyoutItem Command(Grid root, string text, string shortcut, VirtualKey key,
-        VirtualKeyModifiers modifiers, Action invoke)
+        VirtualKeyModifiers modifiers, Action invoke, bool bypassWhenTextFocused = false)
     {
         var item = new MenuFlyoutItem { Text = text, KeyboardAcceleratorTextOverride = shortcut };
         item.Click += (_, _) => invoke();
         var accelerator = new KeyboardAccelerator { Key = key, Modifiers = modifiers };
-        accelerator.Invoked += (_, args) => { args.Handled = true; invoke(); };
+        accelerator.Invoked += (_, args) =>
+        {
+            if (bypassWhenTextFocused)
+            {
+                var focused = FocusManager.GetFocusedElement(root.XamlRoot);
+                if (focused is TextBox or PasswordBox)
+                {
+                    return; // Do NOT handle: let the focused text control handle Ctrl+C / Ctrl+A
+                }
+            }
+            args.Handled = true;
+            invoke();
+        };
         root.KeyboardAccelerators.Add(accelerator);
         return item;
     }

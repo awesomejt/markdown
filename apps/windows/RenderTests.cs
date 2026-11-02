@@ -895,6 +895,41 @@ internal static class RenderTests
         Assert(subRange.StartsWith("First paragraph."), "starts with First paragraph.");
         Assert(subRange.Contains("\n\n"), "contains block separator");
         Assert(subRange.EndsWith("Second"), "ends with Second");
+
+        // 1. Mid-paragraph literal text selection: narrows exact source bytes
+        var midText = plan.TextBetween(new DocumentPosition(1, 6), new DocumentPosition(1, 15));
+        Assert(midText == "paragraph", $"expected 'paragraph', got '{midText}'");
+
+        var midSource = plan.SourceBetween(new DocumentPosition(1, 6), new DocumentPosition(1, 15), doc);
+        var expectedSource = Encoding.UTF8.GetBytes("paragraph");
+        Assert(midSource.SequenceEqual(expectedSource), $"midSource expected 'paragraph', got '{Encoding.UTF8.GetString(midSource)}'");
+
+        // 2. Mid-paragraph selection across code span, escapes, and entities:
+        // verifies fallback to whole-node spans without byte offset drift or splitting
+        var doc2 = Document("Word with `code` and \\*star\\* and &amp; entity.\n");
+        var plan2 = RenderPlan.Build(doc2, () => false);
+        var frag2Text = plan2.Fragments[0].Text;
+        Assert(frag2Text.Contains("code"), "contains code");
+
+        // Select across `code` and \*star\*
+        var codeIdx = frag2Text.IndexOf("code", StringComparison.Ordinal);
+        var starIdx = frag2Text.IndexOf("*star*", StringComparison.Ordinal);
+        var subText2 = plan2.TextBetween(new DocumentPosition(0, codeIdx), new DocumentPosition(0, starIdx + 6));
+        Assert(subText2.StartsWith("code") && subText2.EndsWith("*star*"), $"subText2 unexpected: '{subText2}'");
+
+        var subSource2 = plan2.SourceBetween(new DocumentPosition(0, codeIdx), new DocumentPosition(0, starIdx + 6), doc2);
+        var subSource2Str = Encoding.UTF8.GetString(subSource2);
+        Assert(subSource2Str.Contains("`code`"), $"source must contain full code span with backticks: '{subSource2Str}'");
+        Assert(subSource2Str.Contains("\\*star\\*"), $"source must contain full escape without drift: '{subSource2Str}'");
+
+        // AccessibleItemType verification
+        Assert(RowItem.AccessibleItemType(FragmentKind.Heading) == "heading", "accessible heading");
+        Assert(RowItem.AccessibleItemType(FragmentKind.Paragraph) == "paragraph", "accessible paragraph");
+        Assert(RowItem.AccessibleItemType(FragmentKind.Code) == "code block", "accessible code block");
+        Assert(RowItem.AccessibleItemType(FragmentKind.ThematicBreak) == "thematic break", "accessible thematic break");
+        Assert(RowItem.AccessibleItemType(FragmentKind.TableRow) == "table row", "accessible table row");
+        Assert(RowItem.AccessibleItemType(FragmentKind.Image) == "image", "accessible image");
+        Assert(RowItem.AccessibleItemType(FragmentKind.Fallback) == "raw html fallback", "accessible fallback");
     }
 
     private static void NativeClipboardRoundtrip()
@@ -902,7 +937,8 @@ internal static class RenderTests
         var testText = "Rendered Markdown Line 1\nLine 2 ❤";
         var testMarkdown = Encoding.UTF8.GetBytes("# Header\n\nMarkdown source with ❤.\n");
 
-        NativeClipboard.Set(0, testText, testMarkdown);
+        var ok = NativeClipboard.TrySet(0, testText, testMarkdown);
+        Assert(ok, "TrySet returned true");
         var readText = NativeClipboard.ReadUnicodeText();
         var readMarkdown = NativeClipboard.ReadMarkdownBytes();
 

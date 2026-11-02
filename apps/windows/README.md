@@ -49,7 +49,7 @@ UIA heading level automation properties (`AutomationProperties.SetHeadingLevel`)
 Link targets are resolved to internal heading fragment indices, safe external URIs
 (`http`, `https`, `mailto`), or inert text. `ReaderControl` provides a two-column
 layout with an outline sidebar (`ListView`) and document virtualized list, outline jump
-navigation, and safe link activation. Global multi-fragment selection across virtualized rows is supported with pointer drag, edge auto-scrolling, Shift+arrow/Home/End keyboard extension, Escape to clear, Ctrl+A to select all, and Ctrl+C dual-format native clipboard copy (CF_UNICODETEXT plain text and registered "text/markdown" UTF-8 source bytes). Narrator double-reading is eliminated by clearing AutomationProperties.Name on recycled row containers while keeping semantic ItemType, PositionInSet, and child TextBlock heading levels.
+navigation, and safe link activation. Global multi-fragment selection across virtualized rows is supported with pointer drag, edge auto-scrolling, Shift+arrow/Home/End keyboard extension, Escape to clear, Ctrl+A to select all, and Ctrl+C dual-format native clipboard copy (CF_UNICODETEXT plain text and registered "text/markdown" UTF-8 source bytes). Narrator double-reading is eliminated by setting AutomationProperties.Name on the row container while setting AccessibilityView.Raw on the child RichTextBlock, accompanied by semantic ItemType, PositionInSet, SizeOfSet, and heading levels.
 
 ## Build and check
 

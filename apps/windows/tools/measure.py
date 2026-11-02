@@ -76,7 +76,8 @@ def main():
             parse = [r["parse_ms"] for r in rows]
             plan = [r["plan_ms"] for r in rows]
             target = WARM_LAUNCH if name != "prose-5mib" else None
-            meets_target = (max(pipeline) <= WARM_LAUNCH) if target is not None else "n/a (5 MiB stress fixture; D-016 <= 1 MiB target)"
+            meets_target = (max(pipeline) <= WARM_LAUNCH) if target is not None else None
+            target_note = "D-016 <= 1 MiB target applies" if target is not None else "5 MiB stress fixture beyond D-016 1 MiB target"
             out = {
                 "profile": name,
                 "configuration": args.configuration,
@@ -86,6 +87,7 @@ def main():
                 "plan_ms": spread(plan),
                 "target_ms": target,
                 "meets_target": meets_target,
+                "target_note": target_note,
                 "peak_rss_kib": spread([float(r["peak_rss_kib"]) for r in rows]),
             }
             print(json.dumps(out, indent=2))

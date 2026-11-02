@@ -293,9 +293,12 @@ public sealed class RenderPlan
                         var nodeCharStart = run.NodeCharOffset + localStart;
                         var nodeCharEnd = run.NodeCharOffset + localEnd;
 
-                        if (node.kind is CoreFfi.MD_NODE_TEXT or CoreFfi.MD_NODE_CODE_SPAN)
+                        var nodeBytes = document.Source.AsSpan((int)node.span_start, (int)(node.span_end - node.span_start));
+                        var isLiteralText = node.kind == CoreFfi.MD_NODE_TEXT &&
+                            nodeBytes.Length == System.Text.Encoding.UTF8.GetByteCount(document.NodeText(run.NodeId));
+
+                        if (isLiteralText)
                         {
-                            var nodeBytes = document.Source.AsSpan((int)node.span_start, (int)(node.span_end - node.span_start));
                             var byteStart = node.span_start + (uint)CharOffsetToUtf8ByteOffset(nodeBytes, nodeCharStart);
                             var byteEnd = node.span_start + (uint)CharOffsetToUtf8ByteOffset(nodeBytes, nodeCharEnd);
 

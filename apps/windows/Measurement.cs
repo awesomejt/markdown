@@ -17,6 +17,7 @@ namespace Markdown.Windows;
 /// </summary>
 public static partial class Measurement
 {
+    private const long D016TargetBytes = 1024 * 1024;
     [LibraryImport("kernel32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static partial bool QueryPerformanceCounter(out long lpPerformanceCount);
@@ -110,7 +111,7 @@ public static partial class Measurement
         var flushSw = Stopwatch.StartNew();
         _ = DwmFlush();
         var flushMs = flushSw.Elapsed.TotalMilliseconds;
-        var presentedMs = sw.Elapsed.TotalMilliseconds;
+        var pipelineMs = sw.Elapsed.TotalMilliseconds;
 
         proc.Refresh();
         var peakRss = proc.PeakWorkingSet64 / 1024;
@@ -127,11 +128,11 @@ public static partial class Measurement
             ["parse_ms"] = parseMs,
             ["plan_ms"] = planMs,
             ["dwm_flush_ms"] = flushMs,
-            ["pipeline_ms"] = presentedMs,
+            ["pipeline_ms"] = pipelineMs,
             ["peak_rss_kib"] = peakRss,
             ["working_set_kib"] = currentRss,
-            ["meets_warm_budget_400ms"] = bytes.Length <= 1048576 ? presentedMs <= 400.0 : null,
-            ["meets_cold_budget_700ms"] = bytes.Length <= 1048576 ? presentedMs <= 700.0 : null,
+            ["meets_warm_budget_400ms"] = bytes.Length <= D016TargetBytes ? pipelineMs <= 400.0 : null,
+            ["meets_cold_budget_700ms"] = bytes.Length <= D016TargetBytes ? pipelineMs <= 700.0 : null,
         };
 
         Console.WriteLine(report.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));

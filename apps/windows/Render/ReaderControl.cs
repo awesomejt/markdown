@@ -85,10 +85,10 @@ public sealed partial class ReaderControl : UserControl
         _documentList.ItemTemplate = (DataTemplate)Microsoft.UI.Xaml.Markup.XamlReader.Load(
             "<DataTemplate xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation'><Grid/></DataTemplate>");
         _documentList.ContainerContentChanging += OnContainerContentChanging;
-        _documentList.PointerPressed += OnDocumentListPointerPressed;
-        _documentList.PointerMoved += OnDocumentListPointerMoved;
-        _documentList.PointerReleased += OnDocumentListPointerReleased;
-        _documentList.PointerCaptureLost += OnDocumentListPointerCaptureLost;
+        _documentList.AddHandler(UIElement.PointerPressedEvent, new PointerEventHandler(OnDocumentListPointerPressed), handledEventsToo: true);
+        _documentList.AddHandler(UIElement.PointerMovedEvent, new PointerEventHandler(OnDocumentListPointerMoved), handledEventsToo: true);
+        _documentList.AddHandler(UIElement.PointerReleasedEvent, new PointerEventHandler(OnDocumentListPointerReleased), handledEventsToo: true);
+        _documentList.AddHandler(UIElement.PointerCaptureLostEvent, new PointerEventHandler(OnDocumentListPointerCaptureLost), handledEventsToo: true);
         AutomationProperties.SetName(_documentList, "Document content");
 
         PreviewKeyDown += OnPreviewKeyDown;
@@ -225,7 +225,11 @@ public sealed partial class ReaderControl : UserControl
         var sourceSpan = _plan.SourceBetween(sel.Start, sel.End, document);
         var markdownBytes = sourceSpan.IsEmpty ? System.Text.Encoding.UTF8.GetBytes(plain) : sourceSpan.ToArray();
 
-        NativeClipboard.Set(0, plain, markdownBytes);
+        if (!NativeClipboard.TrySet(WindowHandle, plain, markdownBytes))
+        {
+            return null;
+        }
+
         return (plain, markdownBytes);
     }
 
@@ -662,14 +666,28 @@ public sealed partial class ReaderControl : UserControl
 
         if (shift)
         {
-            if (ctrl && e.Key == VirtualKey.Home)
+            if (e.Key == VirtualKey.Home)
             {
-                ExtendSelectionToEdge(toEnd: false);
+                if (ctrl)
+                {
+                    ExtendSelectionToEdge(toEnd: false);
+                }
+                else
+                {
+                    ExtendSelectionToFragmentEdge(toEnd: false);
+                }
                 e.Handled = true;
             }
-            else if (ctrl && e.Key == VirtualKey.End)
+            else if (e.Key == VirtualKey.End)
             {
-                ExtendSelectionToEdge(toEnd: true);
+                if (ctrl)
+                {
+                    ExtendSelectionToEdge(toEnd: true);
+                }
+                else
+                {
+                    ExtendSelectionToFragmentEdge(toEnd: true);
+                }
                 e.Handled = true;
             }
             else if (e.Key == VirtualKey.Left)
@@ -752,6 +770,16 @@ public sealed partial class ReaderControl : UserControl
         active = new DocumentPosition(targetFrag, targetOffset);
         SetSelection(new DocumentSelection(anchor, active));
         ScrollToFragment(targetFrag);
+    }
+
+    public void ExtendSelectionToFragmentEdge(bool toEnd)
+    {
+        if (_plan is null || _plan.Fragments.Count == 0) return;
+        var anchor = Selection?.Anchor ?? CurrentCaretPosition();
+        var active = Selection?.Active ?? anchor;
+        var frag = Math.Clamp(active.FragmentIndex, 0, _plan.Fragments.Count - 1);
+        var offset = toEnd ? _plan.Fragments[frag].Text.Length : 0;
+        SetSelection(new DocumentSelection(anchor, new DocumentPosition(frag, offset)));
     }
 
     public void ExtendSelectionToEdge(bool toEnd)
