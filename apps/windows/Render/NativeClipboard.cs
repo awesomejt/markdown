@@ -67,7 +67,7 @@ public static unsafe partial class NativeClipboard
 
     private static bool Open(nint owner)
     {
-        for (var attempt = 0; attempt < 50; attempt++)
+        for (var attempt = 0; attempt < 5; attempt++)
         {
             if (OpenClipboard(owner))
             {
@@ -108,6 +108,22 @@ public static unsafe partial class NativeClipboard
         }
 
         return memory;
+    }
+
+    /// <summary>
+    /// Attempts to write rendered plain text and raw markdown bytes to the system clipboard, returning false on failure.
+    /// </summary>
+    public static bool TrySet(nint owner, string plainText, ReadOnlySpan<byte> markdownBytes)
+    {
+        try
+        {
+            Set(owner, plainText, markdownBytes);
+            return true;
+        }
+        catch (Exception)
+        {
+            return false;
+        }
     }
 
     /// <summary>

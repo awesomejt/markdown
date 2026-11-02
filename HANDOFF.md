@@ -1,6 +1,6 @@
 # Agent Session and Platform Handoff
 
-Updated: 2026-11-02 (America/Denver), WIN-001G ready for review.
+Updated: 2026-11-02 (America/Denver), WIN-001G review 1 findings addressed.
 Active Windows task: `WIN-001G` (`35bb5a1b-3eec-44c3-b149-73b037c4f30d`), pass
 `1ab71944-3ce1-495e-b10b-608ac702eda1` (sequence 121, `project.yaml` revision 742),
 branch `feat/win-001g-large-document-accessibility`, based on `develop` at `a3fecba` (PR #58 merge).
@@ -9,22 +9,28 @@ branch `feat/win-001g-large-document-accessibility`, based on `develop` at `a3fe
 `Measurement.cs`, `tools/measure.py`, `RenderTests.cs`) delivers:
 
 - Global multi-fragment text selection across virtualized rows with pointer drag,
-  edge auto-scrolling, Shift+arrow/Home/End keyboard extension, Escape to clear,
-  and Ctrl+A to select all.
-- Native Win32 clipboard copy (Ctrl+C) providing dual formats: standard `CF_UNICODETEXT`
-  plain text (with paragraph and table separators) and registered `"text/markdown"`
-  with full UTF-8 Markdown source bytes.
-- UIA accessibility double-reading elimination on virtualized row items: container
-  clears `AutomationProperties.SetName` while exposing `ItemType` and `PositionInSet`,
-  leaving text content to child `TextBlock` and preserving heading levels.
+  `handledEventsToo` pointer events on `ListView`, edge auto-scrolling, keyboard selection
+  extension (plain Shift+Home/End to fragment bounds, Ctrl+Shift+Home/End to document edges,
+  Shift+arrows), Escape to clear, and Ctrl+A to select all.
+- Native Win32 clipboard copy (Ctrl+C) with window HWND ownership and soft-fail, providing
+  dual formats: `CF_UNICODETEXT` plain text and registered `"text/markdown"` UTF-8 source bytes
+  narrowed to selected leaf text runs via `CharOffsetToUtf8ByteOffset`.
+- Root keyboard accelerator bypass when FindBar's search `TextBox` is focused so Ctrl+C and Ctrl+A
+  operate inside the text box instead of pre-empting the document.
+- UIA accessibility double-reading elimination: container keeps `AutomationProperties.SetName(this, ShownText)`
+  for focused row announcement while child `RichTextBlock` uses `AccessibilityView.Raw`, accompanied by
+  human-readable `ItemType`, `PositionInSet`, `SizeOfSet`, and heading levels.
 - Independent selection vs find `TextHighlighter` ranges without interference.
-- Automated performance measurement runner (`apps/windows/tools/measure.py`) confirming
-  launch, jump navigation (< 0.03ms, target <= 150ms), copy slice (< 8ms for 1 MiB),
-  and 5x repeated load memory reclamation.
+- Automated pipeline measurement runner (`apps/windows/tools/measure.py`) measuring pipeline
+  (read, parse, plan: 170ms for 1 MiB prose, <= 400ms target), target resolution (0.03ms, <= 150ms budget),
+  copy slice (< 8ms for 1 MiB), and 5x repeated load memory reclamation.
 
 Local `apps/windows/tools/check.py` passes in Debug, Release, and relocated Release
 (18 core consumer tests, 12 document tests, 18 render tests, Native AOT WinUI smoke,
 association checks, and relocated core probe with 0 leaked handles).
+
+[Grok review 1](https://github.com/awesomejt/markdown/pull/59#pullrequestreview-5741476785) at `c290a6f`
+reported 0 Blockers, 7 Concerns, 4 Nits; all 11 findings were addressed in the follow-up commit.
 
 Next Windows task after WIN-001G merge: `WIN-001H` (External change detection, auto-refresh and conflict recovery).
 

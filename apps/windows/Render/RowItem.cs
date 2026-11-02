@@ -155,7 +155,7 @@ public sealed partial class RowItem : ListViewItem
     /// <summary>
     /// Binds the container to the given fragment from the current render plan.
     /// </summary>
-    public void Bind(int index, RenderFragment fragment, Action<int, int>? onLinkActivated, ImageSourceCache? imageCache = null, double textScale = 1.0)
+    public void Bind(int index, RenderFragment fragment, Action<int, int>? onLinkActivated, ImageSourceCache? imageCache = null, double textScale = 1.0, int totalFragments = 0)
     {
         ItemIndex = index;
         TextBlock.Blocks.Clear();

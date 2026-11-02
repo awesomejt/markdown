@@ -203,11 +203,11 @@ Validated on Windows 11 Pro build 26300.9711, Ryzen 9 5950X x64, Rust 1.99.1,
   Clear Selection [Escape], UIA double-reading elimination on `RowItem` containers,
   and independent selection vs find text highlighters). Automated performance
   measurements on Release Native AOT (`apps/windows/tools/measure.py`):
-  - **Launch**: `prose-1mib` median 169.31ms (min 150.96ms, max 170.91ms, target <= 400ms: PASS);
-    `long-lines-1mib` median 22.23ms (target <= 400ms: PASS); `prose-5mib` median 1042.51ms.
-  - **Jump navigation**: `prose-1mib` 0.02ms, `prose-5mib` 0.03ms, `long-lines-1mib` 0.02ms (target <= 150ms: PASS).
-  - **Copy selection**: 1 MiB prose text/markdown extraction in 7.77ms, Win32 clipboard write in 1.81ms;
-    5 MiB prose in 64.04ms, clipboard write in 6.93ms.
+  - **Pipeline (read, parse, plan)**: `prose-1mib` median 170.19ms (min 154.57ms, max 170.97ms, D-016 <= 1 MiB target <= 400ms: PASS);
+    `long-lines-1mib` median 22.56ms (target <= 400ms: PASS); `prose-5mib` median 993.20ms (5 MiB stress fixture beyond 1 MiB target).
+  - **Outline target resolution**: `prose-1mib` 0.03ms, `prose-5mib` 0.03ms, `long-lines-1mib` 0.02ms (budget <= 150ms: PASS).
+  - **Copy selection**: 1 MiB prose text/markdown extraction in 7.47ms, Win32 clipboard write in 1.37ms;
+    5 MiB prose in 67.22ms, clipboard write in 8.54ms.
   - **Memory retention**: repeated 5x load/close cycles demonstrated complete memory reclamation
-    with no unbounded growth (final RSS ~19.3 MiB for 1 MiB prose, ~24.3 MiB for 5 MiB prose,
-    ~17.2 MiB for 1 MiB long lines).
+    with no unbounded growth (final RSS ~19.1 MiB for 1 MiB prose, ~23.9 MiB for 5 MiB prose,
+    ~17.3 MiB for 1 MiB long lines).

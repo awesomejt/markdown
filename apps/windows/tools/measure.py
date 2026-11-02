@@ -72,16 +72,16 @@ def main():
             # Warm up cache once
             _ = run_measure(binary, "launch", doc)
             rows = [run_measure(binary, "launch", doc) for _ in range(args.runs)]
-            presented = [r["presented_ms"] for r in rows]
+            pipeline = [r["pipeline_ms"] for r in rows]
             parse = [r["parse_ms"] for r in rows]
             plan = [r["plan_ms"] for r in rows]
-            target = WARM_LAUNCH
-            meets_target = max(presented) <= target
+            target = WARM_LAUNCH if name != "prose-5mib" else None
+            meets_target = (max(pipeline) <= WARM_LAUNCH) if target is not None else "n/a (5 MiB stress fixture; D-016 <= 1 MiB target)" 
             out = {
                 "profile": name,
                 "configuration": args.configuration,
                 "runs": args.runs,
-                "presented_ms": spread(presented),
+                "pipeline_ms": spread(pipeline),
                 "parse_ms": spread(parse),
                 "plan_ms": spread(plan),
                 "target_ms": target,
@@ -109,8 +109,8 @@ def main():
             out = {
                 "profile": name,
                 "configuration": args.configuration,
-                "jump_ms": res["jump_ms"],
-                "meets_jump_budget_150ms": res["meets_jump_budget_150ms"],
+                "target_resolution_ms": res["target_resolution_ms"],
+                "meets_target_resolution_150ms": res["meets_target_resolution_150ms"],
                 "copy_slice_ms": res["copy_slice_ms"],
                 "clipboard_write_ms": res["clipboard_write_ms"],
                 "plain_chars": res["plain_chars"],

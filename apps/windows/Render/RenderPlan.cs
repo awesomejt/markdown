@@ -256,6 +256,8 @@ public sealed class RenderPlan
 
         var sFrag = Math.Clamp(s.FragmentIndex, 0, lastFrag);
         var eFrag = Math.Clamp(e.FragmentIndex, 0, lastFrag);
+        var sChar = Math.Clamp(s.CharOffset, 0, Fragments[sFrag].Text.Length);
+        var eChar = Math.Clamp(e.CharOffset, 0, Fragments[eFrag].Text.Length);
 
         uint minSpan = uint.MaxValue;
         uint maxSpan = 0;
@@ -263,16 +265,50 @@ public sealed class RenderPlan
 
         for (var f = sFrag; f <= eFrag; f++)
         {
-            foreach (var run in Fragments[f].Runs)
+            var frag = Fragments[f];
+            var fromChar = (f == sFrag) ? sChar : 0;
+            var toChar = (f == eFrag) ? eChar : frag.Text.Length;
+            var charPos = 0;
+
+            foreach (var run in frag.Runs)
             {
+                var runStart = charPos;
+                var runEnd = charPos + run.Text.Length;
+                charPos = runEnd;
+
+                var overlapStart = Math.Max(runStart, fromChar);
+                var overlapEnd = Math.Min(runEnd, toChar);
+                if (overlapEnd <= overlapStart)
+                {
+                    continue;
+                }
+
                 if (run.NodeId >= 0 && run.NodeId < document.NodeCount)
                 {
                     ref readonly var node = ref document.Nodes[run.NodeId];
                     if (node.span_start <= node.span_end && node.span_end <= (uint)document.SourceByteCount)
                     {
-                        if (node.span_start < minSpan) minSpan = node.span_start;
-                        if (node.span_end > maxSpan) maxSpan = node.span_end;
-                        found = true;
+                        var localStart = overlapStart - runStart;
+                        var localEnd = overlapEnd - runStart;
+                        var nodeCharStart = run.NodeCharOffset + localStart;
+                        var nodeCharEnd = run.NodeCharOffset + localEnd;
+
+                        if (node.kind is CoreFfi.MD_NODE_TEXT or CoreFfi.MD_NODE_CODE_SPAN)
+                        {
+                            var nodeBytes = document.Source.AsSpan((int)node.span_start, (int)(node.span_end - node.span_start));
+                            var byteStart = node.span_start + (uint)CharOffsetToUtf8ByteOffset(nodeBytes, nodeCharStart);
+                            var byteEnd = node.span_start + (uint)CharOffsetToUtf8ByteOffset(nodeBytes, nodeCharEnd);
+
+                            if (byteStart < minSpan) minSpan = byteStart;
+                            if (byteEnd > maxSpan) maxSpan = byteEnd;
+                            found = true;
+                        }
+                        else
+                        {
+                            if (node.span_start < minSpan) minSpan = node.span_start;
+                            if (node.span_end > maxSpan) maxSpan = node.span_end;
+                            found = true;
+                        }
                     }
                 }
             }
@@ -284,6 +320,29 @@ public sealed class RenderPlan
         }
 
         return default;
+    }
+
+    private static int CharOffsetToUtf8ByteOffset(ReadOnlySpan<byte> utf8, int charOffset)
+    {
+        if (charOffset <= 0) return 0;
+        var currentChars = 0;
+        var idx = 0;
+        while (idx < utf8.Length && currentChars < charOffset)
+        {
+            var b = utf8[idx];
+            int charLen;
+            int byteLen;
+            if ((b & 0x80) == 0) { charLen = 1; byteLen = 1; }
+            else if ((b & 0xE0) == 0xC0) { charLen = 1; byteLen = 2; }
+            else if ((b & 0xF0) == 0xE0) { charLen = 1; byteLen = 3; }
+            else if ((b & 0xF8) == 0xF0) { charLen = 2; byteLen = 4; }
+            else { charLen = 1; byteLen = 1; }
+
+            if (idx + byteLen > utf8.Length) break;
+            idx += byteLen;
+            currentChars += charLen;
+        }
+        return idx;
     }
 
     private sealed class Builder(

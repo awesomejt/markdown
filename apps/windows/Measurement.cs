@@ -127,11 +127,11 @@ public static partial class Measurement
             ["parse_ms"] = parseMs,
             ["plan_ms"] = planMs,
             ["dwm_flush_ms"] = flushMs,
-            ["presented_ms"] = presentedMs,
+            ["pipeline_ms"] = presentedMs,
             ["peak_rss_kib"] = peakRss,
             ["working_set_kib"] = currentRss,
-            ["meets_warm_budget_400ms"] = presentedMs <= 400.0,
-            ["meets_cold_budget_700ms"] = presentedMs <= 700.0,
+            ["meets_warm_budget_400ms"] = bytes.Length <= 1048576 ? presentedMs <= 400.0 : null,
+            ["meets_cold_budget_700ms"] = bytes.Length <= 1048576 ? presentedMs <= 700.0 : null,
         };
 
         Console.WriteLine(report.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
@@ -239,8 +239,8 @@ public static partial class Measurement
             ["document"] = Path.GetFileName(docPath),
             ["fragments"] = plan.Fragments.Count,
             ["outline_count"] = plan.Outline.Count,
-            ["jump_ms"] = jumpTimes.Count > 0 ? jumpTimes.Max() : 0.0,
-            ["meets_jump_budget_150ms"] = jumpTimes.Count == 0 || jumpTimes.Max() <= 150.0,
+            ["target_resolution_ms"] = jumpTimes.Count > 0 ? jumpTimes.Max() : 0.0,
+            ["meets_target_resolution_150ms"] = jumpTimes.Count == 0 || jumpTimes.Max() <= 150.0,
             ["copy_slice_ms"] = copyMs,
             ["clipboard_write_ms"] = clipWriteMs,
             ["plain_chars"] = allText.Length,

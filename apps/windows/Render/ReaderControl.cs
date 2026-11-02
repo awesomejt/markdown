@@ -55,6 +55,8 @@ public sealed partial class ReaderControl : UserControl
     public double TextScale { get; private set; } = 1.0;
     public FindMatches? CurrentFindMatches { get; private set; }
     public int? CurrentMatchIndex { get; private set; }
+    public nint WindowHandle { get; set; }
+
     public DocumentSelection? Selection { get; private set; }
 
     public ReaderControl()
@@ -133,7 +135,7 @@ public sealed partial class ReaderControl : UserControl
         {
             if (row.ItemIndex >= 0 && row.ItemIndex < _plan.Fragments.Count)
             {
-                row.Bind(row.ItemIndex, _plan.Fragments[row.ItemIndex], OnLinkActivated, ImageCache, TextScale);
+                row.Bind(row.ItemIndex, _plan.Fragments[row.ItemIndex], OnLinkActivated, ImageCache, TextScale, _plan.Fragments.Count);
                 UpdateRowHighlights(row);
                 UpdateRowSelection(row);
             }
@@ -397,7 +399,7 @@ public sealed partial class ReaderControl : UserControl
             row.Attach();
             if (_plan is not null && args.ItemIndex >= 0 && args.ItemIndex < _plan.Fragments.Count)
             {
-                row.Bind(args.ItemIndex, _plan.Fragments[args.ItemIndex], OnLinkActivated, ImageCache, TextScale);
+                row.Bind(args.ItemIndex, _plan.Fragments[args.ItemIndex], OnLinkActivated, ImageCache, TextScale, _plan.Fragments.Count);
                 UpdateRowHighlights(row);
                 UpdateRowSelection(row);
                 _boundRows.Add(row);
