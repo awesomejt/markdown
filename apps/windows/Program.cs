@@ -510,6 +510,7 @@ public sealed partial class ReaderApp : Application
                 first.Loader.Availability() != CoreAvailability.Unavailable(CoreUnavailability.Deleted) ||
                 first.Loader.Document is null ||
                 first.Loader.Document.Generation != 2 ||
+                !first.ErrorBanner.IsOpen ||
                 first.Welcome.Text.Contains(smokeDocPath, StringComparison.OrdinalIgnoreCase))
             {
                 throw new InvalidOperationException("Missing-file reload error handling failed.");
@@ -681,6 +682,12 @@ internal sealed class ReaderWindow : Window
     internal MenuFlyoutItem ReloadItem { get; }
     internal TextBlock Welcome { get; }
     internal ReaderControl Reader { get; } = new();
+    internal InfoBar ErrorBanner { get; } = new()
+    {
+        IsOpen = false,
+        Severity = InfoBarSeverity.Error,
+        IsClosable = true,
+    };
 
     internal ReaderWindow(ReaderApp app)
     {
@@ -728,10 +735,13 @@ internal sealed class ReaderWindow : Window
         AutomationProperties.SetName(Reader, "Document reader");
         Reader.Visibility = Visibility.Collapsed;
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         root.RowDefinitions.Add(new RowDefinition());
         root.Children.Add(menu);
-        Grid.SetRow(Welcome, 1);
-        Grid.SetRow(Reader, 1);
+        Grid.SetRow(ErrorBanner, 1);
+        root.Children.Add(ErrorBanner);
+        Grid.SetRow(Welcome, 2);
+        Grid.SetRow(Reader, 2);
         root.Children.Add(Welcome);
         root.Children.Add(Reader);
         Content = root;
@@ -783,6 +793,7 @@ internal sealed class ReaderWindow : Window
 
         if (!Loader.HasFile && Loader.Error is null)
         {
+            ErrorBanner.IsOpen = false;
             Reader.Clear();
             Welcome.Visibility = Visibility.Visible;
             Welcome.Text =
@@ -792,6 +803,7 @@ internal sealed class ReaderWindow : Window
 
         if (Loader.IsLoading && Loader.Document is null)
         {
+            ErrorBanner.IsOpen = false;
             Reader.Clear();
             Welcome.Visibility = Visibility.Visible;
             Welcome.Text = $"Loading {Loader.Capability?.DisplayName ?? "document"}…";
@@ -814,16 +826,20 @@ internal sealed class ReaderWindow : Window
             {
                 var label = Loader.LastErrorWasOpenFailure ? "Open issue" : "Reload issue";
                 summary += $"\n\n{label}:\n{activeError.ToDisplayString()}";
+                ErrorBanner.Title = label;
+                ErrorBanner.Message = activeError.ToDisplayString();
+                ErrorBanner.IsOpen = true;
+            }
+            else
+            {
+                ErrorBanner.IsOpen = false;
             }
 
             Welcome.Text = summary;
 
             if (Loader.Plan is { } plan)
             {
-                if (!ReferenceEquals(Reader.CurrentPlan, plan))
-                {
-                    Reader.InstallPlan(plan);
-                }
+                Reader.InstallPlan(plan, doc.Generation);
                 Reader.Visibility = Visibility.Visible;
                 Welcome.Visibility = Visibility.Collapsed;
             }
@@ -832,6 +848,7 @@ internal sealed class ReaderWindow : Window
 
         if (Loader.Error is { } error)
         {
+            ErrorBanner.IsOpen = false;
             Reader.Clear();
             Welcome.Visibility = Visibility.Visible;
             Welcome.Text = error.ToDisplayString();

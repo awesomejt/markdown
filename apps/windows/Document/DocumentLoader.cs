@@ -820,6 +820,16 @@ public sealed class DocumentLoader : IDisposable
             catch (Exception ex)
             {
                 CoreRuntime.ReportCallbackException(ex);
+                if (!Stale())
+                {
+                    PushCompleted(new CompletedLoad(
+                        serial,
+                        null,
+                        null,
+                        DocumentError.ParseFailed,
+                        readDoc.VolumeSerial,
+                        readDoc.VolumeRoot));
+                }
             }
         });
     }

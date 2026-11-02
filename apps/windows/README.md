@@ -40,7 +40,7 @@ The native presentation layer (`apps/windows/Render/`) renders model-v2 document
 in a virtualized WinUI 3 `ListView` over an off-thread bounded presentation plan
 (`RenderPlan.cs`). Model nodes are split into 512-byte fragments with accounted budget
 ceilings (128 MiB default) and cooperative cancellation checks. Headings, prose,
-task/ordered/bullet lists, code blocks and fallback raw HTML are rendered into
+ordered and bullet lists, code blocks and fallback raw HTML are rendered into
 recycled `RowItem` containers using `RichTextBlock` (`IsTextSelectionEnabled = true`),
 styled inlines, Cascadia Mono fonts for code/fallback, blockquote borders and
 UIA heading level automation properties (`AutomationProperties.SetHeadingLevel`).

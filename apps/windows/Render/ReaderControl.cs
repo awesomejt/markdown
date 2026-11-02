@@ -22,12 +22,14 @@ public sealed partial class ReaderControl : UserControl
     private readonly ListView _outlineList = new()
     {
         SelectionMode = ListViewSelectionMode.Single,
+        IsItemClickEnabled = true,
     };
     private readonly HashSet<RowItem> _boundRows = [];
 
     private RenderPlan? _plan;
     private ScrollViewer? _scrollViewer;
     private bool _suppressOutlineSelection;
+    private int _pendingFocusIndex = -1;
 
     public Func<Uri, bool>? ExternalUriLauncher { get; set; }
 
@@ -35,6 +37,7 @@ public sealed partial class ReaderControl : UserControl
     public ListView OutlineList => _outlineList;
     public IReadOnlyCollection<RowItem> BoundRows => _boundRows;
     public RenderPlan? CurrentPlan => _plan;
+    public ulong CurrentGeneration { get; private set; }
 
     public ReaderControl()
     {
@@ -44,6 +47,18 @@ public sealed partial class ReaderControl : UserControl
         _outlineList.ItemTemplate = (DataTemplate)Microsoft.UI.Xaml.Markup.XamlReader.Load(
             "<DataTemplate xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation'><TextBlock Text='{Binding}' TextWrapping='NoWrap' Margin='8,4,8,4' FontSize='14'/></DataTemplate>");
         _outlineList.SelectionChanged += OnOutlineSelectionChanged;
+        _outlineList.ItemClick += (_, args) =>
+        {
+            if (_plan is null || _outlineList.ItemsSource is not IList<string> items)
+            {
+                return;
+            }
+            var index = items.IndexOf(args.ClickedItem as string ?? string.Empty);
+            if (index >= 0)
+            {
+                ActivateOutline(index);
+            }
+        };
         AutomationProperties.SetName(_outlineList, "Document outline");
 
         _documentList.ChoosingItemContainer += (_, args) => args.ItemContainer ??= new RowItem();
@@ -61,10 +76,34 @@ public sealed partial class ReaderControl : UserControl
         Content = _rootGrid;
     }
 
-    public void InstallPlan(RenderPlan plan)
+    public int FirstVisibleFragmentIndex()
     {
+        if (_boundRows.Count == 0)
+        {
+            return 0;
+        }
+        var minIndex = int.MaxValue;
+        foreach (var row in _boundRows)
+        {
+            if (row.ItemIndex >= 0 && row.ItemIndex < minIndex)
+            {
+                minIndex = row.ItemIndex;
+            }
+        }
+        return minIndex == int.MaxValue ? 0 : minIndex;
+    }
+
+    public void InstallPlan(RenderPlan plan, ulong generation = 0)
+    {
+        if (generation != 0 && generation == CurrentGeneration && _plan is not null)
+        {
+            return;
+        }
+
+        var restoreIndex = CurrentGeneration > 0 ? FirstVisibleFragmentIndex() : 0;
         Clear();
         _plan = plan;
+        CurrentGeneration = generation;
 
         var titles = new List<string>(plan.Outline.Count);
         foreach (var entry in plan.Outline)
@@ -79,10 +118,16 @@ public sealed partial class ReaderControl : UserControl
 
         _scrollViewer ??= FindScrollViewer(_documentList);
         Visibility = Visibility.Visible;
+
+        if (restoreIndex > 0 && restoreIndex < plan.Fragments.Count)
+        {
+            ScrollToFragment(restoreIndex);
+        }
     }
 
     public void Clear()
     {
+        _pendingFocusIndex = -1;
         _suppressOutlineSelection = true;
         _outlineList.ItemsSource = null;
         _documentList.ItemsSource = null;
@@ -94,18 +139,8 @@ public sealed partial class ReaderControl : UserControl
         }
         _boundRows.Clear();
 
-        var oldPlan = _plan;
         _plan = null;
-
-        if (oldPlan is not null)
-        {
-            _ = ThreadPool.QueueUserWorkItem(_ =>
-            {
-                // Let GC dispose the discarded plan payload off the UI thread.
-                GC.KeepAlive(oldPlan);
-            });
-        }
-
+        CurrentGeneration = 0;
         Visibility = Visibility.Collapsed;
     }
 
@@ -156,9 +191,15 @@ public sealed partial class ReaderControl : UserControl
         }
 
         _documentList.ScrollIntoView(fragmentIndex, ScrollIntoViewAlignment.Leading);
+        _documentList.UpdateLayout();
         if (_documentList.ContainerFromIndex(fragmentIndex) is RowItem row)
         {
+            _pendingFocusIndex = -1;
             row.Focus(FocusState.Programmatic);
+        }
+        else
+        {
+            _pendingFocusIndex = fragmentIndex;
         }
     }
 
@@ -187,6 +228,11 @@ public sealed partial class ReaderControl : UserControl
             {
                 row.Bind(args.ItemIndex, _plan.Fragments[args.ItemIndex], OnLinkActivated);
                 _boundRows.Add(row);
+                if (args.ItemIndex == _pendingFocusIndex)
+                {
+                    _pendingFocusIndex = -1;
+                    row.Focus(FocusState.Programmatic);
+                }
             }
         }
         args.Handled = true;
