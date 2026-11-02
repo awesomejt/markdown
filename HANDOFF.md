@@ -1,26 +1,26 @@
 # Agent Session and Platform Handoff
 
-Updated: 2026-11-01 (America/Denver), WIN-001D approved closeout (PR #56).
-Completed Windows task: `WIN-001D` (`2cffeb46-9f11-449f-8597-5250e02fb1c2`), pass
-`56be78c0-bbf9-4bb4-8572-c481dd884c59` (sequence 117, `project.yaml` revision 735),
-branch `feat/win-001d-native-reader`, based on `develop` at `13a6798` (PR #55 merge).
-`apps/windows/Render/` (`RenderPlan.cs`, `IndexList.cs`, `RowItem.cs`, `ReaderControl.cs`)
-delivers native WinUI virtualized `ListView` presentation over off-thread bounded
-render plans (512-byte fragments, 128 MiB budget ceiling, cooperative cancellation,
-headings, prose, ordered/bullet lists, fenced code, raw HTML fallback, and safe link target
-resolution to internal fragment, safe external URI, or inert text), outline sidebar
-`ListView` with heading navigation, within-fragment selection, UIA heading level
-automation properties, and `ErrorBanner` `InfoBar` for reload issue reporting while
-preserving active document state. Local `apps/windows/tools/check.py` passes in Debug,
-Release, and relocated Release (17 core consumer tests, 12 document tests, 9 render tests,
-Native AOT smoke, and 4-delivery multi-process association check).
-[Grok review 1](https://github.com/awesomejt/markdown/pull/56#pullrequestreview-5732355126)
-at `8db9048` had 0 blockers, 5 concerns and 3 nits; all findings were addressed and fixed
-at `046178b` and all review threads resolved. [Fixed-head CI](https://github.com/awesomejt/markdown/actions/runs/41394098208)
-is green (`changes`, `common`, `core` on Linux/Windows/macOS, `windows-native`,
-and `complete`). One state/docs closeout commit follows `046178b`, then merge into `develop`
-and branch deletion. Next Windows task is `WIN-001E`: tables, task lists, images,
-and resource policy.
+Updated: 2026-11-01 (America/Denver), WIN-001E approved closeout (PR #57).
+Completed Windows task: `WIN-001E` (`5bd12d3e-f7a8-41fd-a887-a8b4183e9890`), pass
+`35d80753-a2eb-4253-8d40-6a1b67834e82` (sequence 118, `project.yaml` revision 737),
+branch `feat/win-001e-rich-blocks`, based on `develop` at `6603c71` (PR #56 merge).
+`apps/windows/` (`RenderPlan.cs`, `RowItem.cs`, `ReaderControl.cs`, `DocumentResources.cs`,
+`ImageSourceCache.cs`) delivers native WinUI tables (tab-separated cell rows for native TSV clipboard
+copying, monospace font, header bold styling, zebra striping, and border separators), task list
+checkbox markers (`[x]` -> checked `☑`, `[ ]` -> unchecked `☐`) with accent styling and accessible
+UIA labels, and strict folder-contained image resource policy (`DocumentResources.cs`) with raster-only
+format validation (PNG, JPEG, GIF, BMP, WebP), dimension and 32 MP bomb caps, 2048px side cap,
+128 MiB memory budget, off-thread decoding, and per-`ReaderControl` `BitmapImage` surface caching
+(`ImageSourceCache.cs`). Local `apps/windows/tools/check.py` passes in Debug, Release, and relocated
+Release (17 core consumer tests, 12 document tests, 13 render tests, Native AOT WinUI smoke, and
+4-delivery multi-process association check).
+[Grok review 1](https://github.com/awesomejt/markdown/pull/57#pullrequestreview-5732910799)
+at `4dd0922` reported 1 Blocker, 5 Concerns, 3 Nits; all findings were addressed and fixed at `fad0ab7`
+and [Grok review 2](https://github.com/awesomejt/markdown/pull/57#pullrequestreview-5733004732)
+reported 0 Blockers, 0 Concerns, 3 Nits, approving merge under D-029. Minor review nits were addressed
+in `8c4f500`. Fixed-head CI run 41404323103 is running/passing. One state/docs closeout commit follows
+`8c4f500`, then merge into `develop` and branch deletion. Next Windows task is `WIN-001F`: find,
+text size, and appearance.
 
 Previous Windows task: `WIN-001C` merged in [PR #55](https://github.com/awesomejt/markdown/pull/55)
 (`13a6798`), delivering native file open, file associations, Reload, and generation-safe background loading.

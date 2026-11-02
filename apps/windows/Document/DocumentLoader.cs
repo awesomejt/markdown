@@ -263,6 +263,7 @@ public sealed class DocumentLoader : IDisposable
 
     /// <summary>Accounted payload ceiling for each prepared render plan.</summary>
     public long PlanBudget { get; set; } = RenderPlan.DefaultBudget;
+    public ImageBudget ImageBudget { get; set; } = new();
     public Func<string, HostLimits, CoreSession>? SessionFactory { get; set; }
     public Func<string?, uint, bool>? VolumeGoneCheck { get; set; }
 
@@ -567,7 +568,7 @@ public sealed class DocumentLoader : IDisposable
             var readDoc = readResult.Document!;
             var startTick = Stopwatch.GetTimestamp();
 
-            if (TrySubmitParse(serial, session, readDoc, cancellation, startTick, retryTimeout, planBarrier, planBudget))
+            if (TrySubmitParse(serial, capability, session, readDoc, cancellation, startTick, retryTimeout, planBarrier, planBudget))
             {
                 return;
             }
@@ -586,7 +587,7 @@ public sealed class DocumentLoader : IDisposable
                             return;
                         }
 
-                        if (TrySubmitParse(serial, session, readDoc, cancellation, startTick, retryTimeout, planBarrier, planBudget))
+                        if (TrySubmitParse(serial, capability, session, readDoc, cancellation, startTick, retryTimeout, planBarrier, planBudget))
                         {
                             return;
                         }
@@ -609,6 +610,7 @@ public sealed class DocumentLoader : IDisposable
     /// </summary>
     private bool TrySubmitParse(
         ulong serial,
+        DocumentCapability capability,
         CoreSession session,
         ReadDocument readDoc,
         Cancellation cancellation,
@@ -674,7 +676,7 @@ public sealed class DocumentLoader : IDisposable
                         case CoreOutcome.Unchanged:
                             if (coreResult.Document is not null)
                             {
-                                PreparePlan(serial, coreResult.Document, readDoc, cancellation, planBarrier, planBudget);
+                                PreparePlan(serial, capability, coreResult.Document, readDoc, cancellation, planBarrier, planBudget);
                             }
                             else
                             {
@@ -763,6 +765,7 @@ public sealed class DocumentLoader : IDisposable
     /// </summary>
     private void PreparePlan(
         ulong serial,
+        DocumentCapability capability,
         CoreDocument document,
         ReadDocument readDoc,
         Cancellation cancellation,
@@ -785,7 +788,9 @@ public sealed class DocumentLoader : IDisposable
                 RenderPlan plan;
                 try
                 {
-                    plan = RenderPlan.Build(document, Stale, planBudget);
+                    var imageBudget = ImageBudget;
+                    var resources = new DocumentResources(capability);
+                    plan = RenderPlan.Build(document, Stale, planBudget, (path, limit) => resources.ReadImage(path, limit, imageBudget), imageBudget);
                 }
                 catch (RenderException ex) when (ex.Kind == RenderErrorKind.Cancelled)
                 {

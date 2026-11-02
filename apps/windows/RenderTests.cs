@@ -26,6 +26,10 @@ internal static class RenderTests
                 ("long_heading_keeps_one_semantic_start_and_bounded_styled_continuations", LongHeadingKeepsOneSemanticStartAndBoundedStyledContinuations),
                 ("mixed_case_source_schemes_use_canonical_target_and_token_resolution", MixedCaseSourceSchemesUseCanonicalTargetAndTokenResolution),
                 ("plan_barrier_replacement_and_close_suppress_publication", PlanBarrierReplacementAndCloseSuppressPublication),
+                ("tables_align_header_and_tsv_copy", TablesAlignHeaderAndTsvCopy),
+                ("task_markers_and_accessible_text", TaskMarkersAndAccessibleText),
+                ("images_follow_resource_policy_and_limits", ImagesFollowResourcePolicyAndLimits),
+                ("document_resources_filesystem_security", DocumentResourcesFilesystemSecurity),
             };
 
             foreach (var (name, run) in tests)
@@ -304,6 +308,316 @@ internal static class RenderTests
             {
                 // Best-effort cleanup
             }
+        }
+    }
+
+    private static byte[] CreateBmp(int width, int height)
+    {
+        var data = new byte[54];
+        data[0] = 0x42;
+        data[1] = 0x4D;
+        BitConverter.GetBytes(54).CopyTo(data, 2);
+        BitConverter.GetBytes(54).CopyTo(data, 10);
+        BitConverter.GetBytes(40).CopyTo(data, 14);
+        BitConverter.GetBytes(width).CopyTo(data, 18);
+        BitConverter.GetBytes(height).CopyTo(data, 22);
+        BitConverter.GetBytes((short)1).CopyTo(data, 26);
+        BitConverter.GetBytes((short)24).CopyTo(data, 28);
+        return data;
+    }
+
+    internal static byte[] CreatePng(int width, int height)
+    {
+        using var ms = new MemoryStream();
+        ms.Write([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]);
+        ms.Write([0x00, 0x00, 0x00, 0x0D]);
+        ms.Write(Encoding.ASCII.GetBytes("IHDR"));
+        var wBytes = BitConverter.GetBytes(width);
+        if (BitConverter.IsLittleEndian) Array.Reverse(wBytes);
+        ms.Write(wBytes);
+        var hBytes = BitConverter.GetBytes(height);
+        if (BitConverter.IsLittleEndian) Array.Reverse(hBytes);
+        ms.Write(hBytes);
+        ms.Write([8, 2, 0, 0, 0]);
+        ms.Write([0, 0, 0, 0]);
+        ms.Write([0, 0, 0, 0]);
+        ms.Write(Encoding.ASCII.GetBytes("IEND"));
+        ms.Write([0xAE, 0x42, 0x60, 0x82]);
+        return ms.ToArray();
+    }
+
+    private static void TablesAlignHeaderAndTsvCopy()
+    {
+        var source =
+            "| Name   | Type    | Score |\n" +
+            "| :----- | :-----: | ----: |\n" +
+            "| Alpha  | string  |    10 |\n" +
+            "| Beta   | number  |   200 |\n" +
+            "| Gamma  | boolean |     3 |\n";
+
+        var p = Plan(source);
+        var tableFragments = p.Fragments.Where(f => f.Kind == FragmentKind.TableRow).ToList();
+        Assert(tableFragments.Count == 4, $"expected 4 table row fragments, got {tableFragments.Count}");
+
+        Assert(tableFragments[0].IsHeader, "row 0 must be header");
+        Assert(!tableFragments[1].IsHeader, "row 1 must not be header");
+        Assert(!tableFragments[2].IsHeader, "row 2 must not be header");
+        Assert(!tableFragments[3].IsHeader, "row 3 must not be header");
+
+        Assert(tableFragments[0].Runs.Any(r => (r.Style & RunStyle.Strong) != 0 && r.Text.Contains("Score")),
+            "header row cells must have Strong style");
+        Assert(tableFragments[1].Runs.All(r => (r.Style & RunStyle.Strong) == 0),
+            "body row cells must not have Strong style");
+
+        var expectedRows = new[]
+        {
+            "Name\tType\tScore",
+            "Alpha\tstring\t10",
+            "Beta\tnumber\t200",
+            "Gamma\tboolean\t3"
+        };
+        for (var i = 0; i < expectedRows.Length; i++)
+        {
+            Assert(tableFragments[i].Text == expectedRows[i],
+                $"row {i} mismatch: expected '{expectedRows[i]}', got '{tableFragments[i].Text}'");
+        }
+
+        var shortTable = Plan("| # | Item |\n| -: | --- |\n| 1 | one |\n| 22 |\n");
+        var shortRows = shortTable.Fragments.Where(f => f.Kind == FragmentKind.TableRow).ToList();
+        Assert(shortRows.Count == 3, "expected 3 rows for short table");
+        Assert(shortRows[2].Text == "22\t", $"expected padded short row '22\\t', got '{shortRows[2].Text}'");
+
+        var quoted = Plan("> | q |\n> | - |\n> | x |\n");
+        var quotedRows = quoted.Fragments.Where(f => f.Kind == FragmentKind.TableRow).ToList();
+        Assert(quotedRows.Count == 2, "expected 2 rows in quoted table");
+        Assert(quotedRows.All(r => r.Quote > 0), "quoted table rows must have quote depth > 0");
+    }
+
+    private static void TaskMarkersAndAccessibleText()
+    {
+        var p = Plan("- [x] done\n- [ ] open\n- plain\n");
+        Assert(p.Fragments.Count == 3, $"expected 3 list fragments, got {p.Fragments.Count}");
+
+        Assert(p.Fragments[0].Text == "☑ done", $"expected '☑ done', got '{p.Fragments[0].Text}'");
+        Assert(p.Fragments[1].Text == "☐ open", $"expected '☐ open', got '{p.Fragments[1].Text}'");
+        Assert(p.Fragments[2].Text == "• plain", $"expected '• plain', got '{p.Fragments[2].Text}'");
+
+        var f0Marker = p.Fragments[0].Runs[0];
+        Assert((f0Marker.Style & RunStyle.TaskChecked) != 0, "checked item must have TaskChecked style");
+
+        var f1Marker = p.Fragments[1].Runs[0];
+        Assert((f1Marker.Style & RunStyle.TaskUnchecked) != 0, "unchecked item must have TaskUnchecked style");
+
+        var f2Marker = p.Fragments[2].Runs[0];
+        Assert((f2Marker.Style & (RunStyle.TaskChecked | RunStyle.TaskUnchecked)) == 0, "plain item must not have task style");
+    }
+
+    private static void ImagesFollowResourcePolicyAndLimits()
+    {
+        var smallPng = CreatePng(64, 64);
+        var widePng = CreatePng(2000, 100);
+        var hugeBomb = CreatePng(20000, 20000);
+
+        var images = new Dictionary<string, byte[]>(StringComparer.Ordinal)
+        {
+            ["small.png"] = smallPng,
+            ["wide.png"] = widePng,
+            ["huge.png"] = hugeBomb,
+            ["vector.svg"] = Encoding.UTF8.GetBytes("<svg xmlns='http://www.w3.org/2000/svg'/>"),
+            ["disguised.png"] = Encoding.UTF8.GetBytes("<?xml version='1.0'?><svg></svg>"),
+            ["corrupt.png"] = Encoding.UTF8.GetBytes("not an image at all"),
+        };
+
+        var loadCount = 0;
+        (byte[]? Data, ResourceError? Error) MockLoader(string path, int limit)
+        {
+            loadCount++;
+            if (images.TryGetValue(path, out var data))
+            {
+                return (data, null);
+            }
+            if (path == "../up.png")
+            {
+                return (null, ResourceError.OutsideFolder);
+            }
+            return (null, ResourceError.NotFound);
+        }
+
+        var md =
+            "![small](small.png)\n\n" +
+            "![huge](huge.png)\n\n" +
+            "![svg](vector.svg)\n\n" +
+            "![disguised](disguised.png)\n\n" +
+            "![corrupt](corrupt.png)\n\n" +
+            "![up](../up.png)\n\n" +
+            "![missing](missing.png)\n\n" +
+            "![remote](https://example.com/pic.png)\n\n" +
+            "![denied](data:image/png;base64,AAAA)\n";
+
+        var doc = Document(md);
+        var plan = RenderPlan.Build(doc, () => false, RenderPlan.DefaultBudget, MockLoader);
+
+
+
+        Assert(plan.Images.Count == 9, $"expected 9 images in plan, got {plan.Images.Count}");
+        Assert(plan.Images[0].Failure == null, "small.png should succeed");
+        Assert(plan.Images[0].Width == 64 && plan.Images[0].Height == 64, "small.png dimensions mismatch");
+        Assert(plan.Images[1].Failure == ResourceError.TooLarge, "huge bomb should fail with TooLarge");
+        Assert(plan.Images[2].Failure == ResourceError.UnsupportedType, "vector.svg should fail with UnsupportedType");
+        Assert(plan.Images[3].Failure == ResourceError.UnsupportedType, "disguised.png should fail with UnsupportedType");
+        Assert(plan.Images[4].Failure == ResourceError.Undecodable, "corrupt.png should fail with Undecodable");
+        Assert(plan.Images[5].Failure == ResourceError.OutsideFolder, "../up.png should fail with OutsideFolder");
+        Assert(plan.Images[6].Failure == ResourceError.NotFound, "missing.png should fail with NotFound");
+        Assert(plan.Images[7].Failure == ResourceError.Remote, "https image should fail with Remote");
+        Assert(plan.Images[8].Failure == ResourceError.Blocked, "data: image should fail with Blocked");
+
+        var budget = new ImageBudget { MaxImages = 3 };
+        var multiMd = "![1](small.png) ![2](wide.png) ![3](i3.png) ![4](i4.png) ![5](i5.png)\n";
+        var multiDoc = Document(multiMd);
+        images["i3.png"] = smallPng;
+        images["i4.png"] = smallPng;
+        images["i5.png"] = smallPng;
+        var budgetPlan = RenderPlan.Build(multiDoc, () => false, RenderPlan.DefaultBudget, MockLoader, budget);
+        Assert(budgetPlan.Images.Count == 5, "expected 5 images in multi plan");
+        Assert(budgetPlan.Images[0].Failure == null, "image 1 should succeed");
+        Assert(budgetPlan.Images[1].Failure == null, "image 2 should succeed");
+        Assert(budgetPlan.Images[2].Failure == null, "image 3 should succeed");
+        Assert(budgetPlan.Images[3].Failure == ResourceError.Limit, "image 4 should fail with Limit");
+        Assert(budgetPlan.Images[4].Failure == ResourceError.Limit, "image 5 should fail with Limit");
+
+        var memBudget = new ImageBudget { MaxDecodedBytes = 64 * 64 * 4 * 2 };
+        var memMd = "![w](wide.png) ![s1](s1.png) ![s2](s2.png) ![s3](s3.png)\n";
+        images["s1.png"] = smallPng;
+        images["s2.png"] = smallPng;
+        images["s3.png"] = smallPng;
+        var memPlan = RenderPlan.Build(Document(memMd), () => false, RenderPlan.DefaultBudget, MockLoader, memBudget);
+        Assert(memPlan.Images[0].Failure == ResourceError.Limit, "wide image should exceed small memory budget");
+        Assert(memPlan.Images[1].Failure == null, "s1 should fit");
+        Assert(memPlan.Images[2].Failure == null, "s2 should fit");
+        Assert(memPlan.Images[3].Failure == ResourceError.Limit, "s3 should exceed memory budget");
+
+        loadCount = 0;
+        var dedupMd = "![first](small.png)\n\n![second](small.png)\n";
+        var dedupPlan = RenderPlan.Build(Document(dedupMd), () => false, RenderPlan.DefaultBudget, MockLoader);
+        Assert(dedupPlan.Images.Count == 2, "expected 2 image occurrences");
+        Assert(loadCount == 1, $"expected exactly 1 loader call for duplicate image, got {loadCount}");
+        Assert(dedupPlan.Images[0].Failure == null && dedupPlan.Images[1].Failure == null, "both occurrences should succeed");
+
+        // Mixed paragraph with text, link, and multiple images
+        var mixedMd = "See ![first](small.png) for details and [docs](#test) plus ![second](wide.png)\n";
+        var mixedPlan = RenderPlan.Build(Document(mixedMd), () => false, RenderPlan.DefaultBudget, MockLoader);
+        var mixedFrag = mixedPlan.Fragments.First(f => f.Text.Contains("See"));
+        Assert(mixedFrag.Images.Count == 2, $"expected 2 images in mixed paragraph, got {mixedFrag.Images.Count}");
+        Assert(mixedFrag.Runs.Any(r => r.Text == "docs" && r.Link != RenderRun.NoLink), "mixed paragraph must retain clickable link");
+        Assert(mixedFrag.Text.Contains("See ") && mixedFrag.Text.Contains(" for details and "), "mixed paragraph must retain text runs");
+
+        // Image in table cell must not leak into subsequent paragraph
+        var tableWithImgMd = "| Header |\n| --- |\n| ![cell](small.png) |\n\nNext paragraph text\n";
+        var tablePlan = RenderPlan.Build(Document(tableWithImgMd), () => false, RenderPlan.DefaultBudget, MockLoader);
+        var nextFrag = tablePlan.Fragments.First(f => f.Text.Contains("Next paragraph"));
+        Assert(nextFrag.Images.Count == 0, "table cell image must not leak into subsequent paragraph");
+
+        // MaxPixelSide (2048) enforcement: 2049x10 (under 32 MP, but side > 2048)
+        var longSidePng = CreatePng(2049, 10);
+        images["longside.png"] = longSidePng;
+        var sidePlan = RenderPlan.Build(Document("![side](longside.png)\n"), () => false, RenderPlan.DefaultBudget, MockLoader);
+        Assert(sidePlan.Images[0].Failure == ResourceError.TooLarge, "image with side > 2048 must fail with TooLarge");
+
+        // Crafted BMP with int.MinValue height must not throw OverflowException
+        var minBmp = CreateBmp(100, int.MinValue);
+        var bmpOk = ImageFormatInspector.Inspect(minBmp, 32L * 1024 * 1024, 2048, out _, out _, out var bmpErr);
+        Assert(!bmpOk && bmpErr == ResourceError.TooLarge, "crafted BMP with int.MinValue height must fail with TooLarge without throwing");
+
+
+    }
+
+    private static void DocumentResourcesFilesystemSecurity()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), $"markdown-resources-test-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempDir);
+        var subDir = Path.Combine(tempDir, "sub");
+        Directory.CreateDirectory(subDir);
+        var outsideDir = Path.Combine(Path.GetTempPath(), $"markdown-outside-test-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(outsideDir);
+
+        try
+        {
+            var validPng = CreatePng(32, 32);
+            var testPngPath = Path.Combine(tempDir, "test.png");
+            File.WriteAllBytes(testPngPath, validPng);
+
+            var subPngPath = Path.Combine(subDir, "sub.png");
+            File.WriteAllBytes(subPngPath, validPng);
+
+            var outsidePngPath = Path.Combine(outsideDir, "outside.png");
+            File.WriteAllBytes(outsidePngPath, validPng);
+
+            var svgPath = Path.Combine(tempDir, "vector.svg");
+            File.WriteAllText(svgPath, "<svg xmlns='http://www.w3.org/2000/svg'/>");
+
+            var fakePngPath = Path.Combine(tempDir, "fake.png");
+            File.WriteAllText(fakePngPath, "this is not a png");
+
+            var dirAsPngPath = Path.Combine(tempDir, "dir.png");
+            Directory.CreateDirectory(dirAsPngPath);
+
+            var docPath = Path.Combine(tempDir, "doc.md");
+            File.WriteAllText(docPath, "# Test\n");
+
+            var capability = DocumentCapability.FromPickerPath(docPath);
+            var resources = new DocumentResources(capability);
+
+            var (d1, e1) = resources.ReadImage("test.png");
+            Assert(e1 == null && d1 != null && d1.Length > 0, "test.png should succeed");
+
+            var (d2, e2) = resources.ReadImage("sub/sub.png");
+            Assert(e2 == null && d2 != null && d2.Length > 0, "sub/sub.png should succeed");
+
+            var (d3, e3) = resources.ReadImage("../outside.png");
+            Assert(e3 == ResourceError.OutsideFolder, "escaped path must fail with OutsideFolder");
+
+            var (d4, e4) = resources.ReadImage("/test.png");
+            Assert(e4 == ResourceError.OutsideFolder, "absolute path must fail with OutsideFolder");
+
+            var (d5, e5) = resources.ReadImage("C:test.png");
+            Assert(e5 == ResourceError.OutsideFolder, "drive path must fail with OutsideFolder");
+
+            var (d6, e6) = resources.ReadImage("dir.png");
+            Assert(e6 == ResourceError.NotRegularFile, "directory must fail with NotRegularFile");
+
+            var (d7, e7) = resources.ReadImage("vector.svg");
+            Assert(e7 == ResourceError.UnsupportedType, "svg file must fail with UnsupportedType");
+
+            var (d8, e8) = resources.ReadImage("fake.png");
+            Assert(e8 == ResourceError.Undecodable, "fake png must fail with Undecodable");
+
+            var (dIco, eIco) = resources.ReadImage("icon.ico");
+            Assert(eIco == ResourceError.UnsupportedType, "ico file must fail with UnsupportedType");
+
+            var (d9, e9) = resources.ReadImage("missing.png");
+            Assert(e9 == ResourceError.NotFound, "missing file must fail with NotFound");
+
+            var (d10, e10) = resources.ReadImage("test.png", byteLimit: 10);
+            Assert(e10 == ResourceError.TooLarge, "file exceeding byteLimit must fail with TooLarge");
+
+            // Directory junction escape test (via mklink /J)
+            var juncDir = Path.Combine(tempDir, "junc");
+            var mklink = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = "cmd.exe",
+                Arguments = $"/c mklink /J \"{juncDir}\" \"{outsideDir}\"",
+                CreateNoWindow = true,
+                UseShellExecute = false,
+            });
+            mklink?.WaitForExit();
+            Assert(Directory.Exists(juncDir), "junction directory creation must succeed");
+            var (dj, ej) = resources.ReadImage("junc/outside.png");
+            Assert(ej == ResourceError.OutsideFolder, "junction escape outside document folder must fail with OutsideFolder");
+        }
+        finally
+        {
+            try { Directory.Delete(tempDir, recursive: true); } catch { }
+            try { Directory.Delete(outsideDir, recursive: true); } catch { }
         }
     }
 

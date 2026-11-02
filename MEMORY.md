@@ -52,7 +52,17 @@ read.
   UIA heading level automation properties, 9 `--render-tests` unit tests, and
   extended native smoke). Grok review 1 at `8db9048` reported 0 Blockers, 5 Concerns,
   3 Nits; all findings were addressed at `046178b`, all review threads resolved, and
-  fixed-head CI run 41394098208 passed all checks under D-029. WIN-001E is next on Windows.
+  fixed-head CI run 41394098208 passed all checks under D-029. WIN-001E is merged.
+- WIN-001E (PR #57) delivers Windows native tables (tab-separated cell rows for native TSV clipboard
+  copying, monospace font, header bold styling, zebra striping, and border separators), task list
+  checkbox markers (`[x]` -> checked `☑`, `[ ]` -> unchecked `☐`) with accent styling and accessible
+  UIA labels, and strict folder-contained image resource policy (`DocumentResources.cs`) with raster-only
+  format validation (PNG, JPEG, GIF, BMP, WebP), dimension and 32 MP bomb caps, 2048px side cap,
+  128 MiB memory budget, off-thread decoding, and per-`ReaderControl` `BitmapImage` surface caching
+  (`ImageSourceCache.cs`). Grok review 1 at `4dd0922` reported 1 Blocker, 5 Concerns, 3 Nits; all findings
+  were addressed at `fad0ab7`, and follow-up Grok review 2 at `fad0ab7` reported 0 Blockers, 0 Concerns,
+  3 Nits (approval under D-029). Minor review nits addressed in `8c4f500`. WIN-001F (find, text size,
+  and appearance) is next on Windows.
 - Phase: `desktop-apps`; the portable-core shared track is complete through
   CORE-006 (GATE-001 approved, D-018). Native chains are now eligible (D-027).
 - Product: local-first, read-only native Markdown reader. Windows, macOS and

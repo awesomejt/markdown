@@ -1,6 +1,6 @@
 # Windows native shell
 
-WIN-001A, WIN-001B, WIN-001C, and WIN-001D provide an unpackaged Windows 11 x64 WinUI 3
+WIN-001A, WIN-001B, WIN-001C, WIN-001D, and WIN-001E provide an unpackaged Windows 11 x64 WinUI 3
 application in C# Native AOT linked against the local shared-core C ABI package
 (`markdown_ffi.dll`, model v2). It opens a native window with a File menu,
 Open… (Ctrl+O), Reload (Ctrl+R), New Window (Ctrl+N), Close Window (Ctrl+W),
@@ -47,8 +47,7 @@ UIA heading level automation properties (`AutomationProperties.SetHeadingLevel`)
 Link targets are resolved to internal heading fragment indices, safe external URIs
 (`http`, `https`, `mailto`), or inert text. `ReaderControl` provides a two-column
 layout with an outline sidebar (`ListView`) and document virtualized list, outline jump
-navigation, and safe link activation. Tables, images, full multi-row selection, and
-Narrator continuous reading proof remain later tasks.
+navigation, and safe link activation. Full multi-row selection and Narrator continuous reading proof remain later tasks.
 
 ## Build and check
 
@@ -171,3 +170,13 @@ Validated on Windows 11 Pro build 26300.9711, Ryzen 9 5950X x64, Rust 1.99.1,
   The Native AOT smoke (`--smoke`) was extended to verify `ReaderControl` presentation,
   outline hierarchy, outline heading jump navigation, safe link interception delegate,
   and within-fragment text selection with zero leaked core handles.
+- **WIN-001E**: Debug, Release, and relocated Release Native AOT builds passed
+  13 render unit tests (`--render-tests`: including GFM table layout with tab-separated cell rows for native TSV clipboard copying, monospace font,
+  zebra shading, and border styling, task list checkbox markers [checked and unchecked] with
+  accent styling, resource policy enforcement restricting image loads to canonical folder
+  containment without escaping or traversal, raster-only format validation [PNG, JPEG, GIF, BMP,
+  WebP] with header dimension extraction, dimension / pixel side / 32 MP bomb caps, 128 MiB memory
+  budget tracking, rejection of SVG / XML vectors, remote HTTP/HTTPS URIs, data: URIs, directory paths,
+  and corrupt files with user-friendly alt-text status messages, off-thread decoding with UI-thread
+  `BitmapImage` surface caching and lifecycle clearing). The Native AOT smoke (`--smoke`) was extended
+  to verify rendering of rich blocks (table, task list, local image) with zero leaked core handles or crashes.

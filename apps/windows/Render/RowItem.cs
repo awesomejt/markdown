@@ -17,7 +17,9 @@ public sealed partial class RowItem : ListViewItem
 {
     private static readonly FontFamily s_monoFont = new("Cascadia Mono, Consolas, Courier New");
     private static readonly SolidColorBrush s_quoteBrush = new(Colors.Gray);
+    private static readonly SolidColorBrush s_checkedBrush = new(global::Windows.UI.Color.FromArgb(0xFF, 0x00, 0x78, 0xD4));
     private static readonly SolidColorBrush s_codeBackground = new(global::Windows.UI.Color.FromArgb(0x18, 0x80, 0x80, 0x80));
+    private static readonly SolidColorBrush s_altRowBackground = new(global::Windows.UI.Color.FromArgb(0x0C, 0x80, 0x80, 0x80));
     private static readonly double[] s_headingSizes = [28, 24, 20, 18, 16, 15];
 
     public Grid Root { get; } = new();
@@ -25,6 +27,11 @@ public sealed partial class RowItem : ListViewItem
     {
         TextWrapping = TextWrapping.Wrap,
         IsTextSelectionEnabled = true,
+    };
+    public StackPanel ImagesPanel { get; } = new()
+    {
+        Spacing = 8,
+        Visibility = Visibility.Collapsed,
     };
 
     public int ItemIndex { get; private set; } = -1;
@@ -39,6 +46,7 @@ public sealed partial class RowItem : ListViewItem
         HorizontalContentAlignment = HorizontalAlignment.Stretch;
 
         Root.Children.Add(TextBlock);
+        Root.Children.Add(ImagesPanel);
     }
 
     public static T? TryAs<T>(object? value) where T : class
@@ -76,6 +84,9 @@ public sealed partial class RowItem : ListViewItem
         ItemIndex = -1;
         ShownText = string.Empty;
         TextBlock.Blocks.Clear();
+        TextBlock.Visibility = Visibility.Visible;
+        ImagesPanel.Children.Clear();
+        ImagesPanel.Visibility = Visibility.Collapsed;
         AutomationProperties.SetName(this, string.Empty);
         AutomationProperties.SetHeadingLevel(this, AutomationHeadingLevel.None);
         AutomationProperties.SetHeadingLevel(TextBlock, AutomationHeadingLevel.None);
@@ -84,7 +95,7 @@ public sealed partial class RowItem : ListViewItem
     /// <summary>
     /// Binds the container to the given fragment from the current render plan.
     /// </summary>
-    public void Bind(int index, RenderFragment fragment, Action<int, int>? onLinkActivated)
+    public void Bind(int index, RenderFragment fragment, Action<int, int>? onLinkActivated, ImageSourceCache? imageCache = null)
     {
         ItemIndex = index;
         TextBlock.Blocks.Clear();
@@ -113,7 +124,15 @@ public sealed partial class RowItem : ListViewItem
             {
                 inlineRun.FontFamily = s_monoFont;
             }
-            if ((run.Style & RunStyle.Marker) != 0)
+            if ((run.Style & RunStyle.TaskChecked) != 0)
+            {
+                inlineRun.Foreground = s_checkedBrush;
+            }
+            else if ((run.Style & RunStyle.TaskUnchecked) != 0)
+            {
+                inlineRun.Foreground = s_quoteBrush;
+            }
+            else if ((run.Style & RunStyle.Marker) != 0)
             {
                 inlineRun.Foreground = s_quoteBrush;
             }
@@ -150,15 +169,82 @@ public sealed partial class RowItem : ListViewItem
             TextBlock.FontWeight = FontWeights.Normal;
         }
 
-        var isMono = fragment.Kind is FragmentKind.Code or FragmentKind.Fallback;
+        var isMono = fragment.Kind is FragmentKind.Code or FragmentKind.Fallback or FragmentKind.TableRow;
         TextBlock.FontFamily = isMono ? s_monoFont : FontFamily.XamlAutoFontFamily;
-        Root.Background = isMono ? s_codeBackground : null;
 
-        var topMargin = isHeading ? 14 : 6;
-        var bottomMargin = 6;
-        Root.Padding = new Thickness(16 + 24 * fragment.Indent, topMargin, 16, bottomMargin);
-        Root.BorderThickness = new Thickness(fragment.Quote > 0 ? 3 : 0, 0, 0, 0);
-        Root.BorderBrush = s_quoteBrush;
+        if (fragment.Kind == FragmentKind.TableRow)
+        {
+            TextBlock.FontSize = 14;
+            if (fragment.IsHeader)
+            {
+                Root.Background = s_codeBackground;
+                Root.BorderThickness = new Thickness(0, 0, 0, 2);
+                Root.BorderBrush = s_quoteBrush;
+            }
+            else
+            {
+                Root.Background = (index % 2 == 1) ? s_altRowBackground : null;
+                Root.BorderThickness = new Thickness(0, 0, 0, 1);
+                Root.BorderBrush = s_quoteBrush;
+            }
+            Root.Padding = new Thickness(16 + 24 * fragment.Indent, 4, 16, 4);
+        }
+        else
+        {
+            Root.Background = (fragment.Kind is FragmentKind.Code or FragmentKind.Fallback) ? s_codeBackground : null;
+            var topMargin = isHeading ? 14 : 6;
+            var bottomMargin = 6;
+            Root.Padding = new Thickness(16 + 24 * fragment.Indent, topMargin, 16, bottomMargin);
+            Root.BorderThickness = new Thickness(fragment.Quote > 0 ? 3 : 0, 0, 0, 0);
+            Root.BorderBrush = s_quoteBrush;
+        }
+
+        // Text visibility remains visible if there are text runs (never collapsed by images)
+        TextBlock.Visibility = fragment.Runs.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+
+        // Image presentation: renders all images in the fragment without dropping secondary images
+        ImagesPanel.Children.Clear();
+        if (fragment.Images.Count > 0)
+        {
+            ImagesPanel.Visibility = Visibility.Visible;
+            foreach (var img in fragment.Images)
+            {
+                if (img.Failure is not null || img.Data is null)
+                {
+                    var status = new TextBlock
+                    {
+                        Text = string.IsNullOrEmpty(img.Alt)
+                            ? $"[{img.FailureMessage}]"
+                            : $"[{img.Alt} ({img.FailureMessage})]",
+                        Foreground = s_quoteBrush,
+                        FontStyle = global::Windows.UI.Text.FontStyle.Italic,
+                        FontSize = 14,
+                        TextWrapping = TextWrapping.Wrap,
+                    };
+                    AutomationProperties.SetName(status, status.Text);
+                    ImagesPanel.Children.Add(status);
+                }
+                else
+                {
+                    var imgControl = new Image
+                    {
+                        Stretch = Stretch.Uniform,
+                        HorizontalAlignment = HorizontalAlignment.Left,
+                        MaxWidth = Math.Min(img.Width, 800),
+                        MaxHeight = Math.Min(img.Height, 600),
+                        Source = imageCache?.GetOrCreate(img),
+                    };
+                    AutomationProperties.SetName(imgControl, string.IsNullOrEmpty(img.Alt) ? "Image" : img.Alt);
+                    ImagesPanel.Children.Add(imgControl);
+                }
+            }
+        }
+        else
+        {
+            ImagesPanel.Visibility = Visibility.Collapsed;
+        }
+
+        ShownText = fragment.Text;
 
         AutomationProperties.SetName(this, ShownText);
         var autoHeadingLevel = fragment.HeadingStart && headingLevel is >= 1 and <= 6
