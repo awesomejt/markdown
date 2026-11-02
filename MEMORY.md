@@ -61,8 +61,16 @@ read.
   128 MiB memory budget, off-thread decoding, and per-`ReaderControl` `BitmapImage` surface caching
   (`ImageSourceCache.cs`). Grok review 1 at `4dd0922` reported 1 Blocker, 5 Concerns, 3 Nits; all findings
   were addressed at `fad0ab7`, and follow-up Grok review 2 at `fad0ab7` reported 0 Blockers, 0 Concerns,
-  3 Nits (approval under D-029). Minor review nits addressed in `8c4f500`. WIN-001F (find, text size,
-  and appearance) is next on Windows.
+  3 Nits (approval under D-029). Minor review nits addressed in `8c4f500`. WIN-001F is merged.
+- WIN-001F (PR #58) delivers Windows native document find (`md_snapshot_find` C ABI
+  binding, core find integration, UTF-8 to UTF-16 match mapping across fragments and runs,
+  FindBar UI with match cycling, status text, and `TextHighlighter` highlights), discrete
+  text scaling across 9 steps with scroll retention and keyboard shortcuts (`Ctrl++`/`Ctrl--`/`Ctrl+0`),
+  theme switching (System, Light, Dark), and persistent settings via `LocalSettingsPreferenceStore`
+  using `%LOCALAPPDATA%` JSON storage. Grok review 1 at `b6070ad` reported 0 Blockers, 5 Concerns, 2 Nits;
+  follow-up review 2 at `292e868` reported 0 Blockers, 1 Concern, 2 Nits; follow-up review 3 at `2fcac41`
+  reported 0 Blockers, 0 Concerns, 0 Nits (clean approval under D-029). All checks in CI run 41487555337
+  passed. WIN-001G (large-document layout, global selection, accessibility) is next on Windows.
 - Phase: `desktop-apps`; the portable-core shared track is complete through
   CORE-006 (GATE-001 approved, D-018). Native chains are now eligible (D-027).
 - Product: local-first, read-only native Markdown reader. Windows, macOS and
