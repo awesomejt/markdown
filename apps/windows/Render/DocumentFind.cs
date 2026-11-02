@@ -150,7 +150,7 @@ public static class DocumentFind
             {
                 currentByte += 2;
             }
-            else if (char.IsSurrogate(ch))
+            else if (char.IsHighSurrogate(ch) && i + 1 < text.Length && char.IsLowSurrogate(text[i + 1]))
             {
                 currentByte += 4;
                 i++; // skip trailing surrogate
@@ -183,7 +183,7 @@ public static class DocumentFind
             {
                 charBytes = 2;
             }
-            else if (char.IsSurrogate(ch))
+            else if (char.IsHighSurrogate(ch) && i + 1 < text.Length && char.IsLowSurrogate(text[i + 1]))
             {
                 charBytes = 4;
                 for (var b = 0; b < charBytes && currentByte < byteCount; b++)
@@ -214,6 +214,15 @@ public static class DocumentFind
 
     public static FindMatches MapMatches(RenderPlan plan, CoreDocument document, CoreFindResult result)
     {
+        ArgumentNullException.ThrowIfNull(plan);
+        ArgumentNullException.ThrowIfNull(document);
+        ArgumentNullException.ThrowIfNull(result);
+
+        if (result.Generation != plan.Generation || result.Generation != document.Generation)
+        {
+            return new FindMatches(plan.Generation, Array.Empty<FindMatch>(), truncated: false);
+        }
+
         // Index fragments and runs by NodeId
         var nodeRunIndex = new Dictionary<int, List<(int FragmentIndex, int FragCharOffset, RenderRun Run)>>();
         for (var f = 0; f < plan.Fragments.Count; f++)

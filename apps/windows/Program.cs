@@ -1074,7 +1074,10 @@ internal sealed class ReaderWindow : Window
             }
             catch (Exception ex)
             {
-                FindBar.SetStatus($"Find error: {ex.Message}");
+                if (reqId == _findRequestId && doc == Loader.Document && !cts.IsCancellationRequested)
+                {
+                    FindBar.SetStatus($"Find error: {ex.Message}");
+                }
             }
         });
     }
