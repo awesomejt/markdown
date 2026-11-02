@@ -76,7 +76,7 @@ def main():
             parse = [r["parse_ms"] for r in rows]
             plan = [r["plan_ms"] for r in rows]
             target = WARM_LAUNCH if name != "prose-5mib" else None
-            meets_target = (max(pipeline) <= WARM_LAUNCH) if target is not None else "n/a (5 MiB stress fixture; D-016 <= 1 MiB target)" 
+            meets_target = (max(pipeline) <= WARM_LAUNCH) if target is not None else "n/a (5 MiB stress fixture; D-016 <= 1 MiB target)"
             out = {
                 "profile": name,
                 "configuration": args.configuration,
