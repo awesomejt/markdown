@@ -311,6 +311,21 @@ internal static class RenderTests
         }
     }
 
+    private static byte[] CreateBmp(int width, int height)
+    {
+        var data = new byte[54];
+        data[0] = 0x42;
+        data[1] = 0x4D;
+        BitConverter.GetBytes(54).CopyTo(data, 2);
+        BitConverter.GetBytes(54).CopyTo(data, 10);
+        BitConverter.GetBytes(40).CopyTo(data, 14);
+        BitConverter.GetBytes(width).CopyTo(data, 18);
+        BitConverter.GetBytes(height).CopyTo(data, 22);
+        BitConverter.GetBytes((short)1).CopyTo(data, 26);
+        BitConverter.GetBytes((short)24).CopyTo(data, 28);
+        return data;
+    }
+
     internal static byte[] CreatePng(int width, int height)
     {
         using var ms = new MemoryStream();
@@ -400,7 +415,7 @@ internal static class RenderTests
     private static void ImagesFollowResourcePolicyAndLimits()
     {
         var smallPng = CreatePng(64, 64);
-        var widePng = CreatePng(4000, 100);
+        var widePng = CreatePng(2000, 100);
         var hugeBomb = CreatePng(20000, 20000);
 
         var images = new Dictionary<string, byte[]>(StringComparer.Ordinal)
@@ -487,6 +502,33 @@ internal static class RenderTests
         Assert(dedupPlan.Images.Count == 2, "expected 2 image occurrences");
         Assert(loadCount == 1, $"expected exactly 1 loader call for duplicate image, got {loadCount}");
         Assert(dedupPlan.Images[0].Failure == null && dedupPlan.Images[1].Failure == null, "both occurrences should succeed");
+
+        // Mixed paragraph with text, link, and multiple images
+        var mixedMd = "See ![first](small.png) for details and [docs](#test) plus ![second](wide.png)\n";
+        var mixedPlan = RenderPlan.Build(Document(mixedMd), () => false, RenderPlan.DefaultBudget, MockLoader);
+        var mixedFrag = mixedPlan.Fragments.First(f => f.Text.Contains("See"));
+        Assert(mixedFrag.Images.Count == 2, $"expected 2 images in mixed paragraph, got {mixedFrag.Images.Count}");
+        Assert(mixedFrag.Runs.Any(r => r.Text == "docs" && r.Link != RenderRun.NoLink), "mixed paragraph must retain clickable link");
+        Assert(mixedFrag.Text.Contains("See ") && mixedFrag.Text.Contains(" for details and "), "mixed paragraph must retain text runs");
+
+        // Image in table cell must not leak into subsequent paragraph
+        var tableWithImgMd = "| Header |\n| --- |\n| ![cell](small.png) |\n\nNext paragraph text\n";
+        var tablePlan = RenderPlan.Build(Document(tableWithImgMd), () => false, RenderPlan.DefaultBudget, MockLoader);
+        var nextFrag = tablePlan.Fragments.First(f => f.Text.Contains("Next paragraph"));
+        Assert(nextFrag.Images.Count == 0, "table cell image must not leak into subsequent paragraph");
+
+        // MaxPixelSide (2048) enforcement: 2049x10 (under 32 MP, but side > 2048)
+        var longSidePng = CreatePng(2049, 10);
+        images["longside.png"] = longSidePng;
+        var sidePlan = RenderPlan.Build(Document("![side](longside.png)\n"), () => false, RenderPlan.DefaultBudget, MockLoader);
+        Assert(sidePlan.Images[0].Failure == ResourceError.TooLarge, "image with side > 2048 must fail with TooLarge");
+
+        // Crafted BMP with int.MinValue height must not throw OverflowException
+        var minBmp = CreateBmp(100, int.MinValue);
+        var bmpOk = ImageFormatInspector.Inspect(minBmp, 32L * 1024 * 1024, 2048, out _, out _, out var bmpErr);
+        Assert(!bmpOk && bmpErr == ResourceError.TooLarge, "crafted BMP with int.MinValue height must fail with TooLarge without throwing");
+
+
     }
 
     private static void DocumentResourcesFilesystemSecurity()
@@ -549,11 +591,30 @@ internal static class RenderTests
             var (d8, e8) = resources.ReadImage("fake.png");
             Assert(e8 == ResourceError.Undecodable, "fake png must fail with Undecodable");
 
+            var (dIco, eIco) = resources.ReadImage("icon.ico");
+            Assert(eIco == ResourceError.UnsupportedType, "ico file must fail with UnsupportedType");
+
             var (d9, e9) = resources.ReadImage("missing.png");
             Assert(e9 == ResourceError.NotFound, "missing file must fail with NotFound");
 
             var (d10, e10) = resources.ReadImage("test.png", byteLimit: 10);
             Assert(e10 == ResourceError.TooLarge, "file exceeding byteLimit must fail with TooLarge");
+
+            // Directory junction escape test (via mklink /J)
+            var juncDir = Path.Combine(tempDir, "junc");
+            var mklink = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = "cmd.exe",
+                Arguments = $"/c mklink /J \"{juncDir}\" \"{outsideDir}\"",
+                CreateNoWindow = true,
+                UseShellExecute = false,
+            });
+            mklink?.WaitForExit();
+            if (Directory.Exists(juncDir))
+            {
+                var (dj, ej) = resources.ReadImage("junc/outside.png");
+                Assert(ej == ResourceError.OutsideFolder, "junction escape outside document folder must fail with OutsideFolder");
+            }
         }
         finally
         {

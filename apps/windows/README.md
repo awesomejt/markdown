@@ -171,7 +171,7 @@ Validated on Windows 11 Pro build 26300.9711, Ryzen 9 5950X x64, Rust 1.99.1,
   outline hierarchy, outline heading jump navigation, safe link interception delegate,
   and within-fragment text selection with zero leaked core handles.
 - **WIN-001E**: Debug, Release, and relocated Release Native AOT builds passed
-  13 render unit tests (`--render-tests`: including GFM table layout with monospace font,
+  13 render unit tests (`--render-tests`: including GFM table layout with tab-separated cell rows for native TSV clipboard copying, monospace font,
   zebra shading, and border styling, task list checkbox markers [checked and unchecked] with
   accent styling, resource policy enforcement restricting image loads to canonical folder
   containment without escaping or traversal, raster-only format validation [PNG, JPEG, GIF, BMP,

@@ -788,7 +788,7 @@ public sealed class DocumentLoader : IDisposable
                 try
                 {
                     var resources = new DocumentResources(capability);
-                    plan = RenderPlan.Build(document, Stale, planBudget, resources.ReadImage);
+                    plan = RenderPlan.Build(document, Stale, planBudget, (path, limit) => resources.ReadImage(path, limit));
                 }
                 catch (RenderException ex) when (ex.Kind == RenderErrorKind.Cancelled)
                 {

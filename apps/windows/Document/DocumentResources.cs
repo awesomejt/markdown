@@ -64,6 +64,7 @@ public static class ImageFormatInspector
     public static bool Inspect(
         ReadOnlySpan<byte> data,
         long maxSourcePixels,
+        int maxPixelSide,
         out int width,
         out int height,
         out ResourceError? error)
@@ -95,7 +96,7 @@ public static class ImageFormatInspector
             {
                 var w = (data[16] << 24) | (data[17] << 16) | (data[18] << 8) | data[19];
                 var h = (data[20] << 24) | (data[21] << 16) | (data[22] << 8) | data[23];
-                return ValidateDimensions(w, h, maxSourcePixels, out width, out height, out error);
+                return ValidateDimensions(w, h, maxSourcePixels, maxPixelSide, out width, out height, out error);
             }
             error = ResourceError.Undecodable;
             return false;
@@ -125,7 +126,7 @@ public static class ImageFormatInspector
                     {
                         var h = (data[offset + 3] << 8) | data[offset + 4];
                         var w = (data[offset + 5] << 8) | data[offset + 6];
-                        return ValidateDimensions(w, h, maxSourcePixels, out width, out height, out error);
+                        return ValidateDimensions(w, h, maxSourcePixels, maxPixelSide, out width, out height, out error);
                     }
                     break;
                 }
@@ -151,15 +152,16 @@ public static class ImageFormatInspector
         {
             var w = data[6] | (data[7] << 8);
             var h = data[8] | (data[9] << 8);
-            return ValidateDimensions(w, h, maxSourcePixels, out width, out height, out error);
+            return ValidateDimensions(w, h, maxSourcePixels, maxPixelSide, out width, out height, out error);
         }
 
         // 4. BMP: 42 4D ('BM')
         if (data.Length >= 26 && data[0] == 0x42 && data[1] == 0x4D)
         {
             var w = BitConverter.ToInt32(data.Slice(18, 4));
-            var h = Math.Abs(BitConverter.ToInt32(data.Slice(22, 4)));
-            return ValidateDimensions(w, h, maxSourcePixels, out width, out height, out error);
+            var rawH = (long)BitConverter.ToInt32(data.Slice(22, 4));
+            var h = Math.Abs(rawH);
+            return ValidateDimensions(w, h, maxSourcePixels, maxPixelSide, out width, out height, out error);
         }
 
         // 5. WebP: RIFF....WEBP
@@ -174,7 +176,7 @@ public static class ImageFormatInspector
                 {
                     var w = (data[26] | (data[27] << 8)) & 0x3FFF;
                     var h = (data[28] | (data[29] << 8)) & 0x3FFF;
-                    return ValidateDimensions(w, h, maxSourcePixels, out width, out height, out error);
+                    return ValidateDimensions(w, h, maxSourcePixels, maxPixelSide, out width, out height, out error);
                 }
             }
             else if (data[12] == (byte)'V' && data[13] == (byte)'P' && data[14] == (byte)'8' && data[15] == (byte)'L')
@@ -188,7 +190,7 @@ public static class ImageFormatInspector
                     var b4 = data[24];
                     var w = 1 + (b1 | ((b2 & 0x3F) << 8));
                     var h = 1 + (((b2 >> 6) | (b3 << 2) | ((b4 & 0xF) << 10)));
-                    return ValidateDimensions(w, h, maxSourcePixels, out width, out height, out error);
+                    return ValidateDimensions(w, h, maxSourcePixels, maxPixelSide, out width, out height, out error);
                 }
             }
             else if (data[12] == (byte)'V' && data[13] == (byte)'P' && data[14] == (byte)'8' && data[15] == (byte)'X')
@@ -198,7 +200,7 @@ public static class ImageFormatInspector
                 {
                     var w = 1 + (data[24] | (data[25] << 8) | (data[26] << 16));
                     var h = 1 + (data[27] | (data[28] << 8) | (data[29] << 16));
-                    return ValidateDimensions(w, h, maxSourcePixels, out width, out height, out error);
+                    return ValidateDimensions(w, h, maxSourcePixels, maxPixelSide, out width, out height, out error);
                 }
             }
         }
@@ -241,6 +243,7 @@ public static class ImageFormatInspector
         long w,
         long h,
         long maxSourcePixels,
+        int maxPixelSide,
         out int width,
         out int height,
         out ResourceError? error)
@@ -254,7 +257,7 @@ public static class ImageFormatInspector
         }
 
         var pixels = w * h;
-        if (pixels > maxSourcePixels || w > 20000 || h > 20000)
+        if (pixels > maxSourcePixels || w > maxPixelSide || h > maxPixelSide)
         {
             width = (int)Math.Min(w, int.MaxValue);
             height = (int)Math.Min(h, int.MaxValue);
@@ -277,7 +280,7 @@ public sealed class DocumentResources
 {
     private static readonly HashSet<string> s_allowedExtensions = new(StringComparer.OrdinalIgnoreCase)
     {
-        ".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp", ".ico"
+        ".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp"
     };
 
     public string? RootFolder { get; }
@@ -298,7 +301,7 @@ public sealed class DocumentResources
     /// Reads one image named by the core's decoded relative path, at most <paramref name="byteLimit"/> bytes.
     /// Call off the UI thread.
     /// </summary>
-    public (byte[]? Data, ResourceError? Error) ReadImage(string relativePath, int byteLimit = 16 * 1024 * 1024)
+    public (byte[]? Data, ResourceError? Error) ReadImage(string relativePath, int byteLimit = 16 * 1024 * 1024, ImageBudget? budget = null)
     {
         if (string.IsNullOrWhiteSpace(RootFolder) ||
             string.IsNullOrWhiteSpace(relativePath) ||
@@ -440,7 +443,8 @@ public sealed class DocumentResources
             }
 
             // Inspect format, magic bytes, dimensions, and bomb checks
-            if (!ImageFormatInspector.Inspect(buffer, 32L * 1024 * 1024, out _, out _, out var inspectError))
+            var b = budget ?? new ImageBudget();
+            if (!ImageFormatInspector.Inspect(buffer, b.MaxSourcePixels, b.MaxPixelSide, out _, out _, out var inspectError))
             {
                 return (null, inspectError ?? ResourceError.Undecodable);
             }

@@ -28,15 +28,9 @@ public sealed partial class RowItem : ListViewItem
         TextWrapping = TextWrapping.Wrap,
         IsTextSelectionEnabled = true,
     };
-    public Image ImageControl { get; } = new()
+    public StackPanel ImagesPanel { get; } = new()
     {
-        Stretch = Stretch.Uniform,
-        HorizontalAlignment = HorizontalAlignment.Left,
-        Visibility = Visibility.Collapsed,
-    };
-    public TextBlock StatusBlock { get; } = new()
-    {
-        TextWrapping = TextWrapping.Wrap,
+        Spacing = 8,
         Visibility = Visibility.Collapsed,
     };
 
@@ -52,8 +46,7 @@ public sealed partial class RowItem : ListViewItem
         HorizontalContentAlignment = HorizontalAlignment.Stretch;
 
         Root.Children.Add(TextBlock);
-        Root.Children.Add(ImageControl);
-        Root.Children.Add(StatusBlock);
+        Root.Children.Add(ImagesPanel);
     }
 
     public static T? TryAs<T>(object? value) where T : class
@@ -92,10 +85,8 @@ public sealed partial class RowItem : ListViewItem
         ShownText = string.Empty;
         TextBlock.Blocks.Clear();
         TextBlock.Visibility = Visibility.Visible;
-        ImageControl.Source = null;
-        ImageControl.Visibility = Visibility.Collapsed;
-        StatusBlock.Text = string.Empty;
-        StatusBlock.Visibility = Visibility.Collapsed;
+        ImagesPanel.Children.Clear();
+        ImagesPanel.Visibility = Visibility.Collapsed;
         AutomationProperties.SetName(this, string.Empty);
         AutomationProperties.SetHeadingLevel(this, AutomationHeadingLevel.None);
         AutomationProperties.SetHeadingLevel(TextBlock, AutomationHeadingLevel.None);
@@ -104,7 +95,7 @@ public sealed partial class RowItem : ListViewItem
     /// <summary>
     /// Binds the container to the given fragment from the current render plan.
     /// </summary>
-    public void Bind(int index, RenderFragment fragment, Action<int, int>? onLinkActivated)
+    public void Bind(int index, RenderFragment fragment, Action<int, int>? onLinkActivated, ImageSourceCache? imageCache = null)
     {
         ItemIndex = index;
         TextBlock.Blocks.Clear();
@@ -208,40 +199,52 @@ public sealed partial class RowItem : ListViewItem
             Root.BorderBrush = s_quoteBrush;
         }
 
-        // Image presentation
-        if (fragment.Image is { } img)
+        // Text visibility remains visible if there are text runs (never collapsed by images)
+        TextBlock.Visibility = fragment.Runs.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+
+        // Image presentation: renders all images in the fragment without dropping secondary images
+        ImagesPanel.Children.Clear();
+        if (fragment.Images.Count > 0)
         {
-            if (img.Failure is not null || img.Data is null)
+            ImagesPanel.Visibility = Visibility.Visible;
+            foreach (var img in fragment.Images)
             {
-                ImageControl.Visibility = Visibility.Collapsed;
-                StatusBlock.Visibility = Visibility.Visible;
-                StatusBlock.Text = string.IsNullOrEmpty(img.Alt)
-                    ? $"[{img.FailureMessage}]"
-                    : $"[{img.Alt} ({img.FailureMessage})]";
-                StatusBlock.Foreground = s_quoteBrush;
-                StatusBlock.FontStyle = global::Windows.UI.Text.FontStyle.Italic;
-                StatusBlock.FontSize = 14;
-                TextBlock.Visibility = Visibility.Collapsed;
-                ShownText = StatusBlock.Text;
-            }
-            else
-            {
-                ImageControl.Visibility = Visibility.Visible;
-                ImageControl.MaxWidth = Math.Min(img.Width, 800);
-                ImageControl.MaxHeight = Math.Min(img.Height, 600);
-                AutomationProperties.SetName(ImageControl, img.Alt);
-                StatusBlock.Visibility = Visibility.Collapsed;
-                TextBlock.Visibility = Visibility.Collapsed;
-                ImageControl.Source = ImageSourceCache.GetOrCreate(img);
-                ShownText = string.IsNullOrEmpty(img.Alt) ? "[image]" : $"[{img.Alt}]";
+                if (img.Failure is not null || img.Data is null)
+                {
+                    var status = new TextBlock
+                    {
+                        Text = string.IsNullOrEmpty(img.Alt)
+                            ? $"[{img.FailureMessage}]"
+                            : $"[{img.Alt} ({img.FailureMessage})]",
+                        Foreground = s_quoteBrush,
+                        FontStyle = global::Windows.UI.Text.FontStyle.Italic,
+                        FontSize = 14,
+                        TextWrapping = TextWrapping.Wrap,
+                    };
+                    AutomationProperties.SetName(status, status.Text);
+                    ImagesPanel.Children.Add(status);
+                }
+                else
+                {
+                    var imgControl = new Image
+                    {
+                        Stretch = Stretch.Uniform,
+                        HorizontalAlignment = HorizontalAlignment.Left,
+                        MaxWidth = Math.Min(img.Width, 800),
+                        MaxHeight = Math.Min(img.Height, 600),
+                        Source = imageCache?.GetOrCreate(img),
+                    };
+                    AutomationProperties.SetName(imgControl, string.IsNullOrEmpty(img.Alt) ? "Image" : img.Alt);
+                    ImagesPanel.Children.Add(imgControl);
+                }
             }
         }
         else
         {
-            ImageControl.Visibility = Visibility.Collapsed;
-            StatusBlock.Visibility = Visibility.Collapsed;
-            TextBlock.Visibility = Visibility.Visible;
+            ImagesPanel.Visibility = Visibility.Collapsed;
         }
+
+        ShownText = fragment.Text;
 
         AutomationProperties.SetName(this, ShownText);
         var autoHeadingLevel = fragment.HeadingStart && headingLevel is >= 1 and <= 6

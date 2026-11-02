@@ -3,14 +3,19 @@ using Microsoft.UI.Xaml.Media.Imaging;
 
 namespace Markdown.Windows.Render;
 
-internal static class ImageSourceCache
+/// <summary>
+/// Per-reader UI-thread cache for decoded <see cref="BitmapImage"/> surfaces.
+/// Prevents redundant surface allocations within a document presentation without
+/// sharing bitmaps across independent windows or surviving document reloads.
+/// </summary>
+public sealed class ImageSourceCache
 {
-    private static readonly Dictionary<string, BitmapImage> s_cache = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, BitmapImage> _cache = new(StringComparer.Ordinal);
 
-    public static BitmapImage? GetOrCreate(RenderedImage image)
+    public BitmapImage? GetOrCreate(RenderedImage image)
     {
         if (image.Data is null || image.Data.Length == 0) return null;
-        if (s_cache.TryGetValue(image.Target, out var cached))
+        if (_cache.TryGetValue(image.Target, out var cached))
         {
             return cached;
         }
@@ -21,7 +26,7 @@ internal static class ImageSourceCache
             var ras = System.IO.WindowsRuntimeStreamExtensions.AsRandomAccessStream(ms);
             var bitmap = new BitmapImage();
             bitmap.SetSource(ras);
-            s_cache[image.Target] = bitmap;
+            _cache[image.Target] = bitmap;
             return bitmap;
         }
         catch
@@ -30,8 +35,8 @@ internal static class ImageSourceCache
         }
     }
 
-    public static void Clear()
+    public void Clear()
     {
-        s_cache.Clear();
+        _cache.Clear();
     }
 }

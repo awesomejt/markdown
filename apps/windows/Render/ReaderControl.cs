@@ -25,6 +25,7 @@ public sealed partial class ReaderControl : UserControl
         IsItemClickEnabled = true,
     };
     private readonly HashSet<RowItem> _boundRows = [];
+    public ImageSourceCache ImageCache { get; } = new();
 
     private RenderPlan? _plan;
     private ScrollViewer? _scrollViewer;
@@ -138,7 +139,7 @@ public sealed partial class ReaderControl : UserControl
             row.Unbind();
         }
         _boundRows.Clear();
-        ImageSourceCache.Clear();
+        ImageCache.Clear();
 
         _plan = null;
         CurrentGeneration = 0;
@@ -227,7 +228,7 @@ public sealed partial class ReaderControl : UserControl
             row.Attach();
             if (_plan is not null && args.ItemIndex >= 0 && args.ItemIndex < _plan.Fragments.Count)
             {
-                row.Bind(args.ItemIndex, _plan.Fragments[args.ItemIndex], OnLinkActivated);
+                row.Bind(args.ItemIndex, _plan.Fragments[args.ItemIndex], OnLinkActivated, ImageCache);
                 _boundRows.Add(row);
                 if (args.ItemIndex == _pendingFocusIndex)
                 {

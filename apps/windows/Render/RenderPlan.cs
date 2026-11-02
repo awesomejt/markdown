@@ -401,6 +401,12 @@ public sealed class RenderPlan
             }
         }
 
+        private static bool HasParentTraversal(string target)
+        {
+            var segments = target.Split('/', '\\');
+            return segments.Any(s => s == "..");
+        }
+
         private void HandleImage(uint id, in CoreFfi.md_node n, int depth, RunStyle style, List<RenderRun> runs)
         {
             var resourceIndex = (int)n.aux;
@@ -442,9 +448,7 @@ public sealed class RenderPlan
                      target.StartsWith('\\') ||
                      target.Contains('\0') ||
                      target.Contains(':') ||
-                     target.StartsWith("..", StringComparison.Ordinal) ||
-                     target.Contains("/..") ||
-                     target.Contains("\\.."))
+                     HasParentTraversal(target))
             {
                 failure = ResourceError.OutsideFolder;
             }
@@ -482,7 +486,7 @@ public sealed class RenderPlan
                     {
                         failure = ResourceError.NotFound;
                     }
-                    else if (!ImageFormatInspector.Inspect(loadedData, imageBudget.MaxSourcePixels, out var inspectedW, out var inspectedH, out var inspectErr))
+                    else if (!ImageFormatInspector.Inspect(loadedData, imageBudget.MaxSourcePixels, imageBudget.MaxPixelSide, out var inspectedW, out var inspectedH, out var inspectErr))
                     {
                         failure = inspectErr ?? ResourceError.Undecodable;
                     }
@@ -553,6 +557,7 @@ public sealed class RenderPlan
 
                 Emit(rowRuns, FragmentKind.TableRow, 0, indent, quote, isHeader: isHeader);
             }
+            _currentBlockImages.Clear();
         }
 
         private void Block(uint id, int depth, string? marker, int indent, int quote, RunStyle markerStyle = RunStyle.None)
