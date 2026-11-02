@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using Markdown.Windows.Core;
+using Markdown.Windows.Render;
 
 namespace Markdown.Windows.Document;
 
@@ -216,6 +217,7 @@ public sealed class DocumentLoader : IDisposable
     private sealed record CompletedLoad(
         ulong Serial,
         CoreDocument? Document,
+        RenderPlan? Plan,
         DocumentError? Error,
         uint VolumeSerial,
         string? VolumeRoot);
@@ -239,6 +241,9 @@ public sealed class DocumentLoader : IDisposable
 
     public DocumentCapability? Capability { get; private set; }
     public CoreDocument? Document { get; private set; }
+
+    /// <summary>The owned presentation plan published together with <see cref="Document"/>.</summary>
+    public RenderPlan? Plan { get; private set; }
     public DocumentError? Error { get; private set; }
     public bool LastErrorWasOpenFailure { get; private set; }
     public bool IsLoading { get; private set; }
@@ -252,6 +257,12 @@ public sealed class DocumentLoader : IDisposable
 
     public Action? OnReady { get; set; }
     public Action? ReadBarrier { get; set; }
+
+    /// <summary>Test hook run off the UI thread after a successful parse, before the plan is prepared.</summary>
+    public Action? PlanBarrier { get; set; }
+
+    /// <summary>Accounted payload ceiling for each prepared render plan.</summary>
+    public long PlanBudget { get; set; } = RenderPlan.DefaultBudget;
     public Func<string, HostLimits, CoreSession>? SessionFactory { get; set; }
     public Func<string?, uint, bool>? VolumeGoneCheck { get; set; }
 
@@ -310,6 +321,7 @@ public sealed class DocumentLoader : IDisposable
             }
             Capability = capability;
             Document = null;
+            Plan = null;
             LastErrorWasOpenFailure = false;
             Error = DocumentErrorExtensions.FromCoreException(ex);
             IsLoading = false;
@@ -332,6 +344,7 @@ public sealed class DocumentLoader : IDisposable
 
         Capability = capability;
         Document = null;
+        Plan = null;
         LastErrorWasOpenFailure = false;
         Error = null;
         IsLoading = true;
@@ -403,6 +416,7 @@ public sealed class DocumentLoader : IDisposable
             if (item.Document is not null)
             {
                 Document = item.Document;
+                Plan = item.Plan;
                 LastErrorWasOpenFailure = false;
                 Error = null;
                 _hadSuccessfulRead = true;
@@ -443,6 +457,7 @@ public sealed class DocumentLoader : IDisposable
         Capability?.Revoke();
         Capability = null;
         Document = null;
+        Plan = null;
         LastErrorWasOpenFailure = false;
         Error = null;
         IsLoading = false;
@@ -518,6 +533,8 @@ public sealed class DocumentLoader : IDisposable
             ? Limits.MaxSourceBytes
             : HostLimits.Default.MaxSourceBytes;
         var barrier = ReadBarrier;
+        var planBarrier = PlanBarrier;
+        var planBudget = PlanBudget;
         var retryTimeout = BusyRetryTimeout;
 
         FileWorkDispatcher.Enqueue(OwnerId, () =>
@@ -543,14 +560,14 @@ public sealed class DocumentLoader : IDisposable
                     RecordDiscarded();
                     return;
                 }
-                PushCompleted(new CompletedLoad(serial, null, err, 0, null));
+                PushCompleted(new CompletedLoad(serial, null, null, err, 0, null));
                 return;
             }
 
             var readDoc = readResult.Document!;
             var startTick = Stopwatch.GetTimestamp();
 
-            if (TrySubmitParse(serial, session, readDoc, cancellation, startTick, retryTimeout))
+            if (TrySubmitParse(serial, session, readDoc, cancellation, startTick, retryTimeout, planBarrier, planBudget))
             {
                 return;
             }
@@ -569,7 +586,7 @@ public sealed class DocumentLoader : IDisposable
                             return;
                         }
 
-                        if (TrySubmitParse(serial, session, readDoc, cancellation, startTick, retryTimeout))
+                        if (TrySubmitParse(serial, session, readDoc, cancellation, startTick, retryTimeout, planBarrier, planBudget))
                         {
                             return;
                         }
@@ -596,7 +613,9 @@ public sealed class DocumentLoader : IDisposable
         ReadDocument readDoc,
         Cancellation cancellation,
         long startTick,
-        TimeSpan retryTimeout)
+        TimeSpan retryTimeout,
+        Action? planBarrier,
+        long planBudget)
     {
         if (cancellation.IsCancelled)
         {
@@ -630,6 +649,7 @@ public sealed class DocumentLoader : IDisposable
                         PushCompleted(new CompletedLoad(
                             serial,
                             null,
+                            null,
                             mapped,
                             readDoc.VolumeSerial,
                             readDoc.VolumeRoot));
@@ -640,6 +660,7 @@ public sealed class DocumentLoader : IDisposable
                     {
                         PushCompleted(new CompletedLoad(
                             serial,
+                            null,
                             null,
                             DocumentError.ParseFailed,
                             readDoc.VolumeSerial,
@@ -653,17 +674,13 @@ public sealed class DocumentLoader : IDisposable
                         case CoreOutcome.Unchanged:
                             if (coreResult.Document is not null)
                             {
-                                PushCompleted(new CompletedLoad(
-                                    serial,
-                                    coreResult.Document,
-                                    null,
-                                    readDoc.VolumeSerial,
-                                    readDoc.VolumeRoot));
+                                PreparePlan(serial, coreResult.Document, readDoc, cancellation, planBarrier, planBudget);
                             }
                             else
                             {
                                 PushCompleted(new CompletedLoad(
                                     serial,
+                                    null,
                                     null,
                                     DocumentError.ParseFailed,
                                     readDoc.VolumeSerial,
@@ -677,6 +694,7 @@ public sealed class DocumentLoader : IDisposable
                                 : DocumentError.ParseFailed;
                             PushCompleted(new CompletedLoad(
                                 serial,
+                                null,
                                 null,
                                 failureError,
                                 readDoc.VolumeSerial,
@@ -703,6 +721,7 @@ public sealed class DocumentLoader : IDisposable
                     PushCompleted(new CompletedLoad(
                         serial,
                         null,
+                        null,
                         DocumentError.Busy,
                         readDoc.VolumeSerial,
                         readDoc.VolumeRoot));
@@ -724,6 +743,7 @@ public sealed class DocumentLoader : IDisposable
                 PushCompleted(new CompletedLoad(
                     serial,
                     null,
+                    null,
                     mapped,
                     readDoc.VolumeSerial,
                     readDoc.VolumeRoot));
@@ -734,6 +754,74 @@ public sealed class DocumentLoader : IDisposable
             }
             return true;
         }
+    }
+
+    /// <summary>
+    /// Prepares the owned render plan off the UI thread and the core worker, so a large plan never
+    /// delays other windows' core parses. Cancellation, replacement, reload and close are checked
+    /// throughout preparation and again before publication.
+    /// </summary>
+    private void PreparePlan(
+        ulong serial,
+        CoreDocument document,
+        ReadDocument readDoc,
+        Cancellation cancellation,
+        Action? planBarrier,
+        long planBudget)
+    {
+        bool Stale() => cancellation.IsCancelled || Volatile.Read(ref _closed) || serial != Serial;
+
+        _ = ThreadPool.QueueUserWorkItem(_ =>
+        {
+            try
+            {
+                planBarrier?.Invoke();
+                if (Stale())
+                {
+                    RecordDiscarded();
+                    return;
+                }
+
+                RenderPlan plan;
+                try
+                {
+                    plan = RenderPlan.Build(document, Stale, planBudget);
+                }
+                catch (RenderException ex) when (ex.Kind == RenderErrorKind.Cancelled)
+                {
+                    RecordDiscarded();
+                    return;
+                }
+                catch (RenderException ex)
+                {
+                    PushCompleted(new CompletedLoad(
+                        serial,
+                        null,
+                        null,
+                        ex.Kind == RenderErrorKind.Budget ? DocumentError.TooComplex : DocumentError.ParseFailed,
+                        readDoc.VolumeSerial,
+                        readDoc.VolumeRoot));
+                    return;
+                }
+
+                if (Stale())
+                {
+                    RecordDiscarded();
+                    return;
+                }
+                PushCompleted(new CompletedLoad(
+                    serial,
+                    document,
+                    plan,
+                    null,
+                    readDoc.VolumeSerial,
+                    readDoc.VolumeRoot));
+            }
+            catch (Exception ex)
+            {
+                CoreRuntime.ReportCallbackException(ex);
+            }
+        });
     }
 
     private void RecordDiscarded() =>

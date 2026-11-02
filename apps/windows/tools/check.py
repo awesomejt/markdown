@@ -45,6 +45,7 @@ def main() -> None:
         raise SystemExit("Native Windows Python is required")
     installer = Path(os.environ.get("ProgramFiles(x86)", "C:/Program Files (x86)"))
     env = dict(os.environ)
+    env["MARKDOWN_REPO_ROOT"] = str(ROOT)
     env["PATH"] = str(installer / "Microsoft Visual Studio/Installer") + os.pathsep + env["PATH"]
 
     run([sys.executable, "tools/generate_performance_fixtures.py"], cwd=ROOT, env=env)
@@ -91,10 +92,11 @@ def main() -> None:
         exe = str(output / "Markdown.Windows.exe")
         run_app([exe, "--core-tests"], cwd=output, env=env, timeout=180)
         run_app([exe, "--document-tests"], cwd=output, env=env, timeout=120)
+        run_app([exe, "--render-tests"], cwd=output, env=env, timeout=120)
         run_app([exe, "--smoke"], cwd=output, env=env, timeout=60)
         check_association(output / "Markdown.Windows.exe")
         print(
-            f"{profile}: core consumer tests, document tests, Native AOT smoke, and association check passed",
+            f"{profile}: core consumer tests, document tests, render tests, Native AOT smoke, and association check passed",
             flush=True,
         )
 
@@ -104,10 +106,11 @@ def main() -> None:
         shutil.copytree(release_output, relocated)
         relocated_exe = str(relocated / "Markdown.Windows.exe")
         run_app([relocated_exe, "--document-tests"], cwd=relocated, env=env, timeout=120)
+        run_app([relocated_exe, "--render-tests"], cwd=relocated, env=env, timeout=120)
         run_app([relocated_exe, "--smoke"], cwd=relocated, env=env, timeout=60)
         check_association(relocated / "Markdown.Windows.exe")
         run_app([relocated_exe, "--core-probe", "single"], cwd=relocated, env=env, timeout=60)
-        print("Release: relocated Native AOT document tests, smoke, association, and core-probe passed", flush=True)
+        print("Release: relocated Native AOT document tests, render tests, smoke, association, and core-probe passed", flush=True)
 
 
 if __name__ == "__main__":

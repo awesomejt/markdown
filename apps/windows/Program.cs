@@ -6,6 +6,7 @@ using System.Text;
 using System.Text.Json;
 using Markdown.Windows.Core;
 using Markdown.Windows.Document;
+using Markdown.Windows.Render;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
@@ -36,6 +37,10 @@ internal static class Program
         if (args.SequenceEqual(["--document-tests"]))
         {
             return DocumentTests.RunAll();
+        }
+        if (args.SequenceEqual(["--render-tests"]))
+        {
+            return RenderTests.RunAll();
         }
         if (args.Length >= 1 && args[0] == "--core-probe")
         {
@@ -456,23 +461,45 @@ public sealed partial class ReaderApp : Application
                 first.Loader.Document.Generation != 1 ||
                 first.Loader.Document.OutlineCount != 1 ||
                 first.Loader.Document.OutlineTitle(0) != "Windows Smoke" ||
-                !first.Welcome.Text.Contains("Windows Smoke", StringComparison.Ordinal))
+                !first.Welcome.Text.Contains("Windows Smoke", StringComparison.Ordinal) ||
+                first.Loader.Plan is null ||
+                first.Reader.Visibility != Visibility.Visible ||
+                first.Welcome.Visibility != Visibility.Collapsed ||
+                first.Reader.OutlineList.Items.Count != 1 ||
+                first.Reader.DocumentList.Items.Count < 2)
             {
                 throw new InvalidOperationException("Native file dialog selection or initial parse failed.");
             }
 
+            first.Reader.ActivateOutline(0);
+            Uri? smokeLaunchedUri = null;
+            first.Reader.ExternalUriLauncher = uri => { smokeLaunchedUri = uri; return true; };
+
             // 4. Exercise Reload (Ctrl+R command delegate) after modifying file on disk.
-            File.WriteAllText(smokeDocPath, "# Windows Smoke v2\n\nUpdated body.\n", new UTF8Encoding(false));
+            var richSmokeDoc =
+                "# Windows Smoke v2\n\n" +
+                "Updated body with [Internal](#windows-smoke-v2) and [External](https://example.com).\n\n" +
+                "- List item 1\n" +
+                "- List item 2\n\n" +
+                "```csharp\nvar answer = 42;\n```\n\n" +
+                "> Blockquote line\n";
+            File.WriteAllText(smokeDocPath, richSmokeDoc, new UTF8Encoding(false));
             first.ReloadCommand();
             await WaitWindowIdleAsync(first);
 
             if (first.Loader.Error is not null ||
                 first.Loader.Document is null ||
                 first.Loader.Document.Generation != 2 ||
-                first.Loader.Document.OutlineTitle(0) != "Windows Smoke v2")
+                first.Loader.Document.OutlineTitle(0) != "Windows Smoke v2" ||
+                first.Loader.Plan is null ||
+                first.Reader.Visibility != Visibility.Visible ||
+                first.Reader.OutlineList.Items.Count != 1 ||
+                first.Reader.DocumentList.Items.Count < 5)
             {
                 throw new InvalidOperationException("Reload after edit failed.");
             }
+
+            first.Reader.ActivateOutline(0);
 
             // 5. Missing file on Reload reports path-free NotFound while preserving v2 document, then recovers to v3.
             File.Delete(smokeDocPath);
@@ -653,6 +680,7 @@ internal sealed class ReaderWindow : Window
     internal Action ExitCommand { get; }
     internal MenuFlyoutItem ReloadItem { get; }
     internal TextBlock Welcome { get; }
+    internal ReaderControl Reader { get; } = new();
 
     internal ReaderWindow(ReaderApp app)
     {
@@ -669,7 +697,11 @@ internal sealed class ReaderWindow : Window
         {
             _ = DispatcherQueue?.TryEnqueue(SyncFromLoader);
         };
-        Closed += (_, _) => Loader.Close();
+        Closed += (_, _) =>
+        {
+            Loader.Close();
+            Reader.Clear();
+        };
 
         var root = new Grid();
         var file = new MenuBarItem { Title = "File", AccessKey = "F" };
@@ -693,11 +725,15 @@ internal sealed class ReaderWindow : Window
             FontSize = 20
         };
         AutomationProperties.SetName(Welcome, "Markdown reader");
+        AutomationProperties.SetName(Reader, "Document reader");
+        Reader.Visibility = Visibility.Collapsed;
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         root.RowDefinitions.Add(new RowDefinition());
         root.Children.Add(menu);
         Grid.SetRow(Welcome, 1);
+        Grid.SetRow(Reader, 1);
         root.Children.Add(Welcome);
+        root.Children.Add(Reader);
         Content = root;
     }
 
@@ -747,6 +783,8 @@ internal sealed class ReaderWindow : Window
 
         if (!Loader.HasFile && Loader.Error is null)
         {
+            Reader.Clear();
+            Welcome.Visibility = Visibility.Visible;
             Welcome.Text =
                 "Markdown\n\nA native Markdown reader.\nChoose File > Open (Ctrl+O) to open a Markdown document.";
             return;
@@ -754,6 +792,8 @@ internal sealed class ReaderWindow : Window
 
         if (Loader.IsLoading && Loader.Document is null)
         {
+            Reader.Clear();
+            Welcome.Visibility = Visibility.Visible;
             Welcome.Text = $"Loading {Loader.Capability?.DisplayName ?? "document"}…";
             return;
         }
@@ -777,11 +817,23 @@ internal sealed class ReaderWindow : Window
             }
 
             Welcome.Text = summary;
+
+            if (Loader.Plan is { } plan)
+            {
+                if (!ReferenceEquals(Reader.CurrentPlan, plan))
+                {
+                    Reader.InstallPlan(plan);
+                }
+                Reader.Visibility = Visibility.Visible;
+                Welcome.Visibility = Visibility.Collapsed;
+            }
             return;
         }
 
         if (Loader.Error is { } error)
         {
+            Reader.Clear();
+            Welcome.Visibility = Visibility.Visible;
             Welcome.Text = error.ToDisplayString();
         }
     }
