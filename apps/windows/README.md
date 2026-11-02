@@ -1,24 +1,41 @@
 # Windows native shell
 
-WIN-001A and WIN-001B provide an unpackaged Windows 11 x64 WinUI 3 application
-in C# Native AOT linked against the local shared-core C ABI package
-(`markdown_ffi.dll`, model v2). It opens a native window with a File menu, New
-Window (Ctrl+N), Close Window (Ctrl+W), and Exit (Ctrl+Shift+W). Alt+F opens
-the File menu; Alt+F4 retains the Windows close-window behavior. Closing the
-final window ends the process. Each window follows the system theme and
-declares PerMonitorV2 DPI awareness.
+WIN-001A, WIN-001B, and WIN-001C provide an unpackaged Windows 11 x64 WinUI 3
+application in C# Native AOT linked against the local shared-core C ABI package
+(`markdown_ffi.dll`, model v2). It opens a native window with a File menu,
+Open… (Ctrl+O), Reload (Ctrl+R), New Window (Ctrl+N), Close Window (Ctrl+W),
+and Exit (Ctrl+Shift+W). Alt+F opens the File menu; Alt+F4 retains the Windows
+close-window behavior. Closing the final window ends the process. Each window
+follows the system theme and declares PerMonitorV2 DPI awareness.
 
 At startup, the host verifies the bundled `markdown_ffi.dll` path, build
 configuration and SHA-256 fingerprint against the compiled-in package identity
 and negotiates C ABI v1 / model v2 (`CoreRuntime.Validate()`). The UI-free
-adapter (`apps/windows/Core/`) owns session lifecycle, explicit host limits,
-bounded background parse admission (`MaxAdmitted = 2` on the `markdown-core`
-worker thread), cancellation, close/dispose cleanup and owned `CoreDocument`
-snapshot copies; see [Windows core integration](../../docs/Windows-Core-Integration.md).
-Native Open/Reload and file delivery are WIN-001C. No document contents, recent
-files, settings, network requests or resource permissions are stored or
-requested here. Rendering, Narrator document reading, mixed-DPI validation and
-distribution acceptance remain later Windows tasks.
+core adapter (`apps/windows/Core/`) owns session lifecycle, explicit host
+limits, bounded background parse admission (`MaxAdmitted = 2` on the
+`markdown-core` worker thread), cancellation, close/dispose cleanup and owned
+`CoreDocument` snapshot copies; see
+[Windows core integration](../../docs/Windows-Core-Integration.md).
+
+The UI-free document access and loading layer (`apps/windows/Document/`) wraps
+user-selected files in `DocumentCapability` (`ToString()` redacted as
+`DocumentCapability(<private>)`; `DisplayName` sanitized against control and
+Unicode bidi characters and bounded to 160 scalars; non-local URIs and UNC
+network shares rejected with `DocumentError.NonLocalFile`). `DocumentReader`
+opens regular local disk files via Win32 `CreateFileW`, rejects device paths
+(`\\.\`, `\\?\pipe\`, and DOS device names `CON`, `PRN`, `AUX`, `NUL`,
+`COM1`–`COM9`, `LPT1`–`LPT9`) and directories (`DocumentError.NotRegularFile`),
+enforces the 5 MiB (`MaxSourceBytes`) cap before and during 64 KiB chunked reads
+(`DocumentError.TooLarge`), and builds an opaque path-free revision token from
+handle metadata. `DocumentLoader` serializes background reads and 30-second
+`CoreErrorKind.Busy` admission retries on a dedicated `markdown-files` thread
+with per-window queue deduplication, generation/serial guards
+(`DiscardedResults`), explicit capability revocation (`Revoke()`) and post-read
+NTFS ACL withdrawal promotion (`DocumentError.AccessRevoked`), and
+detached-volume promotion (`DocumentError.VolumeUnavailable`). No document
+contents, full file paths, recent files, settings, network requests or resource
+permissions are logged or persisted. Rendering, Narrator document reading,
+mixed-DPI validation and distribution acceptance remain later Windows tasks.
 
 ## Build and check
 
@@ -41,10 +58,12 @@ python apps/windows/tools/check.py
 `apps/windows/tools/check.py` generates the performance fixtures, stages the
 `debug` and `release` core packages via `apps/windows/tools/package_core.py`,
 verifies C# formatting, publishes **Native AOT in Debug and Release**, verifies
-the staged core manifests and PE export tables, runs `--core-tests` and
-`--smoke` in both configurations, and copies the `Release` output to a
-temporary directory outside the checkout to run relocated `--smoke` and
-`--core-probe single` without a repository at runtime.
+the staged core manifests and PE export tables, runs `--core-tests`,
+`--document-tests`, `--smoke`, and `apps/windows/tools/check_association.py` in
+both configurations, and copies the `Release` output to a temporary directory
+outside the checkout to run relocated `--document-tests`, `--smoke`,
+`check_association.py`, and `--core-probe single` without a repository at
+runtime.
 
 For direct staging and `dotnet publish` (adding Visual Studio Installer to
 `PATH` for Native AOT's `vswhere`):
@@ -56,6 +75,8 @@ dotnet restore apps/windows/Markdown.Windows.csproj --locked-mode -p:Platform=x6
 dotnet publish apps/windows/Markdown.Windows.csproj --no-restore -c Release -p:Platform=x64 -o build/windows/Release
 dotnet format apps/windows/Markdown.Windows.csproj --no-restore --verify-no-changes --severity warn
 & ./build/windows/Release/Markdown.Windows.exe --core-tests | Out-String -Stream
+& ./build/windows/Release/Markdown.Windows.exe --document-tests | Out-String -Stream
+python apps/windows/tools/check_association.py build/windows/Release/Markdown.Windows.exe
 & ./build/windows/Release/Markdown.Windows.exe --core-probe single | Out-String -Stream
 ```
 
@@ -115,3 +136,14 @@ Validated on Windows 11 Pro build 26300.9711, Ryzen 9 5950X x64, Rust 1.99.1,
   20-session repeated RSS/heap retention, and 8 MiB / 5 MiB dense peak working
   set measurements are recorded in
   [Windows core integration](../../docs/Windows-Core-Integration.md).
+- **WIN-001C**: Debug, Release, and relocated Release Native AOT builds passed
+  12 document access/loader unit tests (`--document-tests`), the in-app WinUI
+  smoke (`--smoke`: 5 File menu accelerators, native `GetOpenFileNameW` chooser
+  Cancel and Select+Accept, Reload after edit, missing-file `NotFound` and
+  recovery, post-open NTFS ACL read withdrawal `AccessRevoked` and recovery,
+  non-local URI rejection, stale slow-load supersession, and zero leaked core
+  handles on exit), and isolated multi-process file-association activation
+  (`apps/windows/tools/check_association.py` against
+  `apps/windows/resources/io.github.awesomejt.markdown.reg.in` for `.md`,
+  `.markdown`, `.mdown`, `.mkd`, and `.txt`, including paths with spaces,
+  Unicode filenames, and existing-window reuse).

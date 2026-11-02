@@ -523,6 +523,13 @@ Low findings and nits from Grok reviews that were merged under D-029 without
 being fixed. A later pass fixes them or records why not; remove each entry
 when it is resolved.
 
+- **WIN-001C (PR #55, Grok review 5731847930):** `Busy` admission retries now
+  yield off the `markdown-files` worker thread so other windows' file reads do
+  not stall behind admission backoff, while file reads themselves remain
+  serialized on `markdown-files`. In WIN-001G, evaluate a bounded cross-window
+  file read pool alongside the large-document and multi-window performance
+  measurements if concurrent slow-disk reads show cross-window latency.
+
 - **LNX-001D (PR #52, Grok review 5729937327), nit:** Reload clears the
   current reader and returns to the top, including unchanged content. Preserve
   the shown revision and restore an anchor/selection in LNX-001H, alongside

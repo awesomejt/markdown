@@ -29,7 +29,22 @@ read.
   all 5 findings were fixed at `059d18c`, threads resolved, and all-host CI run
   41375068539 is green. D-029 approves closeout/merge. See
   [Windows-Core-Integration.md](docs/Windows-Core-Integration.md).
-  WIN-001C is next on Windows.
+- WIN-001C (PR #55) adds the Windows document capability and loading layer under
+  `apps/windows/Document/` (`DocumentAccess.cs`, `DocumentLoader.cs`,
+  `DocumentPicker.cs`): native Win32 `GetOpenFileNameW` picker (`File > Open…`,
+  `Ctrl+O`), `File > Reload` (`Ctrl+R`), per-user file-association template
+  `apps/windows/resources/io.github.awesomejt.markdown.reg.in` (`.md`,
+  `.markdown`, `.mdown`, `.mkd`, `.txt`) with primary-instance mutex and
+  current-user named-pipe forwarding, path-free `DocumentCapability` with explicit
+  `Revoke()`, NTFS ACL withdrawal (`AccessRevoked`), volume-detachment promotion
+  (`VolumeUnavailable`), device/non-regular/remote-handle rejection
+  (`GetFileType`, `GetFileInformationByHandle`, `GetFinalPathNameByHandleW`),
+  64 KiB chunked bounded reads, and serial-tagged `DocumentLoader` cancellation
+  with off-thread `Busy` admission retries. Debug, Release, and relocated Release
+  each pass 17 core tests, 12 document tests, shell/picker/reload smoke, and
+  4-delivery multi-process association check (`apps/windows/tools/check_association.py`).
+  Grok review 1 at `3915231` had 0 blockers, 4 concerns and 1 nit; all 5 findings
+  were fixed at `60f0970` and all 5 threads resolved. WIN-001D is next on Windows.
 - Phase: `desktop-apps`; the portable-core shared track is complete through
   CORE-006 (GATE-001 approved, D-018). Native chains are now eligible (D-027).
 - Product: local-first, read-only native Markdown reader. Windows, macOS and
