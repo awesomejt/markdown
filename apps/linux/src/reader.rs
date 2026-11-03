@@ -1,7 +1,10 @@
 //! GTK-owned virtual reader. Callbacks carry weak state and opaque row identities.
 use crate::count_model::CountModel;
 use gtk::{gdk, gio, glib, prelude::*};
-use markdown_linux::render::{RenderPlan, Target};
+use markdown_linux::{
+    document::ResourceError,
+    render::{RenderPlan, Target},
+};
 use std::{
     cell::{Cell, RefCell},
     collections::HashMap,
@@ -203,7 +206,7 @@ impl Reader {
                 if fragment.is_table_header {
                     attrs.insert(gtk::pango::AttrInt::new_weight(gtk::pango::Weight::Bold));
                     row.add_css_class("table-header");
-                } else if index % 2 == 1 {
+                } else if fragment.table_row_ordinal % 2 == 1 {
                     row.add_css_class("table-zebra");
                 }
                 row.add_css_class("table-row");
@@ -248,7 +251,7 @@ impl Reader {
                         let texture = if let Some(tex) = state.texture_cache.get(&img.target) {
                             Some(tex.clone())
                         } else {
-                            let bytes = glib::Bytes::from(data);
+                            let bytes = glib::Bytes::from(data.as_ref());
                             match gdk::Texture::from_bytes(&bytes) {
                                 Ok(tex) => {
                                     state.texture_cache.insert(img.target.clone(), tex.clone());
@@ -270,6 +273,23 @@ impl Reader {
                                 },
                             )]);
                             images_box.append(&picture);
+                        } else {
+                            let msg = ResourceError::Undecodable.message();
+                            let text = if img.alt.is_empty() {
+                                format!("[{msg}]")
+                            } else {
+                                format!("[{} ({msg})]", img.alt)
+                            };
+                            let status_label = gtk::Label::builder()
+                                .label(&text)
+                                .xalign(0.0)
+                                .wrap(true)
+                                .accessible_role(gtk::AccessibleRole::Paragraph)
+                                .build();
+                            let attrs = gtk::pango::AttrList::new();
+                            attrs.insert(gtk::pango::AttrInt::new_style(gtk::pango::Style::Italic));
+                            status_label.set_attributes(Some(&attrs));
+                            images_box.append(&status_label);
                         }
                     }
                 }

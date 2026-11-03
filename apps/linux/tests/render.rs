@@ -265,18 +265,22 @@ fn tables_align_header_and_tsv_copy() {
     assert_eq!(table_fragments.len(), 4, "expected 4 table row fragments");
 
     assert!(table_fragments[0].is_table_header, "row 0 must be header");
+    assert_eq!(table_fragments[0].table_row_ordinal, 0);
     assert!(
         !table_fragments[1].is_table_header,
         "row 1 must not be header"
     );
+    assert_eq!(table_fragments[1].table_row_ordinal, 1);
     assert!(
         !table_fragments[2].is_table_header,
         "row 2 must not be header"
     );
+    assert_eq!(table_fragments[2].table_row_ordinal, 2);
     assert!(
         !table_fragments[3].is_table_header,
         "row 3 must not be header"
     );
+    assert_eq!(table_fragments[3].table_row_ordinal, 3);
 
     assert!(
         table_fragments[0]
@@ -531,6 +535,39 @@ fn images_follow_resource_policy_and_limits() {
     );
     assert!(dedup_plan.images[0].failure.is_none());
     assert!(dedup_plan.images[1].failure.is_none());
+    assert!(
+        std::sync::Arc::ptr_eq(
+            dedup_plan.images[0].data.as_ref().unwrap(),
+            dedup_plan.images[1].data.as_ref().unwrap()
+        ),
+        "duplicate images must share the same Arc<[u8]> allocation"
+    );
+
+    // Many duplicate references to one image stay bounded in memory and share Arc allocation
+    load_count.set(0);
+    let mut repeat_md = String::new();
+    for i in 0..50 {
+        repeat_md.push_str(&format!("![img{i}](small.png)\n\n"));
+    }
+    let repeat_doc = document(&repeat_md);
+    let repeat_plan = RenderPlan::build_with_resources(
+        &repeat_doc,
+        || false,
+        markdown_linux::render::PLAN_BUDGET,
+        Some(&mock_loader),
+        ImageBudget::default(),
+    )
+    .unwrap();
+    assert_eq!(load_count.get(), 1);
+    assert_eq!(repeat_plan.images.len(), 50);
+    let first_ptr = repeat_plan.images[0].data.as_ref().unwrap();
+    for img in &repeat_plan.images {
+        assert!(img.failure.is_none());
+        assert!(std::sync::Arc::ptr_eq(
+            first_ptr,
+            img.data.as_ref().unwrap()
+        ));
+    }
 
     // Mixed paragraph with text, link, and multiple images
     let mixed_md =

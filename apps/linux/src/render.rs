@@ -1,7 +1,7 @@
 //! Bounded owned presentation values. No GTK, file access or parser internals.
 use crate::document::{ImageBudget, ResourceError};
 use markdown_linux_core::{CoreDocument, ffi::*};
-use std::{collections::BTreeMap, mem::size_of};
+use std::{collections::BTreeMap, mem::size_of, sync::Arc};
 
 pub const PLAN_BUDGET: usize = 128 * 1024 * 1024;
 
@@ -24,7 +24,7 @@ pub struct RenderedImage {
     pub target: String,
     pub alt: String,
     pub failure: Option<ResourceError>,
-    pub data: Option<Vec<u8>>,
+    pub data: Option<Arc<[u8]>>,
     pub width: usize,
     pub height: usize,
 }
@@ -52,6 +52,7 @@ pub struct Fragment {
     pub code: bool,
     pub is_table_row: bool,
     pub is_table_header: bool,
+    pub table_row_ordinal: usize,
     pub images: Vec<RenderedImage>,
 }
 
@@ -383,7 +384,24 @@ impl<F: Fn() -> bool> Builder<'_, F> {
             match intent.target_kind {
                 MD_TARGET_REQUIRES_CAPABILITY => {
                     // Sibling image beside document
-                    if let Some(cached) = self.image_cache.get(&target_str) {
+                    if let Some(cached) = self.image_cache.get(&target_str).cloned() {
+                        if cached.failure.is_none() {
+                            // Deduplicated hit on a loaded image: share the existing Arc data
+                            // and charge only shallow metadata without multiplying pixel memory.
+                            self.charge(size_of::<RenderedImage>() + target_str.len() + alt.len())?;
+                            let mut rendered = cached;
+                            rendered.alt = alt.clone();
+                            self.plan.images.push(rendered.clone());
+                            self.current_block_images.push(rendered);
+                            self.first[id as usize] = Some(self.plan.fragments.len() as u32);
+                            let display_text = if alt.is_empty() {
+                                "[image]".to_string()
+                            } else {
+                                format!("[{alt}]")
+                            };
+                            self.run(runs, display_text, style, None)?;
+                            return Ok(());
+                        }
                         failure = cached.failure;
                     } else if self.image_cache.len() >= self.image_budget.max_images {
                         failure = Some(ResourceError::Limit);
@@ -398,12 +416,17 @@ impl<F: Fn() -> bool> Builder<'_, F> {
                                     failure = Some(ResourceError::Limit);
                                 } else {
                                     self.accounted_decoded_bytes += decoded_bytes;
-                                    self.charge(data.len())?;
+                                    self.charge(
+                                        data.len()
+                                            + size_of::<RenderedImage>()
+                                            + target_str.len()
+                                            + alt.len(),
+                                    )?;
                                     let rendered = RenderedImage {
                                         target: target_str.clone(),
                                         alt: alt.clone(),
                                         failure: None,
-                                        data: Some(data),
+                                        data: Some(Arc::from(data.into_boxed_slice())),
                                         width: w,
                                         height: h,
                                     };
@@ -448,8 +471,11 @@ impl<F: Fn() -> bool> Builder<'_, F> {
             failure = Some(ResourceError::Blocked);
         }
 
+        self.charge(size_of::<RenderedImage>() + target_str.len() + alt.len())?;
         let rendered = if let Some(cached) = self.image_cache.get(&target_str) {
-            cached.clone()
+            let mut r = cached.clone();
+            r.alt = alt.clone();
+            r
         } else {
             let r = RenderedImage {
                 target: target_str.clone(),
@@ -569,6 +595,7 @@ impl<F: Fn() -> bool> Builder<'_, F> {
                 code: false,
                 is_table_row: true,
                 is_table_header: is_header,
+                table_row_ordinal: r,
                 images: Vec::new(),
             });
         }
@@ -677,6 +704,7 @@ impl<F: Fn() -> bool> Builder<'_, F> {
             code,
             is_table_row: false,
             is_table_header: false,
+            table_row_ordinal: 0,
             images: std::mem::take(&mut self.current_block_images),
         };
         let mut used = 0;
@@ -707,6 +735,7 @@ impl<F: Fn() -> bool> Builder<'_, F> {
                         code,
                         is_table_row: false,
                         is_table_header: false,
+                        table_row_ordinal: 0,
                         images: Vec::new(),
                     };
                     used = 0;
@@ -729,6 +758,7 @@ impl<F: Fn() -> bool> Builder<'_, F> {
                         code,
                         is_table_row: false,
                         is_table_header: false,
+                        table_row_ordinal: 0,
                         images: Vec::new(),
                     };
                     used = 0;

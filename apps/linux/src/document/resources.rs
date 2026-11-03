@@ -2,6 +2,7 @@ use std::fmt;
 use std::fs::OpenOptions;
 use std::io::Read;
 use std::os::unix::fs::OpenOptionsExt;
+use std::os::unix::io::AsRawFd;
 use std::path::{Path, PathBuf};
 
 /// Why an image resource beside the document was not loaded.
@@ -286,8 +287,27 @@ impl DocumentResources {
             return Err(ResourceError::OutsideFolder);
         }
 
-        // File extension validation: reject SVG vectors, ensure raster
-        let ext = resolved
+        // Linux x86-64 non-blocking open
+        #[cfg(not(target_arch = "x86_64"))]
+        compile_error!("Verify Linux O_NONBLOCK/O_NOCTTY flags for this architecture");
+        let file = OpenOptions::new()
+            .read(true)
+            .custom_flags(0x800 | 0x100)
+            .open(&resolved)
+            .map_err(Self::map_io_error)?;
+
+        // Re-check opened file descriptor destination against root to eliminate
+        // canonicalize-then-open TOCTOU race (where a directory component or file is
+        // swapped with a symlink before open).
+        let proc_fd_path = format!("/proc/self/fd/{}", file.as_raw_fd());
+        let actual_path =
+            std::fs::read_link(&proc_fd_path).map_err(|_| ResourceError::OutsideFolder)?;
+        if !actual_path.starts_with(root) || actual_path == *root {
+            return Err(ResourceError::OutsideFolder);
+        }
+
+        // File extension validation on actual opened file: reject SVG vectors, ensure raster
+        let ext = actual_path
             .extension()
             .and_then(|e| e.to_str())
             .unwrap_or("")
@@ -302,15 +322,6 @@ impl DocumentResources {
         ) {
             return Err(ResourceError::UnsupportedType);
         }
-
-        // Linux x86-64 non-blocking open
-        #[cfg(not(target_arch = "x86_64"))]
-        compile_error!("Verify Linux O_NONBLOCK/O_NOCTTY flags for this architecture");
-        let file = OpenOptions::new()
-            .read(true)
-            .custom_flags(0x800 | 0x100)
-            .open(&resolved)
-            .map_err(Self::map_io_error)?;
 
         let meta = file.metadata().map_err(Self::map_io_error)?;
         if !meta.is_file() {
