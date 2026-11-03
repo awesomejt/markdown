@@ -1,43 +1,43 @@
 # Agent Session and Platform Handoff
 
-Updated: 2026-11-02 (America/Denver), WIN-001H implementation, tests, and benchmarks complete; ready to open PR for Grok review.
-Active Windows task: WIN-001H (4f59ed47-c146-4610-83d1-05d1a8e503bd), pass
-c28210e6-9517-45d6-be4d-82ce1e947488, branch eat/win-001h-refresh-restoration, based on develop at fbf5e6 (PR #59 merge).
-pps/windows/ (Core/CoreFfi.cs, Core/CoreRuntime.cs, Core/CoreSnapshot.cs,
-Core/CoreDocument.cs, Core/CoreSession.cs, Document/DocumentAccess.cs,
-Document/DocumentWatcher.cs, Document/DocumentLoader.cs, Render/ReadingPosition.cs,
-Render/RenderPlan.cs, Render/ReaderControl.cs, Restoration.cs, RelaunchCheck.cs,
-Program.cs, Measurement.cs, 	ools/measure.py, 	ools/check.py,
-CoreConsumerTests.cs, DocumentTests.cs, RenderTests.cs) delivers:
+Updated: 2026-11-02 (America/Denver), WIN-001H implementation, tests, and benchmarks complete; PR #60 open for Grok review.
+Active Windows task: `WIN-001H` (`4f59ed47-c146-4610-83d1-05d1a8e503bd`), pass
+`9cd7e1b7-7ac4-46d6-bb1e-0c26a06690d8`, branch `feat/win-001h-refresh-restoration`, based on `develop` at `bfbf5e6` (PR #59 merge).
+`apps/windows/` (`Core/CoreFfi.cs`, `Core/CoreRuntime.cs`, `Core/CoreSnapshot.cs`,
+`Core/CoreDocument.cs`, `Core/CoreSession.cs`, `Document/DocumentAccess.cs`,
+`Document/DocumentWatcher.cs`, `Document/DocumentLoader.cs`, `Render/ReadingPosition.cs`,
+`Render/RenderPlan.cs`, `Render/ReaderControl.cs`, `Restoration.cs`, `RelaunchCheck.cs`,
+`Program.cs`, `Measurement.cs`, `tools/measure.py`, `tools/check.py`,
+`CoreConsumerTests.cs`, `DocumentTests.cs`, `RenderTests.cs`) delivers:
 
-- External file change detection: DocumentWatcher wraps Win32 FileSystemWatcher (ReadDirectoryChangesW)
+- External file change detection: `DocumentWatcher` wraps Win32 `FileSystemWatcher` (`ReadDirectoryChangesW`)
   with 100ms debouncing, parent-directory fallback, burst coalescing, and error recovery. In-place writes,
   atomic replacements, deletions (retaining stale view with warning banner, tracking reappearance),
-  and window activation (WM_ACTIVATE) stat check fallback.
-- Background refresh & disposition: DocumentLoader.RefreshExternal() and CoreSession.ExternalChange
-  perform background checks (copyUnchanged: false), returning Unchanged (zero reallocation) or
-  Published with a fresh CoreDocument and owned CoreSnapshot.
-- Reading position preservation & restoration: CoreSnapshot wraps native md_snapshot handles with
-  deterministic worker-thread release (CoreRuntime.EnqueueWork), exposing AnchorAt, AnchorForNode,
-  and ResolveAnchor. ReaderControl.SavePosition captures model-v2 anchors and fallback line/scroll offsets,
-  and RestorePosition / InstallPlan restores reading position across external reloads and edits.
-- Window state persistence: RestorationStore serializes window states (file path, base64 anchors,
-  text scale, outline visibility) to %LOCALAPPDATA%\MarkdownReader\restoration.json with schema validation
+  and window activation (`WM_ACTIVATE`) stat check fallback.
+- Background refresh & disposition: `DocumentLoader.RefreshExternal()` and `CoreSession.ExternalChange`
+  perform background checks (`copyUnchanged: false`), returning `Unchanged` (zero reallocation) or
+  `Published` with a fresh `CoreDocument` and owned `CoreSnapshot`.
+- Reading position preservation & restoration: `CoreSnapshot` wraps native `md_snapshot` handles with
+  deterministic worker-thread release (`CoreRuntime.EnqueueWork`), exposing `AnchorAt`, `AnchorForNode`,
+  and `ResolveAnchor`. `ReaderControl.SavePosition` captures model-v2 anchors and fallback line/scroll offsets,
+  and `RestorePosition` / `InstallPlan` restores reading position across external reloads and edits.
+- Window state persistence: `RestorationStore` serializes window states (file path, base64 anchors,
+  text scale, outline visibility) to `%LOCALAPPDATA%\MarkdownReader\restoration.json` with schema validation
   and tamper resistance.
-- Relaunch verification: automated 2-phase relaunch check (--relaunch-check prepare and --relaunch-check verify)
-  integrated in pps/windows/tools/check.py passing across Debug, Release, and Relocated Native AOT.
-- Refresh benchmark measurements (pps/windows/tools/measure.py refresh --count 5):
-  - prose-1mib: 168.91ms median refresh, kept_place: true, 95.25 MiB footprint.
-  - long-lines-1mib: 24.70ms median refresh, kept_place: true, 28.60 MiB footprint.
-  - prose-5mib: 996.00ms median refresh, kept_place: true, 363.02 MiB footprint.
+- Relaunch verification: automated 2-phase relaunch check (`--relaunch-check prepare` and `--relaunch-check verify`)
+  integrated in `apps/windows/tools/check.py` passing across Debug, Release, and Relocated Native AOT.
+- Refresh benchmark measurements (`apps/windows/tools/measure.py refresh --count 5`):
+  - `prose-1mib`: 168.91ms median refresh, `kept_place: true`, 95.25 MiB footprint.
+  - `long-lines-1mib`: 24.70ms median refresh, `kept_place: true`, 28.60 MiB footprint.
+  - `prose-5mib`: 996.00ms median refresh, `kept_place: true`, 363.02 MiB footprint.
 
-Local pps/windows/tools/check.py passes in Debug, Release, and relocated Release
+Local `apps/windows/tools/check.py` passes in Debug, Release, and relocated Release
 (20 core consumer tests, 14 document tests, 20 render tests, 13-stage Native AOT WinUI smoke,
 association checks, relaunch checks, and relocated core probe with 0 leaked handles).
 
-Next Windows task after WIN-001H merge: WIN-001I (Windows packaging, MSIX distribution, and smoke verification).
+Next Windows task after WIN-001H merge: `WIN-001I` (Windows packaging, MSIX distribution, and smoke verification).
 
-Previous Windows task: WIN-001G merged in [PR #59](https://github.com/awesomejt/markdown/pull/59).
+Previous Windows task: `WIN-001G` merged in [PR #59](https://github.com/awesomejt/markdown/pull/59).
 
 Previous Linux handoff baseline: `develop` after PR #52; reviewed head `f12d2e5`, non-serious
 review fixes at `27e84df`, followed by one state/docs closeout. The merge SHA is
