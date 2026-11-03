@@ -51,6 +51,10 @@ impl DocumentCapability {
             .take(160)
             .collect()
     }
+    pub fn resources(&self) -> super::resources::DocumentResources {
+        let folder = self.path.parent().map(std::path::Path::to_path_buf);
+        super::resources::DocumentResources::new(folder)
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

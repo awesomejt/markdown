@@ -67,7 +67,17 @@ pub const MD_NODE_FOOTNOTE_REFERENCE: u32 = 23;
 pub const MD_NODE_UNSUPPORTED_INLINE: u32 = 24;
 pub const MD_NODE_ORDERED: u32 = 1;
 pub const MD_TARGET_FRAGMENT: u32 = 1;
+pub const MD_TARGET_REQUIRES_CAPABILITY: u32 = 2;
 pub const MD_TARGET_EXTERNAL: u32 = 3;
+pub const MD_TARGET_DENIED: u32 = 4;
+
+pub const MD_DENIAL_NONE: u32 = 0;
+pub const MD_DENIAL_UNSAFE: u32 = 1;
+pub const MD_DENIAL_INVALID_URI: u32 = 2;
+pub const MD_DENIAL_UNSUPPORTED_SCHEME: u32 = 3;
+pub const MD_DENIAL_REMOTE_RESOURCE: u32 = 4;
+pub const MD_DENIAL_LIMIT: u32 = 5;
+pub const MD_DENIAL_LEGACY_POLICY: u32 = 6;
 
 /// A UTF-8 byte range in the snapshot string table; not NUL-terminated.
 #[repr(C)]

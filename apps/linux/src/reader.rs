@@ -1,33 +1,68 @@
 //! GTK-owned virtual reader. Callbacks carry weak state and opaque row identities.
 use crate::count_model::CountModel;
-use gtk::{gio, glib, prelude::*};
-use markdown_linux::render::{RenderPlan, Target};
+use gtk::{gdk, gio, glib, prelude::*};
+use markdown_linux::{
+    document::ResourceError,
+    render::{RenderPlan, Target},
+};
 use std::{
     cell::{Cell, RefCell},
     collections::HashMap,
     rc::Rc,
     sync::Arc,
 };
+
 type Binding = Rc<Cell<Option<(u64, u32)>>>;
+
 struct Row {
     binding: Binding,
     labels: [glib::WeakRef<gtk::Label>; 2],
 }
+
 struct State {
     rows: HashMap<usize, Row>,
     plan: Option<Arc<RenderPlan>>,
     epoch: u64,
     view: gtk::ListView,
     window: glib::WeakRef<gtk::ApplicationWindow>,
+    texture_cache: HashMap<String, gdk::Texture>,
 }
+
 #[derive(Clone)]
 pub struct Reader {
     pub widget: gtk::Paned,
     state: Rc<RefCell<State>>,
     outline: gtk::ListView,
 }
+
 impl Reader {
     pub fn new(window: &gtk::ApplicationWindow) -> Self {
+        let provider = gtk::CssProvider::new();
+        provider.load_from_string(
+            "
+.table-row {
+    padding-top: 4px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid alpha(gray, 0.3);
+}
+.table-header {
+    background-color: alpha(gray, 0.15);
+    font-weight: bold;
+    border-bottom: 2px solid gray;
+}
+.table-zebra {
+    background-color: alpha(gray, 0.08);
+}
+",
+        );
+        if let Some(display) = gdk::Display::default() {
+            gtk::style_context_add_provider_for_display(
+                &display,
+                &provider,
+                gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
+            );
+        }
+
         let factory = gtk::SignalListItemFactory::new();
         let view = gtk::ListView::new(None::<gtk::NoSelection>, Some(factory.clone()));
         view.set_widget_name("native-document");
@@ -37,6 +72,7 @@ impl Reader {
             epoch: 0,
             view: view.clone(),
             window: window.downgrade(),
+            texture_cache: HashMap::new(),
         }));
         let weak = Rc::downgrade(&state);
         factory.connect_setup(move |_, item| {
@@ -106,6 +142,13 @@ impl Reader {
                 labels.push(label.downgrade());
                 row.append(&label);
             }
+            let images_box = gtk::Box::new(gtk::Orientation::Vertical, 6);
+            images_box.set_visible(false);
+            images_box.set_margin_start(16);
+            images_box.set_margin_end(16);
+            images_box.set_margin_bottom(6);
+            row.append(&images_box);
+
             if let Some(state) = weak.upgrade() {
                 state.borrow_mut().rows.insert(
                     item.as_ptr() as usize,
@@ -123,11 +166,11 @@ impl Reader {
             let Some(state) = weak.upgrade() else {
                 return;
             };
-            let state = state.borrow();
+            let mut state = state.borrow_mut();
             let Some(row_state) = state.rows.get(&(item.as_ptr() as usize)) else {
                 return;
             };
-            let Some(plan) = &state.plan else {
+            let Some(plan) = state.plan.clone() else {
                 return;
             };
             let index = item.position();
@@ -135,23 +178,123 @@ impl Reader {
                 return;
             };
             let row = item.child().and_downcast::<gtk::Box>().unwrap();
-            let labels = [
-                row.first_child().and_downcast::<gtk::Label>().unwrap(),
-                row.last_child().and_downcast::<gtk::Label>().unwrap(),
-            ];
-            let label = &labels[usize::from(!fragment.heading_start)];
+            let heading_label = row.first_child().and_downcast::<gtk::Label>().unwrap();
+            let paragraph_label = heading_label
+                .next_sibling()
+                .unwrap()
+                .downcast::<gtk::Label>()
+                .unwrap();
+            let images_box = paragraph_label
+                .next_sibling()
+                .unwrap()
+                .downcast::<gtk::Box>()
+                .unwrap();
+
+            let label = if fragment.heading_start {
+                &heading_label
+            } else {
+                &paragraph_label
+            };
             label.set_markup(&fragment.markup(state.epoch, index));
             if fragment.heading_start {
                 label.update_property(&[gtk::accessible::Property::Level(fragment.heading as i32)]);
             }
-            if fragment.heading > 0 {
+
+            if fragment.is_table_row {
+                let attrs = gtk::pango::AttrList::new();
+                attrs.insert(gtk::pango::AttrString::new_family("monospace"));
+                if fragment.is_table_header {
+                    attrs.insert(gtk::pango::AttrInt::new_weight(gtk::pango::Weight::Bold));
+                    row.add_css_class("table-header");
+                } else if fragment.table_row_ordinal % 2 == 1 {
+                    row.add_css_class("table-zebra");
+                }
+                row.add_css_class("table-row");
+                label.set_attributes(Some(&attrs));
+            } else if fragment.heading > 0 {
                 let attrs = gtk::pango::AttrList::new();
                 attrs.insert(gtk::pango::AttrInt::new_weight(gtk::pango::Weight::Bold));
                 attrs.insert(gtk::pango::AttrFloat::new_scale(1.6));
                 label.set_attributes(Some(&attrs));
+            } else if fragment.code {
+                let attrs = gtk::pango::AttrList::new();
+                attrs.insert(gtk::pango::AttrString::new_family("monospace"));
+                label.set_attributes(Some(&attrs));
             }
+
             label.set_visible(true);
             row_state.binding.set(Some((state.epoch, index)));
+
+            if !fragment.images.is_empty() {
+                while let Some(c) = images_box.first_child() {
+                    images_box.remove(&c);
+                }
+                for img in &fragment.images {
+                    if let Some(err) = img.failure {
+                        let msg = err.message();
+                        let text = if img.alt.is_empty() {
+                            format!("[{msg}]")
+                        } else {
+                            format!("[{} ({msg})]", img.alt)
+                        };
+                        let status_label = gtk::Label::builder()
+                            .label(&text)
+                            .xalign(0.0)
+                            .wrap(true)
+                            .accessible_role(gtk::AccessibleRole::Paragraph)
+                            .build();
+                        let attrs = gtk::pango::AttrList::new();
+                        attrs.insert(gtk::pango::AttrInt::new_style(gtk::pango::Style::Italic));
+                        status_label.set_attributes(Some(&attrs));
+                        images_box.append(&status_label);
+                    } else if let Some(data) = &img.data {
+                        let texture = if let Some(tex) = state.texture_cache.get(&img.target) {
+                            Some(tex.clone())
+                        } else {
+                            let bytes = glib::Bytes::from(data.as_ref());
+                            match gdk::Texture::from_bytes(&bytes) {
+                                Ok(tex) => {
+                                    state.texture_cache.insert(img.target.clone(), tex.clone());
+                                    Some(tex)
+                                }
+                                Err(_) => None,
+                            }
+                        };
+                        if let Some(texture) = texture {
+                            let picture = gtk::Picture::for_paintable(&texture);
+                            picture.set_can_shrink(true);
+                            picture.set_halign(gtk::Align::Start);
+                            picture.set_accessible_role(gtk::AccessibleRole::Img);
+                            picture.update_property(&[gtk::accessible::Property::Description(
+                                if img.alt.is_empty() {
+                                    "Image"
+                                } else {
+                                    &img.alt
+                                },
+                            )]);
+                            images_box.append(&picture);
+                        } else {
+                            let msg = ResourceError::Undecodable.message();
+                            let text = if img.alt.is_empty() {
+                                format!("[{msg}]")
+                            } else {
+                                format!("[{} ({msg})]", img.alt)
+                            };
+                            let status_label = gtk::Label::builder()
+                                .label(&text)
+                                .xalign(0.0)
+                                .wrap(true)
+                                .accessible_role(gtk::AccessibleRole::Paragraph)
+                                .build();
+                            let attrs = gtk::pango::AttrList::new();
+                            attrs.insert(gtk::pango::AttrInt::new_style(gtk::pango::Style::Italic));
+                            status_label.set_attributes(Some(&attrs));
+                            images_box.append(&status_label);
+                        }
+                    }
+                }
+                images_box.set_visible(true);
+            }
         });
         let weak = Rc::downgrade(&state);
         factory.connect_unbind(move |_, item| {
@@ -162,14 +305,22 @@ impl Reader {
                 binding.binding.set(None);
             }
             if let Some(row) = item.child().and_downcast::<gtk::Box>() {
+                row.remove_css_class("table-row");
+                row.remove_css_class("table-header");
+                row.remove_css_class("table-zebra");
                 let mut child = row.first_child();
                 while let Some(widget) = child {
                     child = widget.next_sibling();
-                    if let Ok(label) = widget.downcast::<gtk::Label>() {
+                    if let Ok(label) = widget.clone().downcast::<gtk::Label>() {
                         label.select_region(0, 0);
                         label.set_text("");
                         label.set_attributes(None);
                         label.set_visible(false);
+                    } else if let Ok(box_widget) = widget.downcast::<gtk::Box>() {
+                        while let Some(c) = box_widget.first_child() {
+                            box_widget.remove(&c);
+                        }
+                        box_widget.set_visible(false);
                     }
                 }
             }
@@ -327,6 +478,7 @@ impl Reader {
         let old = {
             let mut state = self.state.borrow_mut();
             state.epoch = state.epoch.checked_add(1).expect("reader epoch exhausted");
+            state.texture_cache.clear();
             state.plan.take()
         };
         if let Some(old) = old {

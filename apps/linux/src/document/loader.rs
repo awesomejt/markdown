@@ -207,6 +207,7 @@ fn process_with(
         let cancel = job.cancel.clone();
         let sender = job.sender.clone();
         let serial = job.serial;
+        let resources = job.capability.resources();
         // parse consumes its input even on Busy. Only this dispatcher clones a
         // bounded original for submission; no prepared-buffer queue exists.
         match job.session.parse(
@@ -223,8 +224,15 @@ fn process_with(
                             DocumentError::ParseFailed
                         }
                     });
+                    let loader = |path: &str, limit: usize| resources.read_image(path, limit);
                     let Some(prepared) = prepare_result(mapped, &cancel, |document| {
-                        RenderPlan::build(document, || cancel.is_cancelled())
+                        RenderPlan::build_with_resources(
+                            document,
+                            || cancel.is_cancelled(),
+                            crate::render::PLAN_BUDGET,
+                            Some(&loader),
+                            resources.budget().clone(),
+                        )
                     }) else {
                         return;
                     };
