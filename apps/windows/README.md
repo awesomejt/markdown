@@ -266,8 +266,8 @@ Validated on Windows 11 Pro build 26300.9711, Ryzen 9 5950X x64, Rust 1.99.1,
   the complete license inventory (42 statically linked Rust packages and 19 locked NuGet
   platform packages) and third-party notices under Licenses/, alongside BuildInfo.json.
   apps/windows/tools/artifact.py packaged the release build into an unsigned local
-  development zip artifact (Markdown-0.1.0-<commit>-windows-x64.zip), and verified it
-  relocated outside the checkout: confirming PE32+ x64 architecture, 24 exported md_
+  development zip artifact (`Markdown-0.1.0-<commit>-windows-x64.zip`), and verified it
+  relocated outside the checkout: confirming PE32+ x64 architecture, 24 exported `md_`
   symbols, unsigned development status, zero leaked build-machine paths, license notices
   integrity, relocated document tests (14 passed), render tests (20 passed), Native AOT
   smoke, association check, real relaunch restoration, and core probe with 0 leaked handles.

@@ -260,6 +260,7 @@ Microsoft platform packages are reviewed separately from the core Rust
 allowlist. They are used for Windows development and local testing under
 their supplied terms; this is not distribution approval. WIN-001I stages
 all required notices and redistribution terms for the actual package into Licenses/.
+
 | Package | Version | License source |
 | --- | --- | --- |
 | Microsoft.DotNet.ILCompiler | 10.0.13 | MIT (.NET); bundled third-party notices |
