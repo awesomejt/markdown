@@ -787,7 +787,7 @@ changed.
 **Decision:** The project owner directed that MVP delivery must minimize Orca work and not focus on deep screen-reader traversal for the initial product release, prioritizing visual document fidelity, tables, task lists, images, find, and workspace navigation.
 
 - The `LNX-001D1` early gate is satisfied for MVP scope by:
-  1. Automated AT-SPI inspection proving GTK semantic `Heading` roles with correct levels, `Paragraph` roles, model reading order for realized fragments, and outline navigation focus.
+  1. Automated AT-SPI inspection proving GTK semantic `Heading` roles with correct levels, `Paragraph` roles, and model reading order for realized fragments, with outline navigation focus and within-fragment selection proven via native smoke.
   2. Documenting the measured architectural limitation of `GtkListView` row virtualization in `docs/Linux-Accessibility-Gate.md`.
   3. Formally deferring off-screen Orca structural heading navigation (`H`) and unbroken continuous reading (Say All) to post-MVP (`ADV-001` reading refinement and accessibility parity).
 - Linux native renderer deepening (`LNX-001E` tables/task lists/images and `LNX-001F` find/settings) is unblocked to proceed using the GTK 4 native virtualized architecture.

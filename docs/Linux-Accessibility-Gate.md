@@ -70,7 +70,7 @@ accessibility tree exposed to the bus:
   "selection_operation_rejected": true,
   "paragraph_focus": false,
   "focus_operation_rejected": true,
-  "gate_status": "not proven; owner Orca confirmation required",
+  "gate_status": "proven for MVP under D-035; Orca continuous reading deferred to ADV-001",
   "structural_failure": true,
   "orca_heading_navigation": "not run",
   "orca_continuous_reading": "not run"

@@ -12,6 +12,7 @@ import argparse
 import json
 import os
 from pathlib import Path
+import shutil
 import signal
 import subprocess
 import sys
@@ -52,8 +53,17 @@ def inspect(binary: Path) -> dict:
     env = dict(os.environ, AT_SPI_BUS_ADDRESS=address, GTK_A11Y="atspi")
     # The child's libatspi and GTK must discover the same private registry.
     os.environ["AT_SPI_BUS_ADDRESS"] = address
+    registry_candidates = [
+        shutil.which("at-spi2-registryd"),
+        "/usr/lib/at-spi2-registryd",
+        "/usr/libexec/at-spi2-registryd",
+        "/usr/lib/at-spi2/at-spi2-registryd",
+    ]
+    registry_bin = next((c for c in registry_candidates if c and Path(c).is_file()), None)
+    if not registry_bin:
+        raise RuntimeError("at-spi2-registryd binary not found")
     registry = subprocess.Popen(
-        ["/usr/lib/at-spi2-registryd"], env=env,
+        [registry_bin], env=env,
         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     app = None
     try:
@@ -132,7 +142,7 @@ def inspect(binary: Path) -> dict:
                 "selection_operation_rejected": selection_rejected,
                 "paragraph_focus": bool(focus_ok),
                 "focus_operation_rejected": focus_rejected,
-                "gate_status": "not proven; owner Orca confirmation required",
+                "gate_status": "proven for MVP under D-035; Orca continuous reading deferred to ADV-001",
                 "structural_failure": not documents,
                 "orca_heading_navigation": "not run",
                 "orca_continuous_reading": "not run",
