@@ -135,10 +135,36 @@ public sealed class DocumentWatcher : IDisposable
         }
     }
 
+    private bool IsRelevantPath(string? path)
+    {
+        if (string.IsNullOrEmpty(path))
+        {
+            return false;
+        }
+
+        if (path.StartsWith(_directory, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(path, _fullPath, StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        if (_directory.StartsWith(path, StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        return false;
+    }
+
     private void OnFileSystemEvent(object sender, FileSystemEventArgs e)
     {
         if (_isAncestorWatch)
         {
+            if (!IsRelevantPath(e.FullPath))
+            {
+                return;
+            }
+
             if (Directory.Exists(_directory))
             {
                 Arm();
@@ -154,6 +180,11 @@ public sealed class DocumentWatcher : IDisposable
     {
         if (_isAncestorWatch)
         {
+            if (!IsRelevantPath(e.FullPath) && !IsRelevantPath(e.OldFullPath))
+            {
+                return;
+            }
+
             if (Directory.Exists(_directory))
             {
                 Arm();

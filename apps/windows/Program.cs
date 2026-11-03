@@ -323,7 +323,7 @@ public sealed partial class ReaderApp : Application
         windows.Add(window);
         window.Closed += (_, _) =>
         {
-            if (windows.Count == 1 && windows.Contains(window))
+            if (windows.Count == 1 && windows.Contains(window) && !_shuttingDown)
             {
                 SaveRestorationState();
             }
