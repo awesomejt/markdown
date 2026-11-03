@@ -114,4 +114,5 @@ python tools/check.py common
 
 `check.py` ran on this host in debug and release at WIN-001I's head and
 again for the aggregate at `5aeed91`. Results and hosted runs are in the
-WIN-001I and WIN-001 pass records and PRs.
+WIN-001I pass record and PR #61; aggregate evidence is recorded in the
+WIN-001 pass record upon closeout per the delivery workflow.
