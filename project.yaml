@@ -1,11 +1,11 @@
 contract_version: project-state/v1
-revision: 753
+revision: 754
 project: &id003
   concurrency_limit: 1
   created_at: '2026-10-24T23:34:09.871478+00:00'
   project_ref: markdown-native
-  status: active
-  updated_at: '2026-11-03T05:33:17.868485+00:00'
+  status: working
+  updated_at: '2026-11-03T05:47:16.262111+00:00'
   workflow_id: native-app-development
   workflow_version: '2'
 phases: &id005
@@ -1217,11 +1217,11 @@ tasks:
       denied/unsafe-resource checks. Run applicable docs/Validation.md checks; preserve resource/FFI boundaries
       and accepted budgets. Record actual host/version/results. Do not claim unrun native checks or complete
       before reviewed approved merge (clean Grok review or owner, D-029).'
-    status: pending
-    active_pass_ref: null
+    status: working
+    active_pass_ref: 2c4f0805-5848-4989-8cc2-0fdbd7d07994
     blockers: []
     created_at: '2026-10-26T20:27:32.570237+00:00'
-    updated_at: '2026-10-29T23:59:13.083996+00:00'
+    updated_at: '2026-11-03T05:47:16.262111+00:00'
     completed_at: null
   - &id066
     id: 5bd12d3e-f7a8-41fd-a887-a8b4183e9890
@@ -8040,44 +8040,29 @@ passes:
     completed_at: '2026-11-03T05:33:17.868485+00:00'
     lease_expires_at: null
     lease_version: 1
+  - &id082
+    id: 2c4f0805-5848-4989-8cc2-0fdbd7d07994
+    sequence: 127
+    task_ref: ae4d3668-a02d-41b5-a259-63b4416dad8b
+    phase_ref: 1c2f7cf2-feeb-4b8d-b741-2aaaa890bbaa
+    actor: antigravity-linux
+    status: active
+    outcome: null
+    objective: 'Deliver LNX-001E: Linux native tables, task list markers, and folder-contained image resource
+      policy with rich-block and denied/unsafe-resource checks.'
+    summary: null
+    handoff: null
+    validation_result: null
+    evidence: {}
+    participants: []
+    blocker: null
+    execution_record: {}
+    started_at: '2026-11-03T05:47:16.262111+00:00'
+    last_heartbeat_at: null
+    completed_at: null
+    lease_expires_at: '2026-11-03T06:47:16.262111+00:00'
+    lease_version: 1
 idempotency:
-  core-002-start-20261029:
-    fingerprint: ae220f0b343b0e60631b6cb10ddd164406e9965a1f943f173ed42f25a463a7b7
-    response:
-      contract_version: project-state/v1
-      operation: start_pass
-      revision: 654
-      data:
-        pass: *id001
-        task: *id002
-      snapshot:
-        contract_version: project-state/v1
-        snapshot_at: '2026-10-30T02:39:38.874061+00:00'
-        revision: 654
-        project: *id003
-        current_phase: *id004
-        phases: *id005
-        active_tasks:
-          - *id002
-        working_tasks_without_active_lease: []
-        active_passes:
-          - *id001
-        stale_passes: []
-        blocked_tasks: []
-        eligible_tasks: []
-        latest_pass: *id001
-        queue_counts:
-          by_status:
-            completed: 41
-            working: 1
-            pending: 49
-          total: 91
-          active_passes: 1
-          stale_passes: 0
-          eligible: 0
-          blocked: 0
-        warnings: []
-        recommended_action: resume_active
   core-002-ready-20261029:
     fingerprint: 9b8d79e172a77aa51dfc0739dace885d09ed397a62b9e35c77940c5297bb4b2b
     response:
@@ -11765,3 +11750,40 @@ idempotency:
           blocked: 0
         warnings: []
         recommended_action: select_new_task
+  a5a484b2-db45-4504-a990-27d5c629fe9b:
+    fingerprint: 548e41542547fa3701d3675ca44d995a475fdf218781227c249433866c572e86
+    response:
+      contract_version: project-state/v1
+      operation: start_pass
+      revision: 754
+      data:
+        pass: *id082
+        task: *id081
+      snapshot:
+        contract_version: project-state/v1
+        snapshot_at: '2026-11-03T05:47:16.262163+00:00'
+        revision: 754
+        project: *id003
+        current_phase: *id020
+        phases: *id005
+        active_tasks:
+          - *id081
+        working_tasks_without_active_lease: []
+        active_passes:
+          - *id082
+        stale_passes: []
+        blocked_tasks: []
+        eligible_tasks: []
+        latest_pass: *id082
+        queue_counts:
+          by_status:
+            completed: 71
+            pending: 19
+            working: 1
+          total: 91
+          active_passes: 1
+          stale_passes: 0
+          eligible: 0
+          blocked: 0
+        warnings: []
+        recommended_action: resume_active

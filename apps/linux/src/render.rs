@@ -1,26 +1,47 @@
 //! Bounded owned presentation values. No GTK, file access or parser internals.
+use crate::document::{ImageBudget, ResourceError};
 use markdown_linux_core::{CoreDocument, ffi::*};
 use std::{collections::BTreeMap, mem::size_of};
 
 pub const PLAN_BUDGET: usize = 128 * 1024 * 1024;
+
 #[derive(Debug, PartialEq, Eq)]
 pub enum RenderError {
     Cancelled,
     Budget,
     InvalidModel,
 }
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Target {
     Fragment(u32),
     External(String),
     Inert,
 }
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct RenderedImage {
+    pub target: String,
+    pub alt: String,
+    pub failure: Option<ResourceError>,
+    pub data: Option<Vec<u8>>,
+    pub width: usize,
+    pub height: usize,
+}
+
+impl RenderedImage {
+    pub fn failure_message(&self) -> Option<&'static str> {
+        self.failure.as_ref().map(ResourceError::message)
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct Run {
     pub text: String,
     pub style: u8,
     pub link: Option<u32>,
 }
+
 #[derive(Debug)]
 pub struct Fragment {
     pub runs: Vec<Run>,
@@ -29,14 +50,20 @@ pub struct Fragment {
     /// retain the heading level for visual styling.
     pub heading_start: bool,
     pub code: bool,
+    pub is_table_row: bool,
+    pub is_table_header: bool,
+    pub images: Vec<RenderedImage>,
 }
+
 impl Fragment {
     pub fn text(&self) -> String {
         self.runs.iter().map(|r| r.text.as_str()).collect()
     }
+
     pub fn has_link(&self, index: u32) -> bool {
         self.runs.iter().any(|r| r.link == Some(index))
     }
+
     pub fn markup(&self, epoch: u64, index: u32) -> String {
         let mut out = String::new();
         for run in &self.runs {
@@ -49,6 +76,13 @@ impl Fragment {
                     out.push_str(&format!("<{tag}>"));
                 }
             }
+            if run.style & 32 != 0 {
+                // TaskChecked: accent bold
+                out.push_str("<span foreground=\"#3584e4\"><b>");
+            } else if run.style & 64 != 0 {
+                // TaskUnchecked: muted
+                out.push_str("<span foreground=\"gray\">");
+            }
             for ch in run.text.chars() {
                 match ch {
                     '&' => out.push_str("&amp;"),
@@ -58,6 +92,11 @@ impl Fragment {
                     '\'' => out.push_str("&apos;"),
                     _ => out.push(ch),
                 }
+            }
+            if run.style & 32 != 0 {
+                out.push_str("</b></span>");
+            } else if run.style & 64 != 0 {
+                out.push_str("</span>");
             }
             for (bit, tag) in tags.into_iter().rev() {
                 if run.style & bit != 0 {
@@ -71,6 +110,7 @@ impl Fragment {
         out
     }
 }
+
 #[derive(Debug)]
 pub struct Outline {
     pub title: String,
@@ -78,13 +118,19 @@ pub struct Outline {
     pub level: u32,
     pub fragment: u32,
 }
+
 #[derive(Debug, Default)]
 pub struct RenderPlan {
     pub fragments: Vec<Fragment>,
     pub outline: Vec<Outline>,
     pub targets: Vec<Target>,
+    pub images: Vec<RenderedImage>,
     pub accounted_bytes: usize,
 }
+
+pub type ImageLoader<'a> =
+    dyn Fn(&str, usize) -> Result<(Vec<u8>, usize, usize), ResourceError> + 'a;
+
 struct Builder<'a, F> {
     doc: &'a CoreDocument,
     plan: RenderPlan,
@@ -92,15 +138,42 @@ struct Builder<'a, F> {
     budget: usize,
     visits: usize,
     first: Vec<Option<u32>>,
+    loader: Option<&'a ImageLoader<'a>>,
+    image_budget: ImageBudget,
+    image_cache: BTreeMap<String, RenderedImage>,
+    current_block_images: Vec<RenderedImage>,
+    accounted_decoded_bytes: usize,
 }
+
 impl RenderPlan {
     pub fn build(doc: &CoreDocument, cancelled: impl Fn() -> bool) -> Result<Self, RenderError> {
         Self::with_budget(doc, cancelled, PLAN_BUDGET)
     }
+
     pub fn with_budget(
         doc: &CoreDocument,
         cancelled: impl Fn() -> bool,
         budget: usize,
+    ) -> Result<Self, RenderError> {
+        Self::build_internal(doc, cancelled, budget, None, ImageBudget::default())
+    }
+
+    pub fn build_with_resources<'a>(
+        doc: &CoreDocument,
+        cancelled: impl Fn() -> bool,
+        budget: usize,
+        loader: Option<&'a ImageLoader<'a>>,
+        image_budget: ImageBudget,
+    ) -> Result<Self, RenderError> {
+        Self::build_internal(doc, cancelled, budget, loader, image_budget)
+    }
+
+    fn build_internal<'a>(
+        doc: &CoreDocument,
+        cancelled: impl Fn() -> bool,
+        budget: usize,
+        loader: Option<&'a ImageLoader<'a>>,
+        image_budget: ImageBudget,
     ) -> Result<Self, RenderError> {
         let mut b = Builder {
             doc,
@@ -109,6 +182,11 @@ impl RenderPlan {
             budget,
             visits: 0,
             first: Vec::new(),
+            loader,
+            image_budget,
+            image_cache: BTreeMap::new(),
+            current_block_images: Vec::new(),
+            accounted_decoded_bytes: 0,
         };
         b.charge(
             doc.nodes
@@ -170,6 +248,7 @@ impl RenderPlan {
         }
         Ok(b.plan)
     }
+
     pub fn token_target(&self, token: &str, epoch: u64, fragment: u32) -> Option<&Target> {
         let mut parts = token.split(':');
         if parts.next()? != "md"
@@ -185,6 +264,7 @@ impl RenderPlan {
         self.targets.get(link as usize)
     }
 }
+
 impl<F: Fn() -> bool> Builder<'_, F> {
     fn check(&self) -> Result<(), RenderError> {
         if (self.cancelled)() {
@@ -193,6 +273,7 @@ impl<F: Fn() -> bool> Builder<'_, F> {
             Ok(())
         }
     }
+
     fn charge(&mut self, n: usize) -> Result<(), RenderError> {
         self.check()?;
         self.plan.accounted_bytes = self
@@ -203,6 +284,7 @@ impl<F: Fn() -> bool> Builder<'_, F> {
             .ok_or(RenderError::Budget)?;
         Ok(())
     }
+
     fn text(&mut self, s: md_str) -> Result<String, RenderError> {
         self.charge(s.length as usize)?;
         self.doc
@@ -210,6 +292,7 @@ impl<F: Fn() -> bool> Builder<'_, F> {
             .map(str::to_owned)
             .map_err(|_| RenderError::InvalidModel)
     }
+
     fn node(&mut self, id: u32, depth: usize) -> Result<md_node, RenderError> {
         self.check()?;
         self.visits += 1;
@@ -222,6 +305,7 @@ impl<F: Fn() -> bool> Builder<'_, F> {
             .copied()
             .ok_or(RenderError::InvalidModel)
     }
+
     fn children(&mut self, n: md_node) -> Result<Vec<u32>, RenderError> {
         let end = (n.first_child as usize)
             .checked_add(n.child_count as usize)
@@ -237,6 +321,7 @@ impl<F: Fn() -> bool> Builder<'_, F> {
             .map(|s| s.to_vec())
             .ok_or(RenderError::InvalidModel)
     }
+
     fn run(
         &mut self,
         runs: &mut Vec<Run>,
@@ -247,7 +332,12 @@ impl<F: Fn() -> bool> Builder<'_, F> {
         self.charge(size_of::<Run>() + text.len())?;
         // Pango markup is XML and GTK strings are NUL terminated. Preserve a
         // visible replacement in both presentation and native selected text.
-        let invalid = |c: char| matches!(c,'\u{0}'..='\u{8}'|'\u{b}'|'\u{c}'|'\u{e}'..='\u{1f}'|'\u{fffe}'|'\u{ffff}');
+        let invalid = |c: char| {
+            matches!(
+                c,
+                '\u{0}'..='\u{8}' | '\u{b}' | '\u{c}' | '\u{e}'..='\u{1f}' | '\u{fffe}' | '\u{ffff}'
+            )
+        };
         if text.chars().any(invalid) {
             let bytes = text
                 .chars()
@@ -262,6 +352,7 @@ impl<F: Fn() -> bool> Builder<'_, F> {
         runs.push(Run { text, style, link });
         Ok(())
     }
+
     fn fallback(&mut self, n: md_node) -> Result<String, RenderError> {
         let text = std::str::from_utf8(
             self.doc
@@ -273,6 +364,122 @@ impl<F: Fn() -> bool> Builder<'_, F> {
         self.charge(text.len())?;
         Ok(text.to_owned())
     }
+
+    fn image(
+        &mut self,
+        id: u32,
+        depth: usize,
+        style: u8,
+        runs: &mut Vec<Run>,
+    ) -> Result<(), RenderError> {
+        let n = self.node(id, depth)?;
+        let alt = self.text(n.text)?;
+        let mut target_str = String::new();
+        let failure;
+
+        if (n.aux as usize) < self.doc.resources.len() {
+            let intent = &self.doc.resources[n.aux as usize];
+            target_str = self.text(intent.target)?;
+            match intent.target_kind {
+                MD_TARGET_REQUIRES_CAPABILITY => {
+                    // Sibling image beside document
+                    if let Some(cached) = self.image_cache.get(&target_str) {
+                        failure = cached.failure;
+                    } else if self.image_cache.len() >= self.image_budget.max_images {
+                        failure = Some(ResourceError::Limit);
+                    } else if let Some(loader) = self.loader {
+                        self.check()?;
+                        match loader(&target_str, self.image_budget.max_file_bytes) {
+                            Ok((data, w, h)) => {
+                                let decoded_bytes = w.saturating_mul(h).saturating_mul(4);
+                                if self.accounted_decoded_bytes + decoded_bytes
+                                    > self.image_budget.max_decoded_bytes
+                                {
+                                    failure = Some(ResourceError::Limit);
+                                } else {
+                                    self.accounted_decoded_bytes += decoded_bytes;
+                                    self.charge(data.len())?;
+                                    let rendered = RenderedImage {
+                                        target: target_str.clone(),
+                                        alt: alt.clone(),
+                                        failure: None,
+                                        data: Some(data),
+                                        width: w,
+                                        height: h,
+                                    };
+                                    self.image_cache
+                                        .insert(target_str.clone(), rendered.clone());
+                                    self.plan.images.push(rendered.clone());
+                                    self.current_block_images.push(rendered);
+                                    self.first[id as usize] =
+                                        Some(self.plan.fragments.len() as u32);
+                                    let display_text = if alt.is_empty() {
+                                        "[image]".to_string()
+                                    } else {
+                                        format!("[{alt}]")
+                                    };
+                                    self.run(runs, display_text, style, None)?;
+                                    return Ok(());
+                                }
+                            }
+                            Err(err) => {
+                                failure = Some(err);
+                            }
+                        }
+                    } else {
+                        failure = Some(ResourceError::NotLoaded);
+                    }
+                }
+                MD_TARGET_DENIED => {
+                    if intent.denial == MD_DENIAL_REMOTE_RESOURCE {
+                        failure = Some(ResourceError::Remote);
+                    } else {
+                        failure = Some(ResourceError::Blocked);
+                    }
+                }
+                MD_TARGET_EXTERNAL => {
+                    failure = Some(ResourceError::Remote);
+                }
+                _ => {
+                    failure = Some(ResourceError::Blocked);
+                }
+            }
+        } else {
+            failure = Some(ResourceError::Blocked);
+        }
+
+        let rendered = if let Some(cached) = self.image_cache.get(&target_str) {
+            cached.clone()
+        } else {
+            let r = RenderedImage {
+                target: target_str.clone(),
+                alt: alt.clone(),
+                failure,
+                data: None,
+                width: 0,
+                height: 0,
+            };
+            if failure != Some(ResourceError::Remote)
+                && failure != Some(ResourceError::Blocked)
+                && failure != Some(ResourceError::OutsideFolder)
+            {
+                self.image_cache.insert(target_str.clone(), r.clone());
+            }
+            r
+        };
+
+        self.plan.images.push(rendered.clone());
+        self.current_block_images.push(rendered);
+        self.first[id as usize] = Some(self.plan.fragments.len() as u32);
+        let display_text = if alt.is_empty() {
+            "[image]".to_string()
+        } else {
+            format!("[{alt}]")
+        };
+        self.run(runs, display_text, style, None)?;
+        Ok(())
+    }
+
     fn inline(
         &mut self,
         id: u32,
@@ -305,6 +512,9 @@ impl<F: Fn() -> bool> Builder<'_, F> {
                 let text = self.text(n.text)?;
                 self.run(runs, text, style, link)?;
             }
+            MD_NODE_IMAGE => {
+                self.image(id, depth, style, runs)?;
+            }
             MD_NODE_UNSUPPORTED_INLINE => {
                 let text = self.fallback(n)?;
                 self.run(runs, text, style, link)?;
@@ -313,35 +523,98 @@ impl<F: Fn() -> bool> Builder<'_, F> {
                 for child in self.children(n)? {
                     self.inline(child, depth + 1, style, link, runs)?;
                 }
-                if n.kind == MD_NODE_IMAGE && n.child_count == 0 {
-                    let text = self.text(n.text)?;
-                    self.run(runs, text, style, None)?;
-                }
             }
         }
         Ok(())
     }
-    fn block(&mut self, id: u32, depth: usize, marker: Option<String>) -> Result<(), RenderError> {
+
+    fn table(&mut self, id: u32, depth: usize) -> Result<(), RenderError> {
+        let n = self.node(id, depth)?;
+        self.first[id as usize] = Some(self.plan.fragments.len() as u32);
+        let col_count = n.aux_count as usize;
+        let rows = self.children(n)?;
+
+        for (r, &row_id) in rows.iter().enumerate() {
+            let row_node = self.node(row_id, depth + 1)?;
+            self.first[row_id as usize] = Some(self.plan.fragments.len() as u32);
+            let is_header = (row_node.flags & 32) != 0 || r == 0;
+            let cells = self.children(row_node)?;
+            let mut row_runs = Vec::new();
+            let total_cols = col_count.max(cells.len());
+
+            for c in 0..total_cols {
+                if c > 0 {
+                    self.run(&mut row_runs, "\t".into(), 0, None)?;
+                }
+                if c < cells.len() {
+                    let cell_id = cells[c];
+                    let cell_node = self.node(cell_id, depth + 2)?;
+                    for child in self.children(cell_node)? {
+                        self.inline(
+                            child,
+                            depth + 3,
+                            if is_header { 1 } else { 0 },
+                            None,
+                            &mut row_runs,
+                        )?;
+                    }
+                }
+            }
+
+            self.charge(size_of::<Fragment>())?;
+            self.plan.fragments.push(Fragment {
+                runs: row_runs,
+                heading: 0,
+                heading_start: false,
+                code: false,
+                is_table_row: true,
+                is_table_header: is_header,
+                images: Vec::new(),
+            });
+        }
+        self.current_block_images.clear();
+        Ok(())
+    }
+
+    fn block(
+        &mut self,
+        id: u32,
+        depth: usize,
+        marker: Option<(String, u8)>,
+    ) -> Result<(), RenderError> {
         let n = self.node(id, depth)?;
         if (n.kind == MD_NODE_LIST || (n.kind == MD_NODE_LIST_ITEM && n.child_count == 0))
             && marker.is_some()
         {
+            let (m, s) = marker.clone().unwrap();
             let mut runs = Vec::new();
-            self.run(&mut runs, marker.clone().unwrap(), 0, None)?;
+            self.run(&mut runs, m, 16 | s, None)?;
             self.fragments(runs, 0, false)?;
         }
+        if n.kind == MD_NODE_TABLE {
+            return self.table(id, depth);
+        }
         if n.kind == MD_NODE_LIST {
+            let ordered = (n.flags & MD_NODE_ORDERED) != 0;
+            let start = n.number;
             for (i, child) in self.children(n)?.into_iter().enumerate() {
-                let marker = if n.flags & MD_NODE_ORDERED != 0 {
-                    format!(
-                        "{}{}. ",
-                        "  ".repeat(depth),
-                        n.number.saturating_add(i as u64)
+                let child_node = self.node(child, depth + 1)?;
+                let (marker_str, marker_style) = if (child_node.flags & 8) != 0 {
+                    let is_checked = (child_node.flags & 16) != 0;
+                    if is_checked {
+                        (format!("{}☑ ", "  ".repeat(depth)), 32)
+                    } else {
+                        (format!("{}☐ ", "  ".repeat(depth)), 64)
+                    }
+                } else if ordered {
+                    (
+                        format!("{}{}. ", "  ".repeat(depth), start.saturating_add(i as u64)),
+                        0,
                     )
                 } else {
-                    format!("{}• ", "  ".repeat(depth))
+                    (format!("{}• ", "  ".repeat(depth)), 0)
                 };
-                self.block(child, depth + 1, Some(marker))?;
+                self.block(child, depth + 1, Some((marker_str, marker_style)))?;
             }
             return Ok(());
         }
@@ -356,8 +629,8 @@ impl<F: Fn() -> bool> Builder<'_, F> {
         ) {
             self.first[id as usize] = Some(self.plan.fragments.len() as u32);
             let mut runs = Vec::new();
-            if let Some(marker) = marker {
-                self.run(&mut runs, marker, 0, None)?;
+            if let Some((marker_str, marker_style)) = marker {
+                self.run(&mut runs, marker_str, 16 | marker_style, None)?;
             }
             if n.kind == MD_NODE_CODE_BLOCK || n.kind == MD_NODE_UNSUPPORTED_BLOCK {
                 let text = if n.kind == MD_NODE_UNSUPPORTED_BLOCK {
@@ -394,16 +667,17 @@ impl<F: Fn() -> bool> Builder<'_, F> {
         }
         Ok(())
     }
+
     fn fragments(&mut self, runs: Vec<Run>, heading: u32, code: bool) -> Result<(), RenderError> {
-        // Conservatively use 512 bytes for every displayed fragment (also
-        // below the accepted 1024-byte whitespace-fragment limit). A
-        // whitespace boundary is preferred, including for long code lines.
         let initial = self.plan.fragments.len();
         let mut fragment = Fragment {
             runs: Vec::new(),
             heading,
             heading_start: heading > 0,
             code,
+            is_table_row: false,
+            is_table_header: false,
+            images: std::mem::take(&mut self.current_block_images),
         };
         let mut used = 0;
         for run in runs {
@@ -431,6 +705,9 @@ impl<F: Fn() -> bool> Builder<'_, F> {
                         heading,
                         heading_start: false,
                         code,
+                        is_table_row: false,
+                        is_table_header: false,
+                        images: Vec::new(),
                     };
                     used = 0;
                     continue;
@@ -450,6 +727,9 @@ impl<F: Fn() -> bool> Builder<'_, F> {
                         heading,
                         heading_start: false,
                         code,
+                        is_table_row: false,
+                        is_table_header: false,
+                        images: Vec::new(),
                     };
                     used = 0;
                 }
@@ -460,6 +740,7 @@ impl<F: Fn() -> bool> Builder<'_, F> {
         }
         Ok(())
     }
+
     fn push(&mut self, f: Fragment) -> Result<(), RenderError> {
         self.charge(size_of::<Fragment>())?;
         self.plan.fragments.push(f);

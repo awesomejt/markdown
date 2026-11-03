@@ -20,8 +20,8 @@ adapter, `apps/linux/core` ([integration report](../../docs/Linux-Core-Integrati
 and refuses to start against an incompatible core. LNX-001C adds native Open…/Reload, local-file capabilities and background
 loading through the core. LNX-001D presents the owned semantic model as native
 virtualized GTK text with an outline, links and basic selection.
-LNX-001D1 must prove AT-SPI and Orca
-behaviour before the renderer is deepened (D-017). The accepted baseline is
+LNX-001D1 verified AT-SPI semantics and recorded D-035 MVP scope.
+LNX-001E delivers native tables, task list markers, and folder-contained image resource policy. The accepted baseline is
 x86-64 KDE Plasma on Wayland (D-018); libadwaita is not used, and other
 desktops and architectures are not claimed.
 
@@ -69,7 +69,7 @@ packages, then runs `cargo fmt --check`, Clippy with warnings denied over the
 workspace, and the
 [dependency/license policy](../../docs/Dependencies.md#linux-app-graph-lnx-001a)
 for the Linux graph. Then, for debug and then release, it builds the
-workspace with `--locked`, runs 12 document tests, eight renderer tests and the
+workspace with `--locked`, runs 12 document tests, 13 renderer tests and the
 15 core consumer tests against the
 matching core package (negotiation, typed errors, owned v2 values, parse
 failures, copy budget, queued and running cancellation, bounded admission,
@@ -422,3 +422,38 @@ private D-Bus session and temporary registry on the current display, without
 changing desktop accessibility settings/services or launching Orca. Exit 0
 means inspection completed; read the reported failures. Use `--configuration
 debug` for debug, or `--prepare-only` for a persistent public owner-test fixture.
+
+## Tables, task lists and images (LNX-001E)
+
+- **Tables:** GFM tables render as one virtual row fragment per table row with
+  tab-separated cells for native TSV clipboard copying. Cells use a monospace font,
+  bold header styling, and alternate-row zebra striping with separator borders.
+  Short rows are padded with tabs up to the table's column count. Images in table
+  cells render their alt text into cell runs without leaking into subsequent paragraphs.
+- **Task lists:** Task list items display read-only ☑ (`\u{2611}`) markers with
+  accent styling for checked items and ☐ (`\u{2610}`) markers with muted styling
+  for unchecked items.
+- **Image resource policy:** Local image loading follows the core's v2 resource
+  classification and URI policy:
+  - Remote images (`MD_TARGET_DENIED` with `MD_DENIAL_REMOTE_RESOURCE` or external)
+    and unsupported schemes (`data:`, fragment-only) are blocked.
+  - Relative images beside the document are read via `DocumentResources` from the
+    document's folder. Relative paths are normalized lexically and canonicalized;
+    any path escaping the document folder (`..` or symlink escapes), absolute paths,
+    or paths with null bytes are rejected (`OutsideFolder`).
+  - Only regular files are opened; directories, FIFOs, and devices are rejected.
+  - Image files are size-capped at 16 MiB.
+  - Format validation rejects SVG / XML vectors as `UnsupportedType` (ADV-002).
+  - Raster format inspection validates PNG, JPEG, GIF, BMP, and WebP headers, enforcing
+    dimension bomb caps (32 MP = 32 × 1024 × 1024 pixels) and side caps (2048 px).
+  - Per-document budgets enforce at most 128 distinct images and 128 MiB of decoded
+    pixel memory. Identical image paths are deduplicated to a single read.
+  - Succeeded images render via native `gtk::Picture` backed by `gdk::Texture` with
+    per-reader texture caching.
+  - Blocked or failed images show their alt text with italic status messages (e.g.
+    `[alt (Remote images are blocked)]`, `[alt (Images outside the document’s folder are not shown)]`).
+    Messages name no filesystem paths.
+- **Validation:** Debug and release suites pass 13 renderer tests, 12 document/loader
+  tests, and 15 core consumer tests per profile. The GTK native shell smoke (`--smoke-test`)
+  verifies rendering of rich blocks (table rows with TSV, task list markers, and local
+  image rendering through real `DocumentResources` while remote and escaping images are blocked).

@@ -572,9 +572,98 @@ async fn reader(window: &gtk::ApplicationWindow) -> Result<(), String> {
             "continuation retains heading style with paragraph role",
         )?;
     }
+
+    let rich_path = directory.join("rich.md");
+    let img_path = directory.join("local.png");
+    std::fs::write(&img_path, minimal_png()).map_err(|_| "write smoke png")?;
+    let rich_source = "# Rich Blocks\n\n\
+                       | Col A | Col B |\n\
+                       | :--- | ---: |\n\
+                       | val1 | val2 |\n\n\
+                       - [x] checked task\n\
+                       - [ ] open task\n\n\
+                       ![local image](local.png)\n\n\
+                       ![remote image](https://example.com/pic.png)\n\n\
+                       ![escape image](../outside.png)\n";
+    std::fs::write(&rich_path, rich_source).map_err(|_| "write rich source")?;
+    crate::files::open_for_smoke(window, &gio::File::for_path(&rich_path));
+    wait_until("rich blocks publish", || {
+        crate::files::source(window).as_deref() == Some(rich_source.as_bytes())
+    })
+    .await?;
+    wait_until("rich blocks realized", || {
+        let obs = reader.observed();
+        obs.iter().any(|(_, l)| l.text().contains("Col A\tCol B"))
+            && obs.iter().any(|(_, l)| l.text().contains("☑ checked task"))
+    })
+    .await?;
+    let obs = reader.observed();
+    check(
+        obs.iter().any(|(_, l)| l.text().contains("Col A\tCol B")),
+        "table header row with tab separation",
+    )?;
+    check(
+        obs.iter().any(|(_, l)| l.text().contains("val1\tval2")),
+        "table body row with tab separation",
+    )?;
+    check(
+        obs.iter().any(|(_, l)| l.text().contains("☑ checked task")),
+        "task checked marker rendered",
+    )?;
+    check(
+        obs.iter().any(|(_, l)| l.text().contains("☐ open task")),
+        "task unchecked marker rendered",
+    )?;
+
+    let mut found_picture = false;
+    let mut found_remote_denied = false;
+    let mut found_escape_denied = false;
+    for (_, label) in &obs {
+        if let Some(row) = label.parent() {
+            let mut child = row.first_child();
+            while let Some(w) = child {
+                child = w.next_sibling();
+                if let Ok(box_widget) = w.downcast::<gtk::Box>() {
+                    let mut img_child = box_widget.first_child();
+                    while let Some(ic) = img_child {
+                        img_child = ic.next_sibling();
+                        if ic.downcast_ref::<gtk::Picture>().is_some() {
+                            found_picture = true;
+                        }
+                        if let Some(lbl) = ic.downcast_ref::<gtk::Label>() {
+                            if lbl.text().contains("Remote images are blocked") {
+                                found_remote_denied = true;
+                            }
+                            if lbl
+                                .text()
+                                .contains("Images outside the document’s folder are not shown")
+                            {
+                                found_escape_denied = true;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    check(found_picture, "local image rendered in GTK Picture")?;
+    check(found_remote_denied, "remote image shows blocked status")?;
+    check(
+        found_escape_denied,
+        "outside-folder image shows outside status",
+    )?;
+
     std::fs::remove_dir_all(directory).map_err(|_| "remove reader fixtures")?;
     note(
-        "reader checked (native text, escaping, bounded rows, fragment/outline jumps, selection, recycling, reload)",
+        "reader checked (native text, escaping, bounded rows, fragment/outline jumps, selection, recycling, reload, tables, task lists, images)",
     );
     Ok(())
+}
+
+fn minimal_png() -> Vec<u8> {
+    vec![
+        137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 13, 73, 72, 68, 82, 0, 0, 0, 1, 0, 0, 0, 1, 8, 6,
+        0, 0, 0, 31, 21, 196, 137, 0, 0, 0, 13, 73, 68, 65, 84, 120, 218, 99, 252, 207, 192, 80,
+        15, 0, 4, 133, 1, 128, 132, 169, 140, 33, 0, 0, 0, 0, 73, 69, 78, 68, 174, 66, 96, 130,
+    ]
 }
