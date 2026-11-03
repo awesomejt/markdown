@@ -107,6 +107,16 @@ read.
   and relocated core probe with 0 leaked handles. Full walking skeleton acceptance across WIN-001A
   through WIN-001I is documented in `docs/Windows-Skeleton-Acceptance.md`. Grok reviews 1 and 2:
   review 2 at `d57dc8f` reported 0 Blockers, 0 Concerns, 0 Nits (clean approval under D-029).
+- WIN-001 (PR #62) closes the Windows single-document walking skeleton aggregate
+  milestone on already-merged evidence across WIN-001A through WIN-001I (PRs #53 to #61).
+  C# Native AOT with WinUI 3 and Windows App SDK 2.5.1 is the accepted Windows desktop host
+  (D-017), without general-purpose WebViews or CoreCLR. Fresh native checks (`apps/windows/tools/check.py`)
+  passed at `develop` head `5aeed91` across all suites (20 core consumer tests, 14 document
+  tests, 20 render tests, Native AOT WinUI smoke, association checks, two-phase relaunch
+  restoration, license inventory for 42 Rust + 19 NuGet packages, and relocated development
+  artifact verification outside checkout with 0 leaked handles). Full walking skeleton
+  acceptance is documented in `docs/Windows-Skeleton-Acceptance.md`. The Windows skeleton
+  milestone review (D-030) is next on Windows, and LNX-001D1 is eligible on Linux.
 - Phase: `desktop-apps`; the portable-core shared track is complete through
   CORE-006 (GATE-001 approved, D-018). Native chains are now eligible (D-027).
 - Product: local-first, read-only native Markdown reader. Windows, macOS and
