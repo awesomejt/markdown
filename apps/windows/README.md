@@ -74,10 +74,10 @@ python apps/windows/tools/check.py
 verifies C# formatting, publishes **Native AOT in Debug and Release**, verifies
 the staged core manifests and PE export tables, runs `--core-tests`,
 `--document-tests`, `--render-tests`, `--smoke`, and `apps/windows/tools/check_association.py` in
-both configurations, and copies the `Release` output to a temporary directory
-outside the checkout to run relocated `--document-tests`, `--render-tests`, `--smoke`,
-`check_association.py`, and `--core-probe single` without a repository at
-runtime.
+both configurations, and in `Release` packages the local unsigned development
+artifact, verifies it outside the checkout, and runs relocated
+`--document-tests`, `--render-tests`, `--smoke`, `check_association.py`,
+relaunch check, and `--core-probe single` without a repository at runtime.
 
 For direct staging and `dotnet publish` (adding Visual Studio Installer to
 `PATH` for Native AOT's `vswhere`):
@@ -262,10 +262,10 @@ Validated on Windows 11 Pro build 26300.9711, Ryzen 9 5950X x64, Rust 1.99.1,
   - **prose-5mib**: 996.00ms median refresh, `kept_place: true`, 363.02 MiB peak footprint.
 - **WIN-001I**: Debug and Release Native AOT builds passed all 20 core consumer tests,
   14 document tests, 20 render tests, the 13-stage Native AOT smoke, file association checks,
-  and two-phase relaunch restoration. In Release, pps/windows/tools/licenses.py generated
+  and two-phase relaunch restoration. In Release, apps/windows/tools/licenses.py generated
   the complete license inventory (42 statically linked Rust packages and 19 locked NuGet
   platform packages) and third-party notices under Licenses/, alongside BuildInfo.json.
-  pps/windows/tools/artifact.py packaged the release build into an unsigned local
+  apps/windows/tools/artifact.py packaged the release build into an unsigned local
   development zip artifact (Markdown-0.1.0-<commit>-windows-x64.zip), and verified it
   relocated outside the checkout: confirming PE32+ x64 architecture, 24 exported md_
   symbols, unsigned development status, zero leaked build-machine paths, license notices

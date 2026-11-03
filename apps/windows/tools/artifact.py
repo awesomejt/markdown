@@ -7,6 +7,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import struct
 import subprocess
 import sys
@@ -16,7 +17,7 @@ import zipfile
 REPO_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(REPO_ROOT / "apps/windows/tools"))
 from check_association import check_association  # noqa: E402
-from licenses import write_notices  # noqa: E402
+from licenses import BUILD_ONLY_NUGET, write_notices  # noqa: E402
 from package_core import cargo_homes, header_exports, pe_exports, rustc_sysroots  # noqa: E402
 
 ARTIFACTS = REPO_ROOT / "build/windows/artifacts"
@@ -37,6 +38,15 @@ def run_app(command: list[str], *, cwd: Path, env: dict[str, str], timeout: int)
         print(result.stdout, end="", flush=True)
     result.check_returncode()
     return result.stdout
+
+
+def app_version() -> str:
+    """Read the package version from the single source of truth in Markdown.Windows.csproj."""
+    csproj = REPO_ROOT / "apps/windows/Markdown.Windows.csproj"
+    match = re.search(r"<Version>([^<]+)</Version>", csproj.read_text(encoding="utf-8"))
+    if not match:
+        raise SystemExit(f"missing <Version> in {csproj}")
+    return match.group(1).strip()
 
 
 def build_info(configuration: str = "release") -> dict:
@@ -90,7 +100,7 @@ def package(release_dir: Path) -> Path:
     if info["configuration"] != "release":
         raise SystemExit("the development artifact must be the release build")
 
-    version = "0.1.0"
+    version = app_version()
     name = (
         f"Markdown-{version}-{info['source_commit'][:12]}"
         f"{'-dirty' if info['source_dirty'] else ''}-windows-x64"
@@ -234,6 +244,12 @@ def verify(archive: Path, *, env: dict[str, str]) -> None:
             heading = f"\n{pkg['name']} {pkg['version']}\nLicense: {pkg['license']}\n"
             if heading not in notices:
                 raise SystemExit(f"no notice for Rust package {pkg['name']} {pkg['version']}")
+            if pkg["source"] != "workspace":
+                if not pkg["files"]:
+                    raise SystemExit(f"no license text recorded for Rust package {pkg['name']}")
+                for file_name in pkg["files"]:
+                    if f"----- {file_name} -----" not in notices:
+                        raise SystemExit(f"{pkg['name']}: {file_name} missing from notices")
 
         nuget_names = {pkg["name"] for pkg in inventory["nuget_packages"]}
         if not {"Microsoft.WindowsAppSDK", "Microsoft.Web.WebView2"} <= nuget_names:
@@ -242,6 +258,12 @@ def verify(archive: Path, *, env: dict[str, str]) -> None:
             heading = f"\n{pkg['name']} {pkg['version']}\nLicense: {pkg['license']}\n"
             if heading not in notices:
                 raise SystemExit(f"no notice for NuGet package {pkg['name']} {pkg['version']}")
+            if pkg["name"] not in BUILD_ONLY_NUGET:
+                if not pkg["files"]:
+                    raise SystemExit(f"no license text recorded for NuGet package {pkg['name']}")
+                for file_name in pkg["files"]:
+                    if f"----- {file_name} -----" not in notices:
+                        raise SystemExit(f"{pkg['name']}: {file_name} missing from notices")
 
         # Verify no build-machine paths leaked into any file in the artifact
         prefixes = private_prefixes()

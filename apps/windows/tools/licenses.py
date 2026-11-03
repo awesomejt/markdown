@@ -21,6 +21,9 @@ SYSTEM_NOTE = (
     "redistributed as source."
 )
 
+# Build-tooling NuGet packages that do not redistribute runtime DLLs into the published app.
+BUILD_ONLY_NUGET = {"Microsoft.Windows.SDK.BuildTools"}
+
 NUGET_REVIEWED = {
     ("Microsoft.DotNet.ILCompiler", "10.0.13"): "MIT",
     ("Microsoft.NET.ILLink.Tasks", "10.0.13"): "MIT",
@@ -120,20 +123,46 @@ def runtime_packages() -> list[dict]:
     return inventory
 
 
+def locked_nuget_packages() -> dict[str, str]:
+    """All unique package name -> resolved version pairs across all targets in packages.lock.json."""
+    lock_file = REPO_ROOT / "apps/windows/packages.lock.json"
+    lock_data = json.loads(lock_file.read_text(encoding="utf-8"))
+    resolved: dict[str, str] = {}
+    for _target, deps in lock_data.get("dependencies", {}).items():
+        for name, info in deps.items():
+            ver = info.get("resolved")
+            if ver:
+                if name in resolved and resolved[name] != ver:
+                    raise SystemExit(
+                        f"Conflicting resolved versions for {name} in packages.lock.json: "
+                        f"{resolved[name]} vs {ver}"
+                    )
+                resolved[name] = ver
+    return resolved
+
+
 def nuget_packages() -> list[dict]:
     """NuGet packages in the locked Windows shell graph and their bundled license notices."""
     nuget_root = Path(os.environ.get("NUGET_PACKAGES", Path.home() / ".nuget/packages"))
-    lock_file = REPO_ROOT / "apps/windows/packages.lock.json"
-    lock_data = json.loads(lock_file.read_text(encoding="utf-8"))
-    framework = next(iter(lock_data["dependencies"]))
-    locked_deps = lock_data["dependencies"][framework]
+    locked = locked_nuget_packages()
+    reviewed_keys = {name for (name, _ver) in NUGET_REVIEWED}
 
     inventory, errors = [], []
-    for (name, version), license_desc in sorted(NUGET_REVIEWED.items()):
-        # Check against locked graph
-        if name in locked_deps and locked_deps[name].get("resolved") != version:
-            errors.append(f"{name}: resolved version {locked_deps[name].get('resolved')} != {version}")
+    # 1. Verify every locked package is in NUGET_REVIEWED with the exact version
+    for name, version in sorted(locked.items()):
+        if name not in reviewed_keys:
+            errors.append(f"{name} {version}: locked NuGet package missing from review policy")
+        elif (name, version) not in NUGET_REVIEWED:
+            expected_ver = next(v for (n, v) in NUGET_REVIEWED if n == name)
+            errors.append(f"{name}: resolved version {version} != reviewed version {expected_ver}")
 
+    # 2. Verify every package in NUGET_REVIEWED is present in the lock file
+    for name, version in sorted(NUGET_REVIEWED.keys()):
+        if name not in locked:
+            errors.append(f"{name} {version}: reviewed NuGet package not found in packages.lock.json")
+
+    # 3. Collect license files and enforce that runtime packages carry license text
+    for (name, version), license_desc in sorted(NUGET_REVIEWED.items()):
         pkg_dir = nuget_root / name.lower() / version
         files = []
         if pkg_dir.exists():
@@ -146,6 +175,9 @@ def nuget_packages() -> list[dict]:
                     for token in ("license", "licence", "notice", "copying", "third-party-notices")
                 )
             )
+        if not files and name not in BUILD_ONLY_NUGET:
+            errors.append(f"{name} {version}: no license text in NuGet package")
+
         inventory.append(
             {
                 "name": name,

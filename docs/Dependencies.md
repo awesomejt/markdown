@@ -240,7 +240,7 @@ closure of markdown-ffi with model-v2 for x86_64-pc-windows-msvc: 42 of the Rust
 packages above (excluding the Unix-only libc). In addition, the self-contained Native AOT
 publish bundles the locked NuGet platform graph (19 packages).
 
-pps/windows/tools/licenses.py computes both inventories and writes them, alongside
+apps/windows/tools/licenses.py computes both inventories and writes them, alongside
 project and third-party license notices, to Licenses/ (LICENSE, THIRD-PARTY-NOTICES.txt,
 and inventory.json) inside the published app and local development artifact
 ([details](../apps/windows/README.md#development-artifact-and-licenses-win-001i)).
@@ -254,7 +254,7 @@ zerofrom, zerotrie, zerovec.
 
 ## Windows shell NuGet graph
 
-WIN-001A uses the locked graph in pps/windows/packages.lock.json (19
+WIN-001A uses the locked graph in apps/windows/packages.lock.json (19
 unique package/version pairs, including build-only Native AOT tools). These
 Microsoft platform packages are reviewed separately from the core Rust
 allowlist. They are used for Windows development and local testing under
