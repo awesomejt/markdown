@@ -229,18 +229,37 @@ adds no Rust or Swift dependency. The app source uses the repository's Apache-2.
 
 The Rust license gate is not an npm/Python license audit, vulnerability scanner,
 font audit or distribution approval. Preserve dependency notices. The macOS
-app has a runtime inventory (above); the Windows and Linux packages add theirs
-in their own 001I phases.
+app has a runtime inventory (above); the Windows app adds its runtime inventory
+below (WIN-001I); Linux adds its inventory in LNX-001I.
 Signing, release publishing and production deployment still need owner approval.
+
+## Windows app runtime inventory (WIN-001I)
+
+The Windows app links markdown_ffi.dll dynamically, built from the normal-dependency
+closure of markdown-ffi with model-v2 for x86_64-pc-windows-msvc: 42 of the Rust
+packages above (excluding the Unix-only libc). In addition, the self-contained Native AOT
+publish bundles the locked NuGet platform graph (19 packages).
+
+apps/windows/tools/licenses.py computes both inventories and writes them, alongside
+project and third-party license notices, to Licenses/ (LICENSE, THIRD-PARTY-NOTICES.txt,
+and inventory.json) inside the published app and local development artifact
+([details](../apps/windows/README.md#development-artifact-and-licenses-win-001i)).
+
+Rust packages linked: bitflags, block-buffer, cfg-if, cpufeatures, crypto-common,
+digest, form_urlencoded, generic-array, the seven icu_* packages, idna,
+idna_adapter, itoa, litemap, markdown-core, markdown-ffi, memchr, percent-encoding,
+potential_utf, pulldown-cmark, ryu, serde, serde_core, serde_json, sha2, smallvec,
+stable_deref_trait, tinystr, typenum, unicase, url, utf8_iter, writeable, yoke,
+zerofrom, zerotrie, zerovec.
 
 ## Windows shell NuGet graph
 
-WIN-001A uses the locked graph in `apps/windows/packages.lock.json` (19
+WIN-001A uses the locked graph in apps/windows/packages.lock.json (19
 unique package/version pairs, including build-only Native AOT tools). These
 Microsoft platform packages are reviewed separately from the core Rust
 allowlist. They are used for Windows development and local testing under
-their supplied terms; this is not distribution approval. WIN-001I must stage
-all required notices and redistribution terms for the actual package.
+their supplied terms; this is not distribution approval. WIN-001I stages
+all required notices and redistribution terms for the actual package into Licenses/.
 
 | Package | Version | License source |
 | --- | --- | --- |

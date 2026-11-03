@@ -1,6 +1,6 @@
 # Windows native shell
 
-WIN-001A, WIN-001B, WIN-001C, WIN-001D, WIN-001E, WIN-001F, WIN-001G, and WIN-001H provide an unpackaged Windows 11 x64 WinUI 3
+WIN-001A through WIN-001I provide an unpackaged Windows 11 x64 WinUI 3
 application in C# Native AOT linked against the local shared-core C ABI package
 (`markdown_ffi.dll`, model v2). It opens a native window with a menu bar: File
 (Open… Ctrl+O, Reload Ctrl+R, New Window Ctrl+N, Close Window Ctrl+W, Exit Ctrl+Shift+W),
@@ -74,10 +74,10 @@ python apps/windows/tools/check.py
 verifies C# formatting, publishes **Native AOT in Debug and Release**, verifies
 the staged core manifests and PE export tables, runs `--core-tests`,
 `--document-tests`, `--render-tests`, `--smoke`, and `apps/windows/tools/check_association.py` in
-both configurations, and copies the `Release` output to a temporary directory
-outside the checkout to run relocated `--document-tests`, `--render-tests`, `--smoke`,
-`check_association.py`, and `--core-probe single` without a repository at
-runtime.
+both configurations, and in `Release` packages the local unsigned development
+artifact, verifies it outside the checkout, and runs relocated
+`--document-tests`, `--render-tests`, `--smoke`, `check_association.py`,
+relaunch check, and `--core-probe single` without a repository at runtime.
 
 For direct staging and `dotnet publish` (adding Visual Studio Installer to
 `PATH` for Native AOT's `vswhere`):
@@ -99,8 +99,41 @@ WinUI generates the app PRI and `App.xbf` after publish items are collected;
 the project explicitly copies them after publish. Omitting either can cause
 a XAML startup failure. Do not distribute just the executable: the entire
 publish directory (including `markdown_ffi.dll`) is required. MSIX, signing and
-clean-machine distribution are WIN-001I work, and no release approval is
-claimed.
+clean-machine distribution require owner authorization; WIN-001I provides the local
+unsigned development artifact with complete license notices.
+
+## Development artifact and licenses (WIN-001I)
+
+```powershell
+python apps/windows/tools/artifact.py
+```
+
+packages the Release Native AOT build into an unsigned local development zip archive
+under `build/windows/artifacts/` (e.g. `Markdown-<version>-<commit>[-dirty]-windows-x64.zip`)
+alongside a cryptographic JSON record containing the artifact SHA-256 hash, byte size,
+source commit, dirty flag, toolchain versions (Rust, .NET SDK, Windows App SDK), and core
+library hash.
+
+Every assembled package and development artifact carries:
+
+- `Licenses/LICENSE`: project Apache-2.0 license.
+- `Licenses/THIRD-PARTY-NOTICES.txt`: third-party license notices for all 42 statically
+  linked Rust packages (`x86_64-pc-windows-msvc`, `model-v2`) and 19 locked NuGet platform
+  packages from `packages.lock.json`.
+- `Licenses/inventory.json`: machine-readable inventory of linked Rust and NuGet packages.
+- `BuildInfo.json`: build record with configuration, versions, hashes, and unsigned status.
+
+`artifact.py` verifies the development artifact by extracting it to a temporary directory
+outside the checkout and verifying:
+
+1. Directory layout and PE32+ x64 architecture for `Markdown.Windows.exe` and `markdown_ffi.dll`.
+2. Exact 24 exported `md_` symbols in `markdown_ffi.dll`.
+3. Unsigned status (no Authenticode certificate in the PE security directory).
+4. Zero build-machine path leaks across all packaged files.
+5. Completeness of license notices and inventory.
+6. Execution of relocated unit tests (`--document-tests`, `--render-tests`), Native AOT smoke
+   (`--smoke`), multi-process association check, two-phase relaunch restoration
+   (`--relaunch-check`), and single-session core probe without repository dependencies.
 
 The path-filtered `windows-native` CI job runs `apps/windows/tools/check.py` on
 `windows-latest`. The completion gate requires success whenever Windows is
@@ -227,3 +260,16 @@ Validated on Windows 11 Pro build 26300.9711, Ryzen 9 5950X x64, Rust 1.99.1,
   - **prose-1mib**: 168.91ms median refresh, `kept_place: true`, 95.25 MiB peak footprint.
   - **long-lines-1mib**: 24.70ms median refresh, `kept_place: true`, 28.60 MiB peak footprint.
   - **prose-5mib**: 996.00ms median refresh, `kept_place: true`, 363.02 MiB peak footprint.
+- **WIN-001I**: Debug and Release Native AOT builds passed all 20 core consumer tests,
+  14 document tests, 20 render tests, the 13-stage Native AOT smoke, file association checks,
+  and two-phase relaunch restoration. In Release, apps/windows/tools/licenses.py generated
+  the complete license inventory (42 statically linked Rust packages and 19 locked NuGet
+  platform packages) and third-party notices under Licenses/, alongside BuildInfo.json.
+  apps/windows/tools/artifact.py packaged the release build into an unsigned local
+  development zip artifact (`Markdown-0.1.0-<commit>-windows-x64.zip`), and verified it
+  relocated outside the checkout: confirming PE32+ x64 architecture, 24 exported `md_`
+  symbols, unsigned development status, zero leaked build-machine paths, license notices
+  integrity, relocated document tests (14 passed), render tests (20 passed), Native AOT
+  smoke, association check, real relaunch restoration, and core probe with 0 leaked handles.
+  Full walking skeleton acceptance across WIN-001A through WIN-001I is documented in
+  docs/Windows-Skeleton-Acceptance.md.

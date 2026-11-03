@@ -78,6 +78,8 @@ Start with:
   ownership, cancellation, debugging, GTK timing and relocatable packaging.
 - [macOS skeleton acceptance](docs/macOS-Skeleton-Acceptance.md) — MAC-001A
   to MAC-001I against the walking-skeleton slice, and what stays open.
+- [Windows skeleton acceptance](docs/Windows-Skeleton-Acceptance.md) — WIN-001A
+  to WIN-001I against the walking-skeleton slice, and what stays open.
 - [macOS rendering evaluation](docs/macOS-Rendering-Evaluation.md) — AppKit
   TextKit comparisons, native interaction, memory, and development bundles.
 - [Platform capability evaluation](docs/Platform-Capability-Evaluation.md) —

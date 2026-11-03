@@ -1,7 +1,8 @@
 # Agent Session and Platform Handoff
 
-Updated: 2026-11-02 (America/Denver), WIN-001H completed under D-029 (PR #60 closed out and merged into `develop`).
-Active Windows task: next eligible is `WIN-001I` (`60153c41-1692-4e54-ab8c-b336189a2dfc`), pass `9cd7e1b7-7ac4-46d6-bb1e-0c26a06690d8` completed, approved head `6ba3649` merged into `develop`.
+Updated: 2026-11-02 (America/Denver), WIN-001I completed under D-029 (PR #61 closed out and merged into `develop`).
+Active Windows task: next eligible is `WIN-001` (`d9d5fc63-260e-4bb0-8ac6-13a232a620f1`) aggregate milestone acceptance on Windows.
+Pass `f3def0d3-dc7b-4bd0-8fc1-59187910f68e` completed, approved head `9db9b06` merged into `develop`.
 `apps/windows/` (`Core/CoreFfi.cs`, `Core/CoreRuntime.cs`, `Core/CoreSnapshot.cs`,
 `Core/CoreDocument.cs`, `Core/CoreSession.cs`, `Document/DocumentAccess.cs`,
 `Document/DocumentWatcher.cs`, `Document/DocumentLoader.cs`, `Render/ReadingPosition.cs`,
@@ -34,9 +35,9 @@ Local `apps/windows/tools/check.py` passes in Debug, Release, and relocated Rele
 (20 core consumer tests, 14 document tests, 20 render tests, 13-stage Native AOT WinUI smoke,
 association checks, relaunch checks, and relocated core probe with 0 leaked handles).
 
-Next Windows task after WIN-001H merge: `WIN-001I` (Windows packaging, MSIX distribution, and smoke verification).
+Next Windows task after WIN-001I merge: `WIN-001` aggregate milestone acceptance on Windows (docs/Windows-Skeleton-Acceptance.md).
 
-Previous Windows task: `WIN-001G` merged in [PR #59](https://github.com/awesomejt/markdown/pull/59).
+Previous Windows task: `WIN-001H` merged in [PR #60](https://github.com/awesomejt/markdown/pull/60).
 
 Previous Linux handoff baseline: `develop` after PR #52; reviewed head `f12d2e5`, non-serious
 review fixes at `27e84df`, followed by one state/docs closeout. The merge SHA is
