@@ -85,8 +85,8 @@ read.
   outline target resolution 0.03ms (budget 150ms); copy slice 7.47ms and clipboard write 1.37ms
   for 1 MiB prose (< 10ms total); repeated 5x load/close cycles confirm full memory reclamation
   (RSS drops back to baseline ~19.1 MiB).
-- WIN-001H delivers Windows external file watching (`FileSystemWatcher` / `ReadDirectoryChangesW`
-  with 100ms debouncing, parent-directory fallback, burst coalescing, and error recovery),
+- WIN-001H (PR #60) delivers Windows external file watching (`FileSystemWatcher` / `ReadDirectoryChangesW`
+  with 100ms debouncing, parent-directory fallback with separator-aware `IsSubpathOrEqual` filtering, burst coalescing, and error recovery),
   external change detection (`CoreSession.ExternalChange` with `copyUnchanged: false` background check),
   anchor preservation and resolution (`CoreSnapshot` wrapping `md_snapshot` with deterministic non-blocking
   worker release), reading position retention across edits and reloads (`ReadingPosition`, `SavedPosition`),
@@ -94,8 +94,9 @@ read.
   and outline visibility to `%LOCALAPPDATA%\MarkdownReader\restoration.json`), deletion recovery (retaining
   stale view with warning banner, tracking file recreation), and automated two-phase relaunch verification
   (`--relaunch-check prepare`/`verify`). Automated refresh benchmark measurements (`apps/windows/tools/measure.py refresh --count 5`):
-  1 MiB prose median 168.91ms (`kept_place: true`, 95.25 MiB footprint), 1 MiB long lines median 24.70ms
-  (`kept_place: true`, 28.60 MiB footprint), 5 MiB prose median 996.00ms (`kept_place: true`, 363.02 MiB footprint).
+  1 MiB prose median 166.25ms (`kept_place: true`), 1 MiB long lines median 24.63ms
+  (`kept_place: true`), 5 MiB prose median 1011.11ms (`kept_place: true`). Grok reviews 1-4 on PR #60:
+  review 4 at `6ba3649` reported 0 Blockers, 0 Concerns, 0 Nits (clean approval under D-029).
 - Phase: `desktop-apps`; the portable-core shared track is complete through
   CORE-006 (GATE-001 approved, D-018). Native chains are now eligible (D-027).
 - Product: local-first, read-only native Markdown reader. Windows, macOS and

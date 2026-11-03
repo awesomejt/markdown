@@ -1,8 +1,7 @@
 # Agent Session and Platform Handoff
 
-Updated: 2026-11-02 (America/Denver), WIN-001H implementation, tests, and benchmarks complete; PR #60 open for Grok review.
-Active Windows task: `WIN-001H` (`4f59ed47-c146-4610-83d1-05d1a8e503bd`), pass
-`9cd7e1b7-7ac4-46d6-bb1e-0c26a06690d8`, branch `feat/win-001h-refresh-restoration`, based on `develop` at `bfbf5e6` (PR #59 merge).
+Updated: 2026-11-02 (America/Denver), WIN-001H completed under D-029 (PR #60 closed out and merged into `develop`).
+Active Windows task: next eligible is `WIN-001I` (`60153c41-1692-4e54-ab8c-b336189a2dfc`), pass `9cd7e1b7-7ac4-46d6-bb1e-0c26a06690d8` completed, approved head `6ba3649` merged into `develop`.
 `apps/windows/` (`Core/CoreFfi.cs`, `Core/CoreRuntime.cs`, `Core/CoreSnapshot.cs`,
 `Core/CoreDocument.cs`, `Core/CoreSession.cs`, `Document/DocumentAccess.cs`,
 `Document/DocumentWatcher.cs`, `Document/DocumentLoader.cs`, `Render/ReadingPosition.cs`,
