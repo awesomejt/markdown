@@ -271,6 +271,27 @@ public sealed partial class ReaderApp : Application
             _externalDeliveries++;
         }
 
+        if (Program.StartupInputs.Count == 0 &&
+            !Program.Smoke &&
+            !Program.AssociationSmoke &&
+            Program.RelaunchCheckPhase is null)
+        {
+            var restored = RestorationStore.Load();
+            if (restored.Count > 0)
+            {
+                var isFirst = true;
+                foreach (var st in restored)
+                {
+                    if (DocumentCapability.TryFromUserInput(st.FilePath, out var cap, out _) && cap is not null)
+                    {
+                        var target = isFirst ? window : NewWindow();
+                        isFirst = false;
+                        target.RestoreFromState(st, cap);
+                    }
+                }
+            }
+        }
+
         if (!Program.Smoke && Program.AssociationPipeName is not null)
         {
             StartAssociationPipeServer(Program.AssociationPipeName);
@@ -302,6 +323,10 @@ public sealed partial class ReaderApp : Application
         windows.Add(window);
         window.Closed += (_, _) =>
         {
+            if (windows.Count == 1 && windows.Contains(window))
+            {
+                SaveRestorationState();
+            }
             windows.Remove(window);
             if (windows.Count == 0)
             {
@@ -314,8 +339,40 @@ public sealed partial class ReaderApp : Application
         return window;
     }
 
+    internal void SaveRestorationState()
+    {
+        if (Program.Smoke || Program.AssociationSmoke || Program.RelaunchCheckPhase is not null)
+        {
+            return;
+        }
+
+        var activeStates = new List<WindowRestorationState>();
+        foreach (var w in windows)
+        {
+            if (w.Loader.HasFile && w.Loader.Capability is not null && w.Loader.Document is not null)
+            {
+                var saved = w.Reader.SavePosition(w.Loader.Document);
+                activeStates.Add(WindowRestorationState.Create(
+                    w.Loader.Capability.FullPath,
+                    saved,
+                    w.Preferences.TextScaleValue,
+                    w.Reader.IsOutlineVisible));
+            }
+        }
+
+        if (activeStates.Count > 0)
+        {
+            RestorationStore.Save(activeStates);
+        }
+        else
+        {
+            RestorationStore.Clear();
+        }
+    }
+
     internal void CloseAll()
     {
+        SaveRestorationState();
         Volatile.Write(ref _shuttingDown, true);
         SettingsWindow?.Close();
         foreach (var window in windows.ToArray())
@@ -1071,7 +1128,6 @@ public sealed partial class ReaderApp : Application
             await WaitWindowIdleAsync(restoredWindow);
             await Task.Delay(50);
 
-            var restoredVis = restoredWindow.Reader.FirstVisibleFragmentIndex();
             var restoredPlan = restoredWindow.Loader.Plan!;
             var restoredPart80Idx = -1;
             for (var i = 0; i < restoredWindow.Loader.Document!.OutlineCount; i++)
@@ -1083,6 +1139,17 @@ public sealed partial class ReaderApp : Application
                 }
             }
             var restoredTargetFrag = restoredPlan.Outline[restoredPart80Idx].Fragment;
+            var restoredVis = -1;
+            var swRestored = Stopwatch.StartNew();
+            while (swRestored.ElapsedMilliseconds < 3000)
+            {
+                restoredVis = restoredWindow.Reader.FirstVisibleFragmentIndex();
+                if (Math.Abs(restoredVis - restoredTargetFrag) <= 1)
+                {
+                    break;
+                }
+                await Task.Delay(25);
+            }
             if (Math.Abs(restoredVis - restoredTargetFrag) > 1)
             {
                 throw new InvalidOperationException($"Restored window top mismatch: vis={restoredVis}, target={restoredTargetFrag}");
@@ -1495,6 +1562,18 @@ internal sealed class ReaderWindow : Window
         });
     }
 
+    internal void RestoreFromState(WindowRestorationState state, DocumentCapability cap)
+    {
+        PendingRestorePosition = state.ToSavedPosition();
+        if (state.TextScale > 0)
+        {
+            Preferences.TextScaleValue = state.TextScale;
+            Reader.SetTextScale(state.TextScale);
+        }
+        Reader.IsOutlineVisible = state.OutlineShown;
+        OpenCapability(cap);
+    }
+
     internal void OpenCapability(DocumentCapability capability)
     {
         _watcher?.Dispose();
@@ -1552,6 +1631,13 @@ internal sealed class ReaderWindow : Window
         {
             return;
         }
+
+        SavedPosition? savedPos = PendingRestorePosition;
+        if (savedPos is null && _displayedDoc is not null)
+        {
+            savedPos = Reader.SavePosition(_displayedDoc);
+        }
+
         _ = Loader.Poll();
         Title = Loader.WindowTitle;
         ReloadItem.IsEnabled = Loader.HasFile;
@@ -1604,24 +1690,14 @@ internal sealed class ReaderWindow : Window
 
             if (Loader.Plan is { } plan)
             {
-                SavedPosition? savedPos = null;
-                if (PendingRestorePosition is not null)
-                {
-                    savedPos = PendingRestorePosition;
-                    PendingRestorePosition = null;
-                }
-                else if (_displayedDoc is not null)
-                {
-                    savedPos = Reader.SavePosition(_displayedDoc);
-                }
-
+                PendingRestorePosition = null;
                 var oldDoc = _displayedDoc;
                 _displayedDoc = doc;
+                Reader.InstallPlan(plan, doc.Generation, savedPos, doc);
                 if (oldDoc is not null && oldDoc != doc)
                 {
                     oldDoc.Dispose();
                 }
-                Reader.InstallPlan(plan, doc.Generation, savedPos, doc);
                 Reader.SetTextScale(Preferences.TextScaleValue);
                 Reader.Visibility = Visibility.Visible;
                 Welcome.Visibility = Visibility.Collapsed;

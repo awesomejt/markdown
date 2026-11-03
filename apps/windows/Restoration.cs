@@ -2,6 +2,7 @@ using System.IO;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Markdown.Windows.Core;
+using Markdown.Windows.Document;
 using Markdown.Windows.Render;
 
 namespace Markdown.Windows;
@@ -143,13 +144,22 @@ public static class RestorationStore
                     foreach (var item in arr.EnumerateArray())
                     {
                         var filePath = item.GetProperty("file_path").GetString() ?? string.Empty;
+                        if (string.IsNullOrWhiteSpace(filePath) ||
+                            !Path.IsPathRooted(filePath) ||
+                            !DocumentCapability.TryFromUserInput(filePath, out var validCap, out _) ||
+                            validCap is null)
+                        {
+                            continue;
+                        }
+
                         var topAnchor = item.TryGetProperty("top_anchor", out var t) ? t.GetString() ?? string.Empty : string.Empty;
                         var selStart = item.TryGetProperty("sel_start", out var ss) ? ss.GetString() : null;
                         var selEnd = item.TryGetProperty("sel_end", out var se) ? se.GetString() : null;
                         var scale = item.TryGetProperty("text_scale", out var ts) && ts.TryGetDouble(out var s) ? s : 1.0;
+                        scale = Math.Clamp(scale, 0.7, 2.0);
                         var outline = !item.TryGetProperty("outline_shown", out var os) || os.GetBoolean();
 
-                        list.Add(new WindowRestorationState(filePath, topAnchor, selStart, selEnd, scale, outline));
+                        list.Add(new WindowRestorationState(validCap.FullPath, topAnchor, selStart, selEnd, scale, outline));
                     }
                 }
             }

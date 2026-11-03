@@ -41,6 +41,7 @@ public sealed partial class ReaderControl : UserControl
     private bool _suppressOutlineSelection;
     private int _pendingFocusIndex = -1;
     private int _lastScrolledFragmentIndex = 0;
+    private long _lastScrolledTimestamp;
 
     private DocumentPosition? _dragAnchor;
     private bool _isDragging;
@@ -49,6 +50,12 @@ public sealed partial class ReaderControl : UserControl
     public Func<Uri, bool>? ExternalUriLauncher { get; set; }
 
     public ListView DocumentList => _documentList;
+    public bool IsOutlineVisible
+    {
+        get => _outlineList.Visibility == Visibility.Visible;
+        set => _outlineList.Visibility = value ? Visibility.Visible : Visibility.Collapsed;
+    }
+
     public ListView OutlineList => _outlineList;
     public IReadOnlyCollection<RowItem> BoundRows => _boundRows;
     public RenderPlan? CurrentPlan => _plan;
@@ -113,15 +120,18 @@ public sealed partial class ReaderControl : UserControl
 
     public int FirstVisibleFragmentIndex()
     {
-        if (_boundRows.Count == 0)
+        if (_lastScrolledFragmentIndex > 0)
         {
-            return _lastScrolledFragmentIndex;
+            var elapsedMs = (Stopwatch.GetTimestamp() - _lastScrolledTimestamp) * 1000.0 / Stopwatch.Frequency;
+            if (elapsedMs < 1000 && !_boundRows.Any(r => Math.Abs(r.ItemIndex - _lastScrolledFragmentIndex) <= 1))
+            {
+                return _lastScrolledFragmentIndex;
+            }
         }
 
-        if (_lastScrolledFragmentIndex > 0 &&
-            !_boundRows.Any(r => Math.Abs(r.ItemIndex - _lastScrolledFragmentIndex) <= 2))
+        if (_boundRows.Count == 0)
         {
-            return _lastScrolledFragmentIndex;
+            return Math.Max(0, _lastScrolledFragmentIndex);
         }
 
         RowItem? topRow = null;
@@ -157,7 +167,7 @@ public sealed partial class ReaderControl : UserControl
             return topRow.ItemIndex;
         }
 
-        return _lastScrolledFragmentIndex;
+        return Math.Max(0, _boundRows.Min(r => r.ItemIndex));
     }
 
     public void SetTextScale(double scale)
@@ -301,7 +311,7 @@ public sealed partial class ReaderControl : UserControl
 
     public SavedPosition? SavePosition(CoreDocument? document)
     {
-        if (document?.Snapshot is null || _plan is null || _plan.Fragments.Count == 0)
+        if (document is null || document.Snapshot is null || _plan is null || _plan.Fragments.Count == 0)
         {
             return null;
         }
@@ -478,6 +488,7 @@ public sealed partial class ReaderControl : UserControl
         }
 
         _lastScrolledFragmentIndex = fragmentIndex;
+        _lastScrolledTimestamp = Stopwatch.GetTimestamp();
         _documentList.ScrollIntoView(fragmentIndex, ScrollIntoViewAlignment.Leading);
         _documentList.UpdateLayout();
         if (_documentList.ContainerFromIndex(fragmentIndex) is RowItem row)

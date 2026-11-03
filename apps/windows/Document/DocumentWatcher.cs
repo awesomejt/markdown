@@ -19,6 +19,7 @@ public sealed class DocumentWatcher : IDisposable
     private readonly Action _callback;
 
     private FileSystemWatcher? _watcher;
+    private bool _isAncestorWatch;
     private Timer? _debounceTimer;
     private bool _disposed;
     private bool _scheduled;
@@ -65,21 +66,35 @@ public sealed class DocumentWatcher : IDisposable
 
             DisarmLocked();
 
-            if (string.IsNullOrEmpty(_directory) || !Directory.Exists(_directory))
+            var watchDir = _directory;
+            _isAncestorWatch = false;
+
+            if (string.IsNullOrEmpty(watchDir) || !Directory.Exists(watchDir))
             {
-                return;
+                while (!string.IsNullOrEmpty(watchDir) && !Directory.Exists(watchDir))
+                {
+                    watchDir = Path.GetDirectoryName(watchDir);
+                }
+
+                if (string.IsNullOrEmpty(watchDir) || !Directory.Exists(watchDir))
+                {
+                    return;
+                }
+
+                _isAncestorWatch = true;
             }
 
             try
             {
-                var watcher = new FileSystemWatcher(_directory)
+                var watcher = new FileSystemWatcher(watchDir)
                 {
-                    Filter = _fileName,
+                    Filter = _isAncestorWatch ? "*.*" : _fileName,
                     NotifyFilter = NotifyFilters.FileName |
+                                   NotifyFilters.DirectoryName |
                                    NotifyFilters.LastWrite |
                                    NotifyFilters.Size |
                                    NotifyFilters.CreationTime,
-                    IncludeSubdirectories = false,
+                    IncludeSubdirectories = _isAncestorWatch,
                 };
 
                 watcher.Changed += OnFileSystemEvent;
@@ -122,11 +137,31 @@ public sealed class DocumentWatcher : IDisposable
 
     private void OnFileSystemEvent(object sender, FileSystemEventArgs e)
     {
+        if (_isAncestorWatch)
+        {
+            if (Directory.Exists(_directory))
+            {
+                Arm();
+            }
+            ScheduleReport();
+            return;
+        }
+
         ScheduleReport();
     }
 
     private void OnFileSystemRenamed(object sender, RenamedEventArgs e)
     {
+        if (_isAncestorWatch)
+        {
+            if (Directory.Exists(_directory))
+            {
+                Arm();
+            }
+            ScheduleReport();
+            return;
+        }
+
         // If file was renamed from or to our target name
         if (string.Equals(e.Name, _fileName, StringComparison.OrdinalIgnoreCase) ||
             string.Equals(e.OldName, _fileName, StringComparison.OrdinalIgnoreCase))

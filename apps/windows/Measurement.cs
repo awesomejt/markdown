@@ -296,6 +296,7 @@ public static partial class Measurement
         }
 
         var middleHeading = initialPlan.Outline.Count / 2;
+        var expectedTitle = initialDoc.OutlineTitle(middleHeading);
         var middleFrag = initialPlan.Outline[middleHeading].Fragment;
         var middleOffset = initialPlan.SourceOffsetAt(new DocumentPosition(middleFrag, 0), initialDoc);
         var initialAnchor = initialDoc.AnchorAt(middleOffset) ?? throw new InvalidOperationException("failed to anchor middle heading");
@@ -306,36 +307,53 @@ public static partial class Measurement
         var baselineRssMib = Math.Round(proc.WorkingSet64 / (1024.0 * 1024.0), 2);
 
         var results = new JsonArray();
-        for (var iteration = 1; iteration <= count; iteration++)
+        try
         {
-            var bytesToWrite = (iteration % 2 == 1) ? edited : original;
-            var sw = Stopwatch.StartNew();
-            File.WriteAllBytes(docPath, bytesToWrite);
-
-            var readBytes = File.ReadAllBytes(docPath);
-            var parseRes = session.ParseBlocking(readBytes, null, copyUnchanged: false);
-            var newDoc = parseRes.Document ?? throw new InvalidOperationException("refresh parse failed");
-            var newPlan = RenderPlan.Build(newDoc, () => false);
-            _ = DwmFlush();
-            var refreshMs = sw.Elapsed.TotalMilliseconds;
-
-            var topRes = newDoc.ResolveAnchor(savedPosition.Top);
-            var restoredPos = topRes is not null ? newPlan.PositionAtSourceOffset(topRes.Value.SourceOffset, newDoc) : (DocumentPosition?)null;
-            var keptPlace = restoredPos is not null && restoredPos.Value.FragmentIndex >= 0;
-
-            proc.Refresh();
-            var currentRssMib = Math.Round(proc.WorkingSet64 / (1024.0 * 1024.0), 2);
-
-            results.Add((JsonNode)new JsonObject
+            for (var iteration = 1; iteration <= count; iteration++)
             {
-                ["iteration"] = iteration,
-                ["refresh_ms"] = Math.Round(refreshMs, 2),
-                ["kept_place"] = keptPlace,
-                ["baseline_footprint_mib"] = baselineRssMib,
-                ["footprint_mib"] = currentRssMib,
-            });
+                var bytesToWrite = (iteration % 2 == 1) ? edited : original;
+                var sw = Stopwatch.StartNew();
+                File.WriteAllBytes(docPath, bytesToWrite);
 
-            GC.Collect(2, GCCollectionMode.Aggressive, blocking: true, compacting: true);
+                var readBytes = File.ReadAllBytes(docPath);
+                var parseRes = session.ParseBlocking(readBytes, null, copyUnchanged: false);
+                using var newDoc = parseRes.Document ?? throw new InvalidOperationException("refresh parse failed");
+                var newPlan = RenderPlan.Build(newDoc, () => false);
+                _ = DwmFlush();
+                var refreshMs = sw.Elapsed.TotalMilliseconds;
+
+                var topRes = newDoc.ResolveAnchor(savedPosition.Top);
+                var restoredPos = topRes is not null ? newPlan.PositionAtSourceOffset(topRes.Value.SourceOffset, newDoc) : (DocumentPosition?)null;
+                var keptPlace = restoredPos is not null &&
+                                restoredPos.Value.FragmentIndex >= 0 &&
+                                (newPlan.Fragments[restoredPos.Value.FragmentIndex].Text.Contains(expectedTitle, StringComparison.Ordinal) ||
+                                 newPlan.Outline.Any(o => o.Title == expectedTitle && Math.Abs(o.Fragment - restoredPos.Value.FragmentIndex) <= 1));
+
+                proc.Refresh();
+                var currentRssMib = Math.Round(proc.WorkingSet64 / (1024.0 * 1024.0), 2);
+
+                results.Add((JsonNode)new JsonObject
+                {
+                    ["iteration"] = iteration,
+                    ["refresh_ms"] = Math.Round(refreshMs, 2),
+                    ["kept_place"] = keptPlace,
+                    ["baseline_footprint_mib"] = baselineRssMib,
+                    ["footprint_mib"] = currentRssMib,
+                });
+
+                GC.Collect(2, GCCollectionMode.Aggressive, blocking: true, compacting: true);
+            }
+        }
+        finally
+        {
+            initialDoc.Dispose();
+            try
+            {
+                File.WriteAllBytes(docPath, original);
+            }
+            catch
+            {
+            }
         }
 
         var report = new JsonObject
