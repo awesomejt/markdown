@@ -75,8 +75,9 @@ WinUI 3 and the Windows App SDK 2.5.1 throughout, completely avoiding general-pu
 WebViews for document rendering, maintaining strict UI-free isolation in the
 Core and Document layers, and validating all native behavior without JIT or CoreCLR.
 
-**Fresh native evidence.** At the `develop` head after PR #60 (`531765f`) plus
-WIN-001I implementation, `apps/windows/tools/check.py` passed on the host above:
+**Fresh native evidence.** At the `develop` head after PR #61
+(`5aeed91`, source unchanged; only docs and task state were edited),
+`apps/windows/tools/check.py` passed on the host above:
 
 - generated performance fixtures (`tools/generate_performance_fixtures.py`);
 - staged debug and release model-v2 core packages with PE export audits and zero path leaks;
@@ -95,5 +96,23 @@ WIN-001I implementation, `apps/windows/tools/check.py` passed on the host above:
   leaked handles).
 
 **Hosted CI.** The `windows-native` GitHub Actions workflow runs
-`apps/windows/tools/check.py` on `windows-latest`. All task PRs (PRs #53 to #60)
+`apps/windows/tools/check.py` on `windows-latest`. All task PRs (PRs #53 to #61)
 passed their native CI runs before merge under D-029.
+
+**Milestone.** The skeleton is the D-030 rule 3 boundary for Windows (and the
+8-PR cap has passed since `m-core-fix`). The milestone review follows this
+aggregate: freeze green `develop` with no task PR waiting as
+`review/<milestone>`, then Claude prepares the packet and only the owner
+merges into `main`. The open items above go into that packet.
+
+## Validation
+
+```powershell
+python apps/windows/tools/check.py
+python tools/check.py common
+```
+
+`check.py` ran on this host in debug and release at WIN-001I's head and
+again for the aggregate at `5aeed91`. Results and hosted runs are in the
+WIN-001I pass record and PR #61; aggregate evidence is recorded in the
+WIN-001 pass record upon closeout per the delivery workflow.

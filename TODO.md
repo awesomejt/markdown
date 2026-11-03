@@ -60,7 +60,7 @@ required MSVC C smoke, 5 MiB host source bound and measured encode/copy/working-
 costs. WIN-001C closed in PR #55 with native file opening, association delivery and
 generation-safe background loading. WIN-001D closed in PR #56 with native virtualized
 presentation and outline navigation. WIN-001E closed in PR #57 with tables, task lists,
-and folder-contained image resource policy. WIN-001F closed in PR #58 with native document find, theme switching, and text scaling; WIN-001G closed in PR #59 with large-document selection, native clipboard, UIA accessibility fixes, and performance budgets; WIN-001H closed in PR #60 with external file watching, change detection, anchors, reading position restoration, and relaunch checks; WIN-001I closed in PR #61 with [the development artifact, license inventory and relocated launch](apps/windows/README.md#development-artifact-and-licenses-win-001i) and [skeleton acceptance](docs/Windows-Skeleton-Acceptance.md). The WIN-001 aggregate is next on Windows.
+and folder-contained image resource policy. WIN-001F closed in PR #58 with native document find, theme switching, and text scaling; WIN-001G closed in PR #59 with large-document selection, native clipboard, UIA accessibility fixes, and performance budgets; WIN-001H closed in PR #60 with external file watching, change detection, anchors, reading position restoration, and relaunch checks; WIN-001I closed in PR #61 with [the development artifact, license inventory and relocated launch](apps/windows/README.md#development-artifact-and-licenses-win-001i) and [skeleton acceptance](docs/Windows-Skeleton-Acceptance.md). The WIN-001 aggregate closed in PR #62 ([aggregate evidence](docs/Windows-Skeleton-Acceptance.md#win-001-aggregate)); the Windows skeleton milestone review (D-030) is next on this Windows machine.
 The shared-core milestone boundary is reached:
 Claude prepares the combined packet for the owner under D-030; only the owner
 merges that milestone into `main`.
@@ -97,7 +97,7 @@ and explicit reference-syntax boundaries. CORE-006 closed in PR #38 with
 history and fresh three-OS all-feature release CI. The desktop chains are
 eligible; MAC-001A to MAC-001I closed in PRs #39 to #47 and the MAC-001 aggregate in PR #48. The macOS
 skeleton milestone review is next on this Mac. LNX-001A through LNX-001D closed in PRs #49 through #52, and LNX-001D1
-is next on Linux; WIN-001A through WIN-001I closed in PRs #53 to #61, and the WIN-001 aggregate is next on Windows. Inspect
+is next on Linux; WIN-001A through WIN-001I closed in PRs #53 to #61 and the WIN-001 aggregate in PR #62. The Windows skeleton milestone review is next on this Windows machine. Inspect
 state and `HANDOFF.md` before any pass. Scoped commits, pushes, PR updates and
 review requests are authorized; a Grok review with no serious finding approves
 a merge into `develop` (D-029); only the owner merges into `main` (D-030);
@@ -452,7 +452,9 @@ CORE-006 no longer carry. The three host chains are independent.
   external refresh, and a development package. Following FEAS-003, prove
   off-thread bounded parsing/cancellation and virtualized blocks with global
   selection and UIA reading order; exercise mixed DPI, font scaling and real
-  input frame pacing before accepting a large-document strategy.
+  input frame pacing before accepting a large-document strategy. Outcome:
+  C# Native AOT throughout with WinUI 3 and Windows App SDK 2.5.1
+  ([aggregate evidence](docs/Windows-Skeleton-Acceptance.md#win-001-aggregate)).
 - **MAC-001 — macOS single-document skeleton.** Equivalent native macOS slice
   with AppKit/SwiftUI responsibilities decided from measurements. Outcome:
   AppKit throughout, Settings included; SwiftUI stays allowed for later
