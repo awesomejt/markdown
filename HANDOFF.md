@@ -1,8 +1,8 @@
 # Agent Session and Platform Handoff
 
-Updated: 2026-11-02 (America/Denver), WIN-001 aggregate completed under D-029 (PR #62 closed out and merged into `develop`).
-Active task: Windows walking skeleton milestone review under D-030 (on Windows or macOS) or next execution task `LNX-001D1` (`a8f5c6e5-6b96-4df0-8cef-92aa70977a80`) early accessibility gate on Linux.
-Pass `184a8fd3-ebe0-4b4f-9723-d0dab21212d4` completed, approved head `76dacb1` merged into `develop`.
+Updated: 2026-11-02 (America/Denver), LNX-001D1 completed under D-029/D-035 (PR #63 closed out and merged into `develop`).
+Active task: Windows walking skeleton milestone review under D-030 (on Windows or macOS) or next execution task `LNX-001E` (`ae4d3668-a02d-41b5-a259-63b4416dad8b`) tables, task lists, and images on Linux.
+Pass `c388cf16-6ea9-454f-a9fd-c6974d0f34cd` completed, approved head `22277a1` merged into `develop`.
 `apps/windows/` (`Core/CoreFfi.cs`, `Core/CoreRuntime.cs`, `Core/CoreSnapshot.cs`,
 `Core/CoreDocument.cs`, `Core/CoreSession.cs`, `Document/DocumentAccess.cs`,
 `Document/DocumentWatcher.cs`, `Document/DocumentLoader.cs`, `Render/ReadingPosition.cs`,
@@ -287,11 +287,13 @@ done list is in [the memory archive](agents/Memory-Archive.md#handoffmd-phase-ha
   `60f0970` without re-review, all 5 threads resolved, and
   [fixed-head CI](https://github.com/awesomejt/markdown/actions/runs/41385009602)
   passed.
-- **Next on Linux:** LNX-001D1: prove document/heading semantics, off-screen
-  heading navigation and owner-confirmed Orca continuous reading beyond visible
-  rows on KDE Wayland. Preserve focus, reading order and basic selection.
-  Failure stops E and later rendering work and returns to the owner under D-017.
-  The Linux 001A–001C milestone review packet is now due under D-030; hand it
+- **Done:** LNX-001D1 in [PR #63](https://github.com/awesomejt/markdown/pull/63):
+  [document accessibility inspection and MVP scope under D-035](docs/Linux-Accessibility-Gate.md).
+  Automated AT-SPI probe confirms heading roles with level 1 in model order, paragraph roles,
+  and outline navigation focus; off-screen Orca structural heading navigation and continuous
+  reading are formally deferred to ADV-001 under owner decision D-035. Grok review 1 reported
+  0 blockers, 3 concerns, 1 nit; all findings addressed at `22277a1` with green CI. LNX-001E is next on Linux.
+  The Linux 001A–001C milestone review packet remains due under D-030; hand it
   to the owner along with the existing shared/Mac milestone work. This task
   authorizes no milestone merge into `main`.
 - **Next:** `desktop-apps` is active. No Mac task is eligible until

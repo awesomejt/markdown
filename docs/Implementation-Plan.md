@@ -154,14 +154,13 @@ Platform-specific early gate under D-017:
 
 | Delivery phase | Scope and acceptance evidence | Merged prerequisites |
 | --- | --- | --- |
-| LNX-001D1 | Prove native document/heading semantics, off-screen heading navigation and continuous reading beyond visible rows with AT-SPI inspection and owner-confirmed Orca behavior on the KDE Wayland baseline; retain correct focus, reading order and basic selection | LNX-001D |
+| LNX-001D1 | Prove native document/heading semantics and reading order with AT-SPI inspection, with outline navigation and fragment selection via native smoke; off-screen Orca structural heading navigation and continuous reading deferred to post-MVP under owner decision D-035 | LNX-001D |
 
-On Linux the chain is LNX-001D, LNX-001D1, then LNX-001E. Do not deepen the
-Linux renderer before that proof. If it fails, stop those dependent phases,
-record the failing behavior and return to the owner for a native accessibility
-design revision or explicit renderer decision. App-level shortcuts alone do
-not establish screen-reader heading navigation or continuous reading. Other
-desktop environments remain later coverage under the accepted MVP baseline.
+On Linux the chain is LNX-001D, LNX-001D1, then LNX-001E. LNX-001D1 is
+satisfied for MVP scope under D-035 by automated AT-SPI inspection proving GTK
+heading/paragraph semantics and reading order, and native smoke proving outline navigation
+and fragment selection; off-screen Orca structural navigation and continuous reading are
+deferred to post-MVP (ADV-001). LNX-001E follows.
 
 Use measured platform strategies: Windows must prove global selection/UIA and
 mixed-DPI behavior; Linux must prove cross-block selection/AT-SPI on supported

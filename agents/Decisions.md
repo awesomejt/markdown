@@ -775,3 +775,21 @@ unchanged. A spoofing value can use a joiner between visible characters, as
 file names already can, but not a bidi control. File names still flag tag characters, flags included.
 The frozen corpus and goldens contain none of these characters, so none
 changed.
+
+## D-035 — Linux Native Reader MVP Scope: Defer Orca Screen-Reader Continuous Reading to Post-MVP
+
+**Date:** 2026-11-02
+
+**Status:** accepted by owner
+
+**Context:** D-017 established an early stop-point gate (`LNX-001D1`) to evaluate GTK 4's virtualized `GtkListView` for screen-reader accessibility before deepening the native Linux renderer. Automated AT-SPI inspection (`apps/linux/tools/probe_accessibility.py`) and testing on the KDE Wayland baseline confirmed that while GTK 4 correctly exposes semantic `Heading` roles with levels, `Paragraph` roles, model reading order for realized fragments, outline sidebar navigation, and native GTK within-fragment selection, GTK's lazy row virtualization does not expose off-screen headings or allow unbroken continuous reading (Say All) without manual scrolling. Whole-document screen-reader traversal across virtualized rows would require constructing a custom AT-SPI document tree or waiting for advanced GTK 4.22+ accessible text APIs.
+
+**Decision:** The project owner directed that MVP delivery must minimize Orca work and not focus on deep screen-reader traversal for the initial product release, prioritizing visual document fidelity, tables, task lists, images, find, and workspace navigation.
+
+- The `LNX-001D1` early gate is satisfied for MVP scope by:
+  1. Automated AT-SPI inspection proving GTK semantic `Heading` roles with correct levels, `Paragraph` roles, and model reading order for realized fragments, with outline navigation focus and within-fragment selection proven via native smoke.
+  2. Documenting the measured architectural limitation of `GtkListView` row virtualization in `docs/Linux-Accessibility-Gate.md`.
+  3. Formally deferring off-screen Orca structural heading navigation (`H`) and unbroken continuous reading (Say All) to post-MVP (`ADV-001` reading refinement and accessibility parity).
+- Linux native renderer deepening (`LNX-001E` tables/task lists/images and `LNX-001F` find/settings) is unblocked to proceed using the GTK 4 native virtualized architecture.
+
+**Consequences:** Linux implementation advances along the accepted delivery plan without blocking on screen-reader architecture redesign or substituting a general-purpose WebView. Assistive technology on Linux can access focused on-screen content and use the outline sidebar for section navigation, while whole-document continuous reading across off-screen rows remains documented for post-MVP remediation.
