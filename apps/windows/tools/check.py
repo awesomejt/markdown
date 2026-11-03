@@ -2,14 +2,16 @@
 """Stage the Windows core packages, verify formatting, and publish/exercise the Native AOT shell."""
 from __future__ import annotations
 
+import json
 import os
 from pathlib import Path
-import shutil
 import subprocess
 import sys
 import tempfile
 
+from artifact import build_info, package, verify as verify_artifact
 from check_association import check_association
+from licenses import write_notices
 from package_core import prepare_core, verify
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -89,6 +91,10 @@ def main() -> None:
         if not (output / "markdown_ffi.dll").is_file():
             raise SystemExit(f"Missing staged markdown_ffi.dll in {output}")
 
+        write_notices(output)
+        info = build_info(configuration)
+        (output / "BuildInfo.json").write_text(json.dumps(info, indent=2) + "\n", encoding="utf-8")
+
         exe = str(output / "Markdown.Windows.exe")
         run_app([exe, "--core-tests"], cwd=output, env=env, timeout=180)
         run_app([exe, "--document-tests"], cwd=output, env=env, timeout=120)
@@ -100,17 +106,25 @@ def main() -> None:
         # window, document, top line and selection restored (WIN-001H).
         with tempfile.TemporaryDirectory(prefix="markdown-windows-relaunch-") as directory:
             relaunch_doc = Path(directory) / "live.md"
-            sections = "\n\n".join(f"## Part {part}\n\nProse for part {part}, with a *marked* word."
-                                   for part in range(120))
+            sections = "\n\n".join(
+                f"## Part {part}\n\nProse for part {part}, with a *marked* word." for part in range(120)
+            )
             relaunch_doc.write_text(f"# Live\n\n{sections}\n", encoding="utf-8")
             restoration_store_path = Path(directory) / "restoration.json"
             relaunch_env = dict(env)
             relaunch_env["MARKDOWN_RESTORATION_PATH"] = str(restoration_store_path)
-            for phase, marker in (("prepare", "relaunch-check: prepared"),
-                                  ("verify", "relaunch-check: pass (restored window, document, top line and selection)")):
+            for phase, marker in (
+                ("prepare", "relaunch-check: prepared"),
+                ("verify", "relaunch-check: pass (restored window, document, top line and selection)"),
+            ):
                 result = subprocess.run(
                     [exe, "--relaunch-check", phase, str(relaunch_doc)],
-                    cwd=directory, env=relaunch_env, text=True, capture_output=True, timeout=30)
+                    cwd=directory,
+                    env=relaunch_env,
+                    text=True,
+                    capture_output=True,
+                    timeout=30,
+                )
                 print(result.stdout, end="", flush=True)
                 if result.returncode != 0 or marker not in result.stdout:
                     print(result.stderr, end="", flush=True)
@@ -122,36 +136,11 @@ def main() -> None:
             flush=True,
         )
 
+    # Release development artifact packaging and relocated verification (WIN-001I)
     release_output = ROOT / "build/windows/Release"
-    with tempfile.TemporaryDirectory(prefix="markdown-windows-relocated-") as temp_root:
-        relocated = Path(temp_root) / "app"
-        shutil.copytree(release_output, relocated)
-        relocated_exe = str(relocated / "Markdown.Windows.exe")
-        run_app([relocated_exe, "--document-tests"], cwd=relocated, env=env, timeout=120)
-        run_app([relocated_exe, "--render-tests"], cwd=relocated, env=env, timeout=120)
-        run_app([relocated_exe, "--smoke"], cwd=relocated, env=env, timeout=60)
-        check_association(relocated / "Markdown.Windows.exe")
-
-        with tempfile.TemporaryDirectory(prefix="markdown-windows-relaunch-") as directory:
-            relaunch_doc = Path(directory) / "live.md"
-            sections = "\n\n".join(f"## Part {part}\n\nProse for part {part}, with a *marked* word."
-                                   for part in range(120))
-            relaunch_doc.write_text(f"# Live\n\n{sections}\n", encoding="utf-8")
-            restoration_store_path = Path(directory) / "restoration.json"
-            relaunch_env = dict(env)
-            relaunch_env["MARKDOWN_RESTORATION_PATH"] = str(restoration_store_path)
-            for phase, marker in (("prepare", "relaunch-check: prepared"),
-                                  ("verify", "relaunch-check: pass (restored window, document, top line and selection)")):
-                result = subprocess.run(
-                    [relocated_exe, "--relaunch-check", phase, str(relaunch_doc)],
-                    cwd=directory, env=relaunch_env, text=True, capture_output=True, timeout=30)
-                print(result.stdout, end="", flush=True)
-                if result.returncode != 0 or marker not in result.stdout:
-                    print(result.stderr, end="", flush=True)
-                    raise SystemExit(f"relocated: relaunch check {phase} failed")
-
-        run_app([relocated_exe, "--core-probe", "single"], cwd=relocated, env=env, timeout=60)
-        print("Release: relocated Native AOT document tests, render tests, smoke, association, relaunch restoration, and core-probe passed", flush=True)
+    archive = package(release_output)
+    verify_artifact(archive, env=env)
+    print("Release: development artifact created and verified relocated", flush=True)
 
 
 if __name__ == "__main__":
