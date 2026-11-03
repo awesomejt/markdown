@@ -1,11 +1,11 @@
 contract_version: project-state/v1
-revision: 749
+revision: 750
 project: &id003
   concurrency_limit: 1
   created_at: '2026-10-24T23:34:09.871478+00:00'
   project_ref: markdown-native
-  status: active
-  updated_at: '2026-11-03T02:56:26.939639+00:00'
+  status: working
+  updated_at: '2026-11-03T03:17:59.452796+00:00'
   workflow_id: native-app-development
   workflow_version: '2'
 phases: &id005
@@ -336,7 +336,7 @@ tasks:
     validation_expectations: Release-mode Rust/FFI lifecycle, error, cancellation and version tests pass
       in hosted CI on macOS, Linux and Windows; compiled C smoke on macOS/Linux (the MSVC smoke is WIN-001B).
   - &id081
-    active_pass_ref: null
+    active_pass_ref: 184a8fd3-ebe0-4b4f-9723-d0dab21212d4
     blockers: []
     completed_at: null
     created_at: '2026-10-24T23:34:34.264228+00:00'
@@ -346,10 +346,10 @@ tasks:
     phase: desktop-apps
     priority: 100
     role: implementer
-    status: pending
+    status: working
     task_key: WIN-001
     title: Build Windows single-document skeleton
-    updated_at: '2026-10-28T18:56:14.094236+00:00'
+    updated_at: '2026-11-03T03:17:59.452796+00:00'
     validation_expectations: Basic corpus, native interaction, accessibility, refresh, restoration and
       package pass; includes the native CI job (001A) and release-mode core package consumer (001B) evidence
       that CORE-001 and CORE-006 no longer carry (D-027), on Windows.
@@ -7941,44 +7941,30 @@ passes:
     completed_at: '2026-11-03T02:56:26.939639+00:00'
     lease_expires_at: null
     lease_version: 1
+  - &id082
+    id: 184a8fd3-ebe0-4b4f-9723-d0dab21212d4
+    sequence: 125
+    task_ref: d9d5fc63-260e-4bb0-8ac6-13a232a620f1
+    phase_ref: 1c2f7cf2-feeb-4b8d-b741-2aaaa890bbaa
+    actor: antigravity-windows
+    status: active
+    outcome: null
+    objective: Record WIN-001 Windows single-document walking skeleton aggregate acceptance evidence across
+      WIN-001A through WIN-001I, verify fresh local checks on develop, and complete the milestone under
+      D-029.
+    summary: null
+    handoff: null
+    validation_result: null
+    evidence: {}
+    participants: []
+    blocker: null
+    execution_record: {}
+    started_at: '2026-11-03T03:17:59.452796+00:00'
+    last_heartbeat_at: null
+    completed_at: null
+    lease_expires_at: '2026-11-03T03:47:59.452796+00:00'
+    lease_version: 1
 idempotency:
-  core-001-nits-20261029:
-    fingerprint: 93b22c158e4f8d4aa7fb73218737062ec979f357ca01a851795d60d4569cce6b
-    response:
-      contract_version: project-state/v1
-      operation: start_pass
-      revision: 650
-      data:
-        pass: *id001
-        task: *id002
-      snapshot:
-        contract_version: project-state/v1
-        snapshot_at: '2026-10-30T02:19:53.059010+00:00'
-        revision: 650
-        project: *id003
-        current_phase: *id004
-        phases: *id005
-        active_tasks:
-          - *id002
-        working_tasks_without_active_lease: []
-        active_passes:
-          - *id001
-        stale_passes: []
-        blocked_tasks: []
-        eligible_tasks: []
-        latest_pass: *id001
-        queue_counts:
-          by_status:
-            completed: 40
-            working: 1
-            pending: 50
-          total: 91
-          active_passes: 1
-          stale_passes: 0
-          eligible: 0
-          blocked: 0
-        warnings: []
-        recommended_action: resume_active
   core-001-nits-ready-20261029:
     fingerprint: dbd0c083a713c3e45e9cdc3fe78b449ebc7f5248f24ec43a5dc18bbb1bfc21b4
     response:
@@ -11666,3 +11652,41 @@ idempotency:
           blocked: 0
         warnings: []
         recommended_action: select_new_task
+  win001-start-20261102:
+    fingerprint: ed80567bdf9973e133bd390d3ccdf282e52cd01a1f4611ca0ff4e4e3313bed3d
+    response:
+      contract_version: project-state/v1
+      operation: start_pass
+      revision: 750
+      data:
+        pass: *id082
+        task: *id081
+      snapshot:
+        contract_version: project-state/v1
+        snapshot_at: '2026-11-03T03:17:59.452856+00:00'
+        revision: 750
+        project: *id003
+        current_phase: *id023
+        phases: *id005
+        active_tasks:
+          - *id081
+        working_tasks_without_active_lease: []
+        active_passes:
+          - *id082
+        stale_passes: []
+        blocked_tasks: []
+        eligible_tasks:
+          - *id060
+        latest_pass: *id082
+        queue_counts:
+          by_status:
+            completed: 69
+            working: 1
+            pending: 21
+          total: 91
+          active_passes: 1
+          stale_passes: 0
+          eligible: 1
+          blocked: 0
+        warnings: []
+        recommended_action: resume_active

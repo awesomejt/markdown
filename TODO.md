@@ -452,7 +452,9 @@ CORE-006 no longer carry. The three host chains are independent.
   external refresh, and a development package. Following FEAS-003, prove
   off-thread bounded parsing/cancellation and virtualized blocks with global
   selection and UIA reading order; exercise mixed DPI, font scaling and real
-  input frame pacing before accepting a large-document strategy.
+  input frame pacing before accepting a large-document strategy. Outcome:
+  C# Native AOT throughout with WinUI 3 and Windows App SDK 2.5.1
+  ([aggregate evidence](docs/Windows-Skeleton-Acceptance.md#win-001-aggregate)).
 - **MAC-001 — macOS single-document skeleton.** Equivalent native macOS slice
   with AppKit/SwiftUI responsibilities decided from measurements. Outcome:
   AppKit throughout, Settings included; SwiftUI stays allowed for later
