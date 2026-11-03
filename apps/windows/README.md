@@ -101,37 +101,39 @@ a XAML startup failure. Do not distribute just the executable: the entire
 publish directory (including `markdown_ffi.dll`) is required. MSIX, signing and
 clean-machine distribution require owner authorization; WIN-001I provides the local
 unsigned development artifact with complete license notices.
+
 ## Development artifact and licenses (WIN-001I)
 
-`powershell
+```powershell
 python apps/windows/tools/artifact.py
-`
+```
 
 packages the Release Native AOT build into an unsigned local development zip archive
-under uild/windows/artifacts/ (e.g. Markdown-<version>-<commit>[-dirty]-windows-x64.zip)
+under `build/windows/artifacts/` (e.g. `Markdown-<version>-<commit>[-dirty]-windows-x64.zip`)
 alongside a cryptographic JSON record containing the artifact SHA-256 hash, byte size,
 source commit, dirty flag, toolchain versions (Rust, .NET SDK, Windows App SDK), and core
 library hash.
 
 Every assembled package and development artifact carries:
-- Licenses/LICENSE: project Apache-2.0 license.
-- Licenses/THIRD-PARTY-NOTICES.txt: third-party license notices for all 42 statically
-  linked Rust packages (x86_64-pc-windows-msvc, model-v2) and 19 locked NuGet platform
-  packages from packages.lock.json.
-- Licenses/inventory.json: machine-readable inventory of linked Rust and NuGet packages.
-- BuildInfo.json: build record with configuration, versions, hashes, and unsigned status.
 
-rtifact.py verifies the development artifact by extracting it to a temporary directory
+- `Licenses/LICENSE`: project Apache-2.0 license.
+- `Licenses/THIRD-PARTY-NOTICES.txt`: third-party license notices for all 42 statically
+  linked Rust packages (`x86_64-pc-windows-msvc`, `model-v2`) and 19 locked NuGet platform
+  packages from `packages.lock.json`.
+- `Licenses/inventory.json`: machine-readable inventory of linked Rust and NuGet packages.
+- `BuildInfo.json`: build record with configuration, versions, hashes, and unsigned status.
+
+`artifact.py` verifies the development artifact by extracting it to a temporary directory
 outside the checkout and verifying:
-1. Directory layout and PE32+ x64 architecture for Markdown.Windows.exe and markdown_ffi.dll.
-2. Exact 24 exported md_ symbols in markdown_ffi.dll.
+
+1. Directory layout and PE32+ x64 architecture for `Markdown.Windows.exe` and `markdown_ffi.dll`.
+2. Exact 24 exported `md_` symbols in `markdown_ffi.dll`.
 3. Unsigned status (no Authenticode certificate in the PE security directory).
 4. Zero build-machine path leaks across all packaged files.
 5. Completeness of license notices and inventory.
-6. Execution of relocated unit tests (--document-tests, --render-tests), Native AOT smoke
-   (--smoke), multi-process association check, two-phase relaunch restoration
-   (--relaunch-check), and single-session core probe without repository dependencies.
-
+6. Execution of relocated unit tests (`--document-tests`, `--render-tests`), Native AOT smoke
+   (`--smoke`), multi-process association check, two-phase relaunch restoration
+   (`--relaunch-check`), and single-session core probe without repository dependencies.
 
 The path-filtered `windows-native` CI job runs `apps/windows/tools/check.py` on
 `windows-latest`. The completion gate requires success whenever Windows is
