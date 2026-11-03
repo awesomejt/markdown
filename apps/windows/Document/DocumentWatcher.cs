@@ -135,6 +135,25 @@ public sealed class DocumentWatcher : IDisposable
         }
     }
 
+    private static bool IsSubpathOrEqual(string child, string parent)
+    {
+        if (string.Equals(child, parent, StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        if (child.StartsWith(parent, StringComparison.OrdinalIgnoreCase) && parent.Length < child.Length)
+        {
+            var nextChar = child[parent.Length];
+            if (nextChar == Path.DirectorySeparatorChar || nextChar == Path.AltDirectorySeparatorChar)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     private bool IsRelevantPath(string? path)
     {
         if (string.IsNullOrEmpty(path))
@@ -142,13 +161,17 @@ public sealed class DocumentWatcher : IDisposable
             return false;
         }
 
-        if (path.StartsWith(_directory, StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(path, _fullPath, StringComparison.OrdinalIgnoreCase))
+        if (string.Equals(path, _fullPath, StringComparison.OrdinalIgnoreCase))
         {
             return true;
         }
 
-        if (_directory.StartsWith(path, StringComparison.OrdinalIgnoreCase))
+        if (IsSubpathOrEqual(path, _directory))
+        {
+            return true;
+        }
+
+        if (IsSubpathOrEqual(_directory, path))
         {
             return true;
         }
