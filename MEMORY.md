@@ -278,9 +278,10 @@ read.
   floor; local Wayland/X11 debug/release suites pass 12 loader, 8 render and
   15 core tests per build plus native smokes. Grok review 1 has no high/critical
   finding; non-serious fixes are at `27e84df`. Reload-position restoration is
-  deferred to H in TODO.md. LNX-001D1 is now the next mandatory Linux gate:
-  AT-SPI and owner-confirmed Orca navigation/continuous reading beyond realized
-  rows must pass before deeper E/F work. Native role checks are not that proof.
+  deferred to H in TODO.md. LNX-001D1 is closed under D-035 in PR #63: automated
+  AT-SPI inspection verifies heading/paragraph semantics and reading order, with
+  off-screen Orca structural navigation and continuous reading deferred to ADV-001.
+  LNX-001E (tables, task lists, images) is next on Linux.
 - Workflow: task PRs target `develop` and merge on a Grok review with no
   serious finding (D-029). `main` takes only owner-approved milestone reviews
   from `review/<milestone>`, tagged `m-<milestone>` (D-030). The shared-core
