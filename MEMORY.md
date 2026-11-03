@@ -97,6 +97,16 @@ read.
   1 MiB prose median 166.25ms (`kept_place: true`), 1 MiB long lines median 24.63ms
   (`kept_place: true`), 5 MiB prose median 1011.11ms (`kept_place: true`). Grok reviews 1-4 on PR #60:
   review 4 at `6ba3649` reported 0 Blockers, 0 Concerns, 0 Nits (clean approval under D-029).
+- WIN-001I (PR #61) delivers the Windows unsigned local development artifact
+  (`build/windows/artifacts/Markdown-0.1.0-<commit>-windows-x64.zip`), complete license
+  inventory (`Licenses/inventory.json` for 42 linked Rust packages and 19 locked NuGet platform packages)
+  and third-party notices (`Licenses/THIRD-PARTY-NOTICES.txt`), build record (`BuildInfo.json`),
+  and zero build-machine path leaks via `/PDBALTPATH:Markdown.Windows.pdb`. Relocated extraction
+  and launch verification outside the checkout passed all 20 core consumer tests, 14 document tests,
+  20 render tests, 13-stage Native AOT smoke, file association check, two-phase relaunch restoration,
+  and relocated core probe with 0 leaked handles. Full walking skeleton acceptance across WIN-001A
+  through WIN-001I is documented in `docs/Windows-Skeleton-Acceptance.md`. Grok reviews 1 and 2:
+  review 2 at `d57dc8f` reported 0 Blockers, 0 Concerns, 0 Nits (clean approval under D-029).
 - Phase: `desktop-apps`; the portable-core shared track is complete through
   CORE-006 (GATE-001 approved, D-018). Native chains are now eligible (D-027).
 - Product: local-first, read-only native Markdown reader. Windows, macOS and
