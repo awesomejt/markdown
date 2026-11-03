@@ -1,8 +1,8 @@
 # Agent Session and Platform Handoff
 
-Updated: 2026-11-02 (America/Denver), LNX-001D1 completed under D-029/D-035 (PR #63 closed out and merged into `develop`).
-Active task: Windows walking skeleton milestone review under D-030 (on Windows or macOS) or next execution task `LNX-001E` (`ae4d3668-a02d-41b5-a259-63b4416dad8b`) tables, task lists, and images on Linux.
-Pass `c388cf16-6ea9-454f-a9fd-c6974d0f34cd` completed, approved head `22277a1` merged into `develop`.
+Updated: 2026-11-03 (America/Denver), LNX-001E completed under D-029 (PR #64 closed out and merged into `develop`).
+Active task: Next execution task `LNX-001F` (`1ff3b387-6d0d-408f-a329-5c154fea1126`) document find, theme and text controls on Linux, or Windows walking skeleton milestone review under D-030 (on Windows or macOS).
+Pass `5126990c-85a7-4a06-bc81-c89976b21cb3` completed, approved head `fcfc2a9` merged into `develop`.
 `apps/windows/` (`Core/CoreFfi.cs`, `Core/CoreRuntime.cs`, `Core/CoreSnapshot.cs`,
 `Core/CoreDocument.cs`, `Core/CoreSession.cs`, `Document/DocumentAccess.cs`,
 `Document/DocumentWatcher.cs`, `Document/DocumentLoader.cs`, `Render/ReadingPosition.cs`,
@@ -35,9 +35,9 @@ Local `apps/windows/tools/check.py` passes in Debug, Release, and relocated Rele
 (20 core consumer tests, 14 document tests, 20 render tests, 13-stage Native AOT WinUI smoke,
 association checks, relaunch checks, and relocated core probe with 0 leaked handles).
 
-Next Windows task after WIN-001 aggregate merge: Windows walking skeleton milestone review (D-030). Next execution task: `LNX-001D1` early accessibility gate on Linux.
+Next Windows task after WIN-001 aggregate merge: Windows walking skeleton milestone review (D-030). Next execution task: `LNX-001F` document find, theme and text controls on Linux.
 
-Previous Windows task: `WIN-001I` merged in [PR #61](https://github.com/awesomejt/markdown/pull/61).
+Previous Linux task: `LNX-001E` merged in [PR #64](https://github.com/awesomejt/markdown/pull/64). Previous Windows task: `WIN-001I` merged in [PR #61](https://github.com/awesomejt/markdown/pull/61).
 
 Previous Linux handoff baseline: `develop` after PR #52; reviewed head `f12d2e5`, non-serious
 review fixes at `27e84df`, followed by one state/docs closeout. The merge SHA is

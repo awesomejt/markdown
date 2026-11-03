@@ -281,7 +281,20 @@ read.
   deferred to H in TODO.md. LNX-001D1 is closed under D-035 in PR #63: automated
   AT-SPI inspection verifies heading/paragraph semantics and reading order, with
   off-screen Orca structural navigation and continuous reading deferred to ADV-001.
-  LNX-001E (tables, task lists, images) is next on Linux.
+  LNX-001E is merged. LNX-001F (document find, theme and text controls) is next on Linux.
+- LNX-001E (PR #64): delivers Linux native tables (tab-separated cell rows for
+  native TSV clipboard copying, monospace font, bold header row, table-relative
+  zebra striping), read-only task list markers (`☑` / `☐`) with accent/muted
+  styling and accessible text, and strict folder-contained image resource policy
+  (`DocumentResources`) with raster format validation (PNG, JPEG, GIF, BMP, WebP),
+  SVG/XML rejection (`UnsupportedType`), canonicalize→open TOCTOU hardening via
+  `/proc/self/fd` containment re-check, 32 MP dimension bomb and 2048px side caps,
+  128-image count and 128 MiB memory budget, alt-text status messages naming no
+  paths, shared `Arc<[u8]>` image data reuse with bounded deduplication accounting,
+  and native `gtk::Picture` rendering of decoded GDK textures with per-reader caching
+  and `Undecodable` failure surfacing. Grok review 3 at `fcfc2a9` reported 0 Blockers,
+  0 Concerns, 0 Nits (clean approval under D-029). LNX-001F (document find, theme
+  and text controls) is next on Linux.
 - Workflow: task PRs target `develop` and merge on a Grok review with no
   serious finding (D-029). `main` takes only owner-approved milestone reviews
   from `review/<milestone>`, tagged `m-<milestone>` (D-030). The shared-core
