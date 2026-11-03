@@ -153,6 +153,12 @@ public sealed unsafe partial class CoreSession : IDisposable
 
     public ulong RecordUnavailable(CoreUnavailability change) => _inner.RecordUnavailable(change);
 
+    public CoreChangeDisposition ExternalChange(string? token) =>
+        ExternalChange(token is null ? null : Encoding.UTF8.GetBytes(token));
+
+    public CoreChangeDisposition ExternalChange(byte[]? token) =>
+        _inner.ExternalChange(token);
+
     public CoreAvailability Availability() => _inner.Availability();
 
     public ParseRequest Parse(
@@ -457,6 +463,46 @@ internal sealed unsafe partial class SessionInner
         }
     }
 
+    public CoreChangeDisposition ExternalChange(byte[]? token)
+    {
+        lock (_lock)
+        {
+            if (_handle == 0)
+            {
+                throw CoreException.SessionClosed();
+            }
+
+            var tokenBytes = token ?? [];
+            uint disposition = 0;
+            ulong generation = 0;
+            uint status;
+            fixed (byte* ptr = tokenBytes)
+            {
+                status = CoreFfi.md_session_external_change(
+                    _handle,
+                    CoreFfi.MD_CHANGE_MODIFIED,
+                    CoreFfi.MD_REASON_NONE,
+                    ptr,
+                    (nuint)tokenBytes.Length,
+                    &disposition,
+                    &generation);
+            }
+
+            if (status != CoreFfi.MD_OK)
+            {
+                throw CoreException.FromStatus("md_session_external_change", status);
+            }
+
+            return disposition switch
+            {
+                CoreFfi.MD_DISPOSITION_UNCHANGED => CoreChangeDisposition.Unchanged,
+                CoreFfi.MD_DISPOSITION_READ_REQUIRED => CoreChangeDisposition.ReadRequired,
+                CoreFfi.MD_DISPOSITION_PENDING => CoreChangeDisposition.Pending,
+                _ => throw CoreException.InvalidSnapshot($"unexpected external_change disposition {disposition}"),
+            };
+        }
+    }
+
     public CoreAvailability Availability()
     {
         lock (_lock)
@@ -669,7 +715,9 @@ internal sealed unsafe partial class SessionInner
                 }
                 tEncoded = Stopwatch.GetTimestamp();
 
-                document = CoreDocument.CopyFromView(in view, Limits.MaxSnapshotCopyBytes);
+                var owner = new CoreSnapshot(snapshot);
+                snapshot = 0;
+                document = CoreDocument.CopyFromView(in view, Limits.MaxSnapshotCopyBytes, owner);
                 tCopied = Stopwatch.GetTimestamp();
             }
 

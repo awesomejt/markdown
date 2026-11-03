@@ -34,6 +34,12 @@ internal static unsafe class CoreFfi
     internal const uint MD_ERR_PANIC = 16;
     internal const uint MD_ERR_INTERNAL = 17;
 
+    // Anchor quality (md_anchor_resolution.quality).
+    internal const uint MD_ANCHOR_LOST = 0;
+    internal const uint MD_ANCHOR_EXACT = 1;
+    internal const uint MD_ANCHOR_RELOCATED = 2;
+    internal const uint MD_ANCHOR_NEAREST = 3;
+
     // Semantic model versions.
     internal const uint MD_MODEL_V1 = 1;
     internal const uint MD_MODEL_V2 = 2;
@@ -604,6 +610,30 @@ internal static unsafe class CoreFfi
 
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
     internal static extern uint md_snapshot_get_view(ulong snapshot, md_snapshot_view* out_view);
+
+    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+    internal static extern uint md_snapshot_anchor_at(
+        ulong snapshot,
+        ulong source_offset,
+        byte* buffer,
+        nuint capacity,
+        nuint* out_length);
+
+    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+    internal static extern uint md_snapshot_anchor_for_node(
+        ulong snapshot,
+        uint node,
+        ulong offset,
+        byte* buffer,
+        nuint capacity,
+        nuint* out_length);
+
+    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+    internal static extern uint md_snapshot_resolve_anchor(
+        ulong snapshot,
+        byte* anchor,
+        nuint anchor_length,
+        md_anchor_resolution* out_resolution);
 
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
     internal static extern uint md_snapshot_find(

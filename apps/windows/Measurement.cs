@@ -80,6 +80,11 @@ public static partial class Measurement
         {
             return RunInteraction(docPath);
         }
+        if (modeArg.StartsWith("refresh=", StringComparison.Ordinal) &&
+            int.TryParse(modeArg.AsSpan(8), out var refreshCount) && refreshCount > 0)
+        {
+            return RunRefresh(docPath, refreshCount);
+        }
 
         Console.Error.WriteLine($"Unknown measure mode: {modeArg}");
         return 2;
@@ -249,6 +254,97 @@ public static partial class Measurement
             ["markdown_equals_source"] = allSource.SequenceEqual(doc.Source),
             ["readback_plain_equals_model"] = readbackText == allText,
             ["readback_markdown_equals_source"] = readbackMarkdown is not null && readbackMarkdown.SequenceEqual(doc.Source),
+        };
+
+        Console.WriteLine(report.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
+        return 0;
+    }
+    private static int RunRefresh(string? docPath, int count)
+    {
+        if (string.IsNullOrEmpty(docPath) || !File.Exists(docPath))
+        {
+            Console.Error.WriteLine($"File not found: {docPath}");
+            return 1;
+        }
+
+        var original = File.ReadAllBytes(docPath);
+        var maxLen = Math.Max(original.Length - 64, 0);
+        var cut = -1;
+        for (var i = maxLen; i >= 0; i--)
+        {
+            if (original[i] == (byte)'\n')
+            {
+                cut = i;
+                break;
+            }
+        }
+        if (cut < 0) cut = original.Length;
+
+        var prefix = System.Text.Encoding.UTF8.GetBytes("Refreshed from outside.\n\n");
+        var edited = new byte[prefix.Length + cut];
+        Buffer.BlockCopy(prefix, 0, edited, 0, prefix.Length);
+        Buffer.BlockCopy(original, 0, edited, prefix.Length, cut);
+
+        using var session = new CoreSession("measure-refresh");
+        var initialRes = session.ParseBlocking(original, null, copyUnchanged: true);
+        var initialDoc = initialRes.Document ?? throw new InvalidOperationException("initial parse failed");
+        var initialPlan = RenderPlan.Build(initialDoc, () => false);
+
+        if (initialPlan.Outline.Count == 0)
+        {
+            throw new InvalidOperationException("document has no headings");
+        }
+
+        var middleHeading = initialPlan.Outline.Count / 2;
+        var middleFrag = initialPlan.Outline[middleHeading].Fragment;
+        var middleOffset = initialPlan.SourceOffsetAt(new DocumentPosition(middleFrag, 0), initialDoc);
+        var initialAnchor = initialDoc.AnchorAt(middleOffset) ?? throw new InvalidOperationException("failed to anchor middle heading");
+        var savedPosition = new SavedPosition(initialAnchor, initialAnchor, null);
+
+        var proc = Process.GetCurrentProcess();
+        proc.Refresh();
+        var baselineRssMib = Math.Round(proc.WorkingSet64 / (1024.0 * 1024.0), 2);
+
+        var results = new JsonArray();
+        for (var iteration = 1; iteration <= count; iteration++)
+        {
+            var bytesToWrite = (iteration % 2 == 1) ? edited : original;
+            var sw = Stopwatch.StartNew();
+            File.WriteAllBytes(docPath, bytesToWrite);
+
+            var readBytes = File.ReadAllBytes(docPath);
+            var parseRes = session.ParseBlocking(readBytes, null, copyUnchanged: false);
+            var newDoc = parseRes.Document ?? throw new InvalidOperationException("refresh parse failed");
+            var newPlan = RenderPlan.Build(newDoc, () => false);
+            _ = DwmFlush();
+            var refreshMs = sw.Elapsed.TotalMilliseconds;
+
+            var topRes = newDoc.ResolveAnchor(savedPosition.Top);
+            var restoredPos = topRes is not null ? newPlan.PositionAtSourceOffset(topRes.Value.SourceOffset, newDoc) : (DocumentPosition?)null;
+            var keptPlace = restoredPos is not null && restoredPos.Value.FragmentIndex >= 0;
+
+            proc.Refresh();
+            var currentRssMib = Math.Round(proc.WorkingSet64 / (1024.0 * 1024.0), 2);
+
+            results.Add((JsonNode)new JsonObject
+            {
+                ["iteration"] = iteration,
+                ["refresh_ms"] = Math.Round(refreshMs, 2),
+                ["kept_place"] = keptPlace,
+                ["baseline_footprint_mib"] = baselineRssMib,
+                ["footprint_mib"] = currentRssMib,
+            });
+
+            GC.Collect(2, GCCollectionMode.Aggressive, blocking: true, compacting: true);
+        }
+
+        var report = new JsonObject
+        {
+            ["mode"] = "refresh",
+            ["document"] = Path.GetFileName(docPath),
+            ["refreshes"] = count,
+            ["baseline_footprint_mib"] = baselineRssMib,
+            ["refreshes_data"] = results,
         };
 
         Console.WriteLine(report.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));

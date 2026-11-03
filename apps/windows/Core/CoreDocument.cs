@@ -4,7 +4,7 @@ using System.Text.Unicode;
 
 namespace Markdown.Windows.Core;
 
-public sealed unsafe class CoreDocument
+public sealed unsafe class CoreDocument : IDisposable
 {
     public uint ModelVersion { get; }
     public ulong Generation { get; }
@@ -16,6 +16,7 @@ public sealed unsafe class CoreDocument
     public string RevisionId { get; }
     public string SourceSha256 { get; }
     public string? Title { get; }
+    public CoreSnapshot? Snapshot { get; }
 
     internal byte[] Source { get; }
     internal byte[] Strings { get; }
@@ -70,7 +71,8 @@ public sealed unsafe class CoreDocument
         CoreFfi.md_diagnostic[] diagnostics,
         CoreFfi.md_property[] properties,
         CoreFfi.md_str[] stringList,
-        ulong copiedBytes)
+        ulong copiedBytes,
+        CoreSnapshot? snapshot = null)
     {
         ModelVersion = modelVersion;
         Generation = generation;
@@ -91,6 +93,7 @@ public sealed unsafe class CoreDocument
         Properties = properties;
         StringList = stringList;
         CopiedBytes = copiedBytes;
+        Snapshot = snapshot;
 
         CheckIndices(documentId, revisionId, sourceSha256, title);
 
@@ -100,7 +103,7 @@ public sealed unsafe class CoreDocument
         Title = HasTitle ? DecodeStr(title) : null;
     }
 
-    internal static CoreDocument CopyFromView(in CoreFfi.md_snapshot_view view, ulong maxCopyBytes)
+    internal static CoreDocument CopyFromView(in CoreFfi.md_snapshot_view view, ulong maxCopyBytes, CoreSnapshot? snapshot = null)
     {
         if (view.model_version != CoreFfi.MD_MODEL_V2)
         {
@@ -146,7 +149,8 @@ public sealed unsafe class CoreDocument
             diagnostics: diagnostics,
             properties: properties,
             stringList: stringList,
-            copiedBytes: budget);
+            copiedBytes: budget,
+            snapshot: snapshot);
     }
 
     internal static ulong SnapshotBudget(in CoreFfi.md_snapshot_view view, ulong maxBytes)
@@ -486,4 +490,17 @@ public sealed unsafe class CoreDocument
     public string ResourceDestination(int resourceIndex) => DecodeStr(Resources[resourceIndex].destination);
 
     public string ResourceTarget(int resourceIndex) => DecodeStr(Resources[resourceIndex].target);
+
+    public byte[] AnchorAt(ulong sourceOffset) =>
+        Snapshot?.AnchorAt(sourceOffset) ?? throw CoreException.InvalidSnapshot("document has no snapshot");
+
+    public byte[] AnchorForNode(uint node, ulong offset = 0) =>
+        Snapshot?.AnchorForNode(node, offset) ?? throw CoreException.InvalidSnapshot("document has no snapshot");
+
+    public CoreAnchorResolution? ResolveAnchor(ReadOnlySpan<byte> anchor) =>
+        Snapshot?.ResolveAnchor(anchor);
+    public void Dispose()
+    {
+        Snapshot?.Dispose();
+    }
 }

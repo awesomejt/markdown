@@ -31,6 +31,8 @@ internal static class DocumentTests
                 ("read_barrier_replacement_and_close_suppress_publication", TestReadBarrierReplacementAndCloseSuppressPublication),
                 ("callback_before_install_and_synchronous_cancel_do_not_deadlock", TestCallbackBeforeInstallAndSynchronousCancelDoNotDeadlock),
                 ("busy_admission_retry_recovers_when_slot_releases", TestBusyAdmissionRetryRecoversWhenSlotReleases),
+                ("document_watcher_modification_deletion_and_reappearance", TestDocumentWatcherModificationDeletionAndReappearance),
+                ("external_refresh_dispositions_and_stale_retention", TestExternalRefreshDispositionsAndStaleRetention),
             };
 
             foreach (var (name, run) in tests)
@@ -714,6 +716,8 @@ internal static class DocumentTests
         var sw = Stopwatch.StartNew();
         while (sw.ElapsedMilliseconds < 2000)
         {
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
             var counts = CoreRuntime.LiveHandles();
             if (counts.Sessions == 0 && counts.Jobs == 0 && counts.Snapshots == 0)
             {
@@ -774,6 +778,99 @@ internal static class DocumentTests
             {
                 // Best effort cleanup for temp test directory.
             }
+        }
+    }
+
+    private static void TestDocumentWatcherModificationDeletionAndReappearance()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), $"doc-watcher-test-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempDir);
+        try
+        {
+            var filePath = Path.Combine(tempDir, "watched.md");
+            File.WriteAllText(filePath, "# Initial\n", new UTF8Encoding(false));
+
+            var changeSignal = new AutoResetEvent(false);
+            using var watcher = new DocumentWatcher(filePath, () => changeSignal.Set());
+
+            // 1. Modification
+            File.WriteAllText(filePath, "# Modified\n", new UTF8Encoding(false));
+            Assert(changeSignal.WaitOne(TimeSpan.FromSeconds(3)), "watcher signaled on modification");
+
+            // 2. Deletion
+            File.Delete(filePath);
+            Assert(changeSignal.WaitOne(TimeSpan.FromSeconds(3)), "watcher signaled on deletion");
+
+            // 3. Reappearance
+            File.WriteAllText(filePath, "# Reappeared\n", new UTF8Encoding(false));
+            Assert(changeSignal.WaitOne(TimeSpan.FromSeconds(3)), "watcher signaled on reappearance");
+        }
+        finally
+        {
+            try { Directory.Delete(tempDir, recursive: true); } catch { }
+        }
+    }
+
+    private static void TestExternalRefreshDispositionsAndStaleRetention()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), $"doc-refresh-test-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempDir);
+        try
+        {
+            var filePath = Path.Combine(tempDir, "refresh.md");
+            var original = "# Refresh\n\nInitial body.\n";
+            File.WriteAllText(filePath, original, new UTF8Encoding(false));
+
+            using var loader = new DocumentLoader();
+            loader.Open(DocumentCapability.FromPickerPath(filePath));
+
+            var sw = Stopwatch.StartNew();
+            while (sw.ElapsedMilliseconds < 5000 && (loader.Document is null || loader.IsLoading))
+            {
+                loader.Poll();
+                Thread.Sleep(10);
+            }
+            Assert(loader.Document is not null && !loader.IsLoading, "initial document loaded");
+            var gen1 = loader.Document!.Generation;
+
+            // 1. Unchanged content -> disposition Unchanged, no new generation
+            loader.RefreshExternal();
+            sw.Restart();
+            while (sw.ElapsedMilliseconds < 5000 && loader.IsLoading)
+            {
+                loader.Poll();
+                Thread.Sleep(10);
+            }
+            Assert(loader.Document.Generation == gen1, "unchanged refresh preserves generation");
+
+            // 2. Modified content -> disposition ReadRequired, generation advances
+            File.WriteAllText(filePath, "# Refresh\n\nUpdated body content.\n", new UTF8Encoding(false));
+            loader.RefreshExternal();
+            sw.Restart();
+            while (sw.ElapsedMilliseconds < 5000 && (loader.Document.Generation == gen1 || loader.IsLoading))
+            {
+                loader.Poll();
+                Thread.Sleep(10);
+            }
+            Assert(loader.Document.Generation > gen1, "external edit advances generation");
+            var gen2 = loader.Document.Generation;
+
+            // 3. Deletion -> NotFound error, existing document preserved
+            File.Delete(filePath);
+            loader.RefreshExternal();
+            sw.Restart();
+            while (sw.ElapsedMilliseconds < 5000 && (loader.Error is null || loader.IsLoading))
+            {
+                loader.Poll();
+                Thread.Sleep(10);
+            }
+            Assert(loader.Error == DocumentError.NotFound, "deletion reports NotFound");
+            Assert(loader.Document.Generation == gen2, "stale document retained across deletion");
+            Assert(loader.Availability() == CoreAvailability.Unavailable(CoreUnavailability.Deleted), "availability is Deleted");
+        }
+        finally
+        {
+            try { Directory.Delete(tempDir, recursive: true); } catch { }
         }
     }
 }

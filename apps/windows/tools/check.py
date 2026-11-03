@@ -95,8 +95,30 @@ def main() -> None:
         run_app([exe, "--render-tests"], cwd=output, env=env, timeout=120)
         run_app([exe, "--smoke"], cwd=output, env=env, timeout=60)
         check_association(output / "Markdown.Windows.exe")
+
+        # Real state restoration: save window with reading position, relaunch, expect
+        # window, document, top line and selection restored (WIN-001H).
+        with tempfile.TemporaryDirectory(prefix="markdown-windows-relaunch-") as directory:
+            relaunch_doc = Path(directory) / "live.md"
+            sections = "\n\n".join(f"## Part {part}\n\nProse for part {part}, with a *marked* word."
+                                   for part in range(120))
+            relaunch_doc.write_text(f"# Live\n\n{sections}\n", encoding="utf-8")
+            restoration_store_path = Path(directory) / "restoration.json"
+            relaunch_env = dict(env)
+            relaunch_env["MARKDOWN_RESTORATION_PATH"] = str(restoration_store_path)
+            for phase, marker in (("prepare", "relaunch-check: prepared"),
+                                  ("verify", "relaunch-check: pass (restored window, document, top line and selection)")):
+                result = subprocess.run(
+                    [exe, "--relaunch-check", phase, str(relaunch_doc)],
+                    cwd=directory, env=relaunch_env, text=True, capture_output=True, timeout=30)
+                print(result.stdout, end="", flush=True)
+                if result.returncode != 0 or marker not in result.stdout:
+                    print(result.stderr, end="", flush=True)
+                    raise SystemExit(f"{profile}: relaunch check {phase} failed")
+        print(f"{profile}: relaunch restoration passed", flush=True)
+
         print(
-            f"{profile}: core consumer tests, document tests, render tests, Native AOT smoke, and association check passed",
+            f"{profile}: core consumer tests, document tests, render tests, Native AOT smoke, association, and relaunch restoration passed",
             flush=True,
         )
 
@@ -109,8 +131,27 @@ def main() -> None:
         run_app([relocated_exe, "--render-tests"], cwd=relocated, env=env, timeout=120)
         run_app([relocated_exe, "--smoke"], cwd=relocated, env=env, timeout=60)
         check_association(relocated / "Markdown.Windows.exe")
+
+        with tempfile.TemporaryDirectory(prefix="markdown-windows-relaunch-") as directory:
+            relaunch_doc = Path(directory) / "live.md"
+            sections = "\n\n".join(f"## Part {part}\n\nProse for part {part}, with a *marked* word."
+                                   for part in range(120))
+            relaunch_doc.write_text(f"# Live\n\n{sections}\n", encoding="utf-8")
+            restoration_store_path = Path(directory) / "restoration.json"
+            relaunch_env = dict(env)
+            relaunch_env["MARKDOWN_RESTORATION_PATH"] = str(restoration_store_path)
+            for phase, marker in (("prepare", "relaunch-check: prepared"),
+                                  ("verify", "relaunch-check: pass (restored window, document, top line and selection)")):
+                result = subprocess.run(
+                    [relocated_exe, "--relaunch-check", phase, str(relaunch_doc)],
+                    cwd=directory, env=relaunch_env, text=True, capture_output=True, timeout=30)
+                print(result.stdout, end="", flush=True)
+                if result.returncode != 0 or marker not in result.stdout:
+                    print(result.stderr, end="", flush=True)
+                    raise SystemExit(f"relocated: relaunch check {phase} failed")
+
         run_app([relocated_exe, "--core-probe", "single"], cwd=relocated, env=env, timeout=60)
-        print("Release: relocated Native AOT document tests, render tests, smoke, association, and core-probe passed", flush=True)
+        print("Release: relocated Native AOT document tests, render tests, smoke, association, relaunch restoration, and core-probe passed", flush=True)
 
 
 if __name__ == "__main__":
