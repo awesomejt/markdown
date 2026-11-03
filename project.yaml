@@ -1,11 +1,11 @@
 contract_version: project-state/v1
-revision: 751
+revision: 752
 project: &id003
   concurrency_limit: 1
   created_at: '2026-10-24T23:34:09.871478+00:00'
   project_ref: markdown-native
-  status: active
-  updated_at: '2026-11-03T03:31:07.292387+00:00'
+  status: working
+  updated_at: '2026-11-03T05:07:58.305064+00:00'
   workflow_id: native-app-development
   workflow_version: '2'
 phases: &id005
@@ -1527,11 +1527,11 @@ tasks:
       and basic selection. Run applicable docs/Validation.md checks; preserve resource/FFI boundaries
       and accepted budgets. Record actual host/version/results. Do not claim unrun native checks or complete
       before reviewed approved merge (clean Grok review or owner, D-029).'
-    status: pending
-    active_pass_ref: null
+    status: working
+    active_pass_ref: c388cf16-6ea9-454f-a9fd-c6974d0f34cd
     blockers: []
     created_at: '2026-10-26T20:27:39.355846+00:00'
-    updated_at: '2026-10-29T23:59:19.267708+00:00'
+    updated_at: '2026-11-03T05:07:58.305064+00:00'
     completed_at: null
   - id: fb5a4a7b-52a1-4a73-80a8-0a2a784d57c7
     task_key: CORE-003B1
@@ -7991,44 +7991,31 @@ passes:
     completed_at: '2026-11-03T03:31:07.292387+00:00'
     lease_expires_at: null
     lease_version: 1
+  - &id082
+    id: c388cf16-6ea9-454f-a9fd-c6974d0f34cd
+    sequence: 126
+    task_ref: a8f5c6e5-6b96-4df0-8cef-92aa70977a80
+    phase_ref: 1c2f7cf2-feeb-4b8d-b741-2aaaa890bbaa
+    actor: antigravity-linux
+    status: active
+    outcome: null
+    objective: 'Satisfy LNX-001D1 early accessibility gate for MVP scope under owner decision D-035: prove
+      GTK semantic document/heading roles and reading order via automated AT-SPI inspection tool, document
+      measured GtkListView virtualization limits, and record owner deferral of off-screen Orca structural
+      navigation to post-MVP.'
+    summary: null
+    handoff: null
+    validation_result: null
+    evidence: {}
+    participants: []
+    blocker: null
+    execution_record: {}
+    started_at: '2026-11-03T05:07:58.305064+00:00'
+    last_heartbeat_at: null
+    completed_at: null
+    lease_expires_at: '2026-11-03T06:07:58.305064+00:00'
+    lease_version: 1
 idempotency:
-  core-001-closeout-start-20261029:
-    fingerprint: 45d7f3c5c05f151297de15ec42e4ef41ca8f6f38af14e24ffe5ccd7ea85d0388
-    response:
-      contract_version: project-state/v1
-      operation: start_pass
-      revision: 652
-      data:
-        pass: *id001
-        task: *id002
-      snapshot:
-        contract_version: project-state/v1
-        snapshot_at: '2026-10-30T02:31:14.376949+00:00'
-        revision: 652
-        project: *id003
-        current_phase: *id004
-        phases: *id005
-        active_tasks:
-          - *id002
-        working_tasks_without_active_lease: []
-        active_passes:
-          - *id001
-        stale_passes: []
-        blocked_tasks: []
-        eligible_tasks: []
-        latest_pass: *id001
-        queue_counts:
-          by_status:
-            completed: 40
-            working: 1
-            pending: 50
-          total: 91
-          active_passes: 1
-          stale_passes: 0
-          eligible: 0
-          blocked: 0
-        warnings: []
-        recommended_action: resume_active
   core-001-completed-20261029:
     fingerprint: 980b92115e9d322785dad42af99ee7755c076080112ff10a79f4a8c00b26bcac
     response:
@@ -11716,3 +11703,40 @@ idempotency:
           blocked: 0
         warnings: []
         recommended_action: select_new_task
+  771e8bfb-4835-4ae7-a4c0-0bb50d603a11:
+    fingerprint: a841dabee76f3c76bb75c1164ef6aa52e6a0199de5a8a415d747aaabc7ed4455
+    response:
+      contract_version: project-state/v1
+      operation: start_pass
+      revision: 752
+      data:
+        pass: *id082
+        task: *id059
+      snapshot:
+        contract_version: project-state/v1
+        snapshot_at: '2026-11-03T05:07:58.305111+00:00'
+        revision: 752
+        project: *id003
+        current_phase: *id022
+        phases: *id005
+        active_tasks:
+          - *id059
+        working_tasks_without_active_lease: []
+        active_passes:
+          - *id082
+        stale_passes: []
+        blocked_tasks: []
+        eligible_tasks: []
+        latest_pass: *id082
+        queue_counts:
+          by_status:
+            completed: 70
+            pending: 20
+            working: 1
+          total: 91
+          active_passes: 1
+          stale_passes: 0
+          eligible: 0
+          blocked: 0
+        warnings: []
+        recommended_action: resume_active

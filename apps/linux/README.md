@@ -400,3 +400,25 @@ styled Paragraph continuations. Native fragment limits remain unchanged.
 Plan disposal now reports thread-creation failure without panicking; resource
 exhaustion was not fault-injected. Reload position preservation is recorded
 for LNX-001H. These role checks do not replace the LNX-001D1 AT-SPI/Orca gate.
+
+## Early document accessibility gate (LNX-001D1)
+
+The [production accessibility inspection](../../docs/Linux-Accessibility-Gate.md)
+verified native AT-SPI document and heading semantics: exposed headings report
+`Role.HEADING` with attribute `level=1`, body fragments report `Role.PARAGRAPH`,
+and exposed text strictly matches the model reading order.
+
+Under owner decision **D-035**, MVP delivery prioritizes document presentation,
+tables, task lists, and images, minimizing screen-reader troubleshooting. The
+`LNX-001D1` early gate is satisfied for MVP on the proven native GTK semantics
+and outline navigation, while off-screen Orca structural navigation (`H`) and
+unbroken continuous reading (Say All) across virtualized rows are formally
+documented and deferred to post-MVP (`ADV-001`). Deeper Linux renderer work
+(`LNX-001E` and onward) is unblocked.
+
+Run `python3 apps/linux/tools/probe_accessibility.py` after building the release
+app to reproduce the AT-SPI inspection. It generates public text and uses a
+private D-Bus session and temporary registry on the current display, without
+changing desktop accessibility settings/services or launching Orca. Exit 0
+means inspection completed; read the reported failures. Use `--configuration
+debug` for debug, or `--prepare-only` for a persistent public owner-test fixture.
