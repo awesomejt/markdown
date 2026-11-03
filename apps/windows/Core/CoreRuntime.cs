@@ -22,6 +22,7 @@ public enum CoreErrorKind
     Cancelled,
     Superseded,
     ParseFailed,
+    NoBlocks,
 }
 
 public sealed class CoreException : Exception
@@ -97,6 +98,9 @@ public sealed class CoreException : Exception
 
     internal static CoreException Superseded(ulong generation, ulong latest) =>
         new(CoreErrorKind.Superseded, $"parse generation {generation} was superseded by {latest}", generation: generation);
+
+    internal static CoreException NoBlocks() =>
+        new(CoreErrorKind.NoBlocks, "snapshot has no anchorable block", statusCode: CoreFfi.MD_ERR_NO_BLOCKS, statusName: "MD_ERR_NO_BLOCKS");
 
     internal static CoreException ParseFailed(ulong generation, uint failureKind) =>
         new(

@@ -1,42 +1,42 @@
 # Agent Session and Platform Handoff
 
-Updated: 2026-11-02 (America/Denver), WIN-001G review 3 findings addressed; ready to close and merge under D-029.
-Active Windows task: `WIN-001G` (`35bb5a1b-3eec-44c3-b149-73b037c4f30d`), pass
-`1ab71944-3ce1-495e-b10b-608ac702eda1` (sequence 121, `project.yaml` revision 742),
-branch `feat/win-001g-large-document-accessibility`, based on `develop` at `a3fecba` (PR #58 merge).
-`apps/windows/` (`Render/DocumentSelection.cs`, `Render/NativeClipboard.cs`,
-`Render/RenderPlan.cs`, `Render/RowItem.cs`, `Render/ReaderControl.cs`, `Program.cs`,
-`Measurement.cs`, `tools/measure.py`, `RenderTests.cs`) delivers:
+Updated: 2026-11-02 (America/Denver), WIN-001H completed under D-029 (PR #60 closed out and merged into `develop`).
+Active Windows task: next eligible is `WIN-001I` (`60153c41-1692-4e54-ab8c-b336189a2dfc`), pass `9cd7e1b7-7ac4-46d6-bb1e-0c26a06690d8` completed, approved head `6ba3649` merged into `develop`.
+`apps/windows/` (`Core/CoreFfi.cs`, `Core/CoreRuntime.cs`, `Core/CoreSnapshot.cs`,
+`Core/CoreDocument.cs`, `Core/CoreSession.cs`, `Document/DocumentAccess.cs`,
+`Document/DocumentWatcher.cs`, `Document/DocumentLoader.cs`, `Render/ReadingPosition.cs`,
+`Render/RenderPlan.cs`, `Render/ReaderControl.cs`, `Restoration.cs`, `RelaunchCheck.cs`,
+`Program.cs`, `Measurement.cs`, `tools/measure.py`, `tools/check.py`,
+`CoreConsumerTests.cs`, `DocumentTests.cs`, `RenderTests.cs`) delivers:
 
-- Global multi-fragment text selection across virtualized rows with pointer drag,
-  `handledEventsToo` pointer events on `ListView`, edge auto-scrolling, keyboard selection
-  extension (plain Shift+Home/End to fragment bounds, Ctrl+Shift+Home/End to document edges,
-  Shift+arrows), Escape to clear, and Ctrl+A to select all.
-- Native Win32 clipboard copy (Ctrl+C) with window HWND ownership and soft-fail, providing
-  dual formats: `CF_UNICODETEXT` plain text and registered `"text/markdown"` UTF-8 source bytes
-  narrowed to selected leaf text runs via `CharOffsetToUtf8ByteOffset`.
-- Root keyboard accelerator bypass when FindBar's search `TextBox` is focused so Ctrl+C and Ctrl+A
-  operate inside the text box instead of pre-empting the document.
-- UIA accessibility double-reading elimination: container keeps `AutomationProperties.SetName(this, ShownText)`
-  for focused row announcement while child `RichTextBlock` uses `AccessibilityView.Raw`, accompanied by
-  human-readable `ItemType`, `PositionInSet`, `SizeOfSet`, and heading levels.
-- Independent selection vs find `TextHighlighter` ranges without interference.
-- Automated pipeline measurement runner (`apps/windows/tools/measure.py`) measuring pipeline
-  (read, parse, plan: 170ms for 1 MiB prose, <= 400ms target), target resolution (0.03ms, <= 150ms budget),
-  copy slice (< 8ms for 1 MiB), and 5x repeated load memory reclamation.
+- External file change detection: `DocumentWatcher` wraps Win32 `FileSystemWatcher` (`ReadDirectoryChangesW`)
+  with 100ms debouncing, parent-directory fallback, burst coalescing, and error recovery. In-place writes,
+  atomic replacements, deletions (retaining stale view with warning banner, tracking reappearance),
+  and window activation (`WM_ACTIVATE`) stat check fallback.
+- Background refresh & disposition: `DocumentLoader.RefreshExternal()` and `CoreSession.ExternalChange`
+  perform background checks (`copyUnchanged: false`), returning `Unchanged` (zero reallocation) or
+  `Published` with a fresh `CoreDocument` and owned `CoreSnapshot`.
+- Reading position preservation & restoration: `CoreSnapshot` wraps native `md_snapshot` handles with
+  deterministic worker-thread release (`CoreRuntime.EnqueueWork`), exposing `AnchorAt`, `AnchorForNode`,
+  and `ResolveAnchor`. `ReaderControl.SavePosition` captures model-v2 anchors and fallback line/scroll offsets,
+  and `RestorePosition` / `InstallPlan` restores reading position across external reloads and edits.
+- Window state persistence: `RestorationStore` serializes window states (file path, base64 anchors,
+  text scale, outline visibility) to `%LOCALAPPDATA%\MarkdownReader\restoration.json` with schema validation
+  and tamper resistance.
+- Relaunch verification: automated 2-phase relaunch check (`--relaunch-check prepare` and `--relaunch-check verify`)
+  integrated in `apps/windows/tools/check.py` passing across Debug, Release, and Relocated Native AOT.
+- Refresh benchmark measurements (`apps/windows/tools/measure.py refresh --count 5`):
+  - `prose-1mib`: 168.91ms median refresh, `kept_place: true`, 95.25 MiB footprint.
+  - `long-lines-1mib`: 24.70ms median refresh, `kept_place: true`, 28.60 MiB footprint.
+  - `prose-5mib`: 996.00ms median refresh, `kept_place: true`, 363.02 MiB footprint.
 
 Local `apps/windows/tools/check.py` passes in Debug, Release, and relocated Release
-(18 core consumer tests, 12 document tests, 18 render tests, Native AOT WinUI smoke,
-association checks, and relocated core probe with 0 leaked handles).
+(20 core consumer tests, 14 document tests, 20 render tests, 13-stage Native AOT WinUI smoke,
+association checks, relaunch checks, and relocated core probe with 0 leaked handles).
 
-[Grok review 1](https://github.com/awesomejt/markdown/pull/59#pullrequestreview-5741476785) at `c290a6f`
-reported 0 Blockers, 7 Concerns, 4 Nits. [Grok review 2](https://github.com/awesomejt/markdown/pull/59#pullrequestreview-5741731288)
-at `d499edc` reported 0 Blockers, 2 Concerns, 2 Nits. [Grok review 3](https://github.com/awesomejt/markdown/pull/59#pullrequestreview-5741891496)
-at `1f664dc` reported 0 Blockers, 1 Concern, 2 Nits (clean approval under D-029). All earlier items were confirmed addressed; the remaining items (pinning partial copy assertion proving exact bounds without over-copy, capping long-line UIA Name to 512 chars, and dropping redundant broad try/catch in CopyCommand) were addressed in follow-up commit and verified with zero failures across all local checks.
+Next Windows task after WIN-001H merge: `WIN-001I` (Windows packaging, MSIX distribution, and smoke verification).
 
-Next Windows task after WIN-001G merge: `WIN-001H` (External change detection, auto-refresh and conflict recovery).
-
-Previous Windows task: `WIN-001F` merged in [PR #58](https://github.com/awesomejt/markdown/pull/58).
+Previous Windows task: `WIN-001G` merged in [PR #59](https://github.com/awesomejt/markdown/pull/59).
 
 Previous Linux handoff baseline: `develop` after PR #52; reviewed head `f12d2e5`, non-serious
 review fixes at `27e84df`, followed by one state/docs closeout. The merge SHA is

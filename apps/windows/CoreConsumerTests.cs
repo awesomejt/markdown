@@ -33,6 +33,8 @@ internal static unsafe class CoreConsumerTests
             ("corpus_and_performance_profiles", CorpusAndPerformanceProfiles),
             ("close_then_does_not_block_and_reports_the_release", CloseThenDoesNotBlockAndReportsRelease),
             ("find_over_current_snapshot", FindOverCurrentSnapshot),
+            ("anchors_and_external_changes", AnchorsAndExternalChanges),
+            ("documents_release_their_snapshots", DocumentsReleaseTheirSnapshots),
         };
 
         Console.WriteLine($"running {tests.Length} Windows core consumer tests ({CoreRuntime.ExpectedConfiguration})");
@@ -86,6 +88,11 @@ internal static unsafe class CoreConsumerTests
 
     private static void DrainWorker()
     {
+        for (var i = 0; i < 2; i++)
+        {
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
+        }
         using var done = new ManualResetEventSlim(false);
         CoreRuntime.EnqueueWork(done.Set);
         if (!done.Wait(TimeSpan.FromSeconds(60)))
@@ -860,5 +867,71 @@ internal static unsafe class CoreConsumerTests
         catch (CoreException ex) when (ex.Kind == CoreErrorKind.SessionClosed)
         {
         }
+    }
+
+    private static void AnchorsAndExternalChanges()
+    {
+        using var session = new CoreSession("anchors");
+        var oldText = "# One\n\nFirst paragraph.\n\n## Two\n\nSecond paragraph.\n";
+        var oldBytes = Encoding.UTF8.GetBytes(oldText);
+        var first = session.ParseBlocking(oldBytes, Encoding.UTF8.GetBytes("a"), copyUnchanged: true);
+        Check(first.Document is not null, "first document not null");
+        using var firstDoc = first.Document!;
+
+        Check(session.ExternalChange("a") == CoreChangeDisposition.Unchanged, "change token a unchanged");
+        Check(session.ExternalChange("b") == CoreChangeDisposition.ReadRequired, "change token b read required");
+        Check(session.ExternalChange((string?)null) == CoreChangeDisposition.ReadRequired, "change token null read required");
+
+        var offset = (ulong)(oldBytes.Length - Encoding.UTF8.GetByteCount("Second paragraph.\n") + 7);
+        var anchor = firstDoc.AnchorAt(offset);
+        Check(anchor is not null && anchor.Length > 0 && anchor.Length <= CoreFfi.MD_ANCHOR_MAX_BYTES, "valid anchor");
+
+        var firstRes = firstDoc.ResolveAnchor(anchor!);
+        Check(firstRes.HasValue && firstRes!.Value.SourceOffset == offset, "first resolve matches offset");
+
+        var newText = "# One\n\nInserted.\n\nFirst paragraph.\n\n## Two\n\nSecond paragraph.\n";
+        var newBytes = Encoding.UTF8.GetBytes(newText);
+        var second = session.ParseBlocking(newBytes, Encoding.UTF8.GetBytes("b"), copyUnchanged: true);
+        Check(second.Document is not null, "second document not null");
+        using var secondDoc = second.Document!;
+
+        var moved = secondDoc.ResolveAnchor(anchor!);
+        Check(moved.HasValue, "moved anchor resolved");
+        Check(moved!.Value.Quality == AnchorQuality.Exact, "moved anchor quality is exact");
+        var insertedBytes = (ulong)Encoding.UTF8.GetByteCount("Inserted.\n\n");
+        Check(moved!.Value.SourceOffset == offset + insertedBytes, "moved offset matches");
+
+        var oldCheck = firstDoc.ResolveAnchor(anchor!);
+        Check(oldCheck.HasValue && oldCheck!.Value.SourceOffset == offset, "old snapshot still resolves original offset");
+
+        var unchanged = session.ParseBlocking(newBytes, Encoding.UTF8.GetBytes("c"), copyUnchanged: false);
+        Check(unchanged.Outcome == CoreOutcome.Unchanged && unchanged.Document is null, "unchanged without copy");
+        Check(session.ExternalChange("c") == CoreChangeDisposition.Unchanged, "change token c unchanged");
+
+        ExpectCoreError(() => secondDoc.ResolveAnchor(Encoding.UTF8.GetBytes("{}")), CoreErrorKind.Status);
+        ExpectCoreError(() => secondDoc.ResolveAnchor(new byte[2048]), CoreErrorKind.Status);
+
+        var empty = session.ParseBlocking([], Encoding.UTF8.GetBytes("d"), copyUnchanged: true);
+        Check(empty.Document is not null, "empty document not null");
+        using var emptyDoc = empty.Document!;
+        Check(emptyDoc.ResolveAnchor(anchor!) is null, "empty document loses anchor");
+        ExpectCoreError(() => emptyDoc.AnchorAt(0), CoreErrorKind.NoBlocks);
+    }
+
+    private static void DocumentsReleaseTheirSnapshots()
+    {
+        using (var session = new CoreSession("release"))
+        {
+            var res = session.ParseBlocking(Encoding.UTF8.GetBytes("# Kept\n"), null, copyUnchanged: true);
+            using var doc = res.Document;
+            Check(doc is not null, "document not null");
+            session.Close();
+            DrainWorker();
+            var handles = CoreRuntime.LiveHandles();
+            Check(handles.Sessions == 0 && handles.Snapshots == 1, $"snapshots expected 1, got {handles.Snapshots}");
+        }
+        DrainWorker();
+        var finalHandles = CoreRuntime.LiveHandles();
+        Check(finalHandles.Sessions == 0 && finalHandles.Snapshots == 0, $"snapshots expected 0, got {finalHandles.Snapshots}");
     }
 }

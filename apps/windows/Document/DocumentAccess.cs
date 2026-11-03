@@ -449,11 +449,12 @@ public static unsafe class DocumentReader
                 return ReadResult.Fail(DocumentError.TooLarge);
             }
 
-            var fileIndex = ((ulong)info.nFileIndexHigh << 32) | info.nFileIndexLow;
-            var writeTime = ((ulong)info.ftLastWriteTimeHigh << 32) | info.ftLastWriteTimeLow;
-            var createTime = ((ulong)info.ftCreationTimeHigh << 32) | info.ftCreationTimeLow;
-            var revisionToken = Encoding.UTF8.GetBytes(
-                $"{info.dwVolumeSerialNumber:x8}:{fileIndex:x16}:{fileSize:x}:{writeTime:x16}:{createTime:x16}");
+            var revisionToken = FormatRevisionToken(in info);
+
+
+
+
+
 
             var initialCapacity = (int)Math.Min(fileSize, Math.Min(maxBytes, 64UL * 1024UL));
             using var stream = new MemoryStream(initialCapacity);
@@ -524,6 +525,72 @@ public static unsafe class DocumentReader
                 RevisionToken: revisionToken,
                 VolumeSerial: info.dwVolumeSerialNumber,
                 VolumeRoot: ExtractVolumeRoot(path)));
+        }
+        finally
+        {
+            _ = CloseHandle(handle);
+        }
+    }
+
+    private static byte[] FormatRevisionToken(in BY_HANDLE_FILE_INFORMATION info)
+    {
+        var fileSize = ((ulong)info.nFileSizeHigh << 32) | info.nFileSizeLow;
+        var fileIndex = ((ulong)info.nFileIndexHigh << 32) | info.nFileIndexLow;
+        var writeTime = ((ulong)info.ftLastWriteTimeHigh << 32) | info.ftLastWriteTimeLow;
+        var createTime = ((ulong)info.ftCreationTimeHigh << 32) | info.ftCreationTimeLow;
+        return Encoding.UTF8.GetBytes(
+            $"{info.dwVolumeSerialNumber:x8}:{fileIndex:x16}:{fileSize:x}:{writeTime:x16}:{createTime:x16}");
+    }
+
+    public static bool TryGetRevisionToken(DocumentCapability capability, out byte[]? token)
+    {
+        token = null;
+        if (capability is null || capability.IsRevoked)
+        {
+            return false;
+        }
+
+        var path = capability.FullPath;
+        nint handle;
+        unsafe
+        {
+            fixed (char* pathPtr = path)
+            {
+                handle = CreateFileW(
+                    pathPtr,
+                    FILE_READ_ATTRIBUTES,
+                    FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+                    0,
+                    OPEN_EXISTING,
+                    FILE_FLAG_BACKUP_SEMANTICS,
+                    0);
+            }
+        }
+
+        if (handle == INVALID_HANDLE_VALUE || handle == 0)
+        {
+            return false;
+        }
+
+        try
+        {
+            if (GetFileType(handle) != FILE_TYPE_DISK)
+            {
+                return false;
+            }
+
+            if (!GetFileInformationByHandle(handle, out var info))
+            {
+                return false;
+            }
+
+            if ((info.dwFileAttributes & (FILE_ATTRIBUTE_DIRECTORY | FILE_ATTRIBUTE_DEVICE)) != 0)
+            {
+                return false;
+            }
+
+            token = FormatRevisionToken(in info);
+            return true;
         }
         finally
         {
@@ -697,6 +764,7 @@ public static unsafe class DocumentReader
     }
 
     private const uint GENERIC_READ = 0x80000000;
+    private const uint FILE_READ_ATTRIBUTES = 0x00000080;
     private const uint FILE_SHARE_READ = 0x00000001;
     private const uint FILE_SHARE_WRITE = 0x00000002;
     private const uint FILE_SHARE_DELETE = 0x00000004;

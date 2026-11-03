@@ -23,6 +23,8 @@ internal static class Program
     internal static string? AssociationPipeName;
     internal static string? AssociationReportPath;
     internal static int AssociationExpectedDeliveries;
+    internal static string? RelaunchCheckPhase;
+    internal static string? RelaunchCheckPath;
     internal static List<string> StartupInputs = [];
     internal static int Result = 1;
     private static Mutex? s_associationPrimaryMutex;
@@ -50,7 +52,12 @@ internal static class Program
         {
             return Measurement.Run(args[1..]);
         }
-        if (args.Length >= 4 && args[0] == "--association-smoke")
+        if (args.Length >= 3 && args[0] == "--relaunch-check")
+        {
+            RelaunchCheckPhase = args[1];
+            RelaunchCheckPath = args[2];
+        }
+        else if (args.Length >= 4 && args[0] == "--association-smoke")
         {
             AssociationSmoke = true;
             AssociationPipeName = args[1];
@@ -83,7 +90,7 @@ internal static class Program
                 : DefaultInstancePipeName();
         }
 
-        if (!Smoke && !string.IsNullOrEmpty(AssociationPipeName))
+        if (!Smoke && RelaunchCheckPhase is null && !string.IsNullOrEmpty(AssociationPipeName))
         {
             s_associationPrimaryMutex = new Mutex(
                 initiallyOwned: true,
@@ -110,9 +117,10 @@ internal static class Program
                     new Microsoft.UI.Dispatching.DispatcherQueueSynchronizationContext(
                         Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread()));
                 _ = new ReaderApp();
+                // end of Application.Start
             });
 
-            if (Smoke || AssociationSmoke)
+            if (Smoke || AssociationSmoke || RelaunchCheckPhase is not null)
             {
                 if (Result == 0 && !WaitZeroLiveHandles(2000))
                 {
@@ -188,6 +196,10 @@ internal static class Program
             Thread.Sleep(5);
         }
         var finalCounts = CoreRuntime.LiveHandles();
+        if (finalCounts.Sessions != 0 || finalCounts.Jobs != 0 || finalCounts.Snapshots != 0)
+        {
+            Console.Error.WriteLine($"WaitZeroLiveHandles failed: {finalCounts}");
+        }
         return finalCounts.Sessions == 0 && finalCounts.Jobs == 0 && finalCounts.Snapshots == 0;
     }
 }
@@ -198,6 +210,7 @@ public sealed partial class ReaderApp : Application
     private Microsoft.UI.Dispatching.DispatcherQueue? _dispatcher;
     private int _externalDeliveries;
     private bool _shuttingDown;
+    internal bool IsShuttingDown => Volatile.Read(ref _shuttingDown);
 
     internal IReadOnlyList<ReaderWindow> Windows => windows;
     internal ReaderPreferences Preferences { get; } = new(
@@ -206,6 +219,10 @@ public sealed partial class ReaderApp : Application
 
     public ReaderApp()
     {
+        UnhandledException += (sender, e) =>
+        {
+            Console.Error.WriteLine($"WinUI UnhandledException: {e.Message}\n{e.Exception}");
+        };
         InitializeComponent();
         Preferences.Changed += () =>
         {
@@ -254,9 +271,40 @@ public sealed partial class ReaderApp : Application
             _externalDeliveries++;
         }
 
+        if (Program.StartupInputs.Count == 0 &&
+            !Program.Smoke &&
+            !Program.AssociationSmoke &&
+            Program.RelaunchCheckPhase is null)
+        {
+            var restored = RestorationStore.Load();
+            if (restored.Count > 0)
+            {
+                var isFirst = true;
+                foreach (var st in restored)
+                {
+                    if (DocumentCapability.TryFromUserInput(st.FilePath, out var cap, out _) && cap is not null)
+                    {
+                        var target = isFirst ? window : NewWindow();
+                        isFirst = false;
+                        target.RestoreFromState(st, cap);
+                    }
+                }
+            }
+        }
+
         if (!Program.Smoke && Program.AssociationPipeName is not null)
         {
             StartAssociationPipeServer(Program.AssociationPipeName);
+        }
+
+        if (Program.RelaunchCheckPhase is not null && Program.RelaunchCheckPath is not null)
+        {
+            ((FrameworkElement)window.Content).Loaded += async (_, _) =>
+            {
+                Program.Result = await RelaunchCheck.RunAsync(Program.RelaunchCheckPhase, Program.RelaunchCheckPath, this, window);
+                Exit();
+            };
+            return;
         }
 
         if (Program.Smoke)
@@ -275,6 +323,10 @@ public sealed partial class ReaderApp : Application
         windows.Add(window);
         window.Closed += (_, _) =>
         {
+            if (windows.Count == 1 && windows.Contains(window) && !_shuttingDown)
+            {
+                SaveRestorationState();
+            }
             windows.Remove(window);
             if (windows.Count == 0)
             {
@@ -287,8 +339,40 @@ public sealed partial class ReaderApp : Application
         return window;
     }
 
+    internal void SaveRestorationState()
+    {
+        if (Program.Smoke || Program.AssociationSmoke || Program.RelaunchCheckPhase is not null)
+        {
+            return;
+        }
+
+        var activeStates = new List<WindowRestorationState>();
+        foreach (var w in windows)
+        {
+            if (w.Loader.HasFile && w.Loader.Capability is not null && w.Loader.Document is not null)
+            {
+                var saved = w.Reader.SavePosition(w.Loader.Document);
+                activeStates.Add(WindowRestorationState.Create(
+                    w.Loader.Capability.FullPath,
+                    saved,
+                    w.Preferences.TextScaleValue,
+                    w.Reader.IsOutlineVisible));
+            }
+        }
+
+        if (activeStates.Count > 0)
+        {
+            RestorationStore.Save(activeStates);
+        }
+        else
+        {
+            RestorationStore.Clear();
+        }
+    }
+
     internal void CloseAll()
     {
+        SaveRestorationState();
         Volatile.Write(ref _shuttingDown, true);
         SettingsWindow?.Close();
         foreach (var window in windows.ToArray())
@@ -857,7 +941,247 @@ public sealed partial class ReaderApp : Application
                 }
             }
 
-            // 11. Verify New Window, Close Window, and Exit commands close all windows cleanly.
+            // 12. External refresh, anchors and reading restoration (WIN-001H)
+            static string SmokeSections(int start, int count)
+            {
+                var sb = new StringBuilder();
+                for (var i = start; i < start + count; i++)
+                {
+                    sb.Append($"## Part {i}\n\nProse for part {i}, with a *marked* word.\n\n");
+                }
+                return sb.ToString();
+            }
+
+            var livePath = Path.Combine(tempDir, "live.md");
+            var originalLive = "# Live\n\n" + SmokeSections(0, 120);
+            File.WriteAllText(livePath, originalLive, new UTF8Encoding(false));
+
+            first.OpenCapability(DocumentCapability.FromPickerPath(livePath));
+            await WaitWindowIdleAsync(first);
+
+            if (first.Loader.Document is null || first.Loader.Plan is null)
+            {
+                throw new InvalidOperationException("Live document initial open failed.");
+            }
+
+            var part80OutlineIndex = -1;
+            for (var i = 0; i < first.Loader.Document.OutlineCount; i++)
+            {
+                if (first.Loader.Document.OutlineTitle(i) == "Part 80")
+                {
+                    part80OutlineIndex = i;
+                    break;
+                }
+            }
+            if (part80OutlineIndex < 0)
+            {
+                throw new InvalidOperationException("Missing Part 80 in live document outline.");
+            }
+
+            first.Reader.ActivateOutline(part80OutlineIndex);
+            await Task.Delay(50);
+            var livePlan = first.Loader.Plan!;
+            var part80Frag = livePlan.Outline[part80OutlineIndex].Fragment;
+            var markedFrag = -1;
+            var markedOffset = -1;
+            for (var f = part80Frag; f < Math.Min(part80Frag + 10, livePlan.Fragments.Count); f++)
+            {
+                var idx = livePlan.Fragments[f].Text.IndexOf("marked", StringComparison.Ordinal);
+                if (idx >= 0)
+                {
+                    markedFrag = f;
+                    markedOffset = idx;
+                    break;
+                }
+            }
+            if (markedFrag < 0)
+            {
+                throw new InvalidOperationException("Missing 'marked' in Part 80 section.");
+            }
+
+            first.Reader.SetSelection(new DocumentSelection(
+                new DocumentPosition(markedFrag, markedOffset),
+                new DocumentPosition(markedFrag, markedOffset + "marked".Length)));
+
+            void CheckKeptPlace(string msg)
+            {
+                var vis = first.Reader.FirstVisibleFragmentIndex();
+                var outlineIdx = -1;
+                for (var i = 0; i < first.Loader.Document!.OutlineCount; i++)
+                {
+                    if (first.Loader.Document.OutlineTitle(i) == "Part 80")
+                    {
+                        outlineIdx = i;
+                        break;
+                    }
+                }
+                if (outlineIdx < 0) throw new InvalidOperationException($"{msg}: Part 80 outline missing");
+                var expectedFrag = first.Loader.Plan!.Outline[outlineIdx].Fragment;
+                if (Math.Abs(vis - expectedFrag) > 1)
+                {
+                    throw new InvalidOperationException($"{msg}: top line not kept (firstVis={vis}, target={expectedFrag})");
+                }
+                var sel = first.Reader.Selection;
+                if (sel is null || sel.Value.IsEmpty)
+                {
+                    throw new InvalidOperationException($"{msg}: selection lost");
+                }
+                var text = first.Loader.Plan.TextBetween(sel.Value.Anchor, sel.Value.Active);
+                if (text != "marked")
+                {
+                    throw new InvalidOperationException($"{msg}: selection text mismatch '{text}'");
+                }
+            }
+
+            CheckKeptPlace("Initial placement");
+
+            var prevGen = first.Loader.Document.Generation;
+            var editedLive = "# Live\n\nA new introduction.\n\n" + SmokeSections(200, 30) + SmokeSections(0, 120);
+            File.WriteAllText(livePath, editedLive, new UTF8Encoding(false));
+
+            var swLive = Stopwatch.StartNew();
+            while (swLive.ElapsedMilliseconds < 5000 &&
+                   (first.Loader.Document.Generation == prevGen || first.Loader.IsLoading))
+            {
+                first.SyncFromLoader();
+                await Task.Delay(20);
+            }
+            if (first.Loader.Document.Generation == prevGen)
+            {
+                first.Loader.RefreshExternal();
+                await WaitWindowIdleAsync(first);
+            }
+            CheckKeptPlace("After external edit");
+            if (first.Loader.Document.OutlineCount != 151)
+            {
+                throw new InvalidOperationException($"Expected 151 outlines after external edit, got {first.Loader.Document.OutlineCount}");
+            }
+            if (first.ErrorBanner.IsOpen)
+            {
+                throw new InvalidOperationException("Notice banner should be closed after successful edit.");
+            }
+
+            var keptGen = first.Loader.Document.Generation;
+            File.Delete(livePath);
+            first.Loader.RefreshExternal();
+            var swDel = Stopwatch.StartNew();
+            while (swDel.ElapsedMilliseconds < 5000 &&
+                   (first.Loader.Error is null || first.Loader.IsLoading))
+            {
+                first.SyncFromLoader();
+                await Task.Delay(20);
+            }
+
+            if (first.Loader.Error != DocumentError.NotFound ||
+                !first.ErrorBanner.IsOpen ||
+                first.Loader.Document is null ||
+                first.Loader.Document.Generation != keptGen ||
+                first.Loader.Availability() != CoreAvailability.Unavailable(CoreUnavailability.Deleted))
+            {
+                throw new InvalidOperationException($"External deletion notice handling failed: Error={first.Loader.Error}, ErrorBanner.IsOpen={first.ErrorBanner.IsOpen}, DocGen={first.Loader.Document?.Generation} vs keptGen={keptGen}, Avail={first.Loader.Availability()}");
+            }
+
+            File.WriteAllText(livePath, editedLive, new UTF8Encoding(false));
+            first.Loader.RefreshExternal();
+            var swRet = Stopwatch.StartNew();
+            while (swRet.ElapsedMilliseconds < 5000 &&
+                   (first.Loader.Error is not null || first.Loader.IsLoading))
+            {
+                first.SyncFromLoader();
+                await Task.Delay(20);
+            }
+
+            if (first.Loader.Error is not null ||
+                first.ErrorBanner.IsOpen ||
+                first.Loader.Document.Generation != keptGen)
+            {
+                throw new InvalidOperationException("Reappearance did not clear notice cleanly without re-parsing.");
+            }
+            CheckKeptPlace("After file reappearance");
+
+            first.ReloadCommand();
+            await WaitWindowIdleAsync(first);
+            CheckKeptPlace("After manual Reload");
+
+            var savedPosition = first.Reader.SavePosition(first.Loader.Document);
+            if (savedPosition is null)
+            {
+                throw new InvalidOperationException("SavePosition returned null.");
+            }
+            var restState = WindowRestorationState.Create(
+                livePath,
+                savedPosition,
+                first.Preferences.TextScaleValue,
+                outlineShown: true);
+
+            var customRestPath = Path.Combine(tempDir, "restoration-test.json");
+            RestorationStore.Save([restState], customRestPath);
+            var loadedList = RestorationStore.Load(customRestPath);
+            if (loadedList.Count != 1 || loadedList[0].FilePath != livePath)
+            {
+                throw new InvalidOperationException("RestorationStore load/save roundtrip failed.");
+            }
+
+            var restoredWindow = NewWindow();
+            restoredWindow.PendingRestorePosition = loadedList[0].ToSavedPosition();
+            restoredWindow.OpenCapability(DocumentCapability.FromPickerPath(livePath));
+            await WaitWindowIdleAsync(restoredWindow);
+            await Task.Delay(50);
+
+            var restoredPlan = restoredWindow.Loader.Plan!;
+            var restoredPart80Idx = -1;
+            for (var i = 0; i < restoredWindow.Loader.Document!.OutlineCount; i++)
+            {
+                if (restoredWindow.Loader.Document.OutlineTitle(i) == "Part 80")
+                {
+                    restoredPart80Idx = i;
+                    break;
+                }
+            }
+            var restoredTargetFrag = restoredPlan.Outline[restoredPart80Idx].Fragment;
+            var restoredVis = -1;
+            var swRestored = Stopwatch.StartNew();
+            while (swRestored.ElapsedMilliseconds < 3000)
+            {
+                restoredVis = restoredWindow.Reader.FirstVisibleFragmentIndex();
+                if (Math.Abs(restoredVis - restoredTargetFrag) <= 1)
+                {
+                    break;
+                }
+                await Task.Delay(25);
+            }
+            if (Math.Abs(restoredVis - restoredTargetFrag) > 1)
+            {
+                throw new InvalidOperationException($"Restored window top mismatch: vis={restoredVis}, target={restoredTargetFrag}");
+            }
+            var restoredSel = restoredWindow.Reader.Selection;
+            if (restoredSel is null || restoredSel.Value.IsEmpty ||
+                restoredPlan.TextBetween(restoredSel.Value.Anchor, restoredSel.Value.Active) != "marked")
+            {
+                throw new InvalidOperationException("Restored window selection mismatch.");
+            }
+            restoredWindow.CloseCommand();
+            await Task.Delay(50);
+
+            var garbageState = new WindowRestorationState(
+                livePath,
+                Convert.ToBase64String(Encoding.UTF8.GetBytes("not-an-anchor")),
+                null,
+                null,
+                1.0,
+                true);
+            var garbageWin = NewWindow();
+            garbageWin.PendingRestorePosition = garbageState.ToSavedPosition();
+            garbageWin.OpenCapability(DocumentCapability.FromPickerPath(livePath));
+            await WaitWindowIdleAsync(garbageWin);
+            if (garbageWin.Reader.FirstVisibleFragmentIndex() != 0)
+            {
+                throw new InvalidOperationException("Garbage anchor should open at top.");
+            }
+            garbageWin.CloseCommand();
+            await Task.Delay(50);
+
+            // 13. Verify New Window, Close Window, and Exit commands close all windows cleanly.
             first.NewCommand();
             if (windows.Count != 2)
             {
@@ -923,6 +1247,10 @@ internal sealed class ReaderWindow : Window
 {
     internal DocumentLoader Loader { get; } = new();
     internal ReaderPreferences Preferences { get; }
+    private DocumentWatcher? _watcher;
+    private bool _isClosing;
+    private CoreDocument? _displayedDoc;
+    internal SavedPosition? PendingRestorePosition { get; set; }
     internal Action OpenCommand { get; }
     internal Action ReloadCommand { get; }
     internal Action NewCommand { get; }
@@ -964,7 +1292,11 @@ internal sealed class ReaderWindow : Window
         OpenCommand = PickAndOpenFile;
         ReloadCommand = ReloadDocument;
         NewCommand = () => app.NewWindow();
-        CloseCommand = Close;
+        CloseCommand = () =>
+        {
+            _isClosing = true;
+            Close();
+        };
         ExitCommand = app.CloseAll;
         CopyCommand = () =>
         {
@@ -987,11 +1319,26 @@ internal sealed class ReaderWindow : Window
         {
             _ = DispatcherQueue?.TryEnqueue(SyncFromLoader);
         };
+        Activated += (_, args) =>
+        {
+            if (!_isClosing && !app.IsShuttingDown && args.WindowActivationState != WindowActivationState.Deactivated && Loader.HasFile)
+            {
+                Loader.RefreshExternal();
+                SyncFromLoader();
+            }
+        };
+
         Closed += (_, _) =>
         {
+            _isClosing = true;
+            _watcher?.Dispose();
+            _watcher = null;
             _findCts?.Cancel();
             _findCts?.Dispose();
             _findCts = null;
+            var oldDoc = _displayedDoc;
+            _displayedDoc = null;
+            oldDoc?.Dispose();
             Loader.Close();
             Reader.Clear();
         };
@@ -1215,8 +1562,33 @@ internal sealed class ReaderWindow : Window
         });
     }
 
+    internal void RestoreFromState(WindowRestorationState state, DocumentCapability cap)
+    {
+        PendingRestorePosition = state.ToSavedPosition();
+        if (state.TextScale > 0)
+        {
+            Preferences.TextScaleValue = state.TextScale;
+            Reader.SetTextScale(state.TextScale);
+        }
+        Reader.IsOutlineVisible = state.OutlineShown;
+        OpenCapability(cap);
+    }
+
     internal void OpenCapability(DocumentCapability capability)
     {
+        _watcher?.Dispose();
+        _watcher = null;
+        if (!string.IsNullOrEmpty(capability.FullPath))
+        {
+            _watcher = new DocumentWatcher(capability.FullPath, () =>
+            {
+                _ = DispatcherQueue?.TryEnqueue(() =>
+                {
+                    Loader.RefreshExternal();
+                    SyncFromLoader();
+                });
+            });
+        }
         Loader.Open(capability);
         SyncFromLoader();
     }
@@ -1255,6 +1627,17 @@ internal sealed class ReaderWindow : Window
 
     internal void SyncFromLoader()
     {
+        if (_isClosing || (Application.Current as ReaderApp)?.IsShuttingDown == true)
+        {
+            return;
+        }
+
+        SavedPosition? savedPos = PendingRestorePosition;
+        if (savedPos is null && _displayedDoc is not null)
+        {
+            savedPos = Reader.SavePosition(_displayedDoc);
+        }
+
         _ = Loader.Poll();
         Title = Loader.WindowTitle;
         ReloadItem.IsEnabled = Loader.HasFile;
@@ -1307,7 +1690,14 @@ internal sealed class ReaderWindow : Window
 
             if (Loader.Plan is { } plan)
             {
-                Reader.InstallPlan(plan, doc.Generation);
+                PendingRestorePosition = null;
+                var oldDoc = _displayedDoc;
+                _displayedDoc = doc;
+                Reader.InstallPlan(plan, doc.Generation, savedPos, doc);
+                if (oldDoc is not null && oldDoc != doc)
+                {
+                    oldDoc.Dispose();
+                }
                 Reader.SetTextScale(Preferences.TextScaleValue);
                 Reader.Visibility = Visibility.Visible;
                 Welcome.Visibility = Visibility.Collapsed;
@@ -1322,6 +1712,9 @@ internal sealed class ReaderWindow : Window
         if (Loader.Error is { } error)
         {
             ErrorBanner.IsOpen = false;
+            var oldDoc = _displayedDoc;
+            _displayedDoc = null;
+            oldDoc?.Dispose();
             Reader.Clear();
             Welcome.Visibility = Visibility.Visible;
             Welcome.Text = error.ToDisplayString();

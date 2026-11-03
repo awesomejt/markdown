@@ -40,6 +40,8 @@ public sealed partial class ReaderControl : UserControl
     private ScrollViewer? _scrollViewer;
     private bool _suppressOutlineSelection;
     private int _pendingFocusIndex = -1;
+    private int _lastScrolledFragmentIndex = 0;
+    private long _lastScrolledTimestamp;
 
     private DocumentPosition? _dragAnchor;
     private bool _isDragging;
@@ -48,6 +50,12 @@ public sealed partial class ReaderControl : UserControl
     public Func<Uri, bool>? ExternalUriLauncher { get; set; }
 
     public ListView DocumentList => _documentList;
+    public bool IsOutlineVisible
+    {
+        get => _outlineList.Visibility == Visibility.Visible;
+        set => _outlineList.Visibility = value ? Visibility.Visible : Visibility.Collapsed;
+    }
+
     public ListView OutlineList => _outlineList;
     public IReadOnlyCollection<RowItem> BoundRows => _boundRows;
     public RenderPlan? CurrentPlan => _plan;
@@ -112,19 +120,54 @@ public sealed partial class ReaderControl : UserControl
 
     public int FirstVisibleFragmentIndex()
     {
-        if (_boundRows.Count == 0)
+        if (_lastScrolledFragmentIndex > 0)
         {
-            return 0;
-        }
-        var minIndex = int.MaxValue;
-        foreach (var row in _boundRows)
-        {
-            if (row.ItemIndex >= 0 && row.ItemIndex < minIndex)
+            var elapsedMs = (Stopwatch.GetTimestamp() - _lastScrolledTimestamp) * 1000.0 / Stopwatch.Frequency;
+            if (elapsedMs < 1000 && !_boundRows.Any(r => Math.Abs(r.ItemIndex - _lastScrolledFragmentIndex) <= 1))
             {
-                minIndex = row.ItemIndex;
+                return _lastScrolledFragmentIndex;
             }
         }
-        return minIndex == int.MaxValue ? 0 : minIndex;
+
+        if (_boundRows.Count == 0)
+        {
+            return Math.Max(0, _lastScrolledFragmentIndex);
+        }
+
+        RowItem? topRow = null;
+        var minDistance = double.MaxValue;
+        foreach (var row in _boundRows)
+        {
+            if (row.ItemIndex < 0) continue;
+            try
+            {
+                var transform = row.TransformToVisual(_documentList);
+                var top = transform.TransformPoint(default).Y;
+                var height = row.ActualHeight;
+                if (top + height > 0)
+                {
+                    if (top >= 0 && top < minDistance)
+                    {
+                        minDistance = top;
+                        topRow = row;
+                    }
+                    else if (topRow is null && top < 0 && (top + height) > 0)
+                    {
+                        topRow = row;
+                    }
+                }
+            }
+            catch
+            {
+            }
+        }
+
+        if (topRow is not null)
+        {
+            return topRow.ItemIndex;
+        }
+
+        return Math.Max(0, _boundRows.Min(r => r.ItemIndex));
     }
 
     public void SetTextScale(double scale)
@@ -266,7 +309,79 @@ public sealed partial class ReaderControl : UserControl
         }
     }
 
-    public void InstallPlan(RenderPlan plan, ulong generation = 0)
+    public SavedPosition? SavePosition(CoreDocument? document)
+    {
+        if (document is null || document.Snapshot is null || _plan is null || _plan.Fragments.Count == 0)
+        {
+            return null;
+        }
+
+        try
+        {
+            var topFrag = FirstVisibleFragmentIndex();
+            var topOffset = _plan.SourceOffsetAt(new DocumentPosition(topFrag, 0), document);
+            var topAnchor = document.AnchorAt(topOffset);
+
+            if (Selection is { } sel && !sel.IsEmpty)
+            {
+                var selStartOffset = _plan.SourceOffsetAt(sel.Start, document);
+                var selEndOffset = _plan.SourceOffsetAt(sel.End, document);
+                var startAnchor = document.AnchorAt(selStartOffset);
+                var endAnchor = document.AnchorAt(selEndOffset);
+                return new SavedPosition(topAnchor, startAnchor, endAnchor);
+            }
+
+            return new SavedPosition(topAnchor, topAnchor, null);
+        }
+        catch (CoreException)
+        {
+            return null;
+        }
+    }
+
+    public void RestorePosition(SavedPosition? saved, CoreDocument? document)
+    {
+        if (saved is null || document?.Snapshot is null || _plan is null || _plan.Fragments.Count == 0)
+        {
+            return;
+        }
+
+        try
+        {
+            var topRes = document.ResolveAnchor(saved.Top);
+            if (topRes.HasValue)
+            {
+                var topPos = _plan.PositionAtSourceOffset(topRes.Value.SourceOffset, document);
+                ScrollToFragment(topPos.FragmentIndex);
+            }
+
+            if (saved.SelectionEnd is not null)
+            {
+                var startRes = document.ResolveAnchor(saved.SelectionStart);
+                var endRes = document.ResolveAnchor(saved.SelectionEnd);
+                if (startRes.HasValue && endRes.HasValue)
+                {
+                    var startPos = _plan.PositionAtSourceOffset(startRes.Value.SourceOffset, document);
+                    var endPos = _plan.PositionAtSourceOffset(endRes.Value.SourceOffset, document);
+                    SetSelection(new DocumentSelection(startPos, endPos));
+                }
+                else
+                {
+                    ClearSelection();
+                }
+            }
+            else
+            {
+                ClearSelection();
+            }
+        }
+        catch (CoreException)
+        {
+            // Position cannot be restored; keep default position
+        }
+    }
+
+    public void InstallPlan(RenderPlan plan, ulong generation = 0, SavedPosition? savedPosition = null, CoreDocument? document = null)
     {
         if (generation != 0 && generation == CurrentGeneration && _plan is not null)
         {
@@ -292,7 +407,11 @@ public sealed partial class ReaderControl : UserControl
         _scrollViewer ??= FindScrollViewer(_documentList);
         Visibility = Visibility.Visible;
 
-        if (restoreIndex > 0 && restoreIndex < plan.Fragments.Count)
+        if (savedPosition is not null && document is not null)
+        {
+            RestorePosition(savedPosition, document);
+        }
+        else if (restoreIndex > 0 && restoreIndex < plan.Fragments.Count)
         {
             ScrollToFragment(restoreIndex);
         }
@@ -301,6 +420,7 @@ public sealed partial class ReaderControl : UserControl
     public void Clear()
     {
         _pendingFocusIndex = -1;
+        _lastScrolledFragmentIndex = 0;
         _suppressOutlineSelection = true;
         _outlineList.ItemsSource = null;
         _documentList.ItemsSource = null;
@@ -367,6 +487,8 @@ public sealed partial class ReaderControl : UserControl
             return;
         }
 
+        _lastScrolledFragmentIndex = fragmentIndex;
+        _lastScrolledTimestamp = Stopwatch.GetTimestamp();
         _documentList.ScrollIntoView(fragmentIndex, ScrollIntoViewAlignment.Leading);
         _documentList.UpdateLayout();
         if (_documentList.ContainerFromIndex(fragmentIndex) is RowItem row)

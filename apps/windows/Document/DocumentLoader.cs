@@ -375,7 +375,80 @@ public sealed class DocumentLoader : IDisposable
         Error = null;
         IsLoading = true;
 
-        StartLoad(Serial, Capability, _session);
+        StartLoad(Serial, Capability, _session, copyUnchanged: true);
+    }
+
+    public void RefreshExternal()
+    {
+        if (Volatile.Read(ref _closed) || Capability is null)
+        {
+            return;
+        }
+
+        if (_session is null)
+        {
+            Open(Capability);
+            return;
+        }
+
+        CancelCurrent();
+        var capability = Capability;
+        var session = _session;
+        var serial = Serial;
+        IsLoading = true;
+
+        FileWorkDispatcher.Enqueue(OwnerId, () =>
+        {
+            if (Volatile.Read(ref _closed) || serial != Serial)
+            {
+                return;
+            }
+
+            if (!DocumentReader.TryGetRevisionToken(capability, out var token))
+            {
+                try
+                {
+                    _ = session.RecordUnavailable(CoreUnavailability.Deleted);
+                }
+                catch (CoreException)
+                {
+                }
+
+                var checkVolume = VolumeGoneCheck ?? DocumentReader.IsVolumeGone;
+                var err = checkVolume(_lastVolumeRoot, _lastVolumeSerial)
+                    ? DocumentError.VolumeUnavailable
+                    : DocumentError.NotFound;
+
+                PushCompleted(new CompletedLoad(serial, Document, Plan, err, _lastVolumeSerial, _lastVolumeRoot));
+                return;
+            }
+
+            CoreChangeDisposition disposition;
+            try
+            {
+                disposition = session.ExternalChange(token);
+            }
+            catch (CoreException cex)
+            {
+                var err = DocumentErrorExtensions.FromCoreException(cex);
+                PushCompleted(new CompletedLoad(serial, Document, Plan, err, _lastVolumeSerial, _lastVolumeRoot));
+                return;
+            }
+
+            if (disposition == CoreChangeDisposition.Unchanged)
+            {
+                PushCompleted(new CompletedLoad(serial, Document, Plan, null, _lastVolumeSerial, _lastVolumeRoot));
+                return;
+            }
+
+            if (disposition == CoreChangeDisposition.Pending)
+            {
+                PushCompleted(new CompletedLoad(serial, Document, Plan, null, _lastVolumeSerial, _lastVolumeRoot));
+                return;
+            }
+
+            StartLoad(serial, capability, session, copyUnchanged: false);
+        });
     }
 
     public void RejectSelection(DocumentError error)
@@ -394,6 +467,7 @@ public sealed class DocumentLoader : IDisposable
     public bool Poll()
     {
         var changed = false;
+        CoreDocument? supersededInThisPoll = null;
         while (true)
         {
             CompletedLoad? item;
@@ -408,6 +482,10 @@ public sealed class DocumentLoader : IDisposable
             if (Volatile.Read(ref _closed) || item.Serial != Serial)
             {
                 RecordDiscarded();
+                if (item.Document is not null && !ReferenceEquals(item.Document, Document))
+                {
+                    item.Document.Dispose();
+                }
                 continue;
             }
 
@@ -417,10 +495,15 @@ public sealed class DocumentLoader : IDisposable
 
             if (item.Document is not null)
             {
+                if (supersededInThisPoll is not null && !ReferenceEquals(supersededInThisPoll, item.Document))
+                {
+                    supersededInThisPoll.Dispose();
+                }
+                supersededInThisPoll = item.Document;
                 Document = item.Document;
                 Plan = item.Plan;
                 LastErrorWasOpenFailure = false;
-                Error = null;
+                Error = item.Error;
                 _hadSuccessfulRead = true;
                 _lastVolumeSerial = item.VolumeSerial;
                 _lastVolumeRoot = item.VolumeRoot;
@@ -458,7 +541,9 @@ public sealed class DocumentLoader : IDisposable
 
         Capability?.Revoke();
         Capability = null;
+        var oldDoc = Document;
         Document = null;
+        oldDoc?.Dispose();
         Plan = null;
         LastErrorWasOpenFailure = false;
         Error = null;
@@ -518,18 +603,22 @@ public sealed class DocumentLoader : IDisposable
 
         lock (_completedLock)
         {
-            while (_completed.Count > 0)
+            while (_completed.TryDequeue(out var stale))
             {
-                _ = _completed.Dequeue();
                 _ = Interlocked.Increment(ref _discardedResults);
+                if (stale.Document is not null && !ReferenceEquals(stale.Document, Document))
+                {
+                    stale.Document.Dispose();
+                }
             }
         }
     }
 
-    private void StartLoad(ulong serial, DocumentCapability capability, CoreSession session)
+    private void StartLoad(ulong serial, DocumentCapability capability, CoreSession session, bool copyUnchanged = true)
     {
         var cancellation = new Cancellation();
-        _active = cancellation;
+        var oldActive = Interlocked.Exchange(ref _active, cancellation);
+        oldActive?.Cancel();
 
         var maxBytes = Limits.MaxSourceBytes > 0
             ? Limits.MaxSourceBytes
@@ -569,7 +658,7 @@ public sealed class DocumentLoader : IDisposable
             var readDoc = readResult.Document!;
             var startTick = Stopwatch.GetTimestamp();
 
-            if (TrySubmitParse(serial, capability, session, readDoc, cancellation, startTick, retryTimeout, planBarrier, planBudget))
+            if (TrySubmitParse(serial, capability, session, readDoc, cancellation, startTick, retryTimeout, planBarrier, planBudget, copyUnchanged))
             {
                 return;
             }
@@ -588,7 +677,7 @@ public sealed class DocumentLoader : IDisposable
                             return;
                         }
 
-                        if (TrySubmitParse(serial, capability, session, readDoc, cancellation, startTick, retryTimeout, planBarrier, planBudget))
+                        if (TrySubmitParse(serial, capability, session, readDoc, cancellation, startTick, retryTimeout, planBarrier, planBudget, copyUnchanged))
                         {
                             return;
                         }
@@ -618,7 +707,8 @@ public sealed class DocumentLoader : IDisposable
         long startTick,
         TimeSpan retryTimeout,
         Action? planBarrier,
-        long planBudget)
+        long planBudget,
+        bool copyUnchanged = true)
     {
         if (cancellation.IsCancelled)
         {
@@ -631,7 +721,7 @@ public sealed class DocumentLoader : IDisposable
             var request = session.Parse(
                 readDoc.Bytes,
                 readDoc.RevisionToken,
-                copyUnchanged: true,
+                copyUnchanged: copyUnchanged,
                 (coreResult, coreError) =>
                 {
                     cancellation.MarkCompleted();
@@ -683,9 +773,9 @@ public sealed class DocumentLoader : IDisposable
                             {
                                 PushCompleted(new CompletedLoad(
                                     serial,
+                                    Document,
+                                    Plan,
                                     null,
-                                    null,
-                                    DocumentError.ParseFailed,
                                     readDoc.VolumeSerial,
                                     readDoc.VolumeRoot));
                             }
@@ -783,6 +873,7 @@ public sealed class DocumentLoader : IDisposable
                 if (Stale())
                 {
                     RecordDiscarded();
+                    document.Dispose();
                     return;
                 }
 
@@ -813,6 +904,7 @@ public sealed class DocumentLoader : IDisposable
                 if (Stale())
                 {
                     RecordDiscarded();
+                    document.Dispose();
                     return;
                 }
                 PushCompleted(new CompletedLoad(
@@ -848,6 +940,10 @@ public sealed class DocumentLoader : IDisposable
         if (Volatile.Read(ref _closed) || item.Serial != Serial)
         {
             RecordDiscarded();
+            if (item.Document is not null && !ReferenceEquals(item.Document, Document))
+            {
+                item.Document.Dispose();
+            }
             return;
         }
 

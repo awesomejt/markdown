@@ -56,11 +56,11 @@ def spread(values: list[float]) -> dict:
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("mode", choices=["launch", "repeated", "interaction"])
+    parser.add_argument("mode", choices=["launch", "repeated", "interaction", "refresh"])
     parser.add_argument("--configuration", choices=["Debug", "Release"], default="Release")
     parser.add_argument("--profile", action="append", choices=PROFILES)
     parser.add_argument("--runs", type=int, default=5, help="launches per profile")
-    parser.add_argument("--count", type=int, default=20, help="repeated loads")
+    parser.add_argument("--count", type=int, default=20, help="repeated loads or refreshes")
     args = parser.parse_args()
 
     binary = app_binary(args.configuration)
@@ -120,6 +120,25 @@ def main():
                 "markdown_equals_source": res["markdown_equals_source"],
                 "readback_plain_equals_model": res["readback_plain_equals_model"],
                 "readback_markdown_equals_source": res["readback_markdown_equals_source"],
+            }
+            print(json.dumps(out, indent=2))
+        elif args.mode == "refresh":
+            with tempfile.TemporaryDirectory(prefix="markdown-refresh-") as directory:
+                copy = Path(directory) / doc.name
+                copy.write_bytes(doc.read_bytes())
+                res = run_measure(binary, f"refresh={args.count}", copy)
+            refreshes = res.get("refreshes_data", [])
+            times = [r["refresh_ms"] for r in refreshes]
+            rss = [r["footprint_mib"] for r in refreshes]
+            out = {
+                "profile": name,
+                "configuration": args.configuration,
+                "refreshes": len(refreshes),
+                "refresh_ms": spread(times),
+                "kept_place": all(r["kept_place"] for r in refreshes),
+                "baseline_footprint_mib": res["baseline_footprint_mib"],
+                "footprint_mib": spread(rss),
+                "footprint_by_refresh": [round(v, 1) for v in rss],
             }
             print(json.dumps(out, indent=2))
 

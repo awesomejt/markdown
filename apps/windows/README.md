@@ -1,6 +1,6 @@
 # Windows native shell
 
-WIN-001A, WIN-001B, WIN-001C, WIN-001D, WIN-001E, WIN-001F, and WIN-001G provide an unpackaged Windows 11 x64 WinUI 3
+WIN-001A, WIN-001B, WIN-001C, WIN-001D, WIN-001E, WIN-001F, WIN-001G, and WIN-001H provide an unpackaged Windows 11 x64 WinUI 3
 application in C# Native AOT linked against the local shared-core C ABI package
 (`markdown_ffi.dll`, model v2). It opens a native window with a menu bar: File
 (Open… Ctrl+O, Reload Ctrl+R, New Window Ctrl+N, Close Window Ctrl+W, Exit Ctrl+Shift+W),
@@ -211,3 +211,19 @@ Validated on Windows 11 Pro build 26300.9711, Ryzen 9 5950X x64, Rust 1.99.1,
   - **Memory retention**: repeated 5x load/close cycles demonstrated complete memory reclamation
     with no unbounded growth (final RSS ~19.1 MiB for 1 MiB prose, ~23.9 MiB for 5 MiB prose,
     ~17.3 MiB for 1 MiB long lines).
+- **WIN-001H**: Debug, Release, and relocated Release Native AOT builds passed
+  all 20 core consumer tests (`--core-tests`, adding anchor creation, resolution,
+  external change copyUnchanged modes, and snapshot release verification), 14 document
+  tests (`--document-tests`, adding DocumentWatcher debounced event delivery, atomic
+  replacement, deletion, reappearance, and external refresh dispositions), 20 render
+  tests (`--render-tests`, adding reading position anchor mapping and restoration store
+  JSON roundtrip/tamper safety), the 13-stage Native AOT smoke (`--smoke`, covering
+  external edits, anchor restoration, reading position retention across edits, external
+  deletion preserving stale view with warning banner, file reappearance recovery,
+  and zero leaked core or snapshot handles), association check, and real two-phase
+  relaunch restoration (`--relaunch-check prepare` and `--relaunch-check verify` in
+  `apps/windows/tools/check.py`).
+  Automated refresh benchmark measurements on Release Native AOT (`apps/windows/tools/measure.py refresh --count 5`):
+  - **prose-1mib**: 168.91ms median refresh, `kept_place: true`, 95.25 MiB peak footprint.
+  - **long-lines-1mib**: 24.70ms median refresh, `kept_place: true`, 28.60 MiB peak footprint.
+  - **prose-5mib**: 996.00ms median refresh, `kept_place: true`, 363.02 MiB peak footprint.

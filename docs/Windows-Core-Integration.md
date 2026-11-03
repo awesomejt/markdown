@@ -78,8 +78,8 @@ API status failures throw `CoreException` (`CoreErrorKind.Status` or
 
 `CoreDocument` copies the UTF-8 source buffer, string table and every flat
 record and index array out of `md_snapshot_view` while the native snapshot
-handle is live, then releases the snapshot handle on the worker before
-returning. Before allocating any managed array, `SnapshotBudget` prices the
+handle is live. Under WIN-001H, it also retains an owned `CoreSnapshot` wrapper (`apps/windows/Core/CoreSnapshot.cs`) around the native `md_snapshot` handle, implementing `IDisposable` to deterministically release the native snapshot. Snapshot disposal and finalization enqueue `md_snapshot_release` non-blockingly to the `markdown-core` worker thread via `CoreRuntime.EnqueueWork`. `CoreSnapshot` and `CoreDocument` expose model-v2 anchor creation (`AnchorAt`, `AnchorForNode`) and resolution (`ResolveAnchor`), mapping native `md_anchor` byte buffers and `md_anchor_resolution` records to managed types for reading position preservation and cross-session restoration. Before allocating any managed array, `SnapshotBudget` prices the
+Before allocating any managed array, `SnapshotBudget` prices the
 total byte count from the view's counts using checked arithmetic and rejects
 any view exceeding `MaxSnapshotCopyBytes` (128 MiB) with
 `CoreErrorKind.SnapshotTooLarge`. Non-empty view tables must have non-null,

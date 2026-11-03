@@ -348,6 +348,156 @@ public sealed class RenderPlan
         return idx;
     }
 
+    private static int Utf8ByteOffsetToCharOffset(ReadOnlySpan<byte> utf8, int byteOffset)
+    {
+        if (byteOffset <= 0) return 0;
+        var currentChars = 0;
+        var idx = 0;
+        while (idx < utf8.Length && idx < byteOffset)
+        {
+            var b = utf8[idx];
+            int charLen;
+            int byteLen;
+            if ((b & 0x80) == 0) { charLen = 1; byteLen = 1; }
+            else if ((b & 0xE0) == 0xC0) { charLen = 1; byteLen = 2; }
+            else if ((b & 0xF0) == 0xE0) { charLen = 1; byteLen = 3; }
+            else if ((b & 0xF8) == 0xF0) { charLen = 2; byteLen = 4; }
+            else { charLen = 1; byteLen = 1; }
+
+            if (idx + byteLen > utf8.Length) break;
+            idx += byteLen;
+            currentChars += charLen;
+        }
+        return currentChars;
+    }
+
+    public ulong SourceOffsetAt(DocumentPosition pos, CoreDocument? document)
+    {
+        if (document is null || document.SourceByteCount == 0 || Fragments.Count == 0)
+        {
+            return 0;
+        }
+
+        var fIdx = Math.Clamp(pos.FragmentIndex, 0, Fragments.Count - 1);
+        var frag = Fragments[fIdx];
+        var cOffset = Math.Clamp(pos.CharOffset, 0, frag.Text.Length);
+
+        var charPos = 0;
+        RenderRun? matchedRun = null;
+        var runStartChar = 0;
+
+        foreach (var run in frag.Runs)
+        {
+            var runEnd = charPos + run.Text.Length;
+            if (cOffset >= charPos && (cOffset < runEnd || (cOffset == runEnd && runEnd == frag.Text.Length)))
+            {
+                matchedRun = run;
+                runStartChar = charPos;
+                break;
+            }
+            charPos = runEnd;
+        }
+
+        if (matchedRun is not null && matchedRun.NodeId >= 0 && matchedRun.NodeId < document.NodeCount)
+        {
+            ref readonly var node = ref document.Nodes[matchedRun.NodeId];
+            if (node.span_start <= node.span_end && node.span_end <= (uint)document.SourceByteCount)
+            {
+                if (matchedRun.Atomic)
+                {
+                    return node.span_start;
+                }
+
+                var localChar = cOffset - runStartChar;
+                var nodeChar = matchedRun.NodeCharOffset + localChar;
+                var nodeBytes = document.Source.AsSpan((int)node.span_start, (int)(node.span_end - node.span_start));
+                var byteOffset = CharOffsetToUtf8ByteOffset(nodeBytes, nodeChar);
+                return Math.Min((ulong)(node.span_start + (uint)byteOffset), (ulong)document.SourceByteCount);
+            }
+        }
+
+        for (var f = fIdx; f >= 0; f--)
+        {
+            foreach (var r in Fragments[f].Runs)
+            {
+                if (r.NodeId >= 0 && r.NodeId < document.NodeCount)
+                {
+                    return document.Nodes[r.NodeId].span_start;
+                }
+            }
+        }
+
+        for (var f = fIdx + 1; f < Fragments.Count; f++)
+        {
+            foreach (var r in Fragments[f].Runs)
+            {
+                if (r.NodeId >= 0 && r.NodeId < document.NodeCount)
+                {
+                    return document.Nodes[r.NodeId].span_start;
+                }
+            }
+        }
+
+        return 0;
+    }
+
+    public DocumentPosition PositionAtSourceOffset(ulong sourceOffset, CoreDocument? document)
+    {
+        if (document is null || Fragments.Count == 0)
+        {
+            return new DocumentPosition(0, 0);
+        }
+
+        (int FragIdx, int CharOffset)? nearestAfter = null;
+        ulong nearestAfterOffset = ulong.MaxValue;
+
+        for (var f = 0; f < Fragments.Count; f++)
+        {
+            var frag = Fragments[f];
+            var charPos = 0;
+            foreach (var run in frag.Runs)
+            {
+                var runStart = charPos;
+                charPos += run.Text.Length;
+
+                if (run.NodeId < 0 || run.NodeId >= document.NodeCount)
+                {
+                    continue;
+                }
+
+                ref readonly var node = ref document.Nodes[run.NodeId];
+                if (node.span_start <= sourceOffset && sourceOffset < node.span_end)
+                {
+                    if (run.Atomic)
+                    {
+                        return new DocumentPosition(f, runStart);
+                    }
+
+                    var byteInNode = (int)(sourceOffset - node.span_start);
+                    var nodeBytes = document.Source.AsSpan((int)node.span_start, (int)(node.span_end - node.span_start));
+                    var charInNode = Utf8ByteOffsetToCharOffset(nodeBytes, byteInNode);
+
+                    var localChar = Math.Clamp(charInNode - run.NodeCharOffset, 0, run.Text.Length);
+                    return new DocumentPosition(f, runStart + localChar);
+                }
+
+                if (node.span_start >= sourceOffset && node.span_start < nearestAfterOffset)
+                {
+                    nearestAfterOffset = node.span_start;
+                    nearestAfter = (f, runStart);
+                }
+            }
+        }
+
+        if (nearestAfter.HasValue)
+        {
+            return new DocumentPosition(nearestAfter.Value.FragIdx, nearestAfter.Value.CharOffset);
+        }
+
+        var lastFrag = Fragments.Count - 1;
+        return new DocumentPosition(lastFrag, Fragments[lastFrag].Text.Length);
+    }
+
     private sealed class Builder(
         CoreDocument doc,
         Func<bool> cancelled,

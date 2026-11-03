@@ -35,6 +35,8 @@ internal static class RenderTests
                 ("document_find_unicode_mappings_and_wrapping", DocumentFindUnicodeMappingsAndWrapping),
                 ("global_selection_and_text_between", GlobalSelectionAndTextBetween),
                 ("native_clipboard_roundtrip", NativeClipboardRoundtrip),
+                ("reading_position_mapping_and_anchors", ReadingPositionMappingAndAnchors),
+                ("restoration_store_serialization_and_tamper_safety", RestorationStoreSerializationAndTamperSafety),
             };
 
             foreach (var (name, run) in tests)
@@ -662,6 +664,8 @@ internal static class RenderTests
         var sw = Stopwatch.StartNew();
         while (sw.ElapsedMilliseconds < 2000)
         {
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
             var counts = CoreRuntime.LiveHandles();
             if (counts.Sessions == 0 && counts.Jobs == 0 && counts.Snapshots == 0)
             {
@@ -943,5 +947,71 @@ internal static class RenderTests
 
         Assert(readText == testText, $"clipboard plain text roundtrip expected '{testText}', got '{readText}'");
         Assert(readMarkdown is not null && readMarkdown.SequenceEqual(testMarkdown), "clipboard markdown bytes roundtrip failed");
+    }
+
+    private static void ReadingPositionMappingAndAnchors()
+    {
+        using var session = new CoreSession("render-pos");
+        var text1 = "# Title\n\nFirst paragraph.\n\n## Section 2\n\nSection 2 body with *marked* term.\n";
+        var res1 = session.ParseBlocking(Encoding.UTF8.GetBytes(text1), null, copyUnchanged: true);
+        using var doc1 = res1.Document!;
+        var plan1 = RenderPlan.Build(doc1, () => false);
+
+        Assert(plan1.Outline.Count == 2, "outline has 2 items");
+        var sec2Frag = plan1.Outline[1].Fragment;
+        var offset = plan1.SourceOffsetAt(new DocumentPosition(sec2Frag, 0), doc1);
+        Assert(offset > 0, "offset is greater than zero");
+
+        var posBack = plan1.PositionAtSourceOffset(offset, doc1);
+        Assert(posBack.FragmentIndex == sec2Frag, "roundtrip maps to same fragment");
+
+        var anchor = doc1.AnchorAt(offset);
+        Assert(anchor is not null, "anchor generated");
+
+        // Insert new content above
+        var text2 = "# Title\n\nInserted introduction above.\n\nFirst paragraph.\n\n## Section 2\n\nSection 2 body with *marked* term.\n";
+        var res2 = session.ParseBlocking(Encoding.UTF8.GetBytes(text2), null, copyUnchanged: true);
+        using var doc2 = res2.Document!;
+        var plan2 = RenderPlan.Build(doc2, () => false);
+
+        var resolved = doc2.ResolveAnchor(anchor!);
+        Assert(resolved.HasValue && resolved.Value.Quality == AnchorQuality.Exact, "anchor resolved as exact");
+        var pos2 = plan2.PositionAtSourceOffset(resolved.Value.SourceOffset, doc2);
+        Assert(plan2.Fragments[pos2.FragmentIndex].Text.Contains("Section 2"), "position points to Section 2 heading");
+    }
+
+    private static void RestorationStoreSerializationAndTamperSafety()
+    {
+        var tempFile = Path.Combine(Path.GetTempPath(), $"restoration-{Guid.NewGuid():N}.json");
+        try
+        {
+            var pos = new SavedPosition([1, 2, 3, 4], [5, 6, 7, 8], null);
+            var state = WindowRestorationState.Create("C:\\test\\file.md", pos, 1.15, outlineShown: false);
+
+            RestorationStore.Save([state], tempFile);
+            var loaded = RestorationStore.Load(tempFile);
+            Assert(loaded.Count == 1, "loaded 1 state");
+            Assert(loaded[0].FilePath == "C:\\test\\file.md", "filepath matches");
+            Assert(Math.Abs(loaded[0].TextScale - 1.15) < 0.001, "text scale matches");
+            Assert(!loaded[0].OutlineShown, "outline visibility matches");
+
+            var restoredPos = loaded[0].ToSavedPosition();
+            Assert(restoredPos is not null, "restored position not null");
+            Assert(restoredPos!.Top.AsSpan().SequenceEqual((ReadOnlySpan<byte>)[1, 2, 3, 4]), "top anchor matches");
+
+            // Tamper test: invalid version should return empty
+            File.WriteAllText(tempFile, "{\"version\": 999, \"windows\": []}");
+            var tampered = RestorationStore.Load(tempFile);
+            Assert(tampered.Count == 0, "unsupported version returns empty");
+
+            // Corrupt JSON should return empty without crashing
+            File.WriteAllText(tempFile, "{ broken json");
+            var corrupt = RestorationStore.Load(tempFile);
+            Assert(corrupt.Count == 0, "corrupt json returns empty");
+        }
+        finally
+        {
+            try { File.Delete(tempFile); } catch { }
+        }
     }
 }
