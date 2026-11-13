@@ -281,7 +281,7 @@ read.
   deferred to H in TODO.md. LNX-001D1 is closed under D-035 in PR #63: automated
   AT-SPI inspection verifies heading/paragraph semantics and reading order, with
   off-screen Orca structural navigation and continuous reading deferred to ADV-001.
-  LNX-001E is merged. LNX-001F is merged. LNX-001G is next on Linux.
+  LNX-001E is merged. LNX-001F is merged. LNX-001G is merged. LNX-001H is next on Linux.
 - LNX-001E (PR #64): delivers Linux native tables (tab-separated cell rows for
   native TSV clipboard copying, monospace font, bold header row, table-relative
   zebra striping), read-only task list markers (`☑` / `☐`) with accent/muted
@@ -305,8 +305,24 @@ read.
   and `gtk-application-prefer-dark-theme`, and atomic persistent JSON settings under
   `$XDG_CONFIG_HOME/markdown/preferences.json` with memory mode support. Grok review 3
   at `4b72dd1` reported 0 Blockers, 0 Concerns, 1 Nit (addressed in `41978ee`, clean
-  approval under D-029). LNX-001G (large-document layout, global selection and accessibility)
-  is next on Linux.
+  approval under D-029).
+- LNX-001G (PR #66): delivers Linux native large-document layout, global
+  selection and accessibility; native reader/copy, scaling and performance
+  budgets. Implements global document selection model across virtualized
+  fragments, continuous drag and keyboard selection with auto-scroll and
+  Shift-click expansion, native dual-format GDK clipboard copy (UTF-8
+  markdown / plain text via exact byte slices and fallback), AT-SPI
+  accessibility tree verification with accessible descriptions and selection
+  reporting, and comprehensive interaction / repeated load performance
+  measurement harness (`apps/linux/tools/measure.py interaction` /
+  `repeated`). Measured budgets: 1 MiB prose pipeline 89.86 ms (< 400 ms target),
+  1 MiB long lines pipeline 9.20 ms (< 400 ms target), outline target
+  resolution 0.01 ms, 1 MiB copy slice 4.93 ms (< 15 ms target), repeated 5x
+  load/close cycles demonstrate complete glibc memory return via `malloc_trim`
+  (retained RSS delta ~0.08 MiB). Grok review 3 at `63971c7` reported 0 Blockers,
+  0 Concerns, 1 Nit (addressed in `apps/linux/tools/measure.py`, clean
+  approval under D-029). LNX-001H (external refresh, anchors and reading
+  restoration) is next on Linux.
 - Workflow: task PRs target `develop` and merge on a Grok review with no
   serious finding (D-029). `main` takes only owner-approved milestone reviews
   from `review/<milestone>`, tagged `m-<milestone>` (D-030). The shared-core

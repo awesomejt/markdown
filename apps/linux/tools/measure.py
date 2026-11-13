@@ -119,10 +119,8 @@ def main():
                 "profile": name,
                 "configuration": args.configuration,
                 "jump_targets": res["jump_targets"],
-                "outline_resolve_times_ms": res.get("outline_resolve_times_ms", res.get("jump_times_ms", [])),
-                "outline_resolve_budget_150ms": res.get(
-                    "outline_resolve_budget_150ms", res.get("jump_budget_150ms", True)
-                ),
+                "outline_resolve_times_ms": res.get("outline_resolve_times_ms", []),
+                "outline_resolve_max_ms": res.get("outline_resolve_max_ms", 0.0),
                 "copy_slice_ms": res["copy_slice_ms"],
                 "clip_write_ms": res["clip_write_ms"],
                 "copy_source_bytes": res["copy_source_bytes"],
