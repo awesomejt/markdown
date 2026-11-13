@@ -1203,4 +1203,19 @@ fn anchors_source_offset_and_restoration() {
             .text()
             .contains("Heading 2")
     );
+
+    // Character-exact roundtrip inside inline emphasis markup
+    let emphasis_frag = plan1
+        .fragments
+        .iter()
+        .position(|f| f.text().contains("marked"))
+        .expect("fragment with marked found");
+    let frag_text = plan1.fragments[emphasis_frag].text();
+    let marked_pos = frag_text.find("marked").unwrap();
+    let char_offset = frag_text[..marked_pos].chars().count() + 2; // middle of "marked" ('r')
+    let pos_in_emphasis = DocumentPosition::new(emphasis_frag, char_offset);
+    let src_off = plan1.source_offset_at(pos_in_emphasis, &doc1);
+    let back_pos = plan1.position_at_source_offset(src_off, &doc1);
+    assert_eq!(back_pos.fragment_index, emphasis_frag);
+    assert_eq!(back_pos.char_offset, char_offset);
 }

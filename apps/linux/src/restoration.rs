@@ -197,13 +197,18 @@ fn format_json(states: &[WindowRestorationState]) -> String {
             Some(s) => format!("\"{}\"", escape_json(s)),
             None => "null".to_string(),
         };
+        let valid_scale = if w.text_scale.is_finite() && w.text_scale > 0.0 {
+            w.text_scale
+        } else {
+            1.0
+        };
         out.push_str(&format!(
             "    {{\n      \"file_path\": \"{}\",\n      \"top_anchor_base64\": \"{}\",\n      \"selection_start_anchor_base64\": {},\n      \"selection_end_anchor_base64\": {},\n      \"text_scale\": {},\n      \"outline_shown\": {}\n    }}{}\n",
             escape_json(&w.file_path),
             escape_json(&w.top_anchor_base64),
             sel_start,
             sel_end,
-            w.text_scale,
+            valid_scale,
             w.outline_shown,
             comma
         ));
@@ -221,10 +226,50 @@ fn escape_json(s: &str) -> String {
             '\n' => out.push_str("\\n"),
             '\r' => out.push_str("\\r"),
             '\t' => out.push_str("\\t"),
+            c if (c as u32) < 0x20 => {
+                out.push_str(&format!("\\u{:04x}", c as u32));
+            }
             c => out.push(c),
         }
     }
     out
+}
+
+fn extract_json_objects(s: &str) -> Vec<&str> {
+    let mut objects = Vec::new();
+    let mut depth = 0;
+    let mut obj_start = 0;
+    let mut in_quotes = false;
+    let mut escape = false;
+
+    for (i, c) in s.char_indices() {
+        if escape {
+            escape = false;
+            continue;
+        }
+        if c == '\\' && in_quotes {
+            escape = true;
+            continue;
+        }
+        if c == '"' {
+            in_quotes = !in_quotes;
+            continue;
+        }
+        if !in_quotes {
+            if c == '{' {
+                if depth == 0 {
+                    obj_start = i;
+                }
+                depth += 1;
+            } else if c == '}' && depth > 0 {
+                depth -= 1;
+                if depth == 0 {
+                    objects.push(&s[obj_start..=i]);
+                }
+            }
+        }
+    }
+    objects
 }
 
 fn parse_json(json: &str) -> Vec<WindowRestorationState> {
@@ -241,11 +286,7 @@ fn parse_json(json: &str) -> Vec<WindowRestorationState> {
     };
     let arr_str = &rest[arr_start + 1..arr_end];
 
-    for block in arr_str.split('{') {
-        let Some(block_end) = block.find('}') else {
-            continue;
-        };
-        let item_str = &block[..block_end];
+    for item_str in extract_json_objects(arr_str) {
         let file_path = extract_string(item_str, "file_path").unwrap_or_default();
         if file_path.is_empty() {
             continue;
@@ -297,6 +338,14 @@ fn extract_string(block: &str, key: &str) -> Option<String> {
                     'n' => s.push('\n'),
                     'r' => s.push('\r'),
                     't' => s.push('\t'),
+                    'u' => {
+                        let hex: String = chars.by_ref().take(4).collect();
+                        if let Ok(code) = u32::from_str_radix(&hex, 16)
+                            && let Some(ch) = char::from_u32(code)
+                        {
+                            s.push(ch);
+                        }
+                    }
                     other => s.push(other),
                 }
             }
@@ -383,5 +432,21 @@ mod tests {
         assert_eq!(states.len(), parsed.len());
         assert_eq!(states[0], parsed[0]);
         assert_eq!(states[1], parsed[1]);
+
+        // Path containing braces, control characters, and non-finite text_scale
+        let edge_case = vec![WindowRestorationState {
+            file_path: "/home/user/{special_notes}/file.md".to_string(),
+            top_anchor_base64: base64_encode(b"top"),
+            selection_start_anchor_base64: None,
+            selection_end_anchor_base64: None,
+            text_scale: f64::NAN,
+            outline_shown: true,
+        }];
+        let json = format_json(&edge_case);
+        assert!(!json.contains("NaN"));
+        let parsed = parse_json(&json);
+        assert_eq!(parsed.len(), 1);
+        assert_eq!(parsed[0].file_path, "/home/user/{special_notes}/file.md");
+        assert_eq!(parsed[0].text_scale, 1.0);
     }
 }

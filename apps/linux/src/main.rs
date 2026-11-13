@@ -99,6 +99,16 @@ fn main() -> glib::ExitCode {
         }
     });
     app.connect_activate(move |app| {
+        if smoke.is_none() {
+            let restored = markdown_linux::restoration::load();
+            if !restored.is_empty() {
+                for st in &restored {
+                    let win = new_window(app);
+                    files::open_restored_state(&win, st);
+                }
+                return;
+            }
+        }
         // A second launch activates the primary instance, which opens another window.
         new_window(app);
         if let Some(mode) = smoke.filter(|mode| !matches!(mode, smoke::Mode::Association)) {

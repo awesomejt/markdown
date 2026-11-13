@@ -92,14 +92,20 @@ async fn run_prepare(
         .position(|entry| doc.text(entry.title).as_deref() == Ok("Part 80"))
         .ok_or("heading Part 80 not found in outline")?;
 
-    reader.activate_outline(heading_index as u32);
-    glib::timeout_future(Duration::from_millis(50)).await;
-
     let outline_frag = plan
         .outline
         .get(heading_index)
         .map(|e| e.fragment as usize)
         .unwrap_or(0);
+
+    reader.activate_outline(heading_index as u32);
+    wait_for("scrolled to target in prepare", || {
+        reader
+            .first_visible_fragment()
+            .is_some_and(|f| (f as isize - outline_frag as isize).abs() <= 1)
+    })
+    .await?;
+
     let mut found_frag = None;
     let mut word_start = 0;
 
@@ -124,7 +130,7 @@ async fn run_prepare(
         file_path.to_string_lossy().to_string(),
         Some(&saved_pos),
         reader.text_scale(),
-        true,
+        reader.is_outline_visible(),
     );
 
     restoration::save(&[state]);
@@ -154,11 +160,7 @@ async fn run_verify(
         ));
     }
 
-    let saved_pos = state
-        .to_saved_position()
-        .ok_or("to_saved_position failed")?;
-
-    crate::files::open_for_smoke(window, &gio::File::for_path(file_path));
+    crate::files::open_restored_state(window, state);
 
     wait_for("document loaded in verify", || {
         crate::files::reader(window).is_some_and(|r| r.document().is_some())
@@ -167,13 +169,43 @@ async fn run_verify(
 
     let reader = crate::files::reader(window).ok_or("reader missing")?;
     let doc = reader.document().ok_or("document missing")?;
+    let plan = reader.plan().ok_or("plan missing")?;
 
-    reader.restore_position(&saved_pos, &doc);
-    glib::timeout_future(Duration::from_millis(50)).await;
+    let heading_index = doc
+        .outline
+        .iter()
+        .position(|entry| doc.text(entry.title).as_deref() == Ok("Part 80"))
+        .ok_or("heading Part 80 not found in restored outline")?;
+
+    let target_frag = plan.outline[heading_index].fragment;
+
+    wait_for("restored to target fragment in verify", || {
+        crate::files::reader(window)
+            .and_then(|r| r.first_visible_fragment())
+            .is_some_and(|f| (f as isize - target_frag as isize).abs() <= 1)
+    })
+    .await?;
+
+    let first_visible = reader
+        .first_visible_fragment()
+        .ok_or("no visible fragment")?;
+    if (first_visible as isize - target_frag as isize).abs() > 1 {
+        return Err(format!(
+            "top fragment mismatch: first_visible={first_visible}, target_frag={target_frag}"
+        ));
+    }
 
     let sel_text = reader.selected_text();
     if sel_text.as_deref() != Some("marked") {
         return Err(format!("restored selection mismatch: {sel_text:?}"));
+    }
+
+    if reader.is_outline_visible() != state.outline_shown {
+        return Err("restored outline visibility mismatch".into());
+    }
+
+    if (reader.text_scale() - state.text_scale).abs() > 0.001 {
+        return Err("restored text scale mismatch".into());
     }
 
     restoration::clear();

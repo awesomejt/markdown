@@ -817,6 +817,16 @@ impl Reader {
         self.outline.emit_by_name::<()>("activate", &[&index]);
     }
 
+    pub fn is_outline_visible(&self) -> bool {
+        self.widget.start_child().is_some_and(|w| w.is_visible())
+    }
+
+    pub fn set_outline_visible(&self, visible: bool) {
+        if let Some(w) = self.widget.start_child() {
+            w.set_visible(visible);
+        }
+    }
+
     pub fn save_position(
         &self,
         document: &markdown_linux_core::CoreDocument,
@@ -1067,9 +1077,27 @@ impl State {
     }
 
     pub fn first_visible_fragment(&self) -> Option<u32> {
-        let mut observed = self.observed();
-        observed.sort_by_key(|(idx, _)| *idx);
-        observed.first().map(|(idx, _)| *idx)
+        let observed = self.observed();
+        if let Some(scrolled) = self.scrolled.upgrade() {
+            let mut in_view: Vec<(u32, f32)> = observed
+                .iter()
+                .filter_map(|(idx, label)| {
+                    let bounds = label.compute_bounds(&scrolled)?;
+                    if bounds.height() > 0.0 && bounds.y() + bounds.height() > 0.0 {
+                        Some((*idx, bounds.y()))
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+            if !in_view.is_empty() {
+                in_view.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
+                return in_view.first().map(|(idx, _)| *idx);
+            }
+        }
+        let mut fallback = observed;
+        fallback.sort_by_key(|(idx, _)| *idx);
+        fallback.first().map(|(idx, _)| *idx)
     }
 
     pub fn default_anchor(&self) -> DocumentPosition {

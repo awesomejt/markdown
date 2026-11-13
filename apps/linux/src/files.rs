@@ -7,6 +7,7 @@ use gtk::{gio, glib};
 use markdown_linux::document::{DocumentCapability, DocumentError, DocumentLoader, LoadEvent};
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::path::Path;
 use std::rc::{Rc, Weak};
 use std::sync::Arc;
 use std::time::Duration;
@@ -100,22 +101,6 @@ impl WindowDocument {
         });
         self.watcher = Some(watcher);
     }
-    fn save_restoration(&self) {
-        let Some(cap) = self.loader.capability() else {
-            return;
-        };
-        let Some(doc) = &self.loader.document else {
-            return;
-        };
-        let pos = self.reader.save_position(doc);
-        let state = markdown_linux::restoration::WindowRestorationState::from_saved_position(
-            cap.path().to_string_lossy().to_string(),
-            pos.as_ref(),
-            self.reader.text_scale(),
-            true,
-        );
-        markdown_linux::restoration::save(&[state]);
-    }
     fn start_poll(&mut self) {
         if self.poll_source.is_none() {
             let weak = self.weak_self.clone();
@@ -125,47 +110,56 @@ impl WindowDocument {
                     let Some(state) = weak.upgrade() else {
                         return glib::ControlFlow::Break;
                     };
-                    let mut state = state.borrow_mut();
-                    let Some(event) = state.loader.poll() else {
+                    let mut state_ref = state.borrow_mut();
+                    let Some(event) = state_ref.loader.poll() else {
                         return glib::ControlFlow::Continue;
                     };
-                    state.poll_source.take();
-                    match event {
+                    state_ref.poll_source.take();
+                    let should_save = match event {
                         LoadEvent::Loaded {
                             document,
                             plan,
                             unchanged,
                             ..
                         } => {
-                            state.reader.install_document(plan, Some(document.clone()));
-                            if let Some(saved) = state.saved_position.take() {
-                                state.reader.restore_position(&saved, &document);
+                            if !unchanged {
+                                state_ref
+                                    .reader
+                                    .install_document(plan, Some(document.clone()));
+                                if let Some(saved) = state_ref.saved_position.take() {
+                                    state_ref.reader.restore_position(&saved, &document);
+                                }
+                                state_ref.arm_watcher();
                             }
-                            state.arm_watcher();
-                            state.save_restoration();
-                            state.status(&format!(
+                            state_ref.status(&format!(
                                 "Document loaded · {} bytes · {} headings{}",
                                 document.source.len(),
                                 document.outline.len(),
                                 if unchanged { " (unchanged)" } else { "" }
                             ));
-                            if let Some(label) = state.label.upgrade() {
+                            if let Some(label) = state_ref.label.upgrade() {
                                 label.set_visible(false);
                             }
-                            if state.find_bar.is_revealed()
-                                && !state.find_bar.entry.text().is_empty()
+                            if state_ref.find_bar.is_revealed()
+                                && !state_ref.find_bar.entry.text().is_empty()
                             {
-                                state.run_find();
+                                state_ref.run_find();
                             }
+                            !unchanged
                         }
                         LoadEvent::Failed(error) => {
-                            if state.loader.document.is_some() {
-                                state.status(&format!("{error} · Retaining last version"));
+                            if state_ref.loader.document.is_some() {
+                                state_ref.status(&format!("{error} · Retaining last version"));
                             } else {
-                                state.reader.clear();
-                                state.status(&error.to_string());
+                                state_ref.reader.clear();
+                                state_ref.status(&error.to_string());
                             }
+                            false
                         }
+                    };
+                    drop(state_ref);
+                    if should_save {
+                        save_all_restoration();
                     }
                     glib::ControlFlow::Break
                 },
@@ -308,8 +302,17 @@ impl WindowDocument {
             .status_label
             .set_text(&matches.status(Some(prev)));
     }
-    fn open(&mut self, file: &gio::File) {
+    fn open_internal(
+        &mut self,
+        file: &gio::File,
+        restore: Option<markdown_linux::restoration::SavedPosition>,
+    ) {
+        if let Some(watcher) = self.watcher.take() {
+            watcher.cancel();
+        }
+        self.saved_position = restore;
         let Some(path) = file.path() else {
+            self.saved_position = None;
             self.reader.clear();
             self.loader.reject_selection();
             self.stop_polling();
@@ -320,10 +323,14 @@ impl WindowDocument {
         match self.loader.open(DocumentCapability::from_local_file(path)) {
             Ok(()) => self.loading(),
             Err(error) => {
+                self.saved_position = None;
                 self.reload.set_enabled(self.loader.has_file());
                 self.status(&error.to_string());
             }
         }
+    }
+    fn open(&mut self, file: &gio::File) {
+        self.open_internal(file, None);
     }
     fn stop_polling(&mut self) {
         if let Some(source) = self.poll_source.take() {
@@ -613,15 +620,63 @@ pub fn attach(window: &gtk::ApplicationWindow, label: &gtk::Label) {
     });
     window.connect_destroy(detach);
 }
-pub fn detach(window: &gtk::ApplicationWindow) {
-    if let Some(state) = WINDOWS.with(|all| all.borrow_mut().remove(&key(window))) {
-        state.borrow_mut().close();
+pub fn save_all_restoration() {
+    let mut states = Vec::new();
+    WINDOWS.with(|all| {
+        for doc_rc in all.borrow().values() {
+            if let Ok(doc) = doc_rc.try_borrow()
+                && let Some(cap) = doc.loader.capability()
+                && let Some(core_doc) = &doc.loader.document
+            {
+                let path_str = cap.path().to_string_lossy().to_string();
+                let saved = doc.reader.save_position(core_doc);
+                let state =
+                    markdown_linux::restoration::WindowRestorationState::from_saved_position(
+                        path_str,
+                        saved.as_ref(),
+                        doc.reader.text_scale(),
+                        doc.reader.is_outline_visible(),
+                    );
+                states.push(state);
+            }
+        }
+    });
+    if !states.is_empty() {
+        markdown_linux::restoration::save(&states);
+    } else {
+        markdown_linux::restoration::clear();
     }
 }
+
+pub fn detach(window: &gtk::ApplicationWindow) {
+    let k = key(window);
+    WINDOWS.with(|all| {
+        if let Some(state) = all.borrow_mut().remove(&k) {
+            state.borrow_mut().close();
+        }
+    });
+    save_all_restoration();
+}
+
 pub fn shutdown() {
+    save_all_restoration();
     let states = WINDOWS.with(|all| std::mem::take(&mut *all.borrow_mut()));
     for state in states.into_values() {
         state.borrow_mut().close();
+    }
+}
+
+pub fn open_restored_state(
+    window: &gtk::ApplicationWindow,
+    rest: &markdown_linux::restoration::WindowRestorationState,
+) {
+    if let Some(state_rc) = state(window) {
+        let mut st = state_rc.borrow_mut();
+        st.reader.set_text_scale(rest.text_scale);
+        st.reader.set_outline_visible(rest.outline_shown);
+        let file = gio::File::for_path(Path::new(&rest.file_path));
+        let pos = rest.to_saved_position();
+        st.open_internal(&file, pos);
     }
 }
 pub fn choose(app: &gtk::Application) {
