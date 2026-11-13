@@ -764,15 +764,13 @@ async fn find_and_zoom(
             s.is_gtk_application_prefer_dark_theme(),
             "gtk dark theme enabled",
         )?;
-        if let Some(pspec) = s.find_property("gtk-interface-color-scheme")
-            && let Some(enum_class) = gtk::glib::EnumClass::with_type(pspec.value_type())
-        {
+        if s.find_property("gtk-interface-color-scheme").is_some() {
             let val = s.property_value("gtk-interface-color-scheme");
-            if let Ok(int_val) = val.get::<i32>()
-                && let Some(v) = enum_class.value(int_val)
-            {
-                check(v.nick() == "dark", "gtk interface color scheme is dark")?;
-            }
+            let nick = gtk::glib::EnumValue::from_value(&val).map(|(_, v)| v.nick().to_owned());
+            check(
+                nick.as_deref() == Some("dark"),
+                "gtk interface color scheme is dark",
+            )?;
         }
     }
 
@@ -787,15 +785,13 @@ async fn find_and_zoom(
             !s.is_gtk_application_prefer_dark_theme(),
             "gtk light theme enabled",
         )?;
-        if let Some(pspec) = s.find_property("gtk-interface-color-scheme")
-            && let Some(enum_class) = gtk::glib::EnumClass::with_type(pspec.value_type())
-        {
+        if s.find_property("gtk-interface-color-scheme").is_some() {
             let val = s.property_value("gtk-interface-color-scheme");
-            if let Ok(int_val) = val.get::<i32>()
-                && let Some(v) = enum_class.value(int_val)
-            {
-                check(v.nick() == "light", "gtk interface color scheme is light")?;
-            }
+            let nick = gtk::glib::EnumValue::from_value(&val).map(|(_, v)| v.nick().to_owned());
+            check(
+                nick.as_deref() == Some("light"),
+                "gtk interface color scheme is light",
+            )?;
         }
     }
 
@@ -805,6 +801,16 @@ async fn find_and_zoom(
             == markdown_linux::preferences::ThemePreference::System,
         "theme preference system saved",
     )?;
+    if let Some(s) = gtk::Settings::default()
+        && s.find_property("gtk-interface-color-scheme").is_some()
+    {
+        let val = s.property_value("gtk-interface-color-scheme");
+        let nick = gtk::glib::EnumValue::from_value(&val).map(|(_, v)| v.nick().to_owned());
+        check(
+            nick.is_some(),
+            "gtk interface color scheme readable under system",
+        )?;
+    }
 
     note("find, theme and text zoom checked");
     Ok(())
