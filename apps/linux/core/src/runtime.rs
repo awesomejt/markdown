@@ -33,6 +33,7 @@ pub enum CoreError {
     },
     QueryTooLong,
     InvalidArgument,
+    NoBlocks,
 }
 
 impl fmt::Display for CoreError {
@@ -59,6 +60,7 @@ impl fmt::Display for CoreError {
             }
             CoreError::QueryTooLong => f.write_str("Find query exceeds maximum 4096 bytes"),
             CoreError::InvalidArgument => f.write_str("Invalid argument"),
+            CoreError::NoBlocks => f.write_str("Document has no blocks to anchor"),
         }
     }
 }

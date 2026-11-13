@@ -177,16 +177,26 @@ async fn core() -> Result<(), String> {
     .await
     .map_err(|_| "core worker panicked".to_owned())?
     .map_err(|error| format!("core parse: {error}"))?;
-    let document = parsed.document.ok_or("core parse published no document")?;
-    let title = document
-        .outline
-        .first()
-        .map(|entry| document.text(entry.title));
+    let (outcome, title) = {
+        let document = parsed.document.ok_or("core parse published no document")?;
+        let title = document
+            .outline
+            .first()
+            .and_then(|entry| document.text(entry.title).ok().map(str::to_owned));
+        (parsed.outcome, title)
+    };
     check(
-        parsed.outcome == core::CoreOutcome::Published && title == Some(Ok("Smoke heading")),
+        outcome == core::CoreOutcome::Published && title.as_deref() == Some("Smoke heading"),
         "core model v2 parse",
     )?;
-    let handles = core::live_handles().map_err(|error| error.to_string())?;
+    let mut handles = core::live_handles().map_err(|error| error.to_string())?;
+    for _ in 0..50 {
+        if handles.total() == 0 {
+            break;
+        }
+        glib::timeout_future(Duration::from_millis(10)).await;
+        handles = core::live_handles().map_err(|error| error.to_string())?;
+    }
     check(handles.total() == 0, "core handles released")?;
     note(&format!(
         "core checked ({} package, model v2)",

@@ -5,6 +5,7 @@ pub mod files;
 pub mod find_bar;
 mod measure;
 pub mod reader;
+mod relaunch;
 mod smoke;
 
 use gtk::prelude::*;
@@ -58,6 +59,18 @@ fn main() -> glib::ExitCode {
             Ok(()) => glib::ExitCode::SUCCESS,
             Err(e) => {
                 eprintln!("measure error: {e}");
+                glib::ExitCode::FAILURE
+            }
+        };
+    }
+    if let Some(arg) = std::env::args_os().nth(1)
+        && arg == "--relaunch-check"
+    {
+        let args: Vec<String> = std::env::args().skip(2).collect();
+        return match relaunch::run(&args) {
+            Ok(()) => glib::ExitCode::SUCCESS,
+            Err(e) => {
+                eprintln!("relaunch-check error: {e}");
                 glib::ExitCode::FAILURE
             }
         };
@@ -144,7 +157,7 @@ pub fn apply_theme(theme: markdown_linux::preferences::ThemePreference) {
     }
 }
 
-fn install_commands(app: &gtk::Application) {
+pub(crate) fn install_commands(app: &gtk::Application) {
     let prefs = markdown_linux::preferences::load();
     apply_theme(prefs.theme);
 

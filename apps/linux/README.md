@@ -70,13 +70,15 @@ packages, then runs `cargo fmt --check`, Clippy with warnings denied over the
 workspace, and the
 [dependency/license policy](../../docs/Dependencies.md#linux-app-graph-lnx-001a)
 for the Linux graph. Then, for debug and then release, it builds the
-workspace with `--locked`, runs 12 document tests, 16 renderer tests and the
-16 core consumer tests against the
+workspace with `--locked`, runs 14 document tests, 19 renderer tests and the
+18 core consumer tests against the
 matching core package (negotiation, typed errors, owned v2 values, parse
 failures, copy budget, queued and running cancellation, bounded admission,
-close, non-blocking `close_then` and drop, availability, repeated lifecycle and every corpus and
-performance profile), re-verifies the package hash and runs each binary's two
-smoke modes as child processes, with a 30-second timeout each:
+close, non-blocking `close_then` and drop, availability, repeated lifecycle,
+anchors and external changes, snapshot release, and every corpus and
+performance profile), re-verifies the package hash, runs each binary's two
+smoke modes as child processes, isolated D-Bus desktop-entry association smoke,
+and two-phase relaunch restoration verification (`--relaunch-check prepare` / `verify`):
 
 - `--smoke-test` checks the application ID, one mapped, resizable window with
   a menu bar, the empty-state label (text, accessible role, mapped), every
@@ -521,3 +523,38 @@ debug` for debug, or `--prepare-only` for a persistent public owner-test fixture
     - 10 repeated loads evaluated glibc allocator caching and `malloc_trim(0)`.
     - 1 MiB prose trimmed RSS is flat at $\sim 51.1\,\text{MiB}$ (untrimmed glibc cache $\sim 88.0\,\text{MiB}$).
     - 5 MiB prose trimmed RSS is flat at $\sim 153.4\,\text{MiB}$ (untrimmed glibc cache $\sim 266.4\,\text{MiB}$).
+
+## External refresh, anchors and reading restoration (LNX-001H)
+
+- **File monitoring and external refresh**:
+  - `DocumentWatcher` monitors document files and parent directories via `gio::FileMonitor`,
+    detecting external content modifications, renames, atomic replacements, and deletions.
+  - Events are debounced by 100 ms to coalesce rapid write bursts.
+  - Refresh preserves the on-screen rendered view and reading position until the new revision
+    is parsed and built; deleted or inaccessible files retain the stale document rather than
+    clearing the view.
+- **Core anchors and external change disposition**:
+  - FFI functions `md_snapshot_anchor_at`, `md_snapshot_anchor_for_node`, and
+    `md_snapshot_resolve_anchor` in `apps/linux/core/src/ffi.rs`.
+  - `CoreSnapshot` wrapper manages native snapshot handle lifetimes with worker-thread non-blocking
+    asynchronous drop (`md_snapshot_release`).
+  - `CoreSession::external_change` provides change disposition checking against document revision tokens.
+- **Render plan bidirectional offset mapping**:
+  - `RenderPlan::source_offset_at` maps document position (fragment and character offset) to
+    underlying Markdown source byte offsets.
+  - `RenderPlan::position_at_source_offset` maps source byte offsets back to fragment and character
+    positions, handling atomic runs and fallbacks.
+- **State and reading position restoration**:
+  - `SavedPosition` stores top visible fragment and selection start/end as base64-encoded core anchors.
+  - `WindowRestorationState` and `restoration::RestorationStore` persist window state (file path,
+    anchors, text scale, outline visibility) to `$XDG_CONFIG_HOME/markdown/restoration.json`
+    (or custom `MARKDOWN_RESTORATION_PATH`), with atomic write and in-memory test isolation.
+- **Two-phase relaunch verification**:
+  - Verified via `--relaunch-check prepare <file>` and `--relaunch-check verify <file>` in
+    `apps/linux/src/relaunch.rs`, asserting exact document, top visible position, and active text
+    selection restoration across process restarts.
+- **Refresh performance measurements**:
+  - `apps/linux/tools/measure.py refresh --count 5` measures 5 consecutive external modifications:
+    - `prose-1mib`: median refresh 82.14 ms, `kept_place: true`, footprint $\sim 175.7\,\text{MiB}$.
+    - `long-lines-1mib`: median refresh 6.28 ms, `kept_place: true`, footprint $\sim 42.6\,\text{MiB}$.
+    - `prose-5mib`: median refresh 582.07 ms, `kept_place: true`, footprint $\sim 774.9\,\text{MiB}$.

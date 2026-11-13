@@ -23,6 +23,8 @@ struct WindowDocument {
     chooser: Option<gtk::FileChooserNative>,
     reload: gio::SimpleAction,
     poll_source: Option<glib::SourceId>,
+    watcher: Option<Rc<markdown_linux::document::DocumentWatcher>>,
+    saved_position: Option<markdown_linux::restoration::SavedPosition>,
     weak_self: Weak<RefCell<WindowDocument>>,
 }
 thread_local! { static WINDOWS: RefCell<HashMap<usize, Rc<RefCell<WindowDocument>>>> = RefCell::new(HashMap::new()); }
@@ -60,8 +62,61 @@ impl WindowDocument {
         self.find_bar.next_button.set_sensitive(false);
 
         self.reload.set_enabled(self.loader.has_file());
+        if let Some(doc) = &self.loader.document {
+            self.saved_position = self.reader.save_position(doc);
+        }
         self.reader.clear();
         self.status("Loading document…");
+        self.start_poll();
+
+        if let Some(window) = self.window.upgrade() {
+            window.set_title(Some(&format!(
+                "{} — Markdown",
+                self.loader.display_name().unwrap_or_default()
+            )));
+        }
+    }
+    fn refresh_external(&mut self) {
+        if let Some(doc) = &self.loader.document {
+            self.saved_position = self.reader.save_position(doc);
+        }
+        self.loader.refresh_external();
+        self.start_poll();
+    }
+    fn arm_watcher(&mut self) {
+        let Some(cap) = self.loader.capability() else {
+            self.watcher = None;
+            return;
+        };
+        let weak = self.weak_self.clone();
+        let watcher = markdown_linux::document::DocumentWatcher::new(cap.path(), move || {
+            let weak = weak.clone();
+            glib::idle_add_local(move || {
+                if let Some(state) = weak.upgrade() {
+                    state.borrow_mut().refresh_external();
+                }
+                glib::ControlFlow::Break
+            });
+        });
+        self.watcher = Some(watcher);
+    }
+    fn save_restoration(&self) {
+        let Some(cap) = self.loader.capability() else {
+            return;
+        };
+        let Some(doc) = &self.loader.document else {
+            return;
+        };
+        let pos = self.reader.save_position(doc);
+        let state = markdown_linux::restoration::WindowRestorationState::from_saved_position(
+            cap.path().to_string_lossy().to_string(),
+            pos.as_ref(),
+            self.reader.text_scale(),
+            true,
+        );
+        markdown_linux::restoration::save(&[state]);
+    }
+    fn start_poll(&mut self) {
         if self.poll_source.is_none() {
             let weak = self.weak_self.clone();
             self.poll_source = Some(glib::timeout_add_local(
@@ -83,6 +138,11 @@ impl WindowDocument {
                             ..
                         } => {
                             state.reader.install_document(plan, Some(document.clone()));
+                            if let Some(saved) = state.saved_position.take() {
+                                state.reader.restore_position(&saved, &document);
+                            }
+                            state.arm_watcher();
+                            state.save_restoration();
                             state.status(&format!(
                                 "Document loaded · {} bytes · {} headings{}",
                                 document.source.len(),
@@ -99,20 +159,17 @@ impl WindowDocument {
                             }
                         }
                         LoadEvent::Failed(error) => {
-                            state.reader.clear();
-                            state.status(&error.to_string());
+                            if state.loader.document.is_some() {
+                                state.status(&format!("{error} · Retaining last version"));
+                            } else {
+                                state.reader.clear();
+                                state.status(&error.to_string());
+                            }
                         }
                     }
                     glib::ControlFlow::Break
                 },
             ));
-        }
-
-        if let Some(window) = self.window.upgrade() {
-            window.set_title(Some(&format!(
-                "{} — Markdown",
-                self.loader.display_name().unwrap_or_default()
-            )));
         }
     }
     fn run_find(&mut self) {
@@ -281,6 +338,9 @@ impl WindowDocument {
         if let Some(chooser) = self.chooser.take() {
             chooser.destroy();
         }
+        if let Some(watcher) = self.watcher.take() {
+            watcher.cancel();
+        }
         self.reader.clear();
         self.loader.close();
     }
@@ -319,6 +379,8 @@ pub fn attach(window: &gtk::ApplicationWindow, label: &gtk::Label) {
             chooser: None,
             reload: reload.clone(),
             poll_source: None,
+            watcher: None,
+            saved_position: None,
             weak_self: weak.clone(),
         })
     });

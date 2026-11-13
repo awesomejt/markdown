@@ -817,6 +817,70 @@ impl Reader {
         self.outline.emit_by_name::<()>("activate", &[&index]);
     }
 
+    pub fn save_position(
+        &self,
+        document: &markdown_linux_core::CoreDocument,
+    ) -> Option<markdown_linux::restoration::SavedPosition> {
+        let plan = self.plan()?;
+        if plan.fragments.is_empty() {
+            return None;
+        }
+        let top_frag = self.first_visible_fragment().unwrap_or(0) as usize;
+        let top_offset = plan.source_offset_at(DocumentPosition::new(top_frag, 0), document);
+        let top_anchor = document.anchor_at(top_offset).ok()?;
+
+        if let Some(sel) = self.selection()
+            && !sel.is_empty()
+        {
+            let start_offset = plan.source_offset_at(sel.start(), document);
+            let end_offset = plan.source_offset_at(sel.end(), document);
+            let start_anchor = document.anchor_at(start_offset).ok()?;
+            let end_anchor = document.anchor_at(end_offset).ok()?;
+            return Some(markdown_linux::restoration::SavedPosition {
+                top: top_anchor,
+                selection_start: start_anchor,
+                selection_end: Some(end_anchor),
+            });
+        }
+
+        Some(markdown_linux::restoration::SavedPosition {
+            top: top_anchor.clone(),
+            selection_start: top_anchor,
+            selection_end: None,
+        })
+    }
+
+    pub fn restore_position(
+        &self,
+        saved: &markdown_linux::restoration::SavedPosition,
+        document: &markdown_linux_core::CoreDocument,
+    ) {
+        let Some(plan) = self.plan() else { return };
+        if plan.fragments.is_empty() {
+            return;
+        }
+
+        if let Ok(Some(top_res)) = document.resolve_anchor(&saved.top) {
+            let top_pos = plan.position_at_source_offset(top_res.source_offset, document);
+            self.scroll_to_fragment(top_pos.fragment_index);
+        }
+
+        if let Some(ref end_anchor) = saved.selection_end {
+            if let (Ok(Some(start_res)), Ok(Some(end_res))) = (
+                document.resolve_anchor(&saved.selection_start),
+                document.resolve_anchor(end_anchor),
+            ) {
+                let start_pos = plan.position_at_source_offset(start_res.source_offset, document);
+                let end_pos = plan.position_at_source_offset(end_res.source_offset, document);
+                self.set_selection(Some(DocumentSelection::new(start_pos, end_pos)));
+            } else {
+                self.clear_selection();
+            }
+        } else {
+            self.clear_selection();
+        }
+    }
+
     pub fn activate_fragment_link(&self) -> bool {
         let observed = self.observed();
         let action = {

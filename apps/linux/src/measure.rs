@@ -63,7 +63,7 @@ fn parse_doc(bytes: Vec<u8>) -> Result<CoreDocument, String> {
 pub fn run(args: &[String]) -> Result<(), String> {
     if args.is_empty() {
         return Err(
-            "Usage: markdown-linux --measure <launch|interaction|repeated=N> [document-path]"
+            "Usage: markdown-linux --measure <launch|interaction|repeated=N|refresh=N> [document-path]"
                 .to_string(),
         );
     }
@@ -80,6 +80,9 @@ pub fn run(args: &[String]) -> Result<(), String> {
     } else if let Some(count_str) = mode.strip_prefix("repeated=") {
         let count: usize = count_str.parse().map_err(|_| "invalid repeated count")?;
         run_repeated(doc_path, count)
+    } else if let Some(count_str) = mode.strip_prefix("refresh=") {
+        let count: usize = count_str.parse().map_err(|_| "invalid refresh count")?;
+        run_refresh(doc_path, count)
     } else if mode == "interaction" {
         run_interaction(doc_path)
     } else {
@@ -262,6 +265,131 @@ fn run_interaction(doc_path: Option<&Path>) -> Result<(), String> {
         clip_write_ms,
         source_bytes.len(),
         text.chars().count(),
+    );
+
+    Ok(())
+}
+
+fn run_refresh(doc_path: Option<&Path>, count: usize) -> Result<(), String> {
+    let doc_path = doc_path.ok_or("document path required for refresh")?;
+    let original = std::fs::read(doc_path).map_err(|e| format!("read file: {e}"))?;
+
+    let file_name = doc_path
+        .file_name()
+        .map(|s| escape_json(&s.to_string_lossy()))
+        .unwrap_or_default();
+
+    let max_len = original.len().saturating_sub(64);
+    let mut cut = original.len();
+    for i in (0..=max_len).rev() {
+        if original.get(i) == Some(&b'\n') {
+            cut = i;
+            break;
+        }
+    }
+
+    let prefix = b"Refreshed from outside.\n\n";
+    let mut edited = Vec::with_capacity(prefix.len() + cut);
+    edited.extend_from_slice(prefix);
+    edited.extend_from_slice(&original[..cut]);
+
+    struct RestoreGuard<'a> {
+        path: &'a Path,
+        original: &'a [u8],
+    }
+    impl<'a> Drop for RestoreGuard<'a> {
+        fn drop(&mut self) {
+            let _ = std::fs::write(self.path, self.original);
+        }
+    }
+    let _guard = RestoreGuard {
+        path: doc_path,
+        original: &original,
+    };
+
+    let session = CoreSession::new("measure-refresh").map_err(|e| format!("session new: {e}"))?;
+    let initial_res = session
+        .parse_blocking(original.clone(), None, true)
+        .map_err(|e| format!("initial parse: {e}"))?;
+    let initial_doc = initial_res
+        .document
+        .ok_or_else(|| "initial parse returned no document".to_string())?;
+    let initial_plan = RenderPlan::build(&initial_doc, || false)
+        .map_err(|e| format!("initial build plan: {e:?}"))?;
+
+    if initial_plan.outline.is_empty() {
+        return Err("document has no headings".to_string());
+    }
+
+    let middle_heading = initial_plan.outline.len() / 2;
+    let expected_title = initial_plan.outline[middle_heading].title.clone();
+    let middle_frag = initial_plan.outline[middle_heading].fragment as usize;
+    let middle_offset =
+        initial_plan.source_offset_at(DocumentPosition::new(middle_frag, 0), &initial_doc);
+    let initial_anchor = initial_doc
+        .anchor_at(middle_offset)
+        .map_err(|e| format!("failed to anchor middle heading: {e:?}"))?;
+
+    let (baseline_rss, _) = get_rss_kib();
+    let baseline_rss_mib = (baseline_rss as f64) / 1024.0;
+
+    let mut results = Vec::new();
+    for iteration in 1..=count {
+        let bytes_to_write = if iteration % 2 == 1 {
+            &edited
+        } else {
+            &original
+        };
+        let sw = Instant::now();
+        std::fs::write(doc_path, bytes_to_write).map_err(|e| format!("write file: {e}"))?;
+
+        let read_bytes = std::fs::read(doc_path).map_err(|e| format!("read file: {e}"))?;
+        let parse_res = session
+            .parse_blocking(read_bytes, None, false)
+            .map_err(|e| format!("refresh parse: {e}"))?;
+        let new_doc = parse_res
+            .document
+            .ok_or_else(|| "refresh parse returned no document".to_string())?;
+        let new_plan = RenderPlan::build(&new_doc, || false)
+            .map_err(|e| format!("refresh build plan: {e:?}"))?;
+        let refresh_ms = sw.elapsed().as_secs_f64() * 1000.0;
+
+        let top_res = new_doc
+            .resolve_anchor(&initial_anchor)
+            .map_err(|e| format!("resolve anchor: {e:?}"))?;
+        let restored_pos =
+            top_res.map(|r| new_plan.position_at_source_offset(r.source_offset, &new_doc));
+        let kept_place = if let Some(pos) = restored_pos {
+            pos.fragment_index < new_plan.fragments.len()
+                && (new_plan.fragments[pos.fragment_index]
+                    .text()
+                    .contains(&expected_title)
+                    || new_plan.outline.iter().any(|o| {
+                        o.title == expected_title
+                            && (o.fragment as isize - pos.fragment_index as isize).abs() <= 1
+                    }))
+        } else {
+            false
+        };
+
+        unsafe {
+            malloc_trim(0);
+        }
+        let (current_rss, _) = get_rss_kib();
+        let current_rss_mib = (current_rss as f64) / 1024.0;
+
+        results.push(format!(
+            "{{\"iteration\": {iteration}, \"refresh_ms\": {:.2}, \"kept_place\": {kept_place}, \"baseline_footprint_mib\": {:.2}, \"footprint_mib\": {:.2}}}",
+            refresh_ms, baseline_rss_mib, current_rss_mib
+        ));
+    }
+
+    session.close().map_err(|e| format!("session close: {e}"))?;
+
+    println!(
+        "{{\n  \"mode\": \"refresh\",\n  \"document\": \"{file_name}\",\n  \"refreshes\": {count},\n  \"baseline_footprint_mib\": {:.2},\n  \"refreshes_data\": [\n    {}\n  ]\n}}",
+        baseline_rss_mib,
+        results.join(",\n    ")
     );
 
     Ok(())

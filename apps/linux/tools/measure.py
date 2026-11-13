@@ -13,6 +13,7 @@ from pathlib import Path
 import statistics
 import subprocess
 import sys
+import tempfile
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 PROFILES = ["prose-1mib", "prose-5mib", "long-lines-1mib"]
@@ -57,7 +58,7 @@ def spread(values: list[float]) -> dict:
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("mode", choices=["launch", "repeated", "interaction"])
+    parser.add_argument("mode", choices=["launch", "repeated", "interaction", "refresh"])
     parser.add_argument("--configuration", choices=["debug", "release", "Debug", "Release"], default="release")
     parser.add_argument("--profile", action="append", choices=PROFILES)
     parser.add_argument("--runs", type=int, default=5, help="launches per profile")
@@ -128,6 +129,25 @@ def main():
                 "clip_ok": res.get("clip_ok", True),
                 "clipboard_skipped": res.get("clipboard_skipped", False),
                 "copy_verified": res["copy_verified"],
+            }
+            print(json.dumps(out, indent=2))
+        elif args.mode == "refresh":
+            with tempfile.TemporaryDirectory(prefix="markdown-refresh-") as directory:
+                copy = Path(directory) / doc.name
+                copy.write_bytes(doc.read_bytes())
+                res = run_measure(binary, f"refresh={args.count}", copy)
+            refreshes = res.get("refreshes_data", [])
+            times = [r["refresh_ms"] for r in refreshes]
+            rss = [r["footprint_mib"] for r in refreshes]
+            out = {
+                "profile": name,
+                "configuration": args.configuration,
+                "refreshes": len(refreshes),
+                "refresh_ms": spread(times),
+                "kept_place": all(r["kept_place"] for r in refreshes),
+                "baseline_footprint_mib": res["baseline_footprint_mib"],
+                "footprint_mib": spread(rss),
+                "footprint_by_refresh": [round(v, 1) for v in rss],
             }
             print(json.dumps(out, indent=2))
 

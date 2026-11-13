@@ -51,6 +51,9 @@ impl DocumentCapability {
             .take(160)
             .collect()
     }
+    pub fn path(&self) -> &std::path::Path {
+        &self.path
+    }
     pub fn resources(&self) -> super::resources::DocumentResources {
         let folder = self.path.parent().map(std::path::Path::to_path_buf);
         super::resources::DocumentResources::new(folder)
@@ -168,6 +171,27 @@ pub(super) fn read_document(
     .into_bytes();
     let bytes = read_bounded(&mut file, cap, cancel, limit, meta.len() as usize + 1)?;
     Ok(ReadDocument { bytes, revision })
+}
+
+pub fn revision_token(cap: &DocumentCapability) -> Result<String, DocumentError> {
+    if cap.is_revoked() {
+        return Err(DocumentError::AccessRevoked);
+    }
+    let meta = std::fs::metadata(&cap.path).map_err(DocumentError::io)?;
+    if !meta.is_file() {
+        return Err(DocumentError::NotRegularFile);
+    }
+    use std::os::unix::fs::MetadataExt;
+    Ok(format!(
+        "{}:{}:{}:{}:{}:{}:{}",
+        meta.dev(),
+        meta.ino(),
+        meta.len(),
+        meta.mtime(),
+        meta.mtime_nsec(),
+        meta.ctime(),
+        meta.ctime_nsec()
+    ))
 }
 fn read_bounded(
     reader: &mut impl Read,

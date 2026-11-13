@@ -63,6 +63,38 @@ def smoke(binary: Path, flag: str, marker: str) -> None:
         raise SystemExit(f"{binary} {flag}: exited without completing its smoke")
 
 
+def relaunch_check(binary: Path) -> None:
+    environment = os.environ.copy()
+    environment["GDK_DEBUG"] = ",".join(filter(None, [environment.get("GDK_DEBUG"), "no-portals"]))
+    environment["GSETTINGS_BACKEND"] = "memory"
+    with tempfile.TemporaryDirectory(prefix="markdown-linux-relaunch-") as directory:
+        relaunch_doc = Path(directory) / "live.md"
+        sections = "\n\n".join(
+            f"## Part {part}\n\nProse for part {part}, with a *marked* word." for part in range(120)
+        )
+        relaunch_doc.write_text(f"# Live\n\n{sections}\n", encoding="utf-8")
+        restoration_store_path = Path(directory) / "restoration.json"
+        relaunch_env = dict(environment)
+        relaunch_env["MARKDOWN_RESTORATION_PATH"] = str(restoration_store_path)
+        for phase, marker in (
+            ("prepare", "relaunch-check: prepared"),
+            ("verify", "relaunch-check: pass (restored window, document, top line and selection)"),
+        ):
+            result = subprocess.run(
+                [str(binary), "--relaunch-check", phase, str(relaunch_doc)],
+                cwd=directory,
+                env=relaunch_env,
+                text=True,
+                capture_output=True,
+                timeout=30,
+            )
+            print(result.stdout, end="", flush=True)
+            if result.returncode != 0 or marker not in result.stdout:
+                print(result.stderr, end="", flush=True)
+                raise SystemExit(f"{binary.name}: relaunch check {phase} failed")
+    print(f"{binary.parent.name}: relaunch restoration passed", flush=True)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.parse_args()
@@ -80,7 +112,8 @@ def main() -> None:
         for flag, marker in SMOKES.items():
             smoke(binary, flag, marker)
         run(sys.executable, str(APP_ROOT / "tools" / "check_association.py"), str(binary))
-        print(f"{configuration}: core/document tests, GTK shell and isolated association smokes passed", flush=True)
+        relaunch_check(binary)
+        print(f"{configuration}: core/document tests, GTK shell, isolated association, and relaunch restoration passed", flush=True)
     # The measurement probe refuses anything but the release package; one short run.
     run(str(TARGET_DIR / "release" / "core-probe"), "single",
         str(REPO_ROOT / "build" / "fixtures" / "performance" / "prose-1mib.md"))

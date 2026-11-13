@@ -61,6 +61,14 @@ impl CoreParseFailure {
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CoreChangeDisposition {
+    Unchanged,
+    ReadRequired,
+    Pending(u64),
+    Recorded(u64),
+}
+
 /// Adapter-observed read failures, reported to the session as external changes.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum CoreUnavailability {
@@ -312,6 +320,39 @@ impl CoreSession {
         Ok(generation)
     }
 
+    /// Report an external modification or check if a new revision token requires reading.
+    pub fn external_change(&self, token: Option<&str>) -> Result<CoreChangeDisposition, CoreError> {
+        let state = lock(&self.inner.state);
+        if state.handle == 0 {
+            return Err(CoreError::Closed);
+        }
+        let (mut disposition, mut generation) = (0, 0);
+        let token_bytes = token.map(str::as_bytes);
+        let (token_ptr, token_len) = match token_bytes {
+            Some(bytes) => (bytes.as_ptr(), bytes.len()),
+            None => (std::ptr::null(), 0),
+        };
+        // SAFETY: a live session, optional token bytes, two valid outputs.
+        checked(unsafe {
+            ffi::md_session_external_change(
+                state.handle,
+                ffi::MD_CHANGE_MODIFIED,
+                ffi::MD_REASON_NONE,
+                token_ptr,
+                token_len,
+                &mut disposition,
+                &mut generation,
+            )
+        })?;
+        match disposition {
+            ffi::MD_DISPOSITION_UNCHANGED => Ok(CoreChangeDisposition::Unchanged),
+            ffi::MD_DISPOSITION_READ_REQUIRED => Ok(CoreChangeDisposition::ReadRequired),
+            ffi::MD_DISPOSITION_PENDING => Ok(CoreChangeDisposition::Pending(generation)),
+            ffi::MD_DISPOSITION_RECORDED => Ok(CoreChangeDisposition::Recorded(generation)),
+            _ => Err(CoreError::InvalidSnapshot),
+        }
+    }
+
     pub fn availability(&self) -> Result<CoreAvailability, CoreError> {
         let state = lock(&self.inner.state);
         if state.handle == 0 {
@@ -466,7 +507,13 @@ impl SessionInner {
         // SAFETY: an unrun job on this worker thread and an output of the negotiated size.
         checked(unsafe { ffi::md_job_run(job, &mut result) })?;
         let parsed = Instant::now();
-        let snapshot = SnapshotGuard(result.snapshot);
+        let snapshot = if result.snapshot != 0 {
+            Some(Arc::new(crate::snapshot::CoreSnapshot::new(
+                result.snapshot,
+            )))
+        } else {
+            None
+        };
         request.check_cancelled()?;
         if self.closed() {
             return Err(CoreError::Closed);
@@ -481,21 +528,20 @@ impl SessionInner {
         if outcome == CoreOutcome::Published
             || (outcome == CoreOutcome::Unchanged && copy_unchanged)
         {
-            if snapshot.0 == 0 {
+            let Some(snapshot_ref) = snapshot.as_ref() else {
                 return Err(CoreError::InvalidSnapshot);
-            }
+            };
             let mut view = ffi::md_snapshot_view {
                 struct_size: size_of::<ffi::md_snapshot_view>(),
                 ..Default::default()
             };
             // SAFETY: a live snapshot handle and an output of the negotiated size.
-            checked(unsafe { ffi::md_snapshot_get_view(snapshot.0, &mut view) })?;
+            checked(unsafe { ffi::md_snapshot_get_view(snapshot_ref.handle(), &mut view) })?;
             encoded = Instant::now();
             // The view's arrays stay valid until `snapshot` drops after this copy.
-            document = Some(CoreDocument::copying(
-                &view,
-                self.limits.max_snapshot_bytes,
-            )?);
+            let mut doc = CoreDocument::copying(&view, self.limits.max_snapshot_bytes)?;
+            doc.snapshot = Some(snapshot_ref.clone());
+            document = Some(doc);
             copied = Instant::now();
         }
         drop(snapshot);
@@ -515,15 +561,6 @@ impl SessionInner {
                 copy: copied - encoded,
             },
         })
-    }
-}
-
-struct SnapshotGuard(ffi::md_snapshot);
-
-impl Drop for SnapshotGuard {
-    fn drop(&mut self) {
-        // SAFETY: releasing 0 is a no-op; the handle is owned here and released once.
-        unsafe { ffi::md_snapshot_release(self.0) };
     }
 }
 

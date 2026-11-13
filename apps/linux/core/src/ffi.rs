@@ -23,7 +23,11 @@ pub const MD_ERR_UNSUPPORTED_MODEL: md_status = 5;
 pub const MD_ERR_BUFFER_TOO_SMALL: md_status = 6;
 pub const MD_ERR_INVALID_DOCUMENT_ID: md_status = 9;
 pub const MD_ERR_INVALID_REVISION_TOKEN: md_status = 10;
-pub const MD_ERR_SUPERSEDED: md_status = 12;
+pub const MD_ERR_GENERATION_EXHAUSTED: md_status = 11;
+pub const MD_ERR_ANCHOR_INVALID: md_status = 12;
+pub const MD_ERR_ANCHOR_VERSION: md_status = 13;
+pub const MD_ERR_NO_BLOCKS: md_status = 14;
+pub const MD_ERR_UNKNOWN_NODE: md_status = 15;
 
 pub const MD_FIND_OPTIONS_SIZE: u32 = 24;
 pub const MD_FIND_RESULT_SIZE: u32 = 24;
@@ -49,9 +53,18 @@ pub const MD_REASON_PERMISSION_DENIED: u32 = 1;
 pub const MD_REASON_ACCESS_REVOKED: u32 = 2;
 pub const MD_REASON_BUSY: u32 = 3;
 pub const MD_REASON_IO: u32 = 4;
+pub const MD_CHANGE_MODIFIED: u32 = 1;
 pub const MD_CHANGE_DELETED: u32 = 2;
 pub const MD_CHANGE_UNREADABLE: u32 = 3;
+pub const MD_DISPOSITION_UNCHANGED: u32 = 1;
+pub const MD_DISPOSITION_READ_REQUIRED: u32 = 2;
+pub const MD_DISPOSITION_PENDING: u32 = 3;
 pub const MD_DISPOSITION_RECORDED: u32 = 4;
+
+pub const MD_ANCHOR_LOST: u32 = 0;
+pub const MD_ANCHOR_EXACT: u32 = 1;
+pub const MD_ANCHOR_RELOCATED: u32 = 2;
+pub const MD_ANCHOR_NEAREST: u32 = 3;
 
 pub const MD_VIEW_HAS_FRONT_MATTER: u32 = 1;
 pub const MD_VIEW_HAS_TITLE: u32 = 2;
@@ -385,6 +398,27 @@ unsafe extern "C" {
     pub fn md_snapshot_get_view(
         snapshot: md_snapshot,
         out_view: *mut md_snapshot_view,
+    ) -> md_status;
+    pub fn md_snapshot_anchor_at(
+        snapshot: md_snapshot,
+        source_offset: u64,
+        buffer: *mut u8,
+        capacity: usize,
+        out_length: *mut usize,
+    ) -> md_status;
+    pub fn md_snapshot_anchor_for_node(
+        snapshot: md_snapshot,
+        node: u32,
+        offset: u64,
+        buffer: *mut u8,
+        capacity: usize,
+        out_length: *mut usize,
+    ) -> md_status;
+    pub fn md_snapshot_resolve_anchor(
+        snapshot: md_snapshot,
+        anchor: *const u8,
+        anchor_length: usize,
+        out_resolution: *mut md_anchor_resolution,
     ) -> md_status;
     pub fn md_snapshot_find(
         snapshot: md_snapshot,

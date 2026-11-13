@@ -1087,3 +1087,120 @@ fn global_document_selection_model_and_slices() {
     // Find style for remaining non-selected part of match (chars 8..10)
     assert!(markup_sel_and_find.contains("background=\"#ff7800\" foreground=\"#ffffff\""));
 }
+
+#[test]
+fn restoration_store_and_base64_serialization() {
+    use markdown_linux::restoration::{
+        SavedPosition, WindowRestorationState, base64_decode, base64_encode, clear, is_memory_mode,
+        load, save,
+    };
+
+    // 1. Base64 encode and decode roundtrip
+    let samples: &[&[u8]] = &[
+        b"",
+        b"f",
+        b"fo",
+        b"foo",
+        b"foob",
+        b"fooba",
+        b"foobar",
+        &[0, 1, 2, 254, 255],
+    ];
+    for sample in samples {
+        let enc = base64_encode(sample);
+        let dec = base64_decode(&enc).expect("decode failed");
+        assert_eq!(&dec, sample, "base64 roundtrip failed for {sample:?}");
+    }
+    assert_eq!(base64_decode("invalid base64!@#$"), None);
+
+    // 2. SavedPosition and WindowRestorationState conversion
+    let pos = SavedPosition {
+        top: vec![1, 2, 3, 4],
+        selection_start: vec![5, 6, 7, 8],
+        selection_end: Some(vec![9, 10, 11, 12]),
+    };
+    let state = WindowRestorationState::from_saved_position(
+        "/path/to/doc.md".to_string(),
+        Some(&pos),
+        1.25,
+        true,
+    );
+    assert_eq!(state.file_path, "/path/to/doc.md");
+    assert_eq!(state.text_scale, 1.25);
+    assert!(state.outline_shown);
+
+    let restored_pos = state.to_saved_position().expect("to_saved_position failed");
+    assert_eq!(restored_pos, pos);
+
+    // 3. In-memory store save/load/clear
+    unsafe { std::env::set_var("MARKDOWN_RESTORATION_IN_MEMORY", "1") };
+    assert!(is_memory_mode());
+
+    clear();
+    assert!(load().is_empty());
+
+    save(std::slice::from_ref(&state));
+    let loaded = load();
+    assert_eq!(loaded.len(), 1);
+    assert_eq!(loaded[0].file_path, "/path/to/doc.md");
+    assert_eq!(loaded[0].text_scale, 1.25);
+    assert!(loaded[0].outline_shown);
+    assert_eq!(loaded[0].to_saved_position(), Some(pos));
+
+    clear();
+    assert!(load().is_empty());
+    unsafe { std::env::remove_var("MARKDOWN_RESTORATION_IN_MEMORY") };
+}
+
+#[test]
+fn anchors_source_offset_and_restoration() {
+    use markdown_linux::render::DocumentPosition;
+
+    let source1 = "# Heading 1\n\nFirst paragraph.\n\n## Heading 2\n\nSecond paragraph with *marked* text.\n\n### Heading 3\n\nThird paragraph.\n";
+    let doc1 = document(source1);
+    let plan1 = RenderPlan::build(&doc1, || false).unwrap();
+
+    // Map fragment (Heading 2) to source offset
+    let h2_frag = plan1
+        .outline
+        .iter()
+        .find(|o| o.title == "Heading 2")
+        .unwrap()
+        .fragment as usize;
+    let pos1 = DocumentPosition::new(h2_frag, 0);
+    let offset1 = plan1.source_offset_at(pos1, &doc1);
+    assert!(offset1 > 0);
+
+    // Anchor at offset1
+    let anchor1 = doc1.anchor_at(offset1).expect("anchor_at succeeded");
+
+    // Position at source offset in plan1
+    let roundtrip_pos = plan1.position_at_source_offset(offset1, &doc1);
+    assert_eq!(roundtrip_pos.fragment_index, h2_frag);
+
+    // Modify document: prepend new text and add another section
+    let source2 = "Prepended line from external editor.\n\n# Heading 1\n\nFirst paragraph edited.\n\n## Heading 2\n\nSecond paragraph with *marked* text.\n\n### Heading 3\n\nThird paragraph.\n";
+    let doc2 = document(source2);
+    let plan2 = RenderPlan::build(&doc2, || false).unwrap();
+
+    // Resolve anchor1 against doc2
+    let resolution = doc2
+        .resolve_anchor(&anchor1)
+        .expect("resolve_anchor succeeded")
+        .expect("anchor found");
+    let restored_pos = plan2.position_at_source_offset(resolution.source_offset, &doc2);
+
+    // Check that restored position lands on Heading 2
+    let h2_frag2 = plan2
+        .outline
+        .iter()
+        .find(|o| o.title == "Heading 2")
+        .unwrap()
+        .fragment as usize;
+    assert_eq!(restored_pos.fragment_index, h2_frag2);
+    assert!(
+        plan2.fragments[restored_pos.fragment_index]
+            .text()
+            .contains("Heading 2")
+    );
+}

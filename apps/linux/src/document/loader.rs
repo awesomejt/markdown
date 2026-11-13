@@ -119,6 +119,7 @@ fn prepare_result(
 }
 struct Completion {
     serial: u64,
+    is_refresh: bool,
     result: PreparedResult,
 }
 struct Job {
@@ -128,6 +129,8 @@ struct Job {
     cancel: Arc<Cancellation>,
     session: Arc<CoreSession>,
     sender: mpsc::Sender<Completion>,
+    copy_unchanged: bool,
+    is_refresh: bool,
 }
 struct Dispatcher {
     queue: Mutex<VecDeque<Job>>,
@@ -163,6 +166,7 @@ fn send(job: &Job, result: PreparedResult) {
     if !job.cancel.is_cancelled() {
         let _ = job.sender.send(Completion {
             serial: job.serial,
+            is_refresh: job.is_refresh,
             result,
         });
     }
@@ -207,13 +211,14 @@ fn process_with(
         let cancel = job.cancel.clone();
         let sender = job.sender.clone();
         let serial = job.serial;
+        let is_refresh = job.is_refresh;
         let resources = job.capability.resources();
         // parse consumes its input even on Busy. Only this dispatcher clones a
         // bounded original for submission; no prepared-buffer queue exists.
         match job.session.parse(
             read.bytes.clone(),
             Some(&read.revision),
-            true,
+            job.copy_unchanged,
             move |result| {
                 cancel.complete();
                 if !cancel.is_cancelled() {
@@ -238,6 +243,7 @@ fn process_with(
                     };
                     let _ = sender.send(Completion {
                         serial,
+                        is_refresh,
                         result: prepared,
                     });
                 }
@@ -272,6 +278,7 @@ pub struct DocumentLoader {
     sender: mpsc::Sender<Completion>,
     receiver: mpsc::Receiver<Completion>,
     pub document: Option<Arc<CoreDocument>>,
+    pub plan: Option<Arc<RenderPlan>>,
 }
 impl DocumentLoader {
     pub fn new() -> Self {
@@ -287,10 +294,22 @@ impl DocumentLoader {
             sender,
             receiver,
             document: None,
+            plan: None,
         }
     }
     pub fn has_file(&self) -> bool {
         self.capability.is_some()
+    }
+    pub fn is_loading(&self) -> bool {
+        self.cancel
+            .as_ref()
+            .is_some_and(|c| !lock(&c.state).completed)
+    }
+    pub fn capability(&self) -> Option<&DocumentCapability> {
+        self.capability.as_ref()
+    }
+    pub fn availability(&self) -> Option<markdown_linux_core::CoreAvailability> {
+        self.session.as_ref().and_then(|s| s.availability().ok())
     }
     pub fn session(&self) -> Option<Arc<CoreSession>> {
         self.session.clone()
@@ -341,15 +360,17 @@ impl DocumentLoader {
             old.close_then(|_| {});
         }
         self.discard_document();
+        self.plan = None;
         self.capability = Some(capability);
         self.session = Some(session);
-        self.enqueue();
+        self.enqueue_mode(true, false);
         Ok(())
     }
     /// Invalidate the previous selection when delivery cannot grant a local file.
     pub fn reject_selection(&mut self) {
         self.invalidate();
         self.discard_document();
+        self.plan = None;
         self.capability = None;
         if let Some(session) = self.session.take() {
             session.close_then(|_| {});
@@ -360,9 +381,72 @@ impl DocumentLoader {
             return;
         }
         self.invalidate();
-        self.enqueue();
+        self.enqueue_mode(true, false);
     }
-    fn enqueue(&mut self) {
+    pub fn refresh_external(&mut self) {
+        if self.closed {
+            return;
+        }
+        let (Some(capability), Some(session)) = (&self.capability, &self.session) else {
+            return;
+        };
+
+        let token = match super::access::revision_token(capability) {
+            Ok(token) => token,
+            Err(err) => {
+                if let Some(reason) = err.unavailable() {
+                    let _ = session.record_unavailable(reason);
+                }
+                let _ = self.sender.send(Completion {
+                    serial: self.serial,
+                    is_refresh: true,
+                    result: Err(err),
+                });
+                return;
+            }
+        };
+
+        match session.external_change(Some(&token)) {
+            Ok(markdown_linux_core::CoreChangeDisposition::Unchanged) => {
+                let _ = self.sender.send(Completion {
+                    serial: self.serial,
+                    is_refresh: true,
+                    result: Ok((
+                        markdown_linux_core::CoreResult {
+                            outcome: markdown_linux_core::CoreOutcome::Unchanged,
+                            generation: self.document.as_ref().map(|d| d.generation).unwrap_or(0),
+                            latest: 0,
+                            failure: None,
+                            document: None,
+                            timings: Default::default(),
+                        },
+                        None,
+                    )),
+                });
+            }
+            Ok(markdown_linux_core::CoreChangeDisposition::Pending(_)) => {}
+            Ok(markdown_linux_core::CoreChangeDisposition::ReadRequired)
+            | Ok(markdown_linux_core::CoreChangeDisposition::Recorded(_)) => {
+                self.invalidate_refresh();
+                self.enqueue_mode(false, true);
+            }
+            Err(_) => {
+                self.invalidate_refresh();
+                self.enqueue_mode(false, true);
+            }
+        }
+    }
+    fn invalidate_refresh(&mut self) {
+        self.serial = self
+            .serial
+            .checked_add(1)
+            .expect("request serial exhausted");
+        if let Some(cancel) = self.cancel.take() {
+            cancel.cancel();
+        }
+        lock(&dispatcher().queue).retain(|job| job.owner != self.owner);
+    }
+    fn enqueue_mode(&mut self, copy_unchanged: bool, is_refresh: bool) {
         let (Some(capability), Some(session)) = (&self.capability, &self.session) else {
             return;
         };
@@ -376,6 +460,8 @@ impl DocumentLoader {
             cancel,
             session: session.clone(),
             sender: self.sender.clone(),
+            copy_unchanged,
+            is_refresh,
         });
         worker.wake.notify_one();
     }
@@ -385,6 +471,7 @@ impl DocumentLoader {
                 std::thread::spawn(move || drop(completion));
                 continue;
             }
+            let is_refresh = completion.is_refresh;
             let result = if self
                 .capability
                 .as_ref()
@@ -414,6 +501,17 @@ impl DocumentLoader {
             });
             return Some(match result {
                 Ok((mut result, plan)) => {
+                    if result.outcome == CoreOutcome::Unchanged
+                        && plan.is_none()
+                        && let (Some(doc), Some(p)) = (&self.document, &self.plan)
+                    {
+                        return Some(LoadEvent::Loaded {
+                            plan: p.clone(),
+                            document: doc.clone(),
+                            generation: result.generation,
+                            unchanged: true,
+                        });
+                    }
                     let Some(plan) = plan else {
                         return Some(LoadEvent::Failed(DocumentError::ParseFailed));
                     };
@@ -423,6 +521,7 @@ impl DocumentLoader {
                     let document = Arc::new(document);
                     self.discard_document();
                     self.document = Some(document.clone());
+                    self.plan = Some(plan.clone());
                     LoadEvent::Loaded {
                         plan,
                         document,
@@ -437,8 +536,13 @@ impl DocumentLoader {
                     {
                         let _ = session.record_unavailable(reason);
                     }
-                    self.discard_document();
-                    LoadEvent::Failed(error)
+                    if is_refresh && self.document.is_some() {
+                        LoadEvent::Failed(error)
+                    } else {
+                        self.discard_document();
+                        self.plan = None;
+                        LoadEvent::Failed(error)
+                    }
                 }
             });
         }
@@ -462,6 +566,7 @@ impl DocumentLoader {
         self.closed = true;
         self.invalidate();
         self.discard_document();
+        self.plan = None;
         if let Some(session) = self.session.take() {
             session.close_then(|_| {});
         }
@@ -614,6 +719,7 @@ mod tests {
             .send(Completion {
                 serial: old,
                 result: Err(DocumentError::PermissionDenied),
+                is_refresh: false,
             })
             .unwrap();
         loaded(&mut loader);
@@ -627,6 +733,7 @@ mod tests {
             .send(Completion {
                 serial: loader.serial,
                 result: Err(DocumentError::ReadFailed),
+                is_refresh: false,
             })
             .unwrap();
         loader.open(fixture.file("two", b"# Two")).unwrap();
@@ -653,6 +760,8 @@ mod tests {
                 cancel: cancel.clone(),
                 session: loader.session.as_ref().unwrap().clone(),
                 sender: loader.sender.clone(),
+                copy_unchanged: true,
+                is_refresh: false,
             };
             let (started, entered) = mpsc::channel();
             let (resume, barrier) = mpsc::channel();
@@ -714,7 +823,13 @@ mod tests {
                     "cancelled completed plan escaped suppression"
                 );
                 if let Some(result) = prepared {
-                    sender.send(Completion { serial, result }).unwrap();
+                    sender
+                        .send(Completion {
+                            serial,
+                            result,
+                            is_refresh: false,
+                        })
+                        .unwrap();
                 }
             });
             entered.recv_timeout(Duration::from_secs(5)).unwrap();
