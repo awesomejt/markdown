@@ -1038,15 +1038,29 @@ fn global_document_selection_model_and_slices() {
         DocumentPosition::new(last_idx, last_len),
         &doc,
     );
-    assert_eq!(full_source, source.as_bytes());
+    assert_eq!(full_source, Some(source.as_bytes()));
 
-    // Sub-range source slicing
-    let sub_source = plan.source_between(
+    // Whole-fragment source slicing returns node span
+    let frag1_len = plan.fragments[1].text().chars().count();
+    let whole_frag_source = plan.source_between(
         DocumentPosition::new(1, 0),
-        DocumentPosition::new(1, 10),
+        DocumentPosition::new(1, frag1_len),
         &doc,
     );
-    assert!(!sub_source.is_empty());
+    assert!(whole_frag_source.is_some());
+    assert!(!whole_frag_source.unwrap().is_empty());
+
+    // Mid-paragraph partial selection: text_between returns exact characters,
+    // source_between returns None so clipboard falls back to plain bytes without
+    // expanding to the whole paragraph span.
+    let mid_text = plan.text_between(DocumentPosition::new(1, 2), DocumentPosition::new(1, 7));
+    assert_eq!(mid_text, "rst p");
+    let mid_source = plan.source_between(
+        DocumentPosition::new(1, 2),
+        DocumentPosition::new(1, 7),
+        &doc,
+    );
+    assert_eq!(mid_source, None);
 
     // Per-fragment selection mapping
     let sel = DocumentSelection::new(DocumentPosition::new(0, 3), DocumentPosition::new(2, 4));

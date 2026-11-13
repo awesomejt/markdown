@@ -581,6 +581,19 @@ async fn reader(window: &gtk::ApplicationWindow) -> Result<(), String> {
         "clear_selection clears global selection",
     )?;
 
+    // Keyboard selection step with no prior selection starts from caret anchor
+    reader.step_selection(1);
+    check(
+        reader.has_selection(),
+        "step_selection(1) creates selection from anchor when none exists",
+    )?;
+    let step_text = reader.selected_text().ok_or("step_text present")?;
+    check(
+        step_text.chars().count() == 1,
+        "step_selection(1) selected exactly 1 character",
+    )?;
+    reader.clear_selection();
+
     WidgetExt::activate_action(window, "win.reload", None).map_err(|_| "reader reload")?;
     check(
         reader.observed().is_empty(),

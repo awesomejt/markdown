@@ -336,7 +336,15 @@ pub fn attach(window: &gtk::ApplicationWindow, label: &gtk::Label) {
     // Window actions for edit, find and zoom
     let copy_act = gio::SimpleAction::new("copy", None);
     let weak = Rc::downgrade(&state);
+    let win_weak = window.downgrade();
     copy_act.connect_activate(move |_, _| {
+        if let Some(win) = win_weak.upgrade()
+            && let Some(focus) = gtk::prelude::GtkWindowExt::focus(&win)
+            && let Ok(editable) = focus.downcast::<gtk::Editable>()
+        {
+            editable.emit_by_name::<()>("copy-clipboard", &[]);
+            return;
+        }
         if let Some(state) = weak.upgrade() {
             state.borrow().reader.copy_selection();
         }
@@ -345,7 +353,15 @@ pub fn attach(window: &gtk::ApplicationWindow, label: &gtk::Label) {
 
     let select_all_act = gio::SimpleAction::new("select-all", None);
     let weak = Rc::downgrade(&state);
+    let win_weak = window.downgrade();
     select_all_act.connect_activate(move |_, _| {
+        if let Some(win) = win_weak.upgrade()
+            && let Some(focus) = gtk::prelude::GtkWindowExt::focus(&win)
+            && let Ok(editable) = focus.downcast::<gtk::Editable>()
+        {
+            editable.select_region(0, -1);
+            return;
+        }
         if let Some(state) = weak.upgrade() {
             state.borrow().reader.select_all();
         }

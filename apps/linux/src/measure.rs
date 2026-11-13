@@ -10,6 +10,21 @@ unsafe extern "C" {
     fn malloc_trim(pad: usize) -> i32;
 }
 
+fn escape_json(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    for c in s.chars() {
+        match c {
+            '"' => out.push_str("\\\""),
+            '\\' => out.push_str("\\\\"),
+            '\n' => out.push_str("\\n"),
+            '\r' => out.push_str("\\r"),
+            '\t' => out.push_str("\\t"),
+            c => out.push(c),
+        }
+    }
+    out
+}
+
 fn get_rss_kib() -> (u64, u64) {
     let mut vmrss = 0;
     let mut vmhwm = 0;
@@ -92,7 +107,7 @@ fn run_launch(doc_path: Option<&Path>) -> Result<(), String> {
 
     let file_name = doc_path
         .file_name()
-        .map(|s| s.to_string_lossy().to_string())
+        .map(|s| escape_json(&s.to_string_lossy()))
         .unwrap_or_default();
 
     let meets_warm = if bytes.len() <= D016_TARGET_BYTES {
@@ -128,7 +143,7 @@ fn run_repeated(doc_path: Option<&Path>, count: usize) -> Result<(), String> {
 
     let file_name = doc_path
         .file_name()
-        .map(|s| s.to_string_lossy().to_string())
+        .map(|s| escape_json(&s.to_string_lossy()))
         .unwrap_or_default();
 
     let (baseline_rss, _) = get_rss_kib();
@@ -178,7 +193,7 @@ fn run_interaction(doc_path: Option<&Path>) -> Result<(), String> {
 
     let file_name = doc_path
         .file_name()
-        .map(|s| s.to_string_lossy().to_string())
+        .map(|s| escape_json(&s.to_string_lossy()))
         .unwrap_or_default();
 
     // 1. Off-screen jump timing (outline resolution to middle, last, first)
@@ -205,28 +220,31 @@ fn run_interaction(doc_path: Option<&Path>) -> Result<(), String> {
     let start_pos = DocumentPosition::new(0, 0);
     let end_pos = DocumentPosition::new(last_frag, last_len);
     let text = plan.text_between(start_pos, end_pos);
-    let source = plan.source_between(start_pos, end_pos, &doc);
+    let source_opt = plan.source_between(start_pos, end_pos, &doc);
+    let source_bytes = source_opt.unwrap_or(text.as_bytes());
     let copy_slice_ms = copy_start.elapsed().as_secs_f64() * 1000.0;
 
     // 3. Clipboard setting (if GTK display is available)
     let clip_start = Instant::now();
+    let mut clipboard_skipped = false;
     let clip_ok = if gtk::init().is_ok()
         && let Some(display) = gdk::Display::default()
     {
         let provider = gdk::ContentProvider::new_union(&[
             gdk::ContentProvider::for_value(&text.to_value()),
-            gdk::ContentProvider::for_bytes("text/markdown", &glib::Bytes::from(source)),
+            gdk::ContentProvider::for_bytes("text/markdown", &glib::Bytes::from(source_bytes)),
         ]);
         display.clipboard().set_content(Some(&provider)).is_ok()
     } else {
-        true
+        clipboard_skipped = true;
+        false
     };
     let clip_write_ms = clip_start.elapsed().as_secs_f64() * 1000.0;
 
     // Verify copy accuracy
-    let source_matches = source == bytes.as_slice();
+    let source_matches = source_bytes == bytes.as_slice();
     let text_not_empty = !text.is_empty();
-    let copy_verified = source_matches && text_not_empty && clip_ok;
+    let copy_verified = source_matches && text_not_empty && (clip_ok || clipboard_skipped);
 
     let max_jump = jump_times.iter().copied().fold(0.0f64, f64::max);
     let jump_budget_ok = max_jump <= 150.0;
@@ -238,11 +256,11 @@ fn run_interaction(doc_path: Option<&Path>) -> Result<(), String> {
         .join(", ");
 
     println!(
-        "{{\n  \"mode\": \"interaction\",\n  \"document\": \"{file_name}\",\n  \"jump_targets\": {},\n  \"jump_times_ms\": [{jump_times_str}],\n  \"jump_budget_150ms\": {jump_budget_ok},\n  \"copy_slice_ms\": {:.2},\n  \"clip_write_ms\": {:.2},\n  \"copy_source_bytes\": {},\n  \"copy_text_chars\": {},\n  \"copy_verified\": {copy_verified}\n}}",
+        "{{\n  \"mode\": \"interaction\",\n  \"document\": \"{file_name}\",\n  \"jump_targets\": {},\n  \"outline_resolve_times_ms\": [{jump_times_str}],\n  \"outline_resolve_budget_150ms\": {jump_budget_ok},\n  \"copy_slice_ms\": {:.2},\n  \"clip_write_ms\": {:.2},\n  \"copy_source_bytes\": {},\n  \"copy_text_chars\": {},\n  \"clip_ok\": {clip_ok},\n  \"clipboard_skipped\": {clipboard_skipped},\n  \"copy_verified\": {copy_verified}\n}}",
         jump_times.len(),
         copy_slice_ms,
         clip_write_ms,
-        source.len(),
+        source_bytes.len(),
         text.chars().count(),
     );
 

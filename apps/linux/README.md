@@ -487,26 +487,30 @@ debug` for debug, or `--prepare-only` for a persistent public owner-test fixture
 - **Global selection model**: Document-level `DocumentPosition` and `DocumentSelection` spanning
   virtualized rows and fragment seams, with plain rendered text slicing (`text_between`) inserting
   paragraph/table separators, and Markdown source slicing (`source_between`) returning exact
-  source bytes for whole-document selection and enclosing block/node spans for partial selections.
+  source bytes for whole-document selection, node spans for whole-block selections, and exact plain-text bytes for sub-fragment selections.
 - **Selection presentation**: Dynamic Pango markup generation with GNOME/GTK blue accent highlight
   (`<span background="#3584e4" foreground="#ffffff">`) composing cleanly with active/passive
   find match highlights.
 - **Gestures and keyboard selection**:
   - `GtkGestureDrag` with capture-phase propagation on `GtkListView`, Pango layout hit testing
-    via `layout.xy_to_index`, and edge auto-scrolling during drag.
-  - Keyboard navigation: Shift+arrows for character/fragment extension, Shift+Ctrl+Home/End for
-    document start/end extension, Escape to clear selection, Select All (`Ctrl+A`), and Copy (`Ctrl+C`).
+    via `layout.xy_to_index`, and edge auto-scrolling during drag. Gesture sequence is claimed only
+    once the 4 px drag threshold is crossed so plain link clicks pass through cleanly. Weak references
+    prevent controller/timer closure cycles and ensure prompt memory release on window drop.
+  - Keyboard navigation: Shift+arrows for character/fragment extension (starting from reading caret
+    anchor when no selection exists), Shift+Ctrl+Home/End for document start/end extension, Escape
+    to clear selection, Select All (`Ctrl+A`), and Copy (`Ctrl+C`).
 - **Dual-format native clipboard**: Sets both `text/plain` rendered text and `text/markdown`
   UTF-8 source bytes via `gdk::ContentProvider::new_union` on the display clipboard.
 - **Accessibility**: Preserved AT-SPI document/heading semantics, verified with
   `apps/linux/tools/probe_accessibility.py`.
 - **Performance budgets**: Automated measurement tool `apps/linux/tools/measure.py` measuring
   `launch`, `interaction`, and `repeated` modes:
-  - **Launch (D-016 $\le 400\,\text{ms}$ warm)**:
+  - **Launch pipeline (D-016 $\le 400\,\text{ms}$ warm)**:
+    - Measures core read, parse, and render-plan build pipeline before window presentation.
     - `prose-1mib`: median pipeline 89.86 ms (parse 78.13 ms, plan 11.76 ms, target $\le 400\,\text{ms}$: PASS).
     - `long-lines-1mib`: median pipeline 9.20 ms (parse 5.94 ms, plan 2.79 ms, target $\le 400\,\text{ms}$: PASS).
     - `prose-5mib`: median pipeline 578.36 ms (parse 521.88 ms, plan 54.66 ms, stress fixture).
-  - **Off-screen jump navigation (D-016 $\le 150\,\text{ms}$)**:
+  - **Outline target fragment resolution (D-016 $\le 150\,\text{ms}$)**:
     - 0.01 ms median across 1 MiB prose, 5 MiB prose, and 1 MiB long lines (PASS).
   - **Copy selection**:
     - 1 MiB prose: text/markdown extraction in 4.93 ms, clipboard write in 8.41 ms ($< 15\,\text{ms}$ total).

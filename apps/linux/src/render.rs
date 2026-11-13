@@ -1225,9 +1225,9 @@ impl RenderPlan {
         start: DocumentPosition,
         end: DocumentPosition,
         doc: &'a CoreDocument,
-    ) -> &'a [u8] {
+    ) -> Option<&'a [u8]> {
         if doc.source.is_empty() || self.fragments.is_empty() {
-            return &[];
+            return None;
         }
         let (s, e) = if start <= end {
             (start, end)
@@ -1243,39 +1243,46 @@ impl RenderPlan {
             && e.fragment_index >= last_frag
             && e.char_offset >= last_len
         {
-            return &doc.source;
+            return Some(&doc.source);
         }
 
         let s_frag = s.fragment_index.min(last_frag);
         let e_frag = e.fragment_index.min(last_frag);
 
-        let mut min_span = u32::MAX;
-        let mut max_span = 0;
-        let mut found = false;
+        // Whole-fragment check: selection must start at offset 0 of s_frag and cover through end of e_frag
+        let end_len = self.fragments[e_frag].text().chars().count();
+        let is_whole_fragments = s.char_offset == 0 && e.char_offset >= end_len;
 
-        for f in s_frag..=e_frag {
-            for run in &self.fragments[f].runs {
-                if let Some(node_id) = run.node_id
-                    && let Some(node) = doc.nodes.get(node_id as usize)
-                    && node.span_start <= node.span_end
-                    && (node.span_end as usize) <= doc.source.len()
-                {
-                    if node.span_start < min_span {
-                        min_span = node.span_start;
+        if is_whole_fragments {
+            let mut min_span = u32::MAX;
+            let mut max_span = 0;
+            let mut found = false;
+
+            for f in s_frag..=e_frag {
+                for run in &self.fragments[f].runs {
+                    if let Some(node_id) = run.node_id
+                        && let Some(node) = doc.nodes.get(node_id as usize)
+                        && node.span_start <= node.span_end
+                        && (node.span_end as usize) <= doc.source.len()
+                    {
+                        if node.span_start < min_span {
+                            min_span = node.span_start;
+                        }
+                        if node.span_end > max_span {
+                            max_span = node.span_end;
+                        }
+                        found = true;
                     }
-                    if node.span_end > max_span {
-                        max_span = node.span_end;
-                    }
-                    found = true;
                 }
+            }
+
+            if found && min_span <= max_span && (max_span as usize) <= doc.source.len() {
+                return Some(&doc.source[min_span as usize..max_span as usize]);
             }
         }
 
-        if found && min_span <= max_span && (max_span as usize) <= doc.source.len() {
-            &doc.source[min_span as usize..max_span as usize]
-        } else {
-            &[]
-        }
+        // For partial / mid-fragment selections, return None so callers fall back to plain text bytes
+        None
     }
 
     pub fn selection_for_fragment(

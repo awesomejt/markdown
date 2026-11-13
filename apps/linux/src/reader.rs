@@ -368,7 +368,8 @@ impl Reader {
         factory.connect_unbind(move |_, item| {
             let item = item.downcast_ref::<gtk::ListItem>().unwrap();
             if let Some(state) = weak.upgrade()
-                && let Some(binding) = state.borrow().rows.get(&(item.as_ptr() as usize))
+                && let Ok(state) = state.try_borrow()
+                && let Some(binding) = state.rows.get(&(item.as_ptr() as usize))
             {
                 binding.binding.set(None);
             }
@@ -484,57 +485,58 @@ impl Reader {
         drag.set_propagation_phase(gtk::PropagationPhase::Capture);
         drag.set_button(gdk::BUTTON_PRIMARY);
 
-        let r = self.clone();
-        drag.connect_drag_begin(move |gesture, x, y| {
-            let extend = gesture
-                .current_event_state()
-                .contains(gdk::ModifierType::SHIFT_MASK);
-            {
-                let mut state = r.state.borrow_mut();
-                state.drag_start = (x, y);
-                state.drag_last = (x, y);
-                state.drag_active = false;
-                state.drag_extend = extend;
-                state.drag_anchor = None;
-                if let Some(t) = state.drag_timer.take() {
-                    t.remove();
-                }
+        let weak = Rc::downgrade(&self.state);
+        drag.connect_drag_begin(move |_, x, y| {
+            let Some(state) = weak.upgrade() else {
+                return;
+            };
+            let mut s = state.borrow_mut();
+            s.drag_start = (x, y);
+            s.drag_last = (x, y);
+            s.drag_active = false;
+            s.drag_extend = false;
+            s.drag_anchor = None;
+            if let Some(t) = s.drag_timer.take() {
+                t.remove();
             }
-            gesture.set_state(gtk::EventSequenceState::Claimed);
-            r.state.borrow().view.grab_focus();
+            s.view.grab_focus();
+            // Sequence is NOT claimed here so plain clicks still reach child widgets (e.g. links).
         });
 
-        let r = self.clone();
-        drag.connect_drag_update(move |_, dx, dy| {
-            let (start, active, extend) = {
-                let s = r.state.borrow();
-                (s.drag_start, s.drag_active, s.drag_extend)
+        let weak = Rc::downgrade(&self.state);
+        drag.connect_drag_update(move |gesture, dx, dy| {
+            let Some(state) = weak.upgrade() else {
+                return;
             };
+            let mut s = state.borrow_mut();
+            let start = s.drag_start;
 
-            if !active {
+            if !s.drag_active {
                 if dx * dx + dy * dy < 16.0 {
                     return;
                 }
-                let anchor = match (extend, r.selection()) {
-                    (true, Some(sel)) => Some(sel.anchor),
-                    _ => r.hit_test(start.0, start.1),
-                };
+                // Crossed 4 px drag threshold: claim sequence soListView does not interpret as scroll
+                gesture.set_state(gtk::EventSequenceState::Claimed);
+                let anchor = s
+                    .selection
+                    .map(|sel| sel.anchor)
+                    .or_else(|| s.hit_test(start.0, start.1));
                 let Some(anchor) = anchor else {
                     return;
                 };
-                {
-                    let mut s = r.state.borrow_mut();
-                    s.drag_anchor = Some(anchor);
-                    s.drag_active = true;
-                }
+                s.drag_anchor = Some(anchor);
+                s.drag_active = true;
 
-                let auto = r.clone();
+                let auto_weak = Rc::downgrade(&state);
                 let timer =
                     glib::timeout_add_local(std::time::Duration::from_millis(16), move || {
-                        let (y, height, scrolled_opt) = {
-                            let s = auto.state.borrow();
-                            (s.drag_last.1, s.view.height() as f64, s.scrolled.upgrade())
+                        let Some(state) = auto_weak.upgrade() else {
+                            return glib::ControlFlow::Break;
                         };
+                        let mut s = state.borrow_mut();
+                        let y = s.drag_last.1;
+                        let height = s.view.height() as f64;
+                        let scrolled_opt = s.scrolled.upgrade();
                         if let Some(scrolled) = scrolled_opt {
                             let adj = scrolled.vadjustment();
                             let delta = if y < 24.0 {
@@ -546,86 +548,140 @@ impl Reader {
                             };
                             if delta != 0.0 {
                                 adj.set_value(adj.value() + delta);
-                                auto.drag_to_last();
+                                s.drag_to_last();
                             }
                         }
                         glib::ControlFlow::Continue
                     });
-                r.state.borrow_mut().drag_timer = Some(timer);
+                s.drag_timer = Some(timer);
             }
 
-            r.state.borrow_mut().drag_last = (start.0 + dx, start.1 + dy);
-            r.drag_to_last();
+            s.drag_last = (start.0 + dx, start.1 + dy);
+            s.drag_to_last();
         });
 
-        let r = self.clone();
+        let weak = Rc::downgrade(&self.state);
         drag.connect_drag_end(move |_, dx, dy| {
-            let mut s = r.state.borrow_mut();
+            let Some(state) = weak.upgrade() else {
+                return;
+            };
+            let mut s = state.borrow_mut();
             if let Some(t) = s.drag_timer.take() {
                 t.remove();
             }
             let active = s.drag_active;
-            let extend = s.drag_extend;
-            let start = s.drag_start;
             s.drag_active = false;
-            drop(s);
 
-            if !active && !extend && (dx * dx + dy * dy < 16.0) {
-                r.clear_selection();
-            } else if !active
-                && extend
-                && let Some(pos) = r.hit_test(start.0, start.1)
-            {
-                r.extend_selection(pos);
+            if !active && (dx * dx + dy * dy < 16.0) {
+                s.clear_selection();
             }
         });
         view.add_controller(drag);
 
         let key_ctrl = gtk::EventControllerKey::new();
         key_ctrl.set_propagation_phase(gtk::PropagationPhase::Capture);
-        let r = self.clone();
+        let weak = Rc::downgrade(&self.state);
         key_ctrl.connect_key_pressed(move |_, key, _, state| {
+            let Some(state_rc) = weak.upgrade() else {
+                return glib::Propagation::Proceed;
+            };
             let ctrl = state.contains(gdk::ModifierType::CONTROL_MASK);
             let shift = state.contains(gdk::ModifierType::SHIFT_MASK);
             match key {
                 gdk::Key::a | gdk::Key::A if ctrl => {
-                    r.select_all();
+                    state_rc.borrow_mut().select_all();
                     glib::Propagation::Stop
                 }
                 gdk::Key::c | gdk::Key::C | gdk::Key::Insert if ctrl => {
-                    r.copy_selection();
+                    state_rc.borrow().copy_selection();
                     glib::Propagation::Stop
                 }
                 gdk::Key::Escape => {
-                    if r.has_selection() {
-                        r.clear_selection();
+                    if state_rc.borrow().has_selection() {
+                        state_rc.borrow_mut().clear_selection();
                         glib::Propagation::Stop
                     } else {
                         glib::Propagation::Proceed
                     }
                 }
                 gdk::Key::End if ctrl && shift => {
-                    r.extend_to_end();
+                    let (target, view) = {
+                        let mut s = state_rc.borrow_mut();
+                        (s.extend_to_end(), s.view.clone())
+                    };
+                    view.scroll_to(
+                        target.fragment_index as u32,
+                        gtk::ListScrollFlags::FOCUS,
+                        None,
+                    );
                     glib::Propagation::Stop
                 }
                 gdk::Key::Home if ctrl && shift => {
-                    r.extend_to_start();
+                    let (target, view) = {
+                        let mut s = state_rc.borrow_mut();
+                        (s.extend_to_start(), s.view.clone())
+                    };
+                    view.scroll_to(
+                        target.fragment_index as u32,
+                        gtk::ListScrollFlags::FOCUS,
+                        None,
+                    );
                     glib::Propagation::Stop
                 }
                 gdk::Key::Right if shift => {
-                    r.step_selection(1);
+                    let (target, view) = {
+                        let mut s = state_rc.borrow_mut();
+                        (s.step_selection(1), s.view.clone())
+                    };
+                    if let Some(target) = target {
+                        view.scroll_to(
+                            target.fragment_index as u32,
+                            gtk::ListScrollFlags::FOCUS,
+                            None,
+                        );
+                    }
                     glib::Propagation::Stop
                 }
                 gdk::Key::Left if shift => {
-                    r.step_selection(-1);
+                    let (target, view) = {
+                        let mut s = state_rc.borrow_mut();
+                        (s.step_selection(-1), s.view.clone())
+                    };
+                    if let Some(target) = target {
+                        view.scroll_to(
+                            target.fragment_index as u32,
+                            gtk::ListScrollFlags::FOCUS,
+                            None,
+                        );
+                    }
                     glib::Propagation::Stop
                 }
                 gdk::Key::Down if shift => {
-                    r.step_fragment_selection(true);
+                    let (target, view) = {
+                        let mut s = state_rc.borrow_mut();
+                        (s.step_fragment_selection(true), s.view.clone())
+                    };
+                    if let Some(target) = target {
+                        view.scroll_to(
+                            target.fragment_index as u32,
+                            gtk::ListScrollFlags::FOCUS,
+                            None,
+                        );
+                    }
                     glib::Propagation::Stop
                 }
                 gdk::Key::Up if shift => {
-                    r.step_fragment_selection(false);
+                    let (target, view) = {
+                        let mut s = state_rc.borrow_mut();
+                        (s.step_fragment_selection(false), s.view.clone())
+                    };
+                    if let Some(target) = target {
+                        view.scroll_to(
+                            target.fragment_index as u32,
+                            gtk::ListScrollFlags::FOCUS,
+                            None,
+                        );
+                    }
                     glib::Propagation::Stop
                 }
                 _ => glib::Propagation::Proceed,
@@ -634,106 +690,13 @@ impl Reader {
         view.add_controller(key_ctrl);
     }
 
-    fn drag_to_last(&self) {
-        let (anchor, last) = {
-            let s = self.state.borrow();
-            (s.drag_anchor, s.drag_last)
-        };
-        let Some(anchor) = anchor else {
-            return;
-        };
-        let Some(active) = self.hit_test(last.0, last.1) else {
-            return;
-        };
-        self.set_selection(Some(DocumentSelection::new(anchor, active)));
-    }
-
     pub fn hit_test(&self, x: f64, y: f64) -> Option<DocumentPosition> {
-        let state = self.state.borrow();
-        let plan = state.plan.as_ref()?;
-        if plan.fragments.is_empty() {
-            return None;
-        }
-        let height = state.view.height() as f64;
-        let y_clamped = y.clamp(1.0, (height - 1.0).max(1.0));
-
-        for dy in [0.0, -4.0, 4.0, -10.0, 10.0, -20.0, 20.0] {
-            let test_y = (y_clamped + dy).clamp(1.0, (height - 1.0).max(1.0));
-            let Some(widget) = state.view.pick(x, test_y, gtk::PickFlags::DEFAULT) else {
-                continue;
-            };
-
-            let mut found_row = None;
-            for row in state.rows.values() {
-                let Some(row_box) = row.row_box.upgrade() else {
-                    continue;
-                };
-                if (&widget == row_box.upcast_ref::<gtk::Widget>() || widget.is_ancestor(&row_box))
-                    && let Some((epoch, index)) = row.binding.get()
-                    && epoch == state.epoch
-                    && let Some(label) = row
-                        .labels
-                        .iter()
-                        .filter_map(|l| l.upgrade())
-                        .find(|l| l.is_visible())
-                {
-                    found_row = Some((index, label));
-                    break;
-                }
-            }
-
-            let Some((index, label)) = found_row else {
-                continue;
-            };
-
-            let Some(point) = state
-                .view
-                .compute_point(&label, &gtk::graphene::Point::new(x as f32, test_y as f32))
-            else {
-                continue;
-            };
-
-            let (ox, oy) = label.layout_offsets();
-            let layout = label.layout();
-            let lx = ((point.x() - ox as f32) * gtk::pango::SCALE as f32) as i32;
-            let ly = ((point.y() - oy as f32) * gtk::pango::SCALE as f32) as i32;
-            let text = label.text();
-            let (_, byte, trailing) = layout.xy_to_index(lx, ly);
-            let mut byte = byte.max(0) as usize;
-            for _ in 0..trailing {
-                byte += text[byte..].chars().next().map_or(0, char::len_utf8);
-            }
-            let byte = byte.min(text.len());
-            let char_offset = text[..byte].chars().count();
-            return Some(DocumentPosition::new(index as usize, char_offset));
-        }
-
-        if y < 1.0 {
-            return Some(DocumentPosition::new(0, 0));
-        }
-        let last_frag = plan.fragments.len() - 1;
-        let last_len = plan.fragments[last_frag].text().chars().count();
-        Some(DocumentPosition::new(last_frag, last_len))
+        self.state.borrow().hit_test(x, y)
     }
 
     // Native smoke observations: no clipboard or external URI dispatch.
     pub fn observed(&self) -> Vec<(u32, gtk::Label)> {
-        let state = self.state.borrow();
-        state
-            .rows
-            .values()
-            .filter_map(|row| {
-                let (epoch, index) = row.binding.get()?;
-                if epoch != state.epoch {
-                    return None;
-                }
-                row.labels
-                    .iter()
-                    .filter_map(|l| l.upgrade())
-                    .find(|l| l.is_visible())
-                    .map(|label| (index, label))
-            })
-            .collect()
+        self.state.borrow().observed()
     }
 
     pub fn row_count(&self) -> usize {
@@ -757,96 +720,31 @@ impl Reader {
     }
 
     pub fn set_selection(&self, selection: Option<DocumentSelection>) {
-        {
-            let mut state = self.state.borrow_mut();
-            state.selection = selection.filter(|s| !s.is_empty());
-        }
-        self.refresh_markup();
+        self.state.borrow_mut().set_selection(selection);
     }
 
     pub fn clear_selection(&self) {
-        self.set_selection(None);
+        self.state.borrow_mut().clear_selection();
     }
 
     pub fn select_all(&self) {
-        let (last_frag, last_len) = {
-            let state = self.state.borrow();
-            let Some(plan) = &state.plan else {
-                return;
-            };
-            if plan.fragments.is_empty() {
-                return;
-            }
-            let last_idx = plan.fragments.len() - 1;
-            let len = plan.fragments[last_idx].text().chars().count();
-            (last_idx, len)
-        };
-        self.set_selection(Some(DocumentSelection::new(
-            DocumentPosition::new(0, 0),
-            DocumentPosition::new(last_frag, last_len),
-        )));
+        self.state.borrow_mut().select_all();
     }
 
     pub fn selected_text(&self) -> Option<String> {
-        let state = self.state.borrow();
-        let sel = state.selection?;
-        if sel.is_empty() {
-            return None;
-        }
-        let plan = state.plan.as_ref()?;
-        Some(plan.text_between(sel.start(), sel.end()))
+        self.state.borrow().selected_text()
     }
 
     pub fn selected_markdown(&self) -> Option<Vec<u8>> {
-        let state = self.state.borrow();
-        let sel = state.selection?;
-        if sel.is_empty() {
-            return None;
-        }
-        let plan = state.plan.as_ref()?;
-        let doc = state.document.as_ref()?;
-        Some(plan.source_between(sel.start(), sel.end(), doc).to_vec())
+        self.state.borrow().selected_markdown()
     }
 
     pub fn copy_selection(&self) -> bool {
-        let (plain, markdown) = {
-            let state = self.state.borrow();
-            let Some(sel) = state.selection else {
-                return false;
-            };
-            if sel.is_empty() {
-                return false;
-            }
-            let Some(plan) = &state.plan else {
-                return false;
-            };
-            let plain = plan.text_between(sel.start(), sel.end());
-            let markdown = state
-                .document
-                .as_ref()
-                .map(|doc| plan.source_between(sel.start(), sel.end(), doc).to_vec())
-                .unwrap_or_else(|| plain.as_bytes().to_vec());
-            (plain, markdown)
-        };
-
-        let provider = gdk::ContentProvider::new_union(&[
-            gdk::ContentProvider::for_value(&plain.to_value()),
-            gdk::ContentProvider::for_bytes("text/markdown", &glib::Bytes::from(&markdown)),
-        ]);
-
-        if let Some(display) = gdk::Display::default() {
-            display.clipboard().set_content(Some(&provider)).is_ok()
-        } else {
-            false
-        }
+        self.state.borrow().copy_selection()
     }
 
     pub fn extend_selection(&self, target: DocumentPosition) {
-        let anchor = {
-            let state = self.state.borrow();
-            state.selection.map(|s| s.anchor).unwrap_or(target)
-        };
-        self.set_selection(Some(DocumentSelection::new(anchor, target)));
+        self.state.borrow_mut().extend_selection(target);
         self.scroll_to_fragment(target.fragment_index);
     }
 
@@ -856,118 +754,27 @@ impl Reader {
     }
 
     pub fn step_selection(&self, delta: isize) {
-        let (plan_len, cur_pos) = {
-            let state = self.state.borrow();
-            let Some(plan) = &state.plan else {
-                return;
-            };
-            let pos = state
-                .selection
-                .map(|s| s.active)
-                .unwrap_or(DocumentPosition::new(0, 0));
-            (plan.fragments.len(), pos)
-        };
-        if plan_len == 0 {
-            return;
+        let target = self.state.borrow_mut().step_selection(delta);
+        if let Some(target) = target {
+            self.scroll_to_fragment(target.fragment_index);
         }
-
-        let state = self.state.borrow();
-        let plan = state.plan.as_ref().unwrap();
-        let frag_len = plan.fragments[cur_pos.fragment_index]
-            .text()
-            .chars()
-            .count();
-
-        let next_pos = if delta > 0 {
-            if cur_pos.char_offset < frag_len {
-                DocumentPosition::new(cur_pos.fragment_index, cur_pos.char_offset + 1)
-            } else if cur_pos.fragment_index + 1 < plan_len {
-                DocumentPosition::new(cur_pos.fragment_index + 1, 0)
-            } else {
-                cur_pos
-            }
-        } else if cur_pos.char_offset > 0 {
-            DocumentPosition::new(cur_pos.fragment_index, cur_pos.char_offset - 1)
-        } else if cur_pos.fragment_index > 0 {
-            let prev_len = plan.fragments[cur_pos.fragment_index - 1]
-                .text()
-                .chars()
-                .count();
-            DocumentPosition::new(cur_pos.fragment_index - 1, prev_len)
-        } else {
-            cur_pos
-        };
-        drop(state);
-        self.extend_selection(next_pos);
     }
 
     pub fn step_fragment_selection(&self, forward: bool) {
-        let (plan_len, cur_pos) = {
-            let state = self.state.borrow();
-            let Some(plan) = &state.plan else {
-                return;
-            };
-            let pos = state
-                .selection
-                .map(|s| s.active)
-                .unwrap_or(DocumentPosition::new(0, 0));
-            (plan.fragments.len(), pos)
-        };
-        if plan_len == 0 {
-            return;
+        let target = self.state.borrow_mut().step_fragment_selection(forward);
+        if let Some(target) = target {
+            self.scroll_to_fragment(target.fragment_index);
         }
-
-        let state = self.state.borrow();
-        let plan = state.plan.as_ref().unwrap();
-
-        let next_pos = if forward {
-            if cur_pos.fragment_index + 1 < plan_len {
-                let next_len = plan.fragments[cur_pos.fragment_index + 1]
-                    .text()
-                    .chars()
-                    .count();
-                DocumentPosition::new(
-                    cur_pos.fragment_index + 1,
-                    cur_pos.char_offset.min(next_len),
-                )
-            } else {
-                let last_len = plan.fragments[plan_len - 1].text().chars().count();
-                DocumentPosition::new(plan_len - 1, last_len)
-            }
-        } else if cur_pos.fragment_index > 0 {
-            let prev_len = plan.fragments[cur_pos.fragment_index - 1]
-                .text()
-                .chars()
-                .count();
-            DocumentPosition::new(
-                cur_pos.fragment_index - 1,
-                cur_pos.char_offset.min(prev_len),
-            )
-        } else {
-            DocumentPosition::new(0, 0)
-        };
-        drop(state);
-        self.extend_selection(next_pos);
     }
 
     pub fn extend_to_start(&self) {
-        self.extend_selection(DocumentPosition::new(0, 0));
+        let target = self.state.borrow_mut().extend_to_start();
+        self.scroll_to_fragment(target.fragment_index);
     }
 
     pub fn extend_to_end(&self) {
-        let last_pos = {
-            let state = self.state.borrow();
-            let Some(plan) = &state.plan else {
-                return;
-            };
-            if plan.fragments.is_empty() {
-                return;
-            }
-            let last_idx = plan.fragments.len() - 1;
-            let len = plan.fragments[last_idx].text().chars().count();
-            DocumentPosition::new(last_idx, len)
-        };
-        self.extend_selection(last_pos);
+        let target = self.state.borrow_mut().extend_to_end();
+        self.scroll_to_fragment(target.fragment_index);
     }
 
     pub fn activate_outline(&self, index: u32) {
@@ -1078,9 +885,7 @@ impl Reader {
     }
 
     pub fn first_visible_fragment(&self) -> Option<u32> {
-        let mut observed = self.observed();
-        observed.sort_by_key(|(idx, _)| *idx);
-        observed.first().map(|(idx, _)| *idx)
+        self.state.borrow().first_visible_fragment()
     }
 
     pub fn find_matches(&self) -> Option<Arc<markdown_linux::render::FindMatches>> {
@@ -1139,21 +944,338 @@ impl Reader {
     }
 
     pub fn refresh_markup(&self) {
+        self.state.borrow().refresh_markup();
+    }
+}
+
+impl State {
+    pub fn observed(&self) -> Vec<(u32, gtk::Label)> {
+        self.rows
+            .values()
+            .filter_map(|row| {
+                let (epoch, index) = row.binding.get()?;
+                if epoch != self.epoch {
+                    return None;
+                }
+                row.labels
+                    .iter()
+                    .filter_map(|l| l.upgrade())
+                    .find(|l| l.is_visible())
+                    .map(|label| (index, label))
+            })
+            .collect()
+    }
+
+    pub fn first_visible_fragment(&self) -> Option<u32> {
+        let mut observed = self.observed();
+        observed.sort_by_key(|(idx, _)| *idx);
+        observed.first().map(|(idx, _)| *idx)
+    }
+
+    pub fn default_anchor(&self) -> DocumentPosition {
+        let frag = self.first_visible_fragment().unwrap_or(0) as usize;
+        DocumentPosition::new(frag, 0)
+    }
+
+    pub fn hit_test(&self, x: f64, y: f64) -> Option<DocumentPosition> {
+        let plan = self.plan.as_ref()?;
+        if plan.fragments.is_empty() {
+            return None;
+        }
+        let height = self.view.height() as f64;
+        let y_clamped = y.clamp(1.0, (height - 1.0).max(1.0));
+
+        for dy in [0.0, -4.0, 4.0, -10.0, 10.0, -20.0, 20.0] {
+            let test_y = (y_clamped + dy).clamp(1.0, (height - 1.0).max(1.0));
+            let Some(widget) = self.view.pick(x, test_y, gtk::PickFlags::DEFAULT) else {
+                continue;
+            };
+
+            let mut found_row = None;
+            for row in self.rows.values() {
+                let Some(row_box) = row.row_box.upgrade() else {
+                    continue;
+                };
+                if (&widget == row_box.upcast_ref::<gtk::Widget>() || widget.is_ancestor(&row_box))
+                    && let Some((epoch, index)) = row.binding.get()
+                    && epoch == self.epoch
+                    && let Some(label) = row
+                        .labels
+                        .iter()
+                        .filter_map(|l| l.upgrade())
+                        .find(|l| l.is_visible())
+                {
+                    found_row = Some((index, label));
+                    break;
+                }
+            }
+
+            let Some((index, label)) = found_row else {
+                continue;
+            };
+
+            let Some(point) = self
+                .view
+                .compute_point(&label, &gtk::graphene::Point::new(x as f32, test_y as f32))
+            else {
+                continue;
+            };
+
+            let (ox, oy) = label.layout_offsets();
+            let layout = label.layout();
+            let lx = ((point.x() - ox as f32) * gtk::pango::SCALE as f32) as i32;
+            let ly = ((point.y() - oy as f32) * gtk::pango::SCALE as f32) as i32;
+            let text = label.text();
+            let (_, byte, trailing) = layout.xy_to_index(lx, ly);
+            let mut byte = byte.max(0) as usize;
+            for _ in 0..trailing {
+                byte += text[byte..].chars().next().map_or(0, char::len_utf8);
+            }
+            let byte = byte.min(text.len());
+            let char_offset = text[..byte].chars().count();
+            return Some(DocumentPosition::new(index as usize, char_offset));
+        }
+
+        if y < 1.0 {
+            return Some(DocumentPosition::new(0, 0));
+        }
+        let last_frag = plan.fragments.len() - 1;
+        let last_len = plan.fragments[last_frag].text().chars().count();
+        Some(DocumentPosition::new(last_frag, last_len))
+    }
+
+    pub fn set_selection(&mut self, selection: Option<DocumentSelection>) {
+        self.selection = selection.filter(|s| !s.is_empty());
+        self.refresh_markup();
+    }
+
+    pub fn clear_selection(&mut self) {
+        self.set_selection(None);
+    }
+
+    pub fn has_selection(&self) -> bool {
+        self.selection.is_some_and(|s| !s.is_empty())
+    }
+
+    pub fn select_all(&mut self) {
+        let (last_frag, last_len) = {
+            let Some(plan) = &self.plan else {
+                return;
+            };
+            if plan.fragments.is_empty() {
+                return;
+            }
+            let last_idx = plan.fragments.len() - 1;
+            let len = plan.fragments[last_idx].text().chars().count();
+            (last_idx, len)
+        };
+        self.set_selection(Some(DocumentSelection::new(
+            DocumentPosition::new(0, 0),
+            DocumentPosition::new(last_frag, last_len),
+        )));
+    }
+
+    pub fn selected_text(&self) -> Option<String> {
+        let sel = self.selection?;
+        if sel.is_empty() {
+            return None;
+        }
+        let plan = self.plan.as_ref()?;
+        Some(plan.text_between(sel.start(), sel.end()))
+    }
+
+    pub fn selected_markdown(&self) -> Option<Vec<u8>> {
+        let sel = self.selection?;
+        if sel.is_empty() {
+            return None;
+        }
+        let plan = self.plan.as_ref()?;
+        let start = sel.start();
+        let end = sel.end();
+        if let Some(doc) = &self.document
+            && let Some(src) = plan.source_between(start, end, doc)
+        {
+            Some(src.to_vec())
+        } else {
+            Some(plan.text_between(start, end).into_bytes())
+        }
+    }
+
+    pub fn copy_selection(&self) -> bool {
+        let Some(sel) = self.selection else {
+            return false;
+        };
+        if sel.is_empty() {
+            return false;
+        }
+        let Some(plan) = &self.plan else {
+            return false;
+        };
+        let start = sel.start();
+        let end = sel.end();
+        let plain = plan.text_between(start, end);
+        let markdown: Vec<u8> = if let Some(doc) = &self.document
+            && let Some(src) = plan.source_between(start, end, doc)
+        {
+            src.to_vec()
+        } else {
+            plain.as_bytes().to_vec()
+        };
+
+        let provider = gdk::ContentProvider::new_union(&[
+            gdk::ContentProvider::for_value(&plain.to_value()),
+            gdk::ContentProvider::for_bytes("text/markdown", &glib::Bytes::from(&markdown)),
+        ]);
+
+        if let Some(display) = gdk::Display::default() {
+            display.clipboard().set_content(Some(&provider)).is_ok()
+        } else {
+            false
+        }
+    }
+
+    pub fn extend_selection(&mut self, target: DocumentPosition) {
+        let anchor = self
+            .selection
+            .map(|s| s.anchor)
+            .unwrap_or_else(|| self.default_anchor());
+        self.set_selection(Some(DocumentSelection::new(anchor, target)));
+    }
+
+    pub fn extend_to_start(&mut self) -> DocumentPosition {
+        let target = DocumentPosition::new(0, 0);
+        self.extend_selection(target);
+        target
+    }
+
+    pub fn extend_to_end(&mut self) -> DocumentPosition {
+        let (last_idx, last_len) = self.plan.as_ref().map_or((0, 0), |p| {
+            if p.fragments.is_empty() {
+                (0, 0)
+            } else {
+                let last = p.fragments.len() - 1;
+                let len = p.fragments[last].text().chars().count();
+                (last, len)
+            }
+        });
+        let target = DocumentPosition::new(last_idx, last_len);
+        self.extend_selection(target);
+        target
+    }
+
+    pub fn step_selection(&mut self, delta: isize) -> Option<DocumentPosition> {
+        let plan = self.plan.as_ref()?;
+        let plan_len = plan.fragments.len();
+        if plan_len == 0 {
+            return None;
+        }
+
+        let (anchor, cur_pos) = if let Some(sel) = self.selection {
+            (sel.anchor, sel.active)
+        } else {
+            let def = self.default_anchor();
+            (def, def)
+        };
+
+        let frag_len = plan.fragments[cur_pos.fragment_index]
+            .text()
+            .chars()
+            .count();
+
+        let next_pos = if delta > 0 {
+            if cur_pos.char_offset < frag_len {
+                DocumentPosition::new(cur_pos.fragment_index, cur_pos.char_offset + 1)
+            } else if cur_pos.fragment_index + 1 < plan_len {
+                DocumentPosition::new(cur_pos.fragment_index + 1, 0)
+            } else {
+                cur_pos
+            }
+        } else if cur_pos.char_offset > 0 {
+            DocumentPosition::new(cur_pos.fragment_index, cur_pos.char_offset - 1)
+        } else if cur_pos.fragment_index > 0 {
+            let prev_len = plan.fragments[cur_pos.fragment_index - 1]
+                .text()
+                .chars()
+                .count();
+            DocumentPosition::new(cur_pos.fragment_index - 1, prev_len)
+        } else {
+            cur_pos
+        };
+
+        self.set_selection(Some(DocumentSelection::new(anchor, next_pos)));
+        Some(next_pos)
+    }
+
+    pub fn step_fragment_selection(&mut self, forward: bool) -> Option<DocumentPosition> {
+        let plan = self.plan.as_ref()?;
+        let plan_len = plan.fragments.len();
+        if plan_len == 0 {
+            return None;
+        }
+
+        let (anchor, cur_pos) = if let Some(sel) = self.selection {
+            (sel.anchor, sel.active)
+        } else {
+            let def = self.default_anchor();
+            (def, def)
+        };
+
+        let next_pos = if forward {
+            if cur_pos.fragment_index + 1 < plan_len {
+                let next_len = plan.fragments[cur_pos.fragment_index + 1]
+                    .text()
+                    .chars()
+                    .count();
+                DocumentPosition::new(
+                    cur_pos.fragment_index + 1,
+                    cur_pos.char_offset.min(next_len),
+                )
+            } else {
+                let last_len = plan.fragments[plan_len - 1].text().chars().count();
+                DocumentPosition::new(plan_len - 1, last_len)
+            }
+        } else if cur_pos.fragment_index > 0 {
+            let prev_len = plan.fragments[cur_pos.fragment_index - 1]
+                .text()
+                .chars()
+                .count();
+            DocumentPosition::new(
+                cur_pos.fragment_index - 1,
+                cur_pos.char_offset.min(prev_len),
+            )
+        } else {
+            DocumentPosition::new(0, 0)
+        };
+
+        self.set_selection(Some(DocumentSelection::new(anchor, next_pos)));
+        Some(next_pos)
+    }
+
+    pub fn drag_to_last(&mut self) {
+        let Some(anchor) = self.drag_anchor else {
+            return;
+        };
+        let Some(active) = self.hit_test(self.drag_last.0, self.drag_last.1) else {
+            return;
+        };
+        self.set_selection(Some(DocumentSelection::new(anchor, active)));
+    }
+
+    pub fn refresh_markup(&self) {
         let observed = self.observed();
-        let state = self.state.borrow();
-        let Some(plan) = &state.plan else {
+        let Some(plan) = &self.plan else {
             return;
         };
         for (index, label) in observed {
             if let Some(fragment) = plan.fragments.get(index as usize) {
                 let markup = compute_fragment_markup(
                     fragment,
-                    state.epoch,
+                    self.epoch,
                     index,
                     plan,
-                    state.find_matches.as_deref(),
-                    state.current_find_match,
-                    state.selection,
+                    self.find_matches.as_deref(),
+                    self.current_find_match,
+                    self.selection,
                 );
                 label.set_markup(&markup);
             }

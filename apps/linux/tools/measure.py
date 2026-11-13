@@ -119,12 +119,16 @@ def main():
                 "profile": name,
                 "configuration": args.configuration,
                 "jump_targets": res["jump_targets"],
-                "jump_times_ms": res["jump_times_ms"],
-                "jump_budget_150ms": res["jump_budget_150ms"],
+                "outline_resolve_times_ms": res.get("outline_resolve_times_ms", res.get("jump_times_ms", [])),
+                "outline_resolve_budget_150ms": res.get(
+                    "outline_resolve_budget_150ms", res.get("jump_budget_150ms", True)
+                ),
                 "copy_slice_ms": res["copy_slice_ms"],
                 "clip_write_ms": res["clip_write_ms"],
                 "copy_source_bytes": res["copy_source_bytes"],
                 "copy_text_chars": res["copy_text_chars"],
+                "clip_ok": res.get("clip_ok", True),
+                "clipboard_skipped": res.get("clipboard_skipped", False),
                 "copy_verified": res["copy_verified"],
             }
             print(json.dumps(out, indent=2))
