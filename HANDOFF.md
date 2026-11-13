@@ -1,43 +1,22 @@
 # Agent Session and Platform Handoff
 
-Updated: 2026-11-03 (America/Denver), LNX-001E completed under D-029 (PR #64 closed out and merged into `develop`).
-Active task: Next execution task `LNX-001F` (`1ff3b387-6d0d-408f-a329-5c154fea1126`) document find, theme and text controls on Linux, or Windows walking skeleton milestone review under D-030 (on Windows or macOS).
-Pass `5126990c-85a7-4a06-bc81-c89976b21cb3` completed, approved head `fcfc2a9` merged into `develop`.
-`apps/windows/` (`Core/CoreFfi.cs`, `Core/CoreRuntime.cs`, `Core/CoreSnapshot.cs`,
-`Core/CoreDocument.cs`, `Core/CoreSession.cs`, `Document/DocumentAccess.cs`,
-`Document/DocumentWatcher.cs`, `Document/DocumentLoader.cs`, `Render/ReadingPosition.cs`,
-`Render/RenderPlan.cs`, `Render/ReaderControl.cs`, `Restoration.cs`, `RelaunchCheck.cs`,
-`Program.cs`, `Measurement.cs`, `tools/measure.py`, `tools/check.py`,
-`CoreConsumerTests.cs`, `DocumentTests.cs`, `RenderTests.cs`) delivers:
+Updated: 2026-11-13 (America/Denver), LNX-001F completed under D-029 (PR #65 closed out and ready to merge into `develop`).
+Active task: Next execution task `LNX-001G` (`bd69e601-a4d2-469c-9334-3648a0b75640`) large-document layout, global selection and accessibility on Linux, or Windows/macOS walking skeleton milestone review under D-030.
+Pass `43f9c384-4792-45f2-a8d2-c0feabc9039f` completed, approved head `41978ee` ready to merge into `develop`.
+`apps/linux/` delivers LNX-001F:
 
-- External file change detection: `DocumentWatcher` wraps Win32 `FileSystemWatcher` (`ReadDirectoryChangesW`)
-  with 100ms debouncing, parent-directory fallback, burst coalescing, and error recovery. In-place writes,
-  atomic replacements, deletions (retaining stale view with warning banner, tracking reappearance),
-  and window activation (`WM_ACTIVATE`) stat check fallback.
-- Background refresh & disposition: `DocumentLoader.RefreshExternal()` and `CoreSession.ExternalChange`
-  perform background checks (`copyUnchanged: false`), returning `Unchanged` (zero reallocation) or
-  `Published` with a fresh `CoreDocument` and owned `CoreSnapshot`.
-- Reading position preservation & restoration: `CoreSnapshot` wraps native `md_snapshot` handles with
-  deterministic worker-thread release (`CoreRuntime.EnqueueWork`), exposing `AnchorAt`, `AnchorForNode`,
-  and `ResolveAnchor`. `ReaderControl.SavePosition` captures model-v2 anchors and fallback line/scroll offsets,
-  and `RestorePosition` / `InstallPlan` restores reading position across external reloads and edits.
-- Window state persistence: `RestorationStore` serializes window states (file path, base64 anchors,
-  text scale, outline visibility) to `%LOCALAPPDATA%\MarkdownReader\restoration.json` with schema validation
-  and tamper resistance.
-- Relaunch verification: automated 2-phase relaunch check (`--relaunch-check prepare` and `--relaunch-check verify`)
-  integrated in `apps/windows/tools/check.py` passing across Debug, Release, and Relocated Native AOT.
-- Refresh benchmark measurements (`apps/windows/tools/measure.py refresh --count 5`):
-  - `prose-1mib`: 168.91ms median refresh, `kept_place: true`, 95.25 MiB footprint.
-  - `long-lines-1mib`: 24.70ms median refresh, `kept_place: true`, 28.60 MiB footprint.
-  - `prose-5mib`: 996.00ms median refresh, `kept_place: true`, 363.02 MiB footprint.
+- Document find & core adapter: `md_snapshot_find` C ABI binding in `apps/linux/core/src/ffi.rs`, `CoreSession::find` non-blocking worker find with `FindGate` cancellation, dynamic buffer sizing with retry on `MD_ERR_BUFFER_TOO_SMALL`, generation validation against `MD_ERR_SUPERSEDED`, and full consumer test suite in `apps/linux/core/tests/consumer.rs` (16 tests covering Unicode normalization, combining marks, case folding, emoji ZWJ, CJK, RTL Hebrew, cancellation, and zero leaked handles).
+- Render match mapping: `FindMatches`, `FindMatch`, `FindMatchRange`, `RenderPlan::map_matches`, and `Fragment::markup_with_highlights` in `apps/linux/src/render.rs` accurately mapping core node matches into virtualized fragment runs with Pango orange (`#ff7800`) active and yellow (`#f6d32d`) passive highlights across inline boundaries, soft breaks, and hard breaks.
+- Native FindBar: GTK 4 `FindBar` widget (`apps/linux/src/find_bar.rs`) with search entry, next/prev navigation buttons, match status label, Match Case / Whole Words check buttons, close button, and keyboard shortcuts (`Ctrl+F`, `F3`, `Shift+F3`, Return/Shift+Return, and `stop-search` Escape dismissal) with request ID and cancellation guards in `apps/linux/src/files.rs`.
+- Text scaling: 9 discrete zoom steps (75% to 250%) with scroll position retention across scale changes via visible fragment anchoring, keyboard shortcuts (`Ctrl++`/`Ctrl+=`, `Ctrl+-`, `Ctrl+0`), and per-reader scoped CSS class isolation (`.reader-scale-{reader_id}`) with cleanup on reader drop in `apps/linux/src/reader.rs`.
+- Theme switching & preferences: System, Light, and Dark themes with dynamic `gtk-interface-color-scheme` resetting (for System) or setting (`light`/`dark`) and `gtk-application-prefer-dark-theme` fallback in `apps/linux/src/main.rs`. Atomic persistent JSON preferences store under `$XDG_CONFIG_HOME/markdown/preferences.json` with NaN safety, single-line/multi-line parsing, and `GSETTINGS_BACKEND=memory` test isolation in `apps/linux/src/preferences.rs`.
+- Verification: local `python3 apps/linux/tools/check.py` passed in Debug and Release (12 loader unit tests, 16 render unit tests, 16 core consumer tests, shell smoke with find/theme/zoom verification, last-window smoke, desktop association smoke, and release core probe with 0 leaked handles).
 
-Local `apps/windows/tools/check.py` passes in Debug, Release, and relocated Release
-(20 core consumer tests, 14 document tests, 20 render tests, 13-stage Native AOT WinUI smoke,
-association checks, relaunch checks, and relocated core probe with 0 leaked handles).
+PR #65 reviewed by Grok Bot across 3 reviews; review 3 reported 0 Blockers, 0 Concerns, 1 Nit (addressed in `41978ee`, clean approval under D-029).
 
-Next Windows task after WIN-001 aggregate merge: Windows walking skeleton milestone review (D-030). Next execution task: `LNX-001F` document find, theme and text controls on Linux.
+Next Linux task: `LNX-001G` (large-document layout, global selection and accessibility). Next Windows/macOS task: walking skeleton milestone review (D-030).
 
-Previous Linux task: `LNX-001E` merged in [PR #64](https://github.com/awesomejt/markdown/pull/64). Previous Windows task: `WIN-001I` merged in [PR #61](https://github.com/awesomejt/markdown/pull/61).
+Previous Linux task: `LNX-001F` merged in [PR #65](https://github.com/awesomejt/markdown/pull/65). Previous Windows task: `WIN-001I` merged in [PR #61](https://github.com/awesomejt/markdown/pull/61).
 
 Previous Linux handoff baseline: `develop` after PR #52; reviewed head `f12d2e5`, non-serious
 review fixes at `27e84df`, followed by one state/docs closeout. The merge SHA is
