@@ -764,6 +764,16 @@ async fn find_and_zoom(
             s.is_gtk_application_prefer_dark_theme(),
             "gtk dark theme enabled",
         )?;
+        if let Some(pspec) = s.find_property("gtk-interface-color-scheme")
+            && let Some(enum_class) = gtk::glib::EnumClass::with_type(pspec.value_type())
+        {
+            let val = s.property_value("gtk-interface-color-scheme");
+            if let Ok(int_val) = val.get::<i32>()
+                && let Some(v) = enum_class.value(int_val)
+            {
+                check(v.nick() == "dark", "gtk interface color scheme is dark")?;
+            }
+        }
     }
 
     app.activate_action("theme-light", None);
@@ -777,6 +787,16 @@ async fn find_and_zoom(
             !s.is_gtk_application_prefer_dark_theme(),
             "gtk light theme enabled",
         )?;
+        if let Some(pspec) = s.find_property("gtk-interface-color-scheme")
+            && let Some(enum_class) = gtk::glib::EnumClass::with_type(pspec.value_type())
+        {
+            let val = s.property_value("gtk-interface-color-scheme");
+            if let Ok(int_val) = val.get::<i32>()
+                && let Some(v) = enum_class.value(int_val)
+            {
+                check(v.nick() == "light", "gtk interface color scheme is light")?;
+            }
+        }
     }
 
     app.activate_action("theme-system", None);
