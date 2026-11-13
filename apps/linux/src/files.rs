@@ -82,7 +82,7 @@ impl WindowDocument {
                             unchanged,
                             ..
                         } => {
-                            state.reader.install(plan);
+                            state.reader.install_document(plan, Some(document.clone()));
                             state.status(&format!(
                                 "Document loaded · {} bytes · {} headings{}",
                                 document.source.len(),
@@ -333,7 +333,25 @@ pub fn attach(window: &gtk::ApplicationWindow, label: &gtk::Label) {
         }
     });
 
-    // Window actions for find and zoom
+    // Window actions for edit, find and zoom
+    let copy_act = gio::SimpleAction::new("copy", None);
+    let weak = Rc::downgrade(&state);
+    copy_act.connect_activate(move |_, _| {
+        if let Some(state) = weak.upgrade() {
+            state.borrow().reader.copy_selection();
+        }
+    });
+    window.add_action(&copy_act);
+
+    let select_all_act = gio::SimpleAction::new("select-all", None);
+    let weak = Rc::downgrade(&state);
+    select_all_act.connect_activate(move |_, _| {
+        if let Some(state) = weak.upgrade() {
+            state.borrow().reader.select_all();
+        }
+    });
+    window.add_action(&select_all_act);
+
     let find_act = gio::SimpleAction::new("find", None);
     let weak = Rc::downgrade(&state);
     find_act.connect_activate(move |_, _| {

@@ -988,3 +988,88 @@ fn document_find_unicode_mappings_and_wrapping() {
 
     session.close().unwrap();
 }
+
+#[test]
+fn global_document_selection_model_and_slices() {
+    use markdown_linux::render::{DocumentPosition, DocumentSelection};
+
+    // Position comparison
+    let p0 = DocumentPosition::new(0, 5);
+    let p1 = DocumentPosition::new(1, 0);
+    let p2 = DocumentPosition::new(1, 3);
+    assert!(p0 < p1);
+    assert!(p1 < p2);
+    assert_eq!(p1, DocumentPosition::new(1, 0));
+
+    // Selection range & normalization
+    let sel_fwd = DocumentSelection::new(p0, p2);
+    assert_eq!(sel_fwd.start(), p0);
+    assert_eq!(sel_fwd.end(), p2);
+    assert!(!sel_fwd.is_empty());
+
+    let sel_rev = DocumentSelection::new(p2, p0);
+    assert_eq!(sel_rev.start(), p0);
+    assert_eq!(sel_rev.end(), p2);
+    assert!(!sel_rev.is_empty());
+
+    let sel_empty = DocumentSelection::new(p1, p1);
+    assert!(sel_empty.is_empty());
+
+    // Document with headings, paragraphs, and lists
+    let source = "# Heading One\n\nFirst paragraph with **bold** text.\n\nSecond paragraph here.\n";
+    let doc = document(source);
+    let plan = RenderPlan::build(&doc, || false).unwrap();
+    assert!(plan.fragments.len() >= 3);
+
+    // Single fragment text slicing
+    let f0_text = plan.fragments[0].text();
+    let sub = plan.text_between(DocumentPosition::new(0, 0), DocumentPosition::new(0, 7));
+    assert_eq!(sub, "Heading");
+
+    // Multi-fragment text slicing with paragraph separator
+    let multi = plan.text_between(DocumentPosition::new(0, 0), DocumentPosition::new(1, 5));
+    assert!(multi.starts_with("Heading One\n\nFirst"));
+
+    // Whole-document selection gives exact source bytes
+    let last_idx = plan.fragments.len() - 1;
+    let last_len = plan.fragments[last_idx].text().chars().count();
+    let full_source = plan.source_between(
+        DocumentPosition::new(0, 0),
+        DocumentPosition::new(last_idx, last_len),
+        &doc,
+    );
+    assert_eq!(full_source, source.as_bytes());
+
+    // Sub-range source slicing
+    let sub_source = plan.source_between(
+        DocumentPosition::new(1, 0),
+        DocumentPosition::new(1, 10),
+        &doc,
+    );
+    assert!(!sub_source.is_empty());
+
+    // Per-fragment selection mapping
+    let sel = DocumentSelection::new(DocumentPosition::new(0, 3), DocumentPosition::new(2, 4));
+    assert_eq!(
+        plan.selection_for_fragment(0, Some(sel)),
+        Some((3, f0_text.chars().count()))
+    );
+    assert_eq!(
+        plan.selection_for_fragment(1, Some(sel)),
+        Some((0, plan.fragments[1].text().chars().count()))
+    );
+    assert_eq!(plan.selection_for_fragment(2, Some(sel)), Some((0, 4)));
+    assert_eq!(plan.selection_for_fragment(3, Some(sel)), None);
+    assert_eq!(plan.selection_for_fragment(0, Some(sel_empty)), None);
+
+    // Markup highlighting with selection and find interaction
+    let frag = &plan.fragments[1];
+    // Find highlight on chars 6..10 ("para"), selection on chars 0..8
+    let highlights = vec![(6, 10, true)];
+    let markup_sel_and_find =
+        frag.markup_with_highlights_and_selection(1, 1, &highlights, Some((0, 8)));
+    // Selection style
+    assert!(markup_sel_and_find.contains("background=\"#3584e4\" foreground=\"#ffffff\""));
+    // Find style for remaining non-selected part of match (chars 8..10)
+    assert!(markup_sel_and_find.contains("background=\"#ff7800\" foreground=\"#ffffff\""));
+}

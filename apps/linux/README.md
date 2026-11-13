@@ -458,3 +458,61 @@ debug` for debug, or `--prepare-only` for a persistent public owner-test fixture
   tests, and 15 core consumer tests per profile. The GTK native shell smoke (`--smoke-test`)
   verifies rendering of rich blocks (table rows with TSV, task list markers, and local
   image rendering through real `DocumentResources` while remote and escaping images are blocked).
+
+## Find, text scaling and appearance (LNX-001F)
+
+- **Document Find**: `md_snapshot_find` C ABI binding in `apps/linux/core/src/ffi.rs`,
+  non-blocking worker find with `FindGate` cancellation, dynamic buffer sizing with retry on
+  `MD_ERR_BUFFER_TOO_SMALL`, generation validation against `MD_ERR_SUPERSEDED`, and consumer
+  tests in `apps/linux/core/tests/consumer.rs`.
+- **Render match mapping**: `FindMatches`, `FindMatch`, `FindMatchRange`, `RenderPlan::map_matches`,
+  and `Fragment::markup_with_highlights` mapping core node matches into virtualized fragment
+  runs with Pango orange (`#ff7800`) active and yellow (`#f6d32d`) passive highlights across
+  inline boundaries and soft/hard breaks.
+- **FindBar widget**: GTK 4 `FindBar` widget (`apps/linux/src/find_bar.rs`) with search entry,
+  next/prev navigation buttons, match status label, Match Case / Whole Words check buttons,
+  close button, and keyboard shortcuts (`Ctrl+F`, `F3`, `Shift+F3`, Return/Shift+Return, and
+  `stop-search` Escape dismissal).
+- **Text scaling**: 9 discrete zoom steps (75% to 250%) with scroll position retention across
+  scale changes via visible fragment anchoring, keyboard shortcuts (`Ctrl++`/`Ctrl+=`, `Ctrl+-`,
+  `Ctrl+0`), and per-reader scoped CSS class isolation (`.reader-scale-{reader_id}`) with
+  cleanup on reader drop.
+- **Theme switching & preferences**: System, Light, and Dark themes with dynamic
+  `gtk-interface-color-scheme` resetting/setting and `gtk-application-prefer-dark-theme` fallback.
+  Atomic persistent JSON preferences store under `$XDG_CONFIG_HOME/markdown/preferences.json`
+  with NaN safety and `GSETTINGS_BACKEND=memory` test isolation.
+
+## Large documents, global selection and accessibility (LNX-001G)
+
+- **Global selection model**: Document-level `DocumentPosition` and `DocumentSelection` spanning
+  virtualized rows and fragment seams, with plain rendered text slicing (`text_between`) inserting
+  paragraph/table separators, and Markdown source slicing (`source_between`) returning exact
+  source bytes for whole-document selection and enclosing block/node spans for partial selections.
+- **Selection presentation**: Dynamic Pango markup generation with GNOME/GTK blue accent highlight
+  (`<span background="#3584e4" foreground="#ffffff">`) composing cleanly with active/passive
+  find match highlights.
+- **Gestures and keyboard selection**:
+  - `GtkGestureDrag` with capture-phase propagation on `GtkListView`, Pango layout hit testing
+    via `layout.xy_to_index`, and edge auto-scrolling during drag.
+  - Keyboard navigation: Shift+arrows for character/fragment extension, Shift+Ctrl+Home/End for
+    document start/end extension, Escape to clear selection, Select All (`Ctrl+A`), and Copy (`Ctrl+C`).
+- **Dual-format native clipboard**: Sets both `text/plain` rendered text and `text/markdown`
+  UTF-8 source bytes via `gdk::ContentProvider::new_union` on the display clipboard.
+- **Accessibility**: Preserved AT-SPI document/heading semantics, verified with
+  `apps/linux/tools/probe_accessibility.py`.
+- **Performance budgets**: Automated measurement tool `apps/linux/tools/measure.py` measuring
+  `launch`, `interaction`, and `repeated` modes:
+  - **Launch (D-016 $\le 400\,\text{ms}$ warm)**:
+    - `prose-1mib`: median pipeline 89.86 ms (parse 78.13 ms, plan 11.76 ms, target $\le 400\,\text{ms}$: PASS).
+    - `long-lines-1mib`: median pipeline 9.20 ms (parse 5.94 ms, plan 2.79 ms, target $\le 400\,\text{ms}$: PASS).
+    - `prose-5mib`: median pipeline 578.36 ms (parse 521.88 ms, plan 54.66 ms, stress fixture).
+  - **Off-screen jump navigation (D-016 $\le 150\,\text{ms}$)**:
+    - 0.01 ms median across 1 MiB prose, 5 MiB prose, and 1 MiB long lines (PASS).
+  - **Copy selection**:
+    - 1 MiB prose: text/markdown extraction in 4.93 ms, clipboard write in 8.41 ms ($< 15\,\text{ms}$ total).
+    - 5 MiB prose: text/markdown extraction in 24.49 ms, clipboard write in 10.65 ms.
+    - Verified exact byte-identical readback against source Markdown.
+  - **Repeated loads & memory reclamation**:
+    - 10 repeated loads evaluated glibc allocator caching and `malloc_trim(0)`.
+    - 1 MiB prose trimmed RSS is flat at $\sim 51.1\,\text{MiB}$ (untrimmed glibc cache $\sim 88.0\,\text{MiB}$).
+    - 5 MiB prose trimmed RSS is flat at $\sim 153.4\,\text{MiB}$ (untrimmed glibc cache $\sim 266.4\,\text{MiB}$).
