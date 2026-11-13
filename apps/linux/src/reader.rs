@@ -450,7 +450,7 @@ impl Reader {
                 ))
             });
             if let Some((view, index)) = jump {
-                view.scroll_to(index, gtk::ListScrollFlags::FOCUS, None);
+                view.scroll_to(index, gtk::ListScrollFlags::NONE, None);
             }
         });
         let widget = gtk::Paned::new(gtk::Orientation::Horizontal);
@@ -786,7 +786,7 @@ impl Reader {
 
     pub fn scroll_to_fragment(&self, fragment_index: usize) {
         let view = self.state.borrow().view.clone();
-        view.scroll_to(fragment_index as u32, gtk::ListScrollFlags::FOCUS, None);
+        view.scroll_to(fragment_index as u32, gtk::ListScrollFlags::NONE, None);
     }
 
     pub fn step_selection(&self, delta: isize) {

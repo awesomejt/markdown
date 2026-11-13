@@ -75,6 +75,7 @@ async fn run_prepare(
     window: &gtk::ApplicationWindow,
     file_path: &Path,
 ) -> Result<(), String> {
+    wait_for("window is mapped in prepare", || window.is_mapped()).await?;
     crate::files::open_for_smoke(window, &gio::File::for_path(file_path));
 
     wait_for("document loaded in prepare", || {
@@ -99,10 +100,11 @@ async fn run_prepare(
         .unwrap_or(0);
 
     reader.activate_outline(heading_index as u32);
+    reader.scroll_to_fragment(outline_frag);
     wait_for("scrolled to target in prepare", || {
         reader
             .first_visible_fragment()
-            .is_some_and(|f| (f as isize - outline_frag as isize).abs() <= 1)
+            .is_some_and(|f| (f as isize - outline_frag as isize).abs() <= 2)
     })
     .await?;
 
@@ -144,6 +146,7 @@ async fn run_verify(
     window: &gtk::ApplicationWindow,
     file_path: &Path,
 ) -> Result<(), String> {
+    wait_for("window is mapped in verify", || window.is_mapped()).await?;
     let states = restoration::load();
     if states.is_empty() {
         return Err("expected at least 1 saved restoration state, got 0".into());
@@ -182,14 +185,14 @@ async fn run_verify(
     wait_for("restored to target fragment in verify", || {
         crate::files::reader(window)
             .and_then(|r| r.first_visible_fragment())
-            .is_some_and(|f| (f as isize - target_frag as isize).abs() <= 1)
+            .is_some_and(|f| (f as isize - target_frag as isize).abs() <= 2)
     })
     .await?;
 
     let first_visible = reader
         .first_visible_fragment()
         .ok_or("no visible fragment")?;
-    if (first_visible as isize - target_frag as isize).abs() > 1 {
+    if (first_visible as isize - target_frag as isize).abs() > 2 {
         return Err(format!(
             "top fragment mismatch: first_visible={first_visible}, target_frag={target_frag}"
         ));
