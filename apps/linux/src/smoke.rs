@@ -14,6 +14,8 @@ const EXPECTED: &[(&str, &str, &str, &[&str])] = &[
     ("File", "New Window", "app.new-window", &["<Control>n"]),
     ("File", "Close Window", "window.close", &["<Control>w"]),
     ("File", "Quit", "app.quit", &["<Control>q"]),
+    ("Edit", "Copy", "win.copy", &["<Control>c"]),
+    ("Edit", "Select All", "win.select-all", &["<Control>a"]),
     ("Edit", "Find…", "win.find", &["<Control>f"]),
     ("Edit", "Find Next", "win.find-next", &["F3"]),
     ("Edit", "Find Previous", "win.find-prev", &["<Shift>F3"]),
@@ -545,6 +547,53 @@ async fn reader(window: &gtk::ApplicationWindow) -> Result<(), String> {
         }
         check(visible == 1, "one visible semantic label per row")?;
     }
+
+    // Global selection and clipboard checks (LNX-001G)
+    reader.select_all();
+    check(reader.has_selection(), "global select_all active")?;
+    let sel_text = reader.selected_text().ok_or("selected_text present")?;
+    check(
+        sel_text.contains("First") && sel_text.contains("Last"),
+        "selected_text covers full document",
+    )?;
+    let sel_md = reader
+        .selected_markdown()
+        .ok_or("selected_markdown present")?;
+    check(
+        sel_md == source.as_bytes(),
+        "selected_markdown matches source exactly",
+    )?;
+
+    check(reader.copy_selection(), "copy_selection sets clipboard")?;
+
+    // Cross-fragment range selection
+    reader.set_selection(Some(markdown_linux::render::DocumentSelection::new(
+        markdown_linux::render::DocumentPosition::new(0, 0),
+        markdown_linux::render::DocumentPosition::new(2, 5),
+    )));
+    check(reader.has_selection(), "range selection active")?;
+    let range_text = reader.selected_text().ok_or("range text")?;
+    check(!range_text.is_empty(), "range text not empty")?;
+
+    reader.clear_selection();
+    check(
+        !reader.has_selection(),
+        "clear_selection clears global selection",
+    )?;
+
+    // Keyboard selection step with no prior selection starts from caret anchor
+    reader.step_selection(1);
+    check(
+        reader.has_selection(),
+        "step_selection(1) creates selection from anchor when none exists",
+    )?;
+    let step_text = reader.selected_text().ok_or("step_text present")?;
+    check(
+        step_text.chars().count() == 1,
+        "step_selection(1) selected exactly 1 character",
+    )?;
+    reader.clear_selection();
+
     WidgetExt::activate_action(window, "win.reload", None).map_err(|_| "reader reload")?;
     check(
         reader.observed().is_empty(),

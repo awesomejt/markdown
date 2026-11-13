@@ -45,6 +45,45 @@ pub struct Run {
     pub atomic: bool,
 }
 
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
+pub struct DocumentPosition {
+    pub fragment_index: usize,
+    pub char_offset: usize,
+}
+
+impl DocumentPosition {
+    pub fn new(fragment_index: usize, char_offset: usize) -> Self {
+        Self {
+            fragment_index,
+            char_offset,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct DocumentSelection {
+    pub anchor: DocumentPosition,
+    pub active: DocumentPosition,
+}
+
+impl DocumentSelection {
+    pub fn new(anchor: DocumentPosition, active: DocumentPosition) -> Self {
+        Self { anchor, active }
+    }
+
+    pub fn start(&self) -> DocumentPosition {
+        self.anchor.min(self.active)
+    }
+
+    pub fn end(&self) -> DocumentPosition {
+        self.anchor.max(self.active)
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.anchor == self.active
+    }
+}
+
 #[derive(Debug)]
 pub struct Fragment {
     pub runs: Vec<Run>,
@@ -57,6 +96,8 @@ pub struct Fragment {
     pub is_table_header: bool,
     pub table_row_ordinal: usize,
     pub images: Vec<RenderedImage>,
+    pub starts_block: bool,
+    pub separator_before: &'static str,
 }
 
 impl Fragment {
@@ -69,7 +110,7 @@ impl Fragment {
     }
 
     pub fn markup(&self, epoch: u64, index: u32) -> String {
-        self.markup_with_highlights(epoch, index, &[])
+        self.markup_with_highlights_and_selection(epoch, index, &[], None)
     }
 
     pub fn markup_with_highlights(
@@ -77,6 +118,16 @@ impl Fragment {
         epoch: u64,
         index: u32,
         highlights: &[(usize, usize, bool)],
+    ) -> String {
+        self.markup_with_highlights_and_selection(epoch, index, highlights, None)
+    }
+
+    pub fn markup_with_highlights_and_selection(
+        &self,
+        epoch: u64,
+        index: u32,
+        highlights: &[(usize, usize, bool)],
+        selection: Option<(usize, usize)>,
     ) -> String {
         let mut out = String::new();
         let mut frag_char_idx = 0;
@@ -97,23 +148,54 @@ impl Fragment {
                 out.push_str("<span foreground=\"gray\">");
             }
 
-            let mut active_hl: Option<bool> = None;
+            #[derive(PartialEq, Eq, Clone, Copy)]
+            enum HighlightKind {
+                Selection,
+                FindActive,
+                FindPassive,
+            }
+
+            let mut active_hl: Option<HighlightKind> = None;
 
             for ch in run.text.chars() {
-                let cur_hl = highlights
-                    .iter()
-                    .find(|(s, e, _)| frag_char_idx >= *s && frag_char_idx < *e)
-                    .map(|(_, _, is_cur)| *is_cur);
+                let is_selected =
+                    selection.is_some_and(|(s, e)| frag_char_idx >= s && frag_char_idx < e);
+                let cur_hl = if is_selected {
+                    Some(HighlightKind::Selection)
+                } else {
+                    highlights
+                        .iter()
+                        .find(|(s, e, _)| frag_char_idx >= *s && frag_char_idx < *e)
+                        .map(|(_, _, is_cur)| {
+                            if *is_cur {
+                                HighlightKind::FindActive
+                            } else {
+                                HighlightKind::FindPassive
+                            }
+                        })
+                };
 
                 if cur_hl != active_hl {
                     if active_hl.is_some() {
                         out.push_str("</span>");
                     }
-                    if let Some(is_cur) = cur_hl {
-                        if is_cur {
-                            out.push_str("<span background=\"#ff7800\" foreground=\"#ffffff\">");
-                        } else {
-                            out.push_str("<span background=\"#f6d32d\" foreground=\"#000000\">");
+                    if let Some(hl) = cur_hl {
+                        match hl {
+                            HighlightKind::Selection => {
+                                out.push_str(
+                                    "<span background=\"#3584e4\" foreground=\"#ffffff\">",
+                                );
+                            }
+                            HighlightKind::FindActive => {
+                                out.push_str(
+                                    "<span background=\"#ff7800\" foreground=\"#ffffff\">",
+                                );
+                            }
+                            HighlightKind::FindPassive => {
+                                out.push_str(
+                                    "<span background=\"#f6d32d\" foreground=\"#000000\">",
+                                );
+                            }
                         }
                     }
                     active_hl = cur_hl;
@@ -749,6 +831,15 @@ impl<F: Fn() -> bool> Builder<'_, F> {
                 }
             }
 
+            let initial = self.plan.fragments.len();
+            let separator_before = if initial == 0 {
+                ""
+            } else if is_header || !self.plan.fragments[initial - 1].is_table_row {
+                "\n\n"
+            } else {
+                "\n"
+            };
+
             self.charge(size_of::<Fragment>())?;
             self.plan.fragments.push(Fragment {
                 runs: row_runs,
@@ -759,6 +850,8 @@ impl<F: Fn() -> bool> Builder<'_, F> {
                 is_table_header: is_header,
                 table_row_ordinal: r,
                 images: Vec::new(),
+                starts_block: true,
+                separator_before,
             });
         }
         self.current_block_images.clear();
@@ -861,6 +954,7 @@ impl<F: Fn() -> bool> Builder<'_, F> {
 
     fn fragments(&mut self, runs: Vec<Run>, heading: u32, code: bool) -> Result<(), RenderError> {
         let initial = self.plan.fragments.len();
+        let separator_before = if initial == 0 { "" } else { "\n\n" };
         let mut fragment = Fragment {
             runs: Vec::new(),
             heading,
@@ -870,6 +964,8 @@ impl<F: Fn() -> bool> Builder<'_, F> {
             is_table_header: false,
             table_row_ordinal: 0,
             images: std::mem::take(&mut self.current_block_images),
+            starts_block: true,
+            separator_before,
         };
         let mut used = 0;
         for run in runs {
@@ -902,6 +998,8 @@ impl<F: Fn() -> bool> Builder<'_, F> {
                         is_table_header: false,
                         table_row_ordinal: 0,
                         images: Vec::new(),
+                        starts_block: false,
+                        separator_before: "",
                     };
                     used = 0;
                     continue;
@@ -930,6 +1028,8 @@ impl<F: Fn() -> bool> Builder<'_, F> {
                         is_table_header: false,
                         table_row_ordinal: 0,
                         images: Vec::new(),
+                        starts_block: false,
+                        separator_before: "",
                     };
                     used = 0;
                 }
@@ -1081,5 +1181,135 @@ impl RenderPlan {
             matches,
             truncated: result.truncated,
         }
+    }
+
+    pub fn text_between(&self, start: DocumentPosition, end: DocumentPosition) -> String {
+        if self.fragments.is_empty() {
+            return String::new();
+        }
+        let (s, e) = if start <= end {
+            (start, end)
+        } else {
+            (end, start)
+        };
+        let s_frag = s.fragment_index.min(self.fragments.len() - 1);
+        let e_frag = e.fragment_index.min(self.fragments.len() - 1);
+
+        let mut out = String::new();
+        for f in s_frag..=e_frag {
+            let frag = &self.fragments[f];
+            let frag_chars: Vec<char> = frag.text().chars().collect();
+            let from = if f == s_frag {
+                s.char_offset.min(frag_chars.len())
+            } else {
+                0
+            };
+            let to = if f == e_frag {
+                e.char_offset.min(frag_chars.len())
+            } else {
+                frag_chars.len()
+            };
+
+            if f > s_frag && !frag.separator_before.is_empty() {
+                out.push_str(frag.separator_before);
+            }
+            if to > from {
+                out.extend(&frag_chars[from..to]);
+            }
+        }
+        out
+    }
+
+    pub fn source_between<'a>(
+        &self,
+        start: DocumentPosition,
+        end: DocumentPosition,
+        doc: &'a CoreDocument,
+    ) -> Option<&'a [u8]> {
+        if doc.source.is_empty() || self.fragments.is_empty() {
+            return None;
+        }
+        let (s, e) = if start <= end {
+            (start, end)
+        } else {
+            (end, start)
+        };
+        let last_frag = self.fragments.len() - 1;
+        let last_len = self.fragments[last_frag].text().chars().count();
+
+        // Whole-document selection returns source bytes exactly
+        if s.fragment_index == 0
+            && s.char_offset == 0
+            && e.fragment_index >= last_frag
+            && e.char_offset >= last_len
+        {
+            return Some(&doc.source);
+        }
+
+        let s_frag = s.fragment_index.min(last_frag);
+        let e_frag = e.fragment_index.min(last_frag);
+
+        // Whole-fragment check: selection must start at offset 0 of s_frag and cover through end of e_frag
+        let end_len = self.fragments[e_frag].text().chars().count();
+        let is_whole_fragments = s.char_offset == 0 && e.char_offset >= end_len;
+
+        if is_whole_fragments {
+            let mut min_span = u32::MAX;
+            let mut max_span = 0;
+            let mut found = false;
+
+            for f in s_frag..=e_frag {
+                for run in &self.fragments[f].runs {
+                    if let Some(node_id) = run.node_id
+                        && let Some(node) = doc.nodes.get(node_id as usize)
+                        && node.span_start <= node.span_end
+                        && (node.span_end as usize) <= doc.source.len()
+                    {
+                        if node.span_start < min_span {
+                            min_span = node.span_start;
+                        }
+                        if node.span_end > max_span {
+                            max_span = node.span_end;
+                        }
+                        found = true;
+                    }
+                }
+            }
+
+            if found && min_span <= max_span && (max_span as usize) <= doc.source.len() {
+                return Some(&doc.source[min_span as usize..max_span as usize]);
+            }
+        }
+
+        // For partial / mid-fragment selections, return None so callers fall back to plain text bytes
+        None
+    }
+
+    pub fn selection_for_fragment(
+        &self,
+        fragment_index: usize,
+        selection: Option<DocumentSelection>,
+    ) -> Option<(usize, usize)> {
+        let sel = selection?;
+        if sel.is_empty() {
+            return None;
+        }
+        let start = sel.start();
+        let end = sel.end();
+        if fragment_index < start.fragment_index || fragment_index > end.fragment_index {
+            return None;
+        }
+        let frag_len = self.fragments.get(fragment_index)?.text().chars().count();
+        let s = if fragment_index == start.fragment_index {
+            start.char_offset.min(frag_len)
+        } else {
+            0
+        };
+        let e = if fragment_index == end.fragment_index {
+            end.char_offset.min(frag_len)
+        } else {
+            frag_len
+        };
+        if e > s { Some((s, e)) } else { None }
     }
 }

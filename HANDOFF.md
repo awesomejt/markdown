@@ -1,22 +1,22 @@
 # Agent Session and Platform Handoff
 
-Updated: 2026-11-13 (America/Denver), LNX-001F completed under D-029 (PR #65 closed out and ready to merge into `develop`).
-Active task: Next execution task `LNX-001G` (`bd69e601-a4d2-469c-9334-3648a0b75640`) large-document layout, global selection and accessibility on Linux, or Windows/macOS walking skeleton milestone review under D-030.
-Pass `43f9c384-4792-45f2-a8d2-c0feabc9039f` completed, approved head `41978ee` ready to merge into `develop`.
-`apps/linux/` delivers LNX-001F:
+Updated: 2026-11-13 (America/Denver), LNX-001G completed under D-029 (PR #66 closed out and merged into `develop`).
+Active task: Next execution task `LNX-001H` (`83d1a575-8746-40fa-8af5-d2299f064e6e`) external refresh, anchors and reading restoration on Linux, or Windows/macOS walking skeleton milestone review under D-030.
+Pass `c5847458-7ef0-42a8-9d05-6b34c6cbe3c0` completed, approved PR #66 merged into `develop`.
+`apps/linux/` delivers LNX-001G:
 
-- Document find & core adapter: `md_snapshot_find` C ABI binding in `apps/linux/core/src/ffi.rs`, `CoreSession::find` non-blocking worker find with `FindGate` cancellation, dynamic buffer sizing with retry on `MD_ERR_BUFFER_TOO_SMALL`, generation validation against `MD_ERR_SUPERSEDED`, and full consumer test suite in `apps/linux/core/tests/consumer.rs` (16 tests covering Unicode normalization, combining marks, case folding, emoji ZWJ, CJK, RTL Hebrew, cancellation, and zero leaked handles).
-- Render match mapping: `FindMatches`, `FindMatch`, `FindMatchRange`, `RenderPlan::map_matches`, and `Fragment::markup_with_highlights` in `apps/linux/src/render.rs` accurately mapping core node matches into virtualized fragment runs with Pango orange (`#ff7800`) active and yellow (`#f6d32d`) passive highlights across inline boundaries, soft breaks, and hard breaks.
-- Native FindBar: GTK 4 `FindBar` widget (`apps/linux/src/find_bar.rs`) with search entry, next/prev navigation buttons, match status label, Match Case / Whole Words check buttons, close button, and keyboard shortcuts (`Ctrl+F`, `F3`, `Shift+F3`, Return/Shift+Return, and `stop-search` Escape dismissal) with request ID and cancellation guards in `apps/linux/src/files.rs`.
-- Text scaling: 9 discrete zoom steps (75% to 250%) with scroll position retention across scale changes via visible fragment anchoring, keyboard shortcuts (`Ctrl++`/`Ctrl+=`, `Ctrl+-`, `Ctrl+0`), and per-reader scoped CSS class isolation (`.reader-scale-{reader_id}`) with cleanup on reader drop in `apps/linux/src/reader.rs`.
-- Theme switching & preferences: System, Light, and Dark themes with dynamic `gtk-interface-color-scheme` resetting (for System) or setting (`light`/`dark`) and `gtk-application-prefer-dark-theme` fallback in `apps/linux/src/main.rs`. Atomic persistent JSON preferences store under `$XDG_CONFIG_HOME/markdown/preferences.json` with NaN safety, single-line/multi-line parsing, and `GSETTINGS_BACKEND=memory` test isolation in `apps/linux/src/preferences.rs`.
-- Verification: local `python3 apps/linux/tools/check.py` passed in Debug and Release (12 loader unit tests, 16 render unit tests, 16 core consumer tests, shell smoke with find/theme/zoom verification, last-window smoke, desktop association smoke, and release core probe with 0 leaked handles).
+- Document selection model: contiguous cross-fragment selection across lazy GTK ListView rows (`SelectionRange`, `Reader::set_selection`, `clear_selection`, `select_all`), visual Pango selection highlighting (`selection_active`/`selection_start_byte`/`selection_end_byte`), and keyboard navigation/selection (`Shift+Up/Down/Page_Up/Page_Down/Home/End`, `Ctrl+A`, `Escape`).
+- Drag and click gestures: `gtk::GestureDrag` with 4 px drag threshold claiming (preserving link activations and label clicks), auto-scroll edge velocity driving smooth scrolling while dragging beyond viewport bounds, Shift-click selection range extension, and clean `RefCell` borrow hygiene during re-entrant GTK scroll/signal dispatches.
+- Dual-format clipboard copy: native GDK clipboard provider offering both `text/plain;charset=utf-8` and `text/markdown;charset=utf-8` (`Ctrl+C`), exact source byte slices for whole document and whole fragments, and exact rendered UTF-8 fallback for partial fragment selections.
+- Performance measurement harness: automated interaction benchmarks (`apps/linux/tools/measure.py interaction`) measuring pipeline latency (1 MiB prose 89.86 ms, 1 MiB long lines 9.20 ms, both well within 400 ms budget), copy slice (< 5 ms for 1 MiB prose, target < 15 ms), outline target resolution (0.01 ms), and repeated 5x load/close cycles (`measure.py repeated`) verifying complete glibc heap reclamation via `malloc_trim` (retained delta ~0.08 MiB).
+- Accessibility: automated AT-SPI tree inspection and GTK accessible state verification confirming `accessible-role`, `accessible-description`, and fragment selection announcements.
+- Verification: local `python3 apps/linux/tools/check.py` passed in Debug and Release (12 loader unit tests, 17 render unit tests, 16 core consumer tests, shell smoke with selection/copy/drag verification, last-window smoke, desktop association smoke, and release core probe with 0 leaked handles).
 
-PR #65 reviewed by Grok Bot across 3 reviews; review 3 reported 0 Blockers, 0 Concerns, 1 Nit (addressed in `41978ee`, clean approval under D-029).
+PR #66 reviewed by Grok Bot across 3 reviews; review 3 reported 0 Blockers, 0 Concerns, 1 Nit (addressed in `apps/linux/tools/measure.py`, clean approval under D-029).
 
-Next Linux task: `LNX-001G` (large-document layout, global selection and accessibility). Next Windows/macOS task: walking skeleton milestone review (D-030).
+Next Linux task: `LNX-001H` (external refresh, anchors and reading restoration). Next Windows/macOS task: walking skeleton milestone review (D-030).
 
-Previous Linux task: `LNX-001F` merged in [PR #65](https://github.com/awesomejt/markdown/pull/65). Previous Windows task: `WIN-001I` merged in [PR #61](https://github.com/awesomejt/markdown/pull/61).
+Previous Linux task: `LNX-001G` merged in [PR #66](https://github.com/awesomejt/markdown/pull/66). Previous Windows task: `WIN-001I` merged in [PR #61](https://github.com/awesomejt/markdown/pull/61).
 
 Previous Linux handoff baseline: `develop` after PR #52; reviewed head `f12d2e5`, non-serious
 review fixes at `27e84df`, followed by one state/docs closeout. The merge SHA is

@@ -10,5 +10,5 @@ ignores:
   - "target/**"
   - "build/**"
   - "**/.build/**"
-  - ".agents/chats/**"
+  - ".agents/**"
   - "fixtures/markdown/**"

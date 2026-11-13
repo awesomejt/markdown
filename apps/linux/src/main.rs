@@ -3,6 +3,7 @@
 mod count_model;
 pub mod files;
 pub mod find_bar;
+mod measure;
 pub mod reader;
 mod smoke;
 
@@ -19,6 +20,8 @@ pub const COMMANDS: &[(&str, &str, &str, Option<&str>)] = &[
     ("File", "New Window", "app.new-window", Some("<Control>n")),
     ("File", "Close Window", "window.close", Some("<Control>w")),
     ("File", "Quit", "app.quit", Some("<Control>q")),
+    ("Edit", "Copy", "win.copy", Some("<Control>c")),
+    ("Edit", "Select All", "win.select-all", Some("<Control>a")),
     ("Edit", "Find…", "win.find", Some("<Control>f")),
     ("Edit", "Find Next", "win.find-next", Some("F3")),
     ("Edit", "Find Previous", "win.find-prev", Some("<Shift>F3")),
@@ -46,6 +49,18 @@ fn main() -> glib::ExitCode {
     if let Err(error) = markdown_linux_core::validate() {
         eprintln!("Markdown cannot use its core library: {error}");
         return glib::ExitCode::FAILURE;
+    }
+    if let Some(arg) = std::env::args_os().nth(1)
+        && arg == "--measure"
+    {
+        let args: Vec<String> = std::env::args().skip(2).collect();
+        return match measure::run(&args) {
+            Ok(()) => glib::ExitCode::SUCCESS,
+            Err(e) => {
+                eprintln!("measure error: {e}");
+                glib::ExitCode::FAILURE
+            }
+        };
     }
     let smoke = smoke::Mode::from_args(std::env::args_os().skip(1));
     // Shell smokes are independent; the isolated association smoke must exercise
