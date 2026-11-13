@@ -829,7 +829,25 @@ fn text_scale_clamped_and_steps() {
 
 #[test]
 fn preferences_memory_and_local_settings() {
-    use markdown_linux::preferences::{Preferences, ThemePreference, load, save};
+    use markdown_linux::preferences::{
+        Preferences, ThemePreference, load, parse_preferences, save,
+    };
+
+    // Single-line JSON and NaN safety
+    let p1 = parse_preferences(r#"{"theme": "light", "text_scale": 1.30}"#);
+    assert_eq!(p1.theme, ThemePreference::Light);
+    assert!((p1.text_scale - 1.30).abs() < 0.001);
+
+    let p_nan = parse_preferences(r#"{"theme": "dark", "text_scale": NaN}"#);
+    assert_eq!(p_nan.theme, ThemePreference::Dark);
+    assert!((p_nan.text_scale - 1.0).abs() < 0.001, "NaN clamped to 1.0");
+
+    let p_clamp = parse_preferences(r#"{"theme": "system", "text_scale": 999.0}"#);
+    assert_eq!(p_clamp.theme, ThemePreference::System);
+    assert!(
+        (p_clamp.text_scale - 2.50).abs() < 0.001,
+        "clamped to max 2.5"
+    );
 
     // Force memory mode for test isolation
     // SAFETY: Single-threaded test context within this function

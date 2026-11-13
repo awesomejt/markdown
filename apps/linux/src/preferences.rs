@@ -109,30 +109,25 @@ pub fn save(prefs: &Preferences) {
         prefs.theme.as_str(),
         prefs.text_scale
     );
-    let _ = std::fs::write(&path, payload);
+    let tmp = path.with_extension(format!("tmp.{}", std::process::id()));
+    if std::fs::write(&tmp, payload).is_ok() {
+        let _ = std::fs::rename(&tmp, &path);
+    }
 }
 
-fn parse_preferences(json: &str) -> Preferences {
+pub fn parse_preferences(json: &str) -> Preferences {
     let mut prefs = Preferences::default();
-    for line in json.lines() {
-        let line = line.trim();
-        if let Some(rest) = line.strip_prefix("\"theme\":") {
-            let val = rest
-                .trim()
-                .trim_matches(|c| c == '"' || c == ',' || c == ' ');
+    for part in json.split([',', '{', '}', '\n']) {
+        let part = part.trim();
+        if let Some(idx) = part.find("\"theme\":") {
+            let rest = &part[idx + "\"theme\":".len()..];
+            let val = rest.trim().trim_matches(|c| c == '"' || c == ' ');
             prefs.theme = ThemePreference::from_str(val);
-        } else if let Some(rest) = line.strip_prefix("\"text_scale\":") {
-            let val = rest.trim().trim_matches(|c| c == ',' || c == ' ');
+        } else if let Some(idx) = part.find("\"text_scale\":") {
+            let rest = &part[idx + "\"text_scale\":".len()..];
+            let val = rest.trim().trim_matches(|c| c == '"' || c == ' ');
             if let Ok(scale) = val.parse::<f64>() {
-                // Find closest allowed scale step
-                if let Some(&closest) = SCALE_STEPS.iter().min_by(|a, b| {
-                    (scale - **a)
-                        .abs()
-                        .partial_cmp(&(scale - **b).abs())
-                        .unwrap()
-                }) {
-                    prefs.text_scale = closest;
-                }
+                prefs.text_scale = clamped_scale(scale);
             }
         }
     }

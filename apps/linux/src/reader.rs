@@ -30,6 +30,15 @@ struct State {
     current_find_match: Option<usize>,
     text_scale: f64,
     scale_provider: gtk::CssProvider,
+    class_name: String,
+}
+
+impl Drop for State {
+    fn drop(&mut self) {
+        if let Some(display) = gdk::Display::default() {
+            gtk::style_context_remove_provider_for_display(&display, &self.scale_provider);
+        }
+    }
 }
 
 #[derive(Clone)]
@@ -39,11 +48,15 @@ pub struct Reader {
     outline: gtk::ListView,
 }
 
+static NEXT_READER_ID: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
+static INIT_TABLE_CSS: std::sync::Once = std::sync::Once::new();
+
 impl Reader {
     pub fn new(window: &gtk::ApplicationWindow) -> Self {
-        let provider = gtk::CssProvider::new();
-        provider.load_from_string(
-            "
+        INIT_TABLE_CSS.call_once(|| {
+            let provider = gtk::CssProvider::new();
+            provider.load_from_string(
+                "
 .table-row {
     padding-top: 4px;
     padding-bottom: 4px;
@@ -58,14 +71,15 @@ impl Reader {
     background-color: alpha(gray, 0.08);
 }
 ",
-        );
-        if let Some(display) = gdk::Display::default() {
-            gtk::style_context_add_provider_for_display(
-                &display,
-                &provider,
-                gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
             );
-        }
+            if let Some(display) = gdk::Display::default() {
+                gtk::style_context_add_provider_for_display(
+                    &display,
+                    &provider,
+                    gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
+                );
+            }
+        });
 
         let scale_provider = gtk::CssProvider::new();
         if let Some(display) = gdk::Display::default() {
@@ -76,9 +90,13 @@ impl Reader {
             );
         }
 
+        let reader_id = NEXT_READER_ID.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        let class_name = format!("reader-scale-{reader_id}");
+
         let factory = gtk::SignalListItemFactory::new();
         let view = gtk::ListView::new(None::<gtk::NoSelection>, Some(factory.clone()));
         view.set_widget_name("native-document");
+        view.add_css_class(&class_name);
         let state = Rc::new(RefCell::new(State {
             rows: HashMap::new(),
             plan: None,
@@ -90,6 +108,7 @@ impl Reader {
             current_find_match: None,
             text_scale: 1.0,
             scale_provider,
+            class_name,
         }));
         let weak = Rc::downgrade(&state);
         factory.connect_setup(move |_, item| {
@@ -535,7 +554,8 @@ impl Reader {
             let mut state = self.state.borrow_mut();
             state.text_scale = clamped;
             let percent = (clamped * 100.0).round() as i32;
-            let css = format!("#native-document label {{ font-size: {percent}%; }}\n");
+            let class = &state.class_name;
+            let css = format!(".{class} label {{ font-size: {percent}%; }}\n");
             state.scale_provider.load_from_string(&css);
         }
         if let Some(anchor) = anchor {

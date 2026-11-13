@@ -19,6 +19,7 @@ struct WindowDocument {
     find_bar: crate::find_bar::FindBar,
     find_gate: Option<markdown_linux_core::FindGate>,
     find_matches: Option<Arc<markdown_linux::render::FindMatches>>,
+    find_request_id: u64,
     chooser: Option<gtk::FileChooserNative>,
     reload: gio::SimpleAction,
     poll_source: Option<glib::SourceId>,
@@ -38,7 +39,17 @@ impl WindowDocument {
             label.set_text(text);
         }
     }
+    fn dismiss_find(&mut self) {
+        self.find_request_id = self.find_request_id.wrapping_add(1);
+        self.find_bar.hide();
+        if let Some(gate) = self.find_gate.take() {
+            gate.cancel();
+        }
+        self.find_matches = None;
+        self.reader.set_find_matches(None);
+    }
     fn loading(&mut self) {
+        self.find_request_id = self.find_request_id.wrapping_add(1);
         if let Some(gate) = self.find_gate.take() {
             gate.cancel();
         }
@@ -105,6 +116,8 @@ impl WindowDocument {
         }
     }
     fn run_find(&mut self) {
+        self.find_request_id = self.find_request_id.wrapping_add(1);
+        let req_id = self.find_request_id;
         let query = self.find_bar.entry.text().to_string();
         if query.is_empty() {
             if let Some(gate) = self.find_gate.take() {
@@ -142,6 +155,7 @@ impl WindowDocument {
         }
         let gate = markdown_linux_core::FindGate::new();
         self.find_gate = Some(gate.clone());
+        let idle_gate = gate.clone();
 
         let doc_clone = doc.clone();
         let plan_clone = plan.clone();
@@ -152,6 +166,9 @@ impl WindowDocument {
 
         let query_str = query.clone();
         session.find(&query, options, doc.generation, Some(gate), move |result| {
+            if idle_gate.is_cancelled() {
+                return;
+            }
             let mapped = match result {
                 Ok(core_result) => {
                     let matches = plan_clone.map_matches(&doc_clone, &core_result);
@@ -160,12 +177,18 @@ impl WindowDocument {
                 Err(err) => Err(err),
             };
             glib::idle_add_once(move || {
+                if idle_gate.is_cancelled() {
+                    return;
+                }
                 WINDOWS.with(|all| {
                     let Some(state) = all.borrow().get(&window_key).cloned() else {
                         return;
                     };
                     let mut state = state.borrow_mut();
-                    if state.find_bar.entry.text().as_str() != query_str {
+                    if state.find_request_id != req_id
+                        || !state.find_bar.is_revealed()
+                        || state.find_bar.entry.text().as_str() != query_str
+                    {
                         return;
                     }
                     match mapped {
@@ -292,6 +315,7 @@ pub fn attach(window: &gtk::ApplicationWindow, label: &gtk::Label) {
             find_bar: find_bar.clone(),
             find_gate: None,
             find_matches: None,
+            find_request_id: 0,
             chooser: None,
             reload: reload.clone(),
             poll_source: None,
@@ -440,13 +464,14 @@ pub fn attach(window: &gtk::ApplicationWindow, label: &gtk::Label) {
     let weak = Rc::downgrade(&state);
     find_bar.close_button.connect_clicked(move |_| {
         if let Some(state) = weak.upgrade() {
-            let mut state = state.borrow_mut();
-            state.find_bar.hide();
-            if let Some(gate) = state.find_gate.take() {
-                gate.cancel();
-            }
-            state.find_matches = None;
-            state.reader.set_find_matches(None);
+            state.borrow_mut().dismiss_find();
+        }
+    });
+
+    let weak = Rc::downgrade(&state);
+    find_bar.entry.connect_stop_search(move |_| {
+        if let Some(state) = weak.upgrade() {
+            state.borrow_mut().dismiss_find();
         }
     });
 
@@ -459,12 +484,7 @@ pub fn attach(window: &gtk::ApplicationWindow, label: &gtk::Label) {
         {
             let mut state = state.borrow_mut();
             if state.find_bar.is_revealed() {
-                state.find_bar.hide();
-                if let Some(gate) = state.find_gate.take() {
-                    gate.cancel();
-                }
-                state.find_matches = None;
-                state.reader.set_find_matches(None);
+                state.dismiss_find();
                 return glib::Propagation::Stop;
             }
         }

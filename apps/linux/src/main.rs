@@ -96,6 +96,18 @@ fn main() -> glib::ExitCode {
 
 pub fn apply_theme(theme: markdown_linux::preferences::ThemePreference) {
     if let Some(s) = gtk::Settings::default() {
+        if let Some(pspec) = s.find_property("gtk-interface-color-scheme")
+            && let Some(enum_class) = gtk::glib::EnumClass::with_type(pspec.value_type())
+        {
+            let nick = match theme {
+                markdown_linux::preferences::ThemePreference::System => "default",
+                markdown_linux::preferences::ThemePreference::Light => "light",
+                markdown_linux::preferences::ThemePreference::Dark => "dark",
+            };
+            if let Some(v) = enum_class.to_value_by_nick(nick) {
+                s.set_property("gtk-interface-color-scheme", &v);
+            }
+        }
         match theme {
             markdown_linux::preferences::ThemePreference::System => {
                 s.reset_property("gtk-application-prefer-dark-theme");

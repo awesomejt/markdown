@@ -713,6 +713,13 @@ async fn find_and_zoom(
     find_bar.close_button.emit_clicked();
     wait_until("close button hides find bar", || !find_bar.is_revealed()).await?;
 
+    // Also test entry stop-search (Escape) dismisses find bar
+    WidgetExt::activate_action(window, "win.find", None)
+        .map_err(|e| format!("win.find routes: {e}"))?;
+    wait_until("find bar revealed again", || find_bar.is_revealed()).await?;
+    find_bar.entry.emit_stop_search();
+    wait_until("stop-search hides find bar", || !find_bar.is_revealed()).await?;
+
     check(
         (crate::files::text_scale(window).unwrap_or(0.0) - 1.0).abs() < 0.001,
         "initial text scale 1.0",
@@ -747,8 +754,37 @@ async fn find_and_zoom(
     )?;
 
     app.activate_action("theme-dark", None);
+    check(
+        markdown_linux::preferences::load().theme
+            == markdown_linux::preferences::ThemePreference::Dark,
+        "theme preference dark saved",
+    )?;
+    if let Some(s) = gtk::Settings::default() {
+        check(
+            s.is_gtk_application_prefer_dark_theme(),
+            "gtk dark theme enabled",
+        )?;
+    }
+
     app.activate_action("theme-light", None);
+    check(
+        markdown_linux::preferences::load().theme
+            == markdown_linux::preferences::ThemePreference::Light,
+        "theme preference light saved",
+    )?;
+    if let Some(s) = gtk::Settings::default() {
+        check(
+            !s.is_gtk_application_prefer_dark_theme(),
+            "gtk light theme enabled",
+        )?;
+    }
+
     app.activate_action("theme-system", None);
+    check(
+        markdown_linux::preferences::load().theme
+            == markdown_linux::preferences::ThemePreference::System,
+        "theme preference system saved",
+    )?;
 
     note("find, theme and text zoom checked");
     Ok(())
