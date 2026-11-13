@@ -21,7 +21,8 @@ and refuses to start against an incompatible core. LNX-001C adds native Open…/
 loading through the core. LNX-001D presents the owned semantic model as native
 virtualized GTK text with an outline, links and basic selection.
 LNX-001D1 verified AT-SPI semantics and recorded D-035 MVP scope.
-LNX-001E delivers native tables, task list markers, and folder-contained image resource policy. The accepted baseline is
+LNX-001E delivers native tables, task list markers, and folder-contained image resource policy.
+LNX-001F delivers native document find with an interactive FindBar, match highlighting, case/word options, text scaling across 9 discrete steps (75%–250%, Ctrl++/Ctrl--/Ctrl+0), and theme switching (System, Light, Dark) with persistent preferences. The accepted baseline is
 x86-64 KDE Plasma on Wayland (D-018); libadwaita is not used, and other
 desktops and architectures are not claimed.
 
@@ -69,8 +70,8 @@ packages, then runs `cargo fmt --check`, Clippy with warnings denied over the
 workspace, and the
 [dependency/license policy](../../docs/Dependencies.md#linux-app-graph-lnx-001a)
 for the Linux graph. Then, for debug and then release, it builds the
-workspace with `--locked`, runs 12 document tests, 13 renderer tests and the
-15 core consumer tests against the
+workspace with `--locked`, runs 12 document tests, 16 renderer tests and the
+16 core consumer tests against the
 matching core package (negotiation, typed errors, owned v2 values, parse
 failures, copy budget, queued and running cancellation, bounded admission,
 close, non-blocking `close_then` and drop, availability, repeated lifecycle and every corpus and

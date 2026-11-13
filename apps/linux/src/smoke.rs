@@ -14,6 +14,25 @@ const EXPECTED: &[(&str, &str, &str, &[&str])] = &[
     ("File", "New Window", "app.new-window", &["<Control>n"]),
     ("File", "Close Window", "window.close", &["<Control>w"]),
     ("File", "Quit", "app.quit", &["<Control>q"]),
+    ("Edit", "Find…", "win.find", &["<Control>f"]),
+    ("Edit", "Find Next", "win.find-next", &["F3"]),
+    ("Edit", "Find Previous", "win.find-prev", &["<Shift>F3"]),
+    (
+        "View",
+        "Make Text Bigger",
+        "win.zoom-in",
+        &["<Control>plus", "<Control>equal"],
+    ),
+    (
+        "View",
+        "Make Text Smaller",
+        "win.zoom-out",
+        &["<Control>minus"],
+    ),
+    ("View", "Actual Size", "win.zoom-reset", &["<Control>0"]),
+    ("View", "Theme: System", "app.theme-system", &[]),
+    ("View", "Theme: Light", "app.theme-light", &[]),
+    ("View", "Theme: Dark", "app.theme-dark", &[]),
     ("Help", "About Markdown", "app.about", &[]),
 ];
 
@@ -81,6 +100,7 @@ async fn commands(app: &gtk::Application) -> Result<(), String> {
     note("menus/accelerators checked");
     documents(app, &first).await?;
     reader(&first).await?;
+    find_and_zoom(app, &first).await?;
 
     app.activate_action("new-window", None);
     check(
@@ -657,6 +677,80 @@ async fn reader(window: &gtk::ApplicationWindow) -> Result<(), String> {
     note(
         "reader checked (native text, escaping, bounded rows, fragment/outline jumps, selection, recycling, reload, tables, task lists, images)",
     );
+    Ok(())
+}
+
+async fn find_and_zoom(
+    app: &gtk::Application,
+    window: &gtk::ApplicationWindow,
+) -> Result<(), String> {
+    let find_bar = crate::files::find_bar(window).ok_or("find bar present")?;
+    check(!find_bar.is_revealed(), "find bar starts hidden")?;
+
+    WidgetExt::activate_action(window, "win.find", None)
+        .map_err(|e| format!("win.find routes: {e}"))?;
+    wait_until("find bar revealed", || find_bar.is_revealed()).await?;
+
+    find_bar.entry.set_text("Rich");
+    wait_until("find matches query", || {
+        find_bar.status_label.text().contains("1")
+    })
+    .await?;
+    check(
+        find_bar.prev_button.is_sensitive(),
+        "prev button sensitive with matches",
+    )?;
+    check(
+        find_bar.next_button.is_sensitive(),
+        "next button sensitive with matches",
+    )?;
+
+    WidgetExt::activate_action(window, "win.find-next", None)
+        .map_err(|e| format!("win.find-next routes: {e}"))?;
+    WidgetExt::activate_action(window, "win.find-prev", None)
+        .map_err(|e| format!("win.find-prev routes: {e}"))?;
+
+    find_bar.close_button.emit_clicked();
+    wait_until("close button hides find bar", || !find_bar.is_revealed()).await?;
+
+    check(
+        (crate::files::text_scale(window).unwrap_or(0.0) - 1.0).abs() < 0.001,
+        "initial text scale 1.0",
+    )?;
+
+    WidgetExt::activate_action(window, "win.zoom-in", None)
+        .map_err(|e| format!("win.zoom-in routes: {e}"))?;
+    check(
+        (crate::files::text_scale(window).unwrap_or(0.0) - 1.15).abs() < 0.001,
+        "zoomed in to 1.15",
+    )?;
+
+    WidgetExt::activate_action(window, "win.zoom-reset", None)
+        .map_err(|e| format!("win.zoom-reset routes: {e}"))?;
+    check(
+        (crate::files::text_scale(window).unwrap_or(0.0) - 1.0).abs() < 0.001,
+        "reset to 1.0",
+    )?;
+
+    WidgetExt::activate_action(window, "win.zoom-out", None)
+        .map_err(|e| format!("win.zoom-out routes: {e}"))?;
+    check(
+        (crate::files::text_scale(window).unwrap_or(0.0) - 0.85).abs() < 0.001,
+        "zoomed out to 0.85",
+    )?;
+
+    WidgetExt::activate_action(window, "win.zoom-reset", None)
+        .map_err(|e| format!("win.zoom-reset routes: {e}"))?;
+    check(
+        (crate::files::text_scale(window).unwrap_or(0.0) - 1.0).abs() < 0.001,
+        "reset to 1.0",
+    )?;
+
+    app.activate_action("theme-dark", None);
+    app.activate_action("theme-light", None);
+    app.activate_action("theme-system", None);
+
+    note("find, theme and text zoom checked");
     Ok(())
 }
 

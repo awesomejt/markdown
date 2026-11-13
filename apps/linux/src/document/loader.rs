@@ -292,6 +292,9 @@ impl DocumentLoader {
     pub fn has_file(&self) -> bool {
         self.capability.is_some()
     }
+    pub fn session(&self) -> Option<Arc<CoreSession>> {
+        self.session.clone()
+    }
     pub fn display_name(&self) -> Option<String> {
         self.capability
             .as_ref()

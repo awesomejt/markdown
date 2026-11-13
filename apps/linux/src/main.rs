@@ -1,8 +1,9 @@
 //! Native GTK 4 shell for the Markdown reader (LNX-001A).
 
 mod count_model;
-mod files;
-mod reader;
+pub mod files;
+pub mod find_bar;
+pub mod reader;
 mod smoke;
 
 use gtk::prelude::*;
@@ -18,6 +19,25 @@ pub const COMMANDS: &[(&str, &str, &str, Option<&str>)] = &[
     ("File", "New Window", "app.new-window", Some("<Control>n")),
     ("File", "Close Window", "window.close", Some("<Control>w")),
     ("File", "Quit", "app.quit", Some("<Control>q")),
+    ("Edit", "Find…", "win.find", Some("<Control>f")),
+    ("Edit", "Find Next", "win.find-next", Some("F3")),
+    ("Edit", "Find Previous", "win.find-prev", Some("<Shift>F3")),
+    (
+        "View",
+        "Make Text Bigger",
+        "win.zoom-in",
+        Some("<Control>plus"),
+    ),
+    (
+        "View",
+        "Make Text Smaller",
+        "win.zoom-out",
+        Some("<Control>minus"),
+    ),
+    ("View", "Actual Size", "win.zoom-reset", Some("<Control>0")),
+    ("View", "Theme: System", "app.theme-system", None),
+    ("View", "Theme: Light", "app.theme-light", None),
+    ("View", "Theme: Dark", "app.theme-dark", None),
     ("Help", "About Markdown", "app.about", None),
 ];
 
@@ -74,7 +94,26 @@ fn main() -> glib::ExitCode {
     status
 }
 
+pub fn apply_theme(theme: markdown_linux::preferences::ThemePreference) {
+    if let Some(s) = gtk::Settings::default() {
+        match theme {
+            markdown_linux::preferences::ThemePreference::System => {
+                s.reset_property("gtk-application-prefer-dark-theme");
+            }
+            markdown_linux::preferences::ThemePreference::Light => {
+                s.set_gtk_application_prefer_dark_theme(false);
+            }
+            markdown_linux::preferences::ThemePreference::Dark => {
+                s.set_gtk_application_prefer_dark_theme(true);
+            }
+        }
+    }
+}
+
 fn install_commands(app: &gtk::Application) {
+    let prefs = markdown_linux::preferences::load();
+    apply_theme(prefs.theme);
+
     let new = gio::ActionEntry::builder("new-window")
         .activate(|app: &gtk::Application, _, _| {
             new_window(app);
@@ -89,10 +128,42 @@ fn install_commands(app: &gtk::Application) {
     let open = gio::ActionEntry::builder("open")
         .activate(|app: &gtk::Application, _, _| files::choose(app))
         .build();
-    app.add_action_entries([new, quit, about, open]);
+    let theme_system = gio::ActionEntry::builder("theme-system")
+        .activate(|_, _, _| {
+            apply_theme(markdown_linux::preferences::ThemePreference::System);
+            let mut prefs = markdown_linux::preferences::load();
+            prefs.theme = markdown_linux::preferences::ThemePreference::System;
+            markdown_linux::preferences::save(&prefs);
+        })
+        .build();
+    let theme_light = gio::ActionEntry::builder("theme-light")
+        .activate(|_, _, _| {
+            apply_theme(markdown_linux::preferences::ThemePreference::Light);
+            let mut prefs = markdown_linux::preferences::load();
+            prefs.theme = markdown_linux::preferences::ThemePreference::Light;
+            markdown_linux::preferences::save(&prefs);
+        })
+        .build();
+    let theme_dark = gio::ActionEntry::builder("theme-dark")
+        .activate(|_, _, _| {
+            apply_theme(markdown_linux::preferences::ThemePreference::Dark);
+            let mut prefs = markdown_linux::preferences::load();
+            prefs.theme = markdown_linux::preferences::ThemePreference::Dark;
+            markdown_linux::preferences::save(&prefs);
+        })
+        .build();
+    app.add_action_entries([
+        new,
+        quit,
+        about,
+        open,
+        theme_system,
+        theme_light,
+        theme_dark,
+    ]);
 
     let menubar = gio::Menu::new();
-    for section in ["File", "Help"] {
+    for section in ["File", "Edit", "View", "Help"] {
         let menu = gio::Menu::new();
         for (_, label, action, accel) in COMMANDS.iter().filter(|c| c.0 == section) {
             // Keep Quit in its own section, below the window commands.
@@ -109,6 +180,7 @@ fn install_commands(app: &gtk::Application) {
         }
         menubar.append_submenu(Some(section), &menu);
     }
+    app.set_accels_for_action("win.zoom-in", &["<Control>plus", "<Control>equal"]);
     app.set_menubar(Some(&menubar));
 }
 

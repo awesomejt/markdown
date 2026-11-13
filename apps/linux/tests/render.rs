@@ -777,3 +777,196 @@ fn messages_name_no_path() {
         assert!(!msg.is_empty(), "error message must not be empty");
     }
 }
+
+#[test]
+fn text_scale_clamped_and_steps() {
+    use markdown_linux::preferences::{
+        DEFAULT_SCALE_INDEX, SCALE_STEPS, clamped_scale, larger_scale, smaller_scale,
+    };
+
+    assert!((clamped_scale(1.0) - 1.0).abs() < 0.001, "clamped standard");
+    assert!(
+        (clamped_scale(1.04) - 1.0).abs() < 0.001,
+        "clamped near 1.0"
+    );
+    assert!(
+        (clamped_scale(9.0) - SCALE_STEPS[SCALE_STEPS.len() - 1]).abs() < 0.001,
+        "clamped max"
+    );
+    assert!(
+        (clamped_scale(-1.0) - SCALE_STEPS[0]).abs() < 0.001,
+        "clamped min"
+    );
+    assert!(
+        (clamped_scale(f64::NAN) - SCALE_STEPS[DEFAULT_SCALE_INDEX]).abs() < 0.001,
+        "clamped NaN"
+    );
+    assert!(
+        (clamped_scale(f64::INFINITY) - SCALE_STEPS[DEFAULT_SCALE_INDEX]).abs() < 0.001,
+        "clamped inf"
+    );
+
+    let larger = larger_scale(1.0);
+    assert!(
+        larger.is_some() && (larger.unwrap() - 1.15).abs() < 0.001,
+        "larger step"
+    );
+    let smaller = smaller_scale(1.0);
+    assert!(
+        smaller.is_some() && (smaller.unwrap() - 0.85).abs() < 0.001,
+        "smaller step"
+    );
+
+    assert!(
+        larger_scale(SCALE_STEPS[SCALE_STEPS.len() - 1]).is_none(),
+        "larger at max is none"
+    );
+    assert!(
+        smaller_scale(SCALE_STEPS[0]).is_none(),
+        "smaller at min is none"
+    );
+}
+
+#[test]
+fn preferences_memory_and_local_settings() {
+    use markdown_linux::preferences::{Preferences, ThemePreference, load, save};
+
+    // Force memory mode for test isolation
+    // SAFETY: Single-threaded test context within this function
+    unsafe { std::env::set_var("MARKDOWN_PREFERENCES_IN_MEMORY", "1") };
+
+    let prefs = load();
+    assert_eq!(prefs.theme, ThemePreference::System, "default theme system");
+    assert!(
+        (prefs.text_scale - 1.0).abs() < 0.001,
+        "default text scale 1.0"
+    );
+
+    let updated = Preferences {
+        theme: ThemePreference::Dark,
+        text_scale: 1.5,
+    };
+    save(&updated);
+
+    let reloaded = load();
+    assert_eq!(reloaded.theme, ThemePreference::Dark, "reloaded theme dark");
+    assert!(
+        (reloaded.text_scale - 1.5).abs() < 0.001,
+        "reloaded text scale 1.5"
+    );
+}
+
+#[test]
+fn document_find_unicode_mappings_and_wrapping() {
+    use markdown_linux_core::find::CoreFindOptions;
+
+    let source = "# Find 𝒳 heading\n\n\
+        Plain foo **bar** baz, 𝒳𝒴 target, AT&amp;T and `code span`.\n\
+        soft\nbreak and hard\\\nline.\n\n\
+        > ```\n> quoted code\n> second line\n> ```\n\n\
+        ![alt words](missing.png) and <span>raw html</span>\n\n\
+        | Cell one | Cell two |\n| - | - |\n| table value | 中文 |\n\n\
+        Café and cafe\u{0301}; 👨\u{200D}👩\u{200D}👧 family; עברית שלום.\n";
+
+    let session = CoreSession::new("render-find-test").unwrap();
+    let _guard = SERIAL.lock().unwrap_or_else(|e| e.into_inner());
+    let parse_res = session
+        .parse_blocking(source.as_bytes().to_vec(), None, true)
+        .unwrap();
+    let doc = parse_res.document.unwrap();
+    let plan = RenderPlan::build(&doc, || false).unwrap();
+
+    let do_find = |query: &str, options: Option<CoreFindOptions>| {
+        let opts = options.unwrap_or_default();
+        let res = session.find_blocking(query, opts, doc.generation).unwrap();
+        plan.map_matches(&doc, &res)
+    };
+
+    let match_texts = |matches: &markdown_linux::render::FindMatches| -> Vec<String> {
+        let mut list = Vec::with_capacity(matches.count());
+        for m in &matches.matches {
+            let mut s = String::new();
+            for r in &m.ranges {
+                let frag = &plan.fragments[r.fragment_index];
+                let frag_text = frag.text();
+                // Character-based slicing for range
+                let chars: Vec<char> = frag_text.chars().collect();
+                if r.start < chars.len() {
+                    let end = r.end.min(chars.len());
+                    let sub: String = chars[r.start..end].iter().collect();
+                    s.push_str(&sub);
+                }
+            }
+            list.push(s);
+        }
+        list
+    };
+
+    let cases: &[(&str, &[&str])] = &[
+        ("foo bar", &["foo bar"]),
+        ("target", &["target"]),
+        ("𝒳", &["𝒳", "𝒳"]),
+        ("AT&T", &["AT&T"]),
+        ("code span", &["code span"]),
+        ("soft break", &["soft break"]),
+        ("alt words", &["[alt words]"]),
+        ("table value", &["table value"]),
+        ("中文", &["中文"]),
+        ("café", &["Café"]),
+        ("cafe\u{0301}", &["cafe\u{0301}"]),
+        ("family", &["family"]),
+        ("שלום", &["שלום"]),
+        ("heading", &["heading"]),
+        ("missing", &[]),
+    ];
+
+    for (query, expected) in cases {
+        let matches = do_find(query, None);
+        let texts = match_texts(&matches);
+        assert_eq!(
+            &texts, expected,
+            "query '{query}' expected {:?} got {:?}",
+            expected, texts
+        );
+    }
+
+    // Navigation wrapping and status
+    let multi_matches = do_find("𝒳", None);
+    assert_eq!(multi_matches.count(), 2, "2 matches for 𝒳");
+    assert_eq!(multi_matches.status(None), "2 matches", "status plural");
+    assert_eq!(multi_matches.status(Some(0)), "1 of 2", "status 1 of 2");
+    assert_eq!(multi_matches.status(Some(1)), "2 of 2", "status 2 of 2");
+
+    assert_eq!(multi_matches.index_at_or_after(0), Some(0), "at or after 0");
+    assert_eq!(multi_matches.index_after(0, false), Some(1), "next after 0");
+    assert_eq!(
+        multi_matches.index_after(1, false),
+        Some(0),
+        "next wraps to 0"
+    );
+    assert_eq!(
+        multi_matches.index_after(0, true),
+        Some(1),
+        "prev wraps to 1"
+    );
+
+    let empty_matches = do_find("nonexistentquery", None);
+    assert_eq!(empty_matches.count(), 0, "0 matches");
+    assert_eq!(empty_matches.status(None), "Not found", "not found status");
+
+    // Stale generation
+    let stale_result = markdown_linux_core::find::CoreFindResult {
+        generation: doc.generation + 1,
+        matches: Vec::new(),
+        segments: Vec::new(),
+        truncated: false,
+    };
+    let stale_matches = plan.map_matches(&doc, &stale_result);
+    assert_eq!(
+        stale_matches.count(),
+        0,
+        "stale generation returns 0 matches"
+    );
+
+    session.close().unwrap();
+}
