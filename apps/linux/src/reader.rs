@@ -368,8 +368,7 @@ impl Reader {
         factory.connect_unbind(move |_, item| {
             let item = item.downcast_ref::<gtk::ListItem>().unwrap();
             if let Some(state) = weak.upgrade()
-                && let Ok(state) = state.try_borrow()
-                && let Some(binding) = state.rows.get(&(item.as_ptr() as usize))
+                && let Some(binding) = state.borrow().rows.get(&(item.as_ptr() as usize))
             {
                 binding.binding.set(None);
             }
@@ -486,20 +485,26 @@ impl Reader {
         drag.set_button(gdk::BUTTON_PRIMARY);
 
         let weak = Rc::downgrade(&self.state);
-        drag.connect_drag_begin(move |_, x, y| {
+        drag.connect_drag_begin(move |gesture, x, y| {
             let Some(state) = weak.upgrade() else {
                 return;
             };
-            let mut s = state.borrow_mut();
-            s.drag_start = (x, y);
-            s.drag_last = (x, y);
-            s.drag_active = false;
-            s.drag_extend = false;
-            s.drag_anchor = None;
-            if let Some(t) = s.drag_timer.take() {
-                t.remove();
-            }
-            s.view.grab_focus();
+            let extend = gesture
+                .current_event_state()
+                .contains(gdk::ModifierType::SHIFT_MASK);
+            let view = {
+                let mut s = state.borrow_mut();
+                s.drag_start = (x, y);
+                s.drag_last = (x, y);
+                s.drag_active = false;
+                s.drag_extend = extend;
+                s.drag_anchor = None;
+                if let Some(t) = s.drag_timer.take() {
+                    t.remove();
+                }
+                s.view.clone()
+            };
+            view.grab_focus();
             // Sequence is NOT claimed here so plain clicks still reach child widgets (e.g. links).
         });
 
@@ -508,24 +513,33 @@ impl Reader {
             let Some(state) = weak.upgrade() else {
                 return;
             };
-            let mut s = state.borrow_mut();
-            let start = s.drag_start;
+            let (start, extend, active) = {
+                let s = state.borrow();
+                (s.drag_start, s.drag_extend, s.drag_active)
+            };
 
-            if !s.drag_active {
+            if !active {
                 if dx * dx + dy * dy < 16.0 {
                     return;
                 }
-                // Crossed 4 px drag threshold: claim sequence soListView does not interpret as scroll
+                // Crossed 4 px drag threshold: claim sequence so ListView does not interpret as scroll
                 gesture.set_state(gtk::EventSequenceState::Claimed);
-                let anchor = s
-                    .selection
-                    .map(|sel| sel.anchor)
-                    .or_else(|| s.hit_test(start.0, start.1));
+                let anchor = if extend {
+                    let s = state.borrow();
+                    s.selection
+                        .map(|sel| sel.anchor)
+                        .or_else(|| s.hit_test(start.0, start.1))
+                } else {
+                    state.borrow().hit_test(start.0, start.1)
+                };
                 let Some(anchor) = anchor else {
                     return;
                 };
-                s.drag_anchor = Some(anchor);
-                s.drag_active = true;
+                {
+                    let mut s = state.borrow_mut();
+                    s.drag_anchor = Some(anchor);
+                    s.drag_active = true;
+                }
 
                 let auto_weak = Rc::downgrade(&state);
                 let timer =
@@ -533,31 +547,43 @@ impl Reader {
                         let Some(state) = auto_weak.upgrade() else {
                             return glib::ControlFlow::Break;
                         };
-                        let mut s = state.borrow_mut();
-                        let y = s.drag_last.1;
-                        let height = s.view.height() as f64;
-                        let scrolled_opt = s.scrolled.upgrade();
-                        if let Some(scrolled) = scrolled_opt {
-                            let adj = scrolled.vadjustment();
-                            let delta = if y < 24.0 {
-                                (y - 24.0).max(-150.0)
-                            } else if y > height - 24.0 {
-                                (y - height + 24.0).min(150.0)
+                        let (delta, adj_opt) = {
+                            let s = state.borrow();
+                            let y = s.drag_last.1;
+                            let height = s.view.height() as f64;
+                            let scrolled_opt = s.scrolled.upgrade();
+                            if let Some(scrolled) = scrolled_opt {
+                                let adj = scrolled.vadjustment();
+                                let delta = if y < 24.0 {
+                                    (y - 24.0).max(-150.0)
+                                } else if y > height - 24.0 {
+                                    (y - height + 24.0).min(150.0)
+                                } else {
+                                    0.0
+                                };
+                                (delta, Some(adj))
                             } else {
-                                0.0
-                            };
-                            if delta != 0.0 {
-                                adj.set_value(adj.value() + delta);
-                                s.drag_to_last();
+                                (0.0, None)
+                            }
+                        };
+                        if delta != 0.0
+                            && let Some(adj) = adj_opt
+                        {
+                            adj.set_value(adj.value() + delta);
+                            if let Some(state) = auto_weak.upgrade() {
+                                state.borrow_mut().drag_to_last();
                             }
                         }
                         glib::ControlFlow::Continue
                     });
-                s.drag_timer = Some(timer);
+                state.borrow_mut().drag_timer = Some(timer);
             }
 
-            s.drag_last = (start.0 + dx, start.1 + dy);
-            s.drag_to_last();
+            {
+                let mut s = state.borrow_mut();
+                s.drag_last = (start.0 + dx, start.1 + dy);
+                s.drag_to_last();
+            }
         });
 
         let weak = Rc::downgrade(&self.state);
@@ -565,15 +591,25 @@ impl Reader {
             let Some(state) = weak.upgrade() else {
                 return;
             };
-            let mut s = state.borrow_mut();
-            if let Some(t) = s.drag_timer.take() {
-                t.remove();
-            }
-            let active = s.drag_active;
-            s.drag_active = false;
+            let (active, extend, start) = {
+                let mut s = state.borrow_mut();
+                if let Some(t) = s.drag_timer.take() {
+                    t.remove();
+                }
+                let active = s.drag_active;
+                let extend = s.drag_extend;
+                let start = s.drag_start;
+                s.drag_active = false;
+                (active, extend, start)
+            };
 
-            if !active && (dx * dx + dy * dy < 16.0) {
-                s.clear_selection();
+            if !active && !extend && (dx * dx + dy * dy < 16.0) {
+                state.borrow_mut().clear_selection();
+            } else if !active && extend {
+                let pos = state.borrow().hit_test(start.0, start.1);
+                if let Some(pos) = pos {
+                    state.borrow_mut().extend_selection(pos);
+                }
             }
         });
         view.add_controller(drag);

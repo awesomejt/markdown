@@ -510,8 +510,9 @@ debug` for debug, or `--prepare-only` for a persistent public owner-test fixture
     - `prose-1mib`: median pipeline 89.86 ms (parse 78.13 ms, plan 11.76 ms, target $\le 400\,\text{ms}$: PASS).
     - `long-lines-1mib`: median pipeline 9.20 ms (parse 5.94 ms, plan 2.79 ms, target $\le 400\,\text{ms}$: PASS).
     - `prose-5mib`: median pipeline 578.36 ms (parse 521.88 ms, plan 54.66 ms, stress fixture).
-  - **Outline target fragment resolution (D-016 $\le 150\,\text{ms}$)**:
-    - 0.01 ms median across 1 MiB prose, 5 MiB prose, and 1 MiB long lines (PASS).
+  - **Outline target fragment resolution**:
+    - 0.01 ms median across 1 MiB prose, 5 MiB prose, and 1 MiB long lines.
+    - Note: This measures outline heading target fragment resolution and text extraction; end-to-end off-screen scroll jumps and GTK layout will be measured with GTK frame clock hooks in MVP profile checks.
   - **Copy selection**:
     - 1 MiB prose: text/markdown extraction in 4.93 ms, clipboard write in 8.41 ms ($< 15\,\text{ms}$ total).
     - 5 MiB prose: text/markdown extraction in 24.49 ms, clipboard write in 10.65 ms.

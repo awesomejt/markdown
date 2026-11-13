@@ -247,7 +247,6 @@ fn run_interaction(doc_path: Option<&Path>) -> Result<(), String> {
     let copy_verified = source_matches && text_not_empty && (clip_ok || clipboard_skipped);
 
     let max_jump = jump_times.iter().copied().fold(0.0f64, f64::max);
-    let jump_budget_ok = max_jump <= 150.0;
 
     let jump_times_str = jump_times
         .iter()
@@ -256,8 +255,9 @@ fn run_interaction(doc_path: Option<&Path>) -> Result<(), String> {
         .join(", ");
 
     println!(
-        "{{\n  \"mode\": \"interaction\",\n  \"document\": \"{file_name}\",\n  \"jump_targets\": {},\n  \"outline_resolve_times_ms\": [{jump_times_str}],\n  \"outline_resolve_budget_150ms\": {jump_budget_ok},\n  \"copy_slice_ms\": {:.2},\n  \"clip_write_ms\": {:.2},\n  \"copy_source_bytes\": {},\n  \"copy_text_chars\": {},\n  \"clip_ok\": {clip_ok},\n  \"clipboard_skipped\": {clipboard_skipped},\n  \"copy_verified\": {copy_verified}\n}}",
+        "{{\n  \"mode\": \"interaction\",\n  \"document\": \"{file_name}\",\n  \"jump_targets\": {},\n  \"outline_resolve_times_ms\": [{jump_times_str}],\n  \"outline_resolve_max_ms\": {:.2},\n  \"copy_slice_ms\": {:.2},\n  \"clip_write_ms\": {:.2},\n  \"copy_source_bytes\": {},\n  \"copy_text_chars\": {},\n  \"clip_ok\": {clip_ok},\n  \"clipboard_skipped\": {clipboard_skipped},\n  \"copy_verified\": {copy_verified}\n}}",
         jump_times.len(),
+        max_jump,
         copy_slice_ms,
         clip_write_ms,
         source_bytes.len(),
