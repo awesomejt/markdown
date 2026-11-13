@@ -27,6 +27,12 @@ pub enum CoreError {
     OnWorker,
     /// An adapter invariant failed (a host bug).
     Internal,
+    Superseded {
+        expected: u64,
+        actual: u64,
+    },
+    QueryTooLong,
+    InvalidArgument,
 }
 
 impl fmt::Display for CoreError {
@@ -45,6 +51,14 @@ impl fmt::Display for CoreError {
             CoreError::Cancelled => f.write_str("Core call cancelled"),
             CoreError::OnWorker => f.write_str("Blocking core call on the core worker"),
             CoreError::Internal => f.write_str("Internal core adapter failure"),
+            CoreError::Superseded { expected, actual } => {
+                write!(
+                    f,
+                    "Snapshot superseded: expected {expected}, actual {actual}"
+                )
+            }
+            CoreError::QueryTooLong => f.write_str("Find query exceeds maximum 4096 bytes"),
+            CoreError::InvalidArgument => f.write_str("Invalid argument"),
         }
     }
 }
@@ -135,7 +149,11 @@ pub fn validate() -> Result<(), CoreError> {
         && info.pointer_size == size_of::<*const u8>()
         && info.anchor_version == 1
         && info.max_anchor_bytes == ffi::MD_ANCHOR_MAX_BYTES
-        && sizes.iter().all(|(library, host)| library == host);
+        && sizes.iter().all(|(library, host)| library == host)
+        && size_of::<ffi::md_find_options>() == ffi::MD_FIND_OPTIONS_SIZE
+        && size_of::<ffi::md_find_result>() == ffi::MD_FIND_RESULT_SIZE
+        && size_of::<ffi::md_find_match>() == ffi::MD_FIND_MATCH_SIZE
+        && size_of::<ffi::md_match_segment>() == ffi::MD_MATCH_SEGMENT_SIZE;
     if compatible {
         Ok(())
     } else {

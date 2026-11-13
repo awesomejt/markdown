@@ -1,6 +1,6 @@
 //! Bounded owned presentation values. No GTK, file access or parser internals.
 use crate::document::{ImageBudget, ResourceError};
-use markdown_linux_core::{CoreDocument, ffi::*};
+use markdown_linux_core::{CoreDocument, ffi::*, find::CoreFindResult};
 use std::{collections::BTreeMap, mem::size_of, sync::Arc};
 
 pub const PLAN_BUDGET: usize = 128 * 1024 * 1024;
@@ -40,6 +40,9 @@ pub struct Run {
     pub text: String,
     pub style: u8,
     pub link: Option<u32>,
+    pub node_id: Option<u32>,
+    pub node_char_offset: usize,
+    pub atomic: bool,
 }
 
 #[derive(Debug)]
@@ -66,25 +69,56 @@ impl Fragment {
     }
 
     pub fn markup(&self, epoch: u64, index: u32) -> String {
+        self.markup_with_highlights(epoch, index, &[])
+    }
+
+    pub fn markup_with_highlights(
+        &self,
+        epoch: u64,
+        index: u32,
+        highlights: &[(usize, usize, bool)],
+    ) -> String {
         let mut out = String::new();
+        let mut frag_char_idx = 0;
+        let tags = [(1, "b"), (2, "i"), (4, "s"), (8, "tt")];
+
         for run in &self.runs {
             if let Some(link) = run.link {
                 out.push_str(&format!("<a href=\"md:{epoch}:{index}:{link}\">"));
             }
-            let tags = [(1, "b"), (2, "i"), (4, "s"), (8, "tt")];
             for (bit, tag) in tags {
                 if run.style & bit != 0 {
                     out.push_str(&format!("<{tag}>"));
                 }
             }
             if run.style & 32 != 0 {
-                // TaskChecked: accent bold
                 out.push_str("<span foreground=\"#3584e4\"><b>");
             } else if run.style & 64 != 0 {
-                // TaskUnchecked: muted
                 out.push_str("<span foreground=\"gray\">");
             }
+
+            let mut active_hl: Option<bool> = None;
+
             for ch in run.text.chars() {
+                let cur_hl = highlights
+                    .iter()
+                    .find(|(s, e, _)| frag_char_idx >= *s && frag_char_idx < *e)
+                    .map(|(_, _, is_cur)| *is_cur);
+
+                if cur_hl != active_hl {
+                    if active_hl.is_some() {
+                        out.push_str("</span>");
+                    }
+                    if let Some(is_cur) = cur_hl {
+                        if is_cur {
+                            out.push_str("<span background=\"#ff7800\" foreground=\"#ffffff\">");
+                        } else {
+                            out.push_str("<span background=\"#f6d32d\" foreground=\"#000000\">");
+                        }
+                    }
+                    active_hl = cur_hl;
+                }
+
                 match ch {
                     '&' => out.push_str("&amp;"),
                     '<' => out.push_str("&lt;"),
@@ -93,7 +127,13 @@ impl Fragment {
                     '\'' => out.push_str("&apos;"),
                     _ => out.push(ch),
                 }
+                frag_char_idx += 1;
             }
+
+            if active_hl.is_some() {
+                out.push_str("</span>");
+            }
+
             if run.style & 32 != 0 {
                 out.push_str("</b></span>");
             } else if run.style & 64 != 0 {
@@ -112,6 +152,115 @@ impl Fragment {
     }
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct FindMatchRange {
+    pub fragment_index: usize,
+    pub start: usize,
+    pub end: usize,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct FindMatch {
+    pub index: usize,
+    pub unit_node: u32,
+    pub span_start: u32,
+    pub span_end: u32,
+    pub exact: bool,
+    pub primary_fragment_index: usize,
+    pub ranges: Vec<FindMatchRange>,
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct FindMatches {
+    pub generation: u64,
+    pub matches: Vec<FindMatch>,
+    pub truncated: bool,
+}
+
+impl FindMatches {
+    pub fn is_empty(&self) -> bool {
+        self.matches.is_empty()
+    }
+
+    pub fn count(&self) -> usize {
+        self.matches.len()
+    }
+
+    pub fn status(&self, current: Option<usize>) -> String {
+        if self.matches.is_empty() {
+            return "Not found".to_string();
+        }
+        let total = format!(
+            "{}{}",
+            self.matches.len(),
+            if self.truncated { "+" } else { "" }
+        );
+        match current {
+            None => {
+                if self.matches.len() == 1 {
+                    "1 match".to_string()
+                } else {
+                    format!("{total} matches")
+                }
+            }
+            Some(curr) => format!("{} of {total}", curr + 1),
+        }
+    }
+
+    pub fn index_at_or_after(&self, fragment_index: usize) -> Option<usize> {
+        if self.matches.is_empty() {
+            return None;
+        }
+        for (i, m) in self.matches.iter().enumerate() {
+            if m.primary_fragment_index >= fragment_index {
+                return Some(i);
+            }
+        }
+        Some(0)
+    }
+
+    pub fn index_before(&self, fragment_index: usize) -> Option<usize> {
+        if self.matches.is_empty() {
+            return None;
+        }
+        for (i, m) in self.matches.iter().enumerate().rev() {
+            if m.primary_fragment_index < fragment_index {
+                return Some(i);
+            }
+        }
+        Some(self.matches.len() - 1)
+    }
+
+    pub fn index_after(&self, current: usize, backwards: bool) -> Option<usize> {
+        if self.matches.is_empty() {
+            return None;
+        }
+        let count = self.matches.len();
+        if backwards {
+            Some((current + count - 1) % count)
+        } else {
+            Some((current + 1) % count)
+        }
+    }
+
+    pub fn highlights_for_fragment(
+        &self,
+        fragment_index: usize,
+        current: Option<usize>,
+    ) -> Vec<(usize, usize, bool)> {
+        let mut list = Vec::new();
+        for (idx, m) in self.matches.iter().enumerate() {
+            let is_current = current == Some(idx);
+            for r in &m.ranges {
+                if r.fragment_index == fragment_index {
+                    list.push((r.start, r.end, is_current));
+                }
+            }
+        }
+        list
+    }
+}
+
 #[derive(Debug)]
 pub struct Outline {
     pub title: String,
@@ -122,6 +271,7 @@ pub struct Outline {
 
 #[derive(Debug, Default)]
 pub struct RenderPlan {
+    pub generation: u64,
     pub fragments: Vec<Fragment>,
     pub outline: Vec<Outline>,
     pub targets: Vec<Target>,
@@ -178,7 +328,10 @@ impl RenderPlan {
     ) -> Result<Self, RenderError> {
         let mut b = Builder {
             doc,
-            plan: Self::default(),
+            plan: RenderPlan {
+                generation: doc.generation,
+                ..Self::default()
+            },
             cancelled,
             budget,
             visits: 0,
@@ -329,6 +482,8 @@ impl<F: Fn() -> bool> Builder<'_, F> {
         mut text: String,
         style: u8,
         link: Option<u32>,
+        node_id: Option<u32>,
+        atomic: bool,
     ) -> Result<(), RenderError> {
         self.charge(size_of::<Run>() + text.len())?;
         // Pango markup is XML and GTK strings are NUL terminated. Preserve a
@@ -350,7 +505,14 @@ impl<F: Fn() -> bool> Builder<'_, F> {
                 .map(|c| if invalid(c) { '\u{fffd}' } else { c })
                 .collect();
         }
-        runs.push(Run { text, style, link });
+        runs.push(Run {
+            text,
+            style,
+            link,
+            node_id,
+            node_char_offset: 0,
+            atomic,
+        });
         Ok(())
     }
 
@@ -399,7 +561,7 @@ impl<F: Fn() -> bool> Builder<'_, F> {
                             } else {
                                 format!("[{alt}]")
                             };
-                            self.run(runs, display_text, style, None)?;
+                            self.run(runs, display_text, style, None, Some(id), true)?;
                             return Ok(());
                         }
                         failure = cached.failure;
@@ -441,7 +603,7 @@ impl<F: Fn() -> bool> Builder<'_, F> {
                                     } else {
                                         format!("[{alt}]")
                                     };
-                                    self.run(runs, display_text, style, None)?;
+                                    self.run(runs, display_text, style, None, Some(id), true)?;
                                     return Ok(());
                                 }
                             }
@@ -502,7 +664,7 @@ impl<F: Fn() -> bool> Builder<'_, F> {
         } else {
             format!("[{alt}]")
         };
-        self.run(runs, display_text, style, None)?;
+        self.run(runs, display_text, style, None, Some(id), true)?;
         Ok(())
     }
 
@@ -532,18 +694,18 @@ impl<F: Fn() -> bool> Builder<'_, F> {
             link
         };
         match n.kind {
-            MD_NODE_SOFT_BREAK => self.run(runs, " ".into(), style, link)?,
-            MD_NODE_HARD_BREAK => self.run(runs, "\n".into(), style, link)?,
+            MD_NODE_SOFT_BREAK => self.run(runs, " ".into(), style, link, Some(id), true)?,
+            MD_NODE_HARD_BREAK => self.run(runs, "\n".into(), style, link, Some(id), true)?,
             MD_NODE_TEXT | MD_NODE_CODE_SPAN | MD_NODE_FOOTNOTE_REFERENCE => {
                 let text = self.text(n.text)?;
-                self.run(runs, text, style, link)?;
+                self.run(runs, text, style, link, Some(id), false)?;
             }
             MD_NODE_IMAGE => {
                 self.image(id, depth, style, runs)?;
             }
             MD_NODE_UNSUPPORTED_INLINE => {
                 let text = self.fallback(n)?;
-                self.run(runs, text, style, link)?;
+                self.run(runs, text, style, link, Some(id), false)?;
             }
             _ => {
                 for child in self.children(n)? {
@@ -570,7 +732,7 @@ impl<F: Fn() -> bool> Builder<'_, F> {
 
             for c in 0..total_cols {
                 if c > 0 {
-                    self.run(&mut row_runs, "\t".into(), 0, None)?;
+                    self.run(&mut row_runs, "\t".into(), 0, None, None, false)?;
                 }
                 if c < cells.len() {
                     let cell_id = cells[c];
@@ -615,7 +777,7 @@ impl<F: Fn() -> bool> Builder<'_, F> {
         {
             let (m, s) = marker.clone().unwrap();
             let mut runs = Vec::new();
-            self.run(&mut runs, m, 16 | s, None)?;
+            self.run(&mut runs, m, 16 | s, None, None, true)?;
             self.fragments(runs, 0, false)?;
         }
         if n.kind == MD_NODE_TABLE {
@@ -657,7 +819,7 @@ impl<F: Fn() -> bool> Builder<'_, F> {
             self.first[id as usize] = Some(self.plan.fragments.len() as u32);
             let mut runs = Vec::new();
             if let Some((marker_str, marker_style)) = marker {
-                self.run(&mut runs, marker_str, 16 | marker_style, None)?;
+                self.run(&mut runs, marker_str, 16 | marker_style, None, None, true)?;
             }
             if n.kind == MD_NODE_CODE_BLOCK || n.kind == MD_NODE_UNSUPPORTED_BLOCK {
                 let text = if n.kind == MD_NODE_UNSUPPORTED_BLOCK {
@@ -670,9 +832,11 @@ impl<F: Fn() -> bool> Builder<'_, F> {
                     text,
                     if n.kind == MD_NODE_CODE_BLOCK { 8 } else { 0 },
                     None,
+                    Some(id),
+                    false,
                 )?;
             } else if n.kind == MD_NODE_THEMATIC_BREAK {
-                self.run(&mut runs, "—".into(), 0, None)?;
+                self.run(&mut runs, "—".into(), 0, None, Some(id), true)?;
             } else {
                 for child in self.children(n)? {
                     self.inline(child, depth + 1, 0, None, &mut runs)?;
@@ -710,6 +874,7 @@ impl<F: Fn() -> bool> Builder<'_, F> {
         let mut used = 0;
         for run in runs {
             let mut rest = run.text.as_str();
+            let mut pos_chars = 0;
             while !rest.is_empty() {
                 self.check()?;
                 let available = 512 - used;
@@ -742,11 +907,16 @@ impl<F: Fn() -> bool> Builder<'_, F> {
                     continue;
                 }
                 self.charge(size_of::<Run>() + end)?;
+                let piece_chars = rest[..end].chars().count();
                 fragment.runs.push(Run {
                     text: rest[..end].into(),
                     style: run.style,
                     link: run.link,
+                    node_id: run.node_id,
+                    node_char_offset: run.node_char_offset + pos_chars,
+                    atomic: run.atomic,
                 });
+                pos_chars += piece_chars;
                 used += end;
                 rest = &rest[end..];
                 if used >= 512 {
@@ -775,5 +945,141 @@ impl<F: Fn() -> bool> Builder<'_, F> {
         self.charge(size_of::<Fragment>())?;
         self.plan.fragments.push(f);
         Ok(())
+    }
+}
+
+fn byte_offset_to_char_offset(s: &str, byte_offset: usize) -> usize {
+    let bounded = byte_offset.min(s.len());
+    let mut b = bounded;
+    while b > 0 && !s.is_char_boundary(b) {
+        b -= 1;
+    }
+    s[..b].chars().count()
+}
+
+impl RenderPlan {
+    pub fn map_matches(&self, doc: &CoreDocument, result: &CoreFindResult) -> FindMatches {
+        if result.generation != self.generation || result.generation != doc.generation {
+            return FindMatches {
+                generation: self.generation,
+                matches: Vec::new(),
+                truncated: false,
+            };
+        }
+
+        type NodeRunEntry = (usize, usize, usize, usize, bool);
+        let mut node_runs: BTreeMap<u32, Vec<NodeRunEntry>> = BTreeMap::new();
+        for (f_idx, fragment) in self.fragments.iter().enumerate() {
+            let mut frag_char_offset = 0;
+            for run in &fragment.runs {
+                let char_len = run.text.chars().count();
+                if let Some(node_id) = run.node_id {
+                    node_runs.entry(node_id).or_default().push((
+                        f_idx,
+                        frag_char_offset,
+                        run.node_char_offset,
+                        char_len,
+                        run.atomic,
+                    ));
+                }
+                frag_char_offset += char_len;
+            }
+        }
+
+        let mut matches = Vec::with_capacity(result.matches.len());
+        for (m_idx, m) in result.matches.iter().enumerate() {
+            let mut match_ranges = Vec::new();
+            let seg_end = m.first_segment + m.segment_count;
+            for s_idx in m.first_segment..seg_end.min(result.segments.len()) {
+                let seg = &result.segments[s_idx];
+                let Some(run_entries) = node_runs.get(&seg.node) else {
+                    continue;
+                };
+
+                let node_text = if (seg.node as usize) < doc.nodes.len() {
+                    let n = &doc.nodes[seg.node as usize];
+                    if n.kind == MD_NODE_UNSUPPORTED_INLINE || n.kind == MD_NODE_UNSUPPORTED_BLOCK {
+                        let span_start = n.span_start as usize;
+                        let span_end = n.span_end as usize;
+                        doc.source
+                            .get(span_start..span_end)
+                            .and_then(|b| std::str::from_utf8(b).ok())
+                            .unwrap_or("")
+                    } else {
+                        doc.text(n.text).unwrap_or("")
+                    }
+                } else {
+                    ""
+                };
+
+                let char_start = byte_offset_to_char_offset(node_text, seg.text_start as usize);
+                let char_end = byte_offset_to_char_offset(node_text, seg.text_end as usize);
+
+                for &(f_idx, frag_char_offset, run_node_char_offset, run_char_len, atomic) in
+                    run_entries
+                {
+                    if atomic {
+                        match_ranges.push(FindMatchRange {
+                            fragment_index: f_idx,
+                            start: frag_char_offset,
+                            end: frag_char_offset + run_char_len,
+                        });
+                        continue;
+                    }
+                    let run_start_in_node = run_node_char_offset;
+                    let run_end_in_node = run_node_char_offset + run_char_len;
+                    let overlap_start = char_start.max(run_start_in_node);
+                    let overlap_end = char_end.min(run_end_in_node);
+                    if overlap_start < overlap_end {
+                        let local_start = frag_char_offset + (overlap_start - run_start_in_node);
+                        let local_end = frag_char_offset + (overlap_end - run_start_in_node);
+                        match_ranges.push(FindMatchRange {
+                            fragment_index: f_idx,
+                            start: local_start,
+                            end: local_end,
+                        });
+                    }
+                }
+            }
+
+            if match_ranges.is_empty() {
+                continue;
+            }
+
+            match_ranges.sort_by(|a, b| {
+                a.fragment_index
+                    .cmp(&b.fragment_index)
+                    .then_with(|| a.start.cmp(&b.start))
+            });
+
+            let mut merged: Vec<FindMatchRange> = Vec::with_capacity(match_ranges.len());
+            let mut curr = match_ranges[0].clone();
+            for next in match_ranges.into_iter().skip(1) {
+                if next.fragment_index == curr.fragment_index && next.start <= curr.end {
+                    curr.end = curr.end.max(next.end);
+                } else {
+                    merged.push(curr);
+                    curr = next;
+                }
+            }
+            merged.push(curr);
+
+            let primary = merged[0].fragment_index;
+            matches.push(FindMatch {
+                index: m_idx,
+                unit_node: m.unit,
+                span_start: m.span_start,
+                span_end: m.span_end,
+                exact: m.exact,
+                primary_fragment_index: primary,
+                ranges: merged,
+            });
+        }
+
+        FindMatches {
+            generation: self.generation,
+            matches,
+            truncated: result.truncated,
+        }
     }
 }

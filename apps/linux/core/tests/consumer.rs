@@ -523,3 +523,154 @@ fn close_then_does_not_block_and_reports_the_release() {
     again.try_recv().unwrap().unwrap();
     session.close().unwrap();
 }
+
+#[test]
+fn find_over_current_snapshot() {
+    let _isolated = isolated();
+    let session = CoreSession::new("find-test").unwrap();
+    let source = b"# Caf\xc3\xa9 and CAF\xc3\x89\n\nInline caf\xc3\xa9 and caf**\xc3\xa9**.\n\n\
+        Decomposed cafe\xcc\x81 and German Stra\xc3\x9fe.\n\n\
+        Astral \xf0\x9d\x92\xb3\xf0\x9d\x92\xb4 and emoji \xf0\x9f\x91\xa8\xe2\x80\x8d\xf0\x9f\x91\xa9\xe2\x80\x8d\xf0\x9f\x91\xa7 family.\n\n\
+        CJK \xe4\xb8\xad\xe6\x96\x87 and RTL \xd7\xa2\xd7\x91\xd7\xa8\xd7\x99\xd7\xaa.\n";
+    let first = session.parse_blocking(source.to_vec(), None, true).unwrap();
+    let generation = first.generation;
+
+    let find = |q: &str, opt: CoreFindOptions| {
+        let res = session.find_blocking(q, opt, generation).unwrap();
+        let mut matched_strings = Vec::new();
+        for m in &res.matches {
+            let slice =
+                std::str::from_utf8(&source[m.span_start as usize..m.span_end as usize]).unwrap();
+            matched_strings.push(slice.to_string());
+        }
+        (res, matched_strings)
+    };
+
+    let (_, cafe) = find("café", CoreFindOptions::default());
+    assert_eq!(cafe, vec!["Café", "CAFÉ", "café", "caf**é"]);
+
+    let (_, sensitive) = find(
+        "café",
+        CoreFindOptions {
+            case_sensitive: true,
+            ..Default::default()
+        },
+    );
+    assert_eq!(sensitive, vec!["café", "caf**é"]);
+
+    let (_, nfd) = find("cafe\u{0301}", CoreFindOptions::default());
+    assert_eq!(nfd, vec!["cafe\u{0301}"]);
+
+    let (_, no_combining) = find("cafe", CoreFindOptions::default());
+    assert!(no_combining.is_empty());
+
+    let (_, strasse) = find("STRAßE", CoreFindOptions::default());
+    assert_eq!(strasse, vec!["Straße"]);
+
+    let (_, strasse_sub) = find("STRASSE", CoreFindOptions::default());
+    assert!(strasse_sub.is_empty());
+
+    let (_, astral) = find("𝒳𝒴", CoreFindOptions::default());
+    assert_eq!(astral, vec!["𝒳𝒴"]);
+
+    let (_, no_emoji_partial) = find("👨", CoreFindOptions::default());
+    assert!(no_emoji_partial.is_empty());
+
+    let (_, emoji_full) = find("👨‍👩‍👧", CoreFindOptions::default());
+    assert_eq!(emoji_full, vec!["👨‍👩‍👧"]);
+
+    let (_, whole_word) = find(
+        "family",
+        CoreFindOptions {
+            whole_word: true,
+            ..Default::default()
+        },
+    );
+    assert_eq!(whole_word, vec!["family"]);
+
+    let (_, subword) = find(
+        "fam",
+        CoreFindOptions {
+            whole_word: true,
+            ..Default::default()
+        },
+    );
+    assert!(subword.is_empty());
+
+    let (_, cjk) = find("中文", CoreFindOptions::default());
+    assert_eq!(cjk, vec!["中文"]);
+
+    let (_, rtl) = find("עברית", CoreFindOptions::default());
+    assert_eq!(rtl, vec!["עברית"]);
+
+    let (empty_res, _) = find("   ", CoreFindOptions::default());
+    assert!(empty_res.matches.is_empty());
+
+    let limited = session
+        .find_blocking(
+            "caf",
+            CoreFindOptions {
+                max_matches: 2,
+                ..Default::default()
+            },
+            generation,
+        )
+        .unwrap();
+    assert_eq!(limited.matches.len(), 2);
+    assert!(limited.truncated);
+
+    // Over-long query (> 4096 bytes) rejected
+    let long_query = "a".repeat(4097);
+    let err = session
+        .find_blocking(&long_query, CoreFindOptions::default(), generation)
+        .unwrap_err();
+    assert_eq!(err, CoreError::QueryTooLong);
+
+    // Unpublished generation returns Superseded
+    let err = session
+        .find_blocking("café", CoreFindOptions::default(), generation + 10)
+        .unwrap_err();
+    assert!(matches!(err, CoreError::Superseded { .. }));
+
+    // Reparse advances generation
+    let second = session
+        .parse_blocking(b"# caf\xc3\xa9 again\n".to_vec(), None, true)
+        .unwrap();
+    assert!(second.generation > generation);
+
+    // Superseded generation returns Superseded
+    let err = session
+        .find_blocking("café", CoreFindOptions::default(), generation)
+        .unwrap_err();
+    assert!(matches!(err, CoreError::Superseded { .. }));
+
+    // Find over current generation succeeds
+    let current = session
+        .find_blocking("café", CoreFindOptions::default(), second.generation)
+        .unwrap();
+    assert_eq!(current.matches.len(), 1);
+
+    // Cancellation before worker runs returns Cancelled
+    let hold = hold_worker();
+    let gate = FindGate::new();
+    let (tx, rx) = channel();
+    session.find(
+        "café",
+        CoreFindOptions::default(),
+        second.generation,
+        Some(gate.clone()),
+        move |res| {
+            let _ = tx.send(res);
+        },
+    );
+    gate.cancel();
+    drop(hold);
+    let cancelled_res = rx.recv_timeout(Duration::from_secs(10)).unwrap();
+    assert_eq!(cancelled_res.unwrap_err(), CoreError::Cancelled);
+
+    session.close().unwrap();
+    let err = session
+        .find_blocking("café", CoreFindOptions::default(), second.generation)
+        .unwrap_err();
+    assert_eq!(err, CoreError::Closed);
+}

@@ -26,6 +26,19 @@ struct State {
     view: gtk::ListView,
     window: glib::WeakRef<gtk::ApplicationWindow>,
     texture_cache: HashMap<String, gdk::Texture>,
+    find_matches: Option<Arc<markdown_linux::render::FindMatches>>,
+    current_find_match: Option<usize>,
+    text_scale: f64,
+    scale_provider: gtk::CssProvider,
+    class_name: String,
+}
+
+impl Drop for State {
+    fn drop(&mut self) {
+        if let Some(display) = gdk::Display::default() {
+            gtk::style_context_remove_provider_for_display(&display, &self.scale_provider);
+        }
+    }
 }
 
 #[derive(Clone)]
@@ -35,11 +48,15 @@ pub struct Reader {
     outline: gtk::ListView,
 }
 
+static NEXT_READER_ID: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
+static INIT_TABLE_CSS: std::sync::Once = std::sync::Once::new();
+
 impl Reader {
     pub fn new(window: &gtk::ApplicationWindow) -> Self {
-        let provider = gtk::CssProvider::new();
-        provider.load_from_string(
-            "
+        INIT_TABLE_CSS.call_once(|| {
+            let provider = gtk::CssProvider::new();
+            provider.load_from_string(
+                "
 .table-row {
     padding-top: 4px;
     padding-bottom: 4px;
@@ -54,18 +71,32 @@ impl Reader {
     background-color: alpha(gray, 0.08);
 }
 ",
-        );
+            );
+            if let Some(display) = gdk::Display::default() {
+                gtk::style_context_add_provider_for_display(
+                    &display,
+                    &provider,
+                    gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
+                );
+            }
+        });
+
+        let scale_provider = gtk::CssProvider::new();
         if let Some(display) = gdk::Display::default() {
             gtk::style_context_add_provider_for_display(
                 &display,
-                &provider,
-                gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
+                &scale_provider,
+                gtk::STYLE_PROVIDER_PRIORITY_APPLICATION + 1,
             );
         }
+
+        let reader_id = NEXT_READER_ID.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        let class_name = format!("reader-scale-{reader_id}");
 
         let factory = gtk::SignalListItemFactory::new();
         let view = gtk::ListView::new(None::<gtk::NoSelection>, Some(factory.clone()));
         view.set_widget_name("native-document");
+        view.add_css_class(&class_name);
         let state = Rc::new(RefCell::new(State {
             rows: HashMap::new(),
             plan: None,
@@ -73,6 +104,11 @@ impl Reader {
             view: view.clone(),
             window: window.downgrade(),
             texture_cache: HashMap::new(),
+            find_matches: None,
+            current_find_match: None,
+            text_scale: 1.0,
+            scale_provider,
+            class_name,
         }));
         let weak = Rc::downgrade(&state);
         factory.connect_setup(move |_, item| {
@@ -195,7 +231,18 @@ impl Reader {
             } else {
                 &paragraph_label
             };
-            label.set_markup(&fragment.markup(state.epoch, index));
+            let markup = if let Some(matches) = &state.find_matches {
+                let highlights =
+                    matches.highlights_for_fragment(index as usize, state.current_find_match);
+                if !highlights.is_empty() {
+                    fragment.markup_with_highlights(state.epoch, index, &highlights)
+                } else {
+                    fragment.markup(state.epoch, index)
+                }
+            } else {
+                fragment.markup(state.epoch, index)
+            };
+            label.set_markup(&markup);
             if fragment.heading_start {
                 label.update_property(&[gtk::accessible::Property::Level(fragment.heading as i32)]);
             }
@@ -428,6 +475,9 @@ impl Reader {
     pub fn row_count(&self) -> usize {
         self.state.borrow().rows.len()
     }
+    pub fn plan(&self) -> Option<Arc<RenderPlan>> {
+        self.state.borrow().plan.clone()
+    }
     pub fn activate_outline(&self, index: u32) {
         self.outline.emit_by_name::<()>("activate", &[&index]);
     }
@@ -479,6 +529,8 @@ impl Reader {
             let mut state = self.state.borrow_mut();
             state.epoch = state.epoch.checked_add(1).expect("reader epoch exhausted");
             state.texture_cache.clear();
+            state.find_matches = None;
+            state.current_find_match = None;
             state.plan.take()
         };
         if let Some(old) = old {
@@ -489,5 +541,109 @@ impl Reader {
                 .spawn(move || drop(old));
         }
         self.widget.set_visible(false);
+    }
+
+    pub fn text_scale(&self) -> f64 {
+        self.state.borrow().text_scale
+    }
+
+    pub fn set_text_scale(&self, scale: f64) {
+        let clamped = markdown_linux::preferences::clamped_scale(scale);
+        let anchor = self.first_visible_fragment();
+        {
+            let mut state = self.state.borrow_mut();
+            state.text_scale = clamped;
+            let percent = (clamped * 100.0).round() as i32;
+            let class = &state.class_name;
+            let css = format!(".{class} label {{ font-size: {percent}%; }}\n");
+            state.scale_provider.load_from_string(&css);
+        }
+        if let Some(anchor) = anchor {
+            let view = self.state.borrow().view.clone();
+            view.scroll_to(anchor, gtk::ListScrollFlags::NONE, None);
+        }
+    }
+
+    pub fn first_visible_fragment(&self) -> Option<u32> {
+        let mut observed = self.observed();
+        observed.sort_by_key(|(idx, _)| *idx);
+        observed.first().map(|(idx, _)| *idx)
+    }
+
+    pub fn find_matches(&self) -> Option<Arc<markdown_linux::render::FindMatches>> {
+        self.state.borrow().find_matches.clone()
+    }
+
+    pub fn current_find_match(&self) -> Option<usize> {
+        self.state.borrow().current_find_match
+    }
+
+    pub fn set_find_matches(&self, matches: Option<Arc<markdown_linux::render::FindMatches>>) {
+        {
+            let mut state = self.state.borrow_mut();
+            state.find_matches = matches;
+            state.current_find_match = if state.find_matches.as_ref().is_none_or(|m| m.is_empty()) {
+                None
+            } else {
+                Some(0)
+            };
+        }
+        self.refresh_markup();
+        if let Some(match_idx) = self.current_find_match() {
+            self.scroll_to_match(match_idx);
+        }
+    }
+
+    pub fn select_find_match(&self, match_idx: usize) {
+        {
+            let mut state = self.state.borrow_mut();
+            if let Some(matches) = &state.find_matches {
+                if match_idx < matches.count() {
+                    state.current_find_match = Some(match_idx);
+                } else {
+                    return;
+                }
+            } else {
+                return;
+            }
+        }
+        self.refresh_markup();
+        self.scroll_to_match(match_idx);
+    }
+
+    pub fn scroll_to_match(&self, match_idx: usize) {
+        let (view, frag_idx) = {
+            let state = self.state.borrow();
+            let Some(matches) = &state.find_matches else {
+                return;
+            };
+            let Some(m) = matches.matches.get(match_idx) else {
+                return;
+            };
+            (state.view.clone(), m.primary_fragment_index as u32)
+        };
+        view.scroll_to(frag_idx, gtk::ListScrollFlags::FOCUS, None);
+    }
+
+    pub fn refresh_markup(&self) {
+        let observed = self.observed();
+        let state = self.state.borrow();
+        let Some(plan) = &state.plan else { return };
+        for (index, label) in observed {
+            if let Some(fragment) = plan.fragments.get(index as usize) {
+                let markup = if let Some(matches) = &state.find_matches {
+                    let highlights =
+                        matches.highlights_for_fragment(index as usize, state.current_find_match);
+                    if !highlights.is_empty() {
+                        fragment.markup_with_highlights(state.epoch, index, &highlights)
+                    } else {
+                        fragment.markup(state.epoch, index)
+                    }
+                } else {
+                    fragment.markup(state.epoch, index)
+                };
+                label.set_markup(&markup);
+            }
+        }
     }
 }

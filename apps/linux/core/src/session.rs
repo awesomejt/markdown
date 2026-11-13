@@ -99,14 +99,14 @@ pub struct CoreResult {
 
 type Callback = Box<dyn FnOnce(Result<CoreResult, CoreError>) + Send>;
 
-fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
+pub(crate) fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
     mutex
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
 }
 
 /// A one-shot result shared by concurrent waiters and callbacks.
-struct Completion<T> {
+pub(crate) struct Completion<T> {
     state: Mutex<CompletionState<T>>,
     ready: Condvar,
 }
@@ -167,14 +167,14 @@ impl<T: Clone> Completion<T> {
     }
 }
 
-struct SessionState {
-    handle: md_session,
-    closing: Option<Arc<Completion<Result<(), CoreError>>>>,
+pub(crate) struct SessionState {
+    pub(crate) handle: md_session,
+    pub(crate) closing: Option<Arc<Completion<Result<(), CoreError>>>>,
 }
 
-struct SessionInner {
-    state: Mutex<SessionState>,
-    limits: HostLimits,
+pub(crate) struct SessionInner {
+    pub(crate) state: Mutex<SessionState>,
+    pub(crate) limits: HostLimits,
 }
 
 /// One document lineage. Short calls lock the handle; parsing, encoding,
@@ -185,6 +185,9 @@ pub struct CoreSession {
 }
 
 impl CoreSession {
+    pub(crate) fn inner(&self) -> &Arc<SessionInner> {
+        &self.inner
+    }
     /// A session over host limits that requests model v2 (D-025).
     pub fn new(document_id: &str) -> Result<Self, CoreError> {
         Self::with_limits(document_id, HostLimits::HOST)

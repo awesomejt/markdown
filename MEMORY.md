@@ -281,7 +281,7 @@ read.
   deferred to H in TODO.md. LNX-001D1 is closed under D-035 in PR #63: automated
   AT-SPI inspection verifies heading/paragraph semantics and reading order, with
   off-screen Orca structural navigation and continuous reading deferred to ADV-001.
-  LNX-001E is merged. LNX-001F (document find, theme and text controls) is next on Linux.
+  LNX-001E is merged. LNX-001F is merged. LNX-001G is next on Linux.
 - LNX-001E (PR #64): delivers Linux native tables (tab-separated cell rows for
   native TSV clipboard copying, monospace font, bold header row, table-relative
   zebra striping), read-only task list markers (`☑` / `☐`) with accent/muted
@@ -293,8 +293,20 @@ read.
   paths, shared `Arc<[u8]>` image data reuse with bounded deduplication accounting,
   and native `gtk::Picture` rendering of decoded GDK textures with per-reader caching
   and `Undecodable` failure surfacing. Grok review 3 at `fcfc2a9` reported 0 Blockers,
-  0 Concerns, 0 Nits (clean approval under D-029). LNX-001F (document find, theme
-  and text controls) is next on Linux.
+  0 Concerns, 0 Nits (clean approval under D-029).
+- LNX-001F (PR #65): delivers Linux native document find (`md_snapshot_find` C ABI
+  binding in `apps/linux/core/src/ffi.rs`, non-blocking worker find with `FindGate`
+  cancellation and buffer retry, `FindMatches`/`RenderPlan::map_matches` mapping core
+  node matches into virtualized fragment runs with Pango highlights, `FindBar` GTK 4
+  widget with `Ctrl+F`/`F3`/`Shift+F3` navigation, match case/whole word filters,
+  and `stop-search` Escape dismissal), discrete 9-step text scaling (75%–250%,
+  `Ctrl++`/`Ctrl+-`/`Ctrl+0`, per-reader scoped CSS isolation `.reader-scale-{id}`),
+  theme switching (System, Light, Dark) resetting or overriding `gtk-interface-color-scheme`
+  and `gtk-application-prefer-dark-theme`, and atomic persistent JSON settings under
+  `$XDG_CONFIG_HOME/markdown/preferences.json` with memory mode support. Grok review 3
+  at `4b72dd1` reported 0 Blockers, 0 Concerns, 1 Nit (addressed in `41978ee`, clean
+  approval under D-029). LNX-001G (large-document layout, global selection and accessibility)
+  is next on Linux.
 - Workflow: task PRs target `develop` and merge on a Grok review with no
   serious finding (D-029). `main` takes only owner-approved milestone reviews
   from `review/<milestone>`, tagged `m-<milestone>` (D-030). The shared-core

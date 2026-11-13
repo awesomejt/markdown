@@ -7,10 +7,12 @@
 
 pub mod document;
 pub mod ffi;
+pub mod find;
 pub mod runtime;
 pub mod session;
 
 pub use document::CoreDocument;
+pub use find::{CoreFindMatch, CoreFindOptions, CoreFindResult, CoreFindSegment, FindGate};
 pub use runtime::{
     CoreError, HandleCounts, HostLimits, PACKAGE_CONFIGURATION, PACKAGE_FINGERPRINT, live_handles,
     pending_parses, validate,

@@ -20,8 +20,23 @@ pub const MD_ERR_VERSION_MISMATCH: md_status = 2;
 pub const MD_ERR_STRUCT_SIZE: md_status = 3;
 pub const MD_ERR_INVALID_HANDLE: md_status = 4;
 pub const MD_ERR_UNSUPPORTED_MODEL: md_status = 5;
+pub const MD_ERR_BUFFER_TOO_SMALL: md_status = 6;
 pub const MD_ERR_INVALID_DOCUMENT_ID: md_status = 9;
 pub const MD_ERR_INVALID_REVISION_TOKEN: md_status = 10;
+pub const MD_ERR_SUPERSEDED: md_status = 12;
+
+pub const MD_FIND_OPTIONS_SIZE: u32 = 24;
+pub const MD_FIND_RESULT_SIZE: u32 = 24;
+pub const MD_FIND_MATCH_SIZE: u32 = 24;
+pub const MD_MATCH_SEGMENT_SIZE: u32 = 24;
+pub const MD_FIND_MAX_QUERY_BYTES: u32 = 4096;
+pub const MD_FIND_DEFAULT_MAX_MATCHES: u32 = 10000;
+pub const MD_FIND_MAX_MATCHES: u32 = 1000000;
+
+pub const MD_FIND_CASE_SENSITIVE: u32 = 1;
+pub const MD_FIND_WHOLE_WORD: u32 = 2;
+pub const MD_FIND_TRUNCATED: u32 = 1;
+pub const MD_MATCH_EXACT: u32 = 1;
 
 pub const MD_MODEL_V1: u32 = 1;
 pub const MD_MODEL_V2: u32 = 2;
@@ -278,6 +293,48 @@ pub struct md_anchor_resolution {
     pub source_offset: u64,
 }
 
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Default)]
+pub struct md_find_options {
+    pub struct_size: u32,
+    pub flags: u32,
+    pub max_matches: u32,
+    pub match_size: u32,
+    pub segment_size: u32,
+    pub reserved: u32,
+}
+
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Default)]
+pub struct md_find_result {
+    pub struct_size: u32,
+    pub flags: u32,
+    pub match_count: u64,
+    pub segment_count: u64,
+}
+
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct md_find_match {
+    pub unit: u32,
+    pub flags: u32,
+    pub span_start: u32,
+    pub span_end: u32,
+    pub first_segment: u32,
+    pub segment_count: u32,
+}
+
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct md_match_segment {
+    pub node: u32,
+    pub flags: u32,
+    pub text_start: u32,
+    pub text_end: u32,
+    pub span_start: u32,
+    pub span_end: u32,
+}
+
 /// `size_of::<T>()` as the ABI's `uint32_t` struct size.
 pub const fn size_of<T>() -> u32 {
     std::mem::size_of::<T>() as u32
@@ -319,6 +376,7 @@ unsafe extern "C" {
         session: md_session,
         out_status: *mut md_session_status_info,
     ) -> md_status;
+    pub fn md_session_current(session: md_session, out_snapshot: *mut md_snapshot) -> md_status;
 
     pub fn md_job_run(job: md_job, out_result: *mut md_job_result) -> md_status;
     pub fn md_job_cancel(job: md_job) -> md_status;
@@ -327,6 +385,17 @@ unsafe extern "C" {
     pub fn md_snapshot_get_view(
         snapshot: md_snapshot,
         out_view: *mut md_snapshot_view,
+    ) -> md_status;
+    pub fn md_snapshot_find(
+        snapshot: md_snapshot,
+        query: *const u8,
+        query_length: usize,
+        options: *const md_find_options,
+        matches: *mut md_find_match,
+        match_capacity: usize,
+        segments: *mut md_match_segment,
+        segment_capacity: usize,
+        out_result: *mut md_find_result,
     ) -> md_status;
     pub fn md_snapshot_release(snapshot: md_snapshot) -> md_status;
 }

@@ -8,6 +8,7 @@ use markdown_linux::document::{DocumentCapability, DocumentError, DocumentLoader
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::{Rc, Weak};
+use std::sync::Arc;
 use std::time::Duration;
 
 struct WindowDocument {
@@ -15,6 +16,10 @@ struct WindowDocument {
     label: glib::WeakRef<gtk::Label>,
     loader: DocumentLoader,
     reader: crate::reader::Reader,
+    find_bar: crate::find_bar::FindBar,
+    find_gate: Option<markdown_linux_core::FindGate>,
+    find_matches: Option<Arc<markdown_linux::render::FindMatches>>,
+    find_request_id: u64,
     chooser: Option<gtk::FileChooserNative>,
     reload: gio::SimpleAction,
     poll_source: Option<glib::SourceId>,
@@ -34,7 +39,26 @@ impl WindowDocument {
             label.set_text(text);
         }
     }
+    fn dismiss_find(&mut self) {
+        self.find_request_id = self.find_request_id.wrapping_add(1);
+        self.find_bar.hide();
+        if let Some(gate) = self.find_gate.take() {
+            gate.cancel();
+        }
+        self.find_matches = None;
+        self.reader.set_find_matches(None);
+    }
     fn loading(&mut self) {
+        self.find_request_id = self.find_request_id.wrapping_add(1);
+        if let Some(gate) = self.find_gate.take() {
+            gate.cancel();
+        }
+        self.find_matches = None;
+        self.reader.set_find_matches(None);
+        self.find_bar.status_label.set_text("");
+        self.find_bar.prev_button.set_sensitive(false);
+        self.find_bar.next_button.set_sensitive(false);
+
         self.reload.set_enabled(self.loader.has_file());
         self.reader.clear();
         self.status("Loading document…");
@@ -68,6 +92,11 @@ impl WindowDocument {
                             if let Some(label) = state.label.upgrade() {
                                 label.set_visible(false);
                             }
+                            if state.find_bar.is_revealed()
+                                && !state.find_bar.entry.text().is_empty()
+                            {
+                                state.run_find();
+                            }
                         }
                         LoadEvent::Failed(error) => {
                             state.reader.clear();
@@ -85,6 +114,142 @@ impl WindowDocument {
                 self.loader.display_name().unwrap_or_default()
             )));
         }
+    }
+    fn run_find(&mut self) {
+        self.find_request_id = self.find_request_id.wrapping_add(1);
+        let req_id = self.find_request_id;
+        let query = self.find_bar.entry.text().to_string();
+        if query.is_empty() {
+            if let Some(gate) = self.find_gate.take() {
+                gate.cancel();
+            }
+            self.find_matches = None;
+            self.reader.set_find_matches(None);
+            self.find_bar.status_label.set_text("");
+            self.find_bar.prev_button.set_sensitive(false);
+            self.find_bar.next_button.set_sensitive(false);
+            return;
+        }
+
+        let Some(doc) = self.loader.document.clone() else {
+            self.find_bar.status_label.set_text("Not found");
+            return;
+        };
+        let Some(plan) = self.reader.plan() else {
+            self.find_bar.status_label.set_text("Not found");
+            return;
+        };
+        let Some(session) = self.loader.session() else {
+            self.find_bar.status_label.set_text("Not found");
+            return;
+        };
+
+        let options = markdown_linux_core::find::CoreFindOptions {
+            case_sensitive: self.find_bar.case_button.is_active(),
+            whole_word: self.find_bar.word_button.is_active(),
+            ..Default::default()
+        };
+
+        if let Some(gate) = self.find_gate.take() {
+            gate.cancel();
+        }
+        let gate = markdown_linux_core::FindGate::new();
+        self.find_gate = Some(gate.clone());
+        let idle_gate = gate.clone();
+
+        let doc_clone = doc.clone();
+        let plan_clone = plan.clone();
+        let window_key = self.window.upgrade().map(|w| key(&w));
+        let Some(window_key) = window_key else {
+            return;
+        };
+
+        let query_str = query.clone();
+        session.find(&query, options, doc.generation, Some(gate), move |result| {
+            if idle_gate.is_cancelled() {
+                return;
+            }
+            let mapped = match result {
+                Ok(core_result) => {
+                    let matches = plan_clone.map_matches(&doc_clone, &core_result);
+                    Ok(Arc::new(matches))
+                }
+                Err(err) => Err(err),
+            };
+            glib::idle_add_once(move || {
+                if idle_gate.is_cancelled() {
+                    return;
+                }
+                WINDOWS.with(|all| {
+                    let Some(state) = all.borrow().get(&window_key).cloned() else {
+                        return;
+                    };
+                    let mut state = state.borrow_mut();
+                    if state.find_request_id != req_id
+                        || !state.find_bar.is_revealed()
+                        || state.find_bar.entry.text().as_str() != query_str
+                    {
+                        return;
+                    }
+                    match mapped {
+                        Ok(matches) => {
+                            let count = matches.count();
+                            state.find_bar.prev_button.set_sensitive(count > 0);
+                            state.find_bar.next_button.set_sensitive(count > 0);
+                            let status_text =
+                                matches.status(if count > 0 { Some(0) } else { None });
+                            state.find_bar.status_label.set_text(&status_text);
+                            state.find_matches = Some(matches.clone());
+                            state.reader.set_find_matches(Some(matches));
+                        }
+                        Err(markdown_linux_core::CoreError::Cancelled)
+                        | Err(markdown_linux_core::CoreError::Superseded { .. }) => {}
+                        Err(markdown_linux_core::CoreError::QueryTooLong) => {
+                            state.find_bar.status_label.set_text("Query too long");
+                            state.find_bar.prev_button.set_sensitive(false);
+                            state.find_bar.next_button.set_sensitive(false);
+                            state.find_matches = None;
+                            state.reader.set_find_matches(None);
+                        }
+                        Err(_) => {
+                            state.find_bar.status_label.set_text("Search error");
+                            state.find_bar.prev_button.set_sensitive(false);
+                            state.find_bar.next_button.set_sensitive(false);
+                            state.find_matches = None;
+                            state.reader.set_find_matches(None);
+                        }
+                    }
+                });
+            });
+        });
+    }
+    fn next_find_match(&mut self) {
+        let Some(matches) = &self.find_matches else {
+            return;
+        };
+        if matches.is_empty() {
+            return;
+        }
+        let cur = self.reader.current_find_match().unwrap_or(0);
+        let next = matches.index_after(cur, false).unwrap_or(0);
+        self.reader.select_find_match(next);
+        self.find_bar
+            .status_label
+            .set_text(&matches.status(Some(next)));
+    }
+    fn prev_find_match(&mut self) {
+        let Some(matches) = &self.find_matches else {
+            return;
+        };
+        if matches.is_empty() {
+            return;
+        }
+        let cur = self.reader.current_find_match().unwrap_or(0);
+        let prev = matches.index_after(cur, true).unwrap_or(0);
+        self.reader.select_find_match(prev);
+        self.find_bar
+            .status_label
+            .set_text(&matches.status(Some(prev)));
     }
     fn open(&mut self, file: &gio::File) {
         let Some(path) = file.path() else {
@@ -110,6 +275,9 @@ impl WindowDocument {
     }
     fn close(&mut self) {
         self.stop_polling();
+        if let Some(gate) = self.find_gate.take() {
+            gate.cancel();
+        }
         if let Some(chooser) = self.chooser.take() {
             chooser.destroy();
         }
@@ -119,23 +287,35 @@ impl WindowDocument {
 }
 pub fn attach(window: &gtk::ApplicationWindow, label: &gtk::Label) {
     let reader = crate::reader::Reader::new(window);
+    let prefs = markdown_linux::preferences::load();
+    reader.set_text_scale(prefs.text_scale);
+
+    let find_bar = crate::find_bar::FindBar::new();
+
     let container = gtk::Box::new(gtk::Orientation::Vertical, 0);
     window.set_child(None::<&gtk::Widget>);
     container.append(label);
+    container.append(&find_bar.container);
     container.append(&reader.widget);
     reader.widget.set_hexpand(true);
     reader.widget.set_vexpand(true);
     reader.clear();
     window.set_child(Some(&container));
+
     let reload = gio::SimpleAction::new("reload", None);
     reload.set_enabled(false);
     window.add_action(&reload);
+
     let state = Rc::new_cyclic(|weak| {
         RefCell::new(WindowDocument {
             window: window.downgrade(),
             label: label.downgrade(),
             loader: DocumentLoader::new(),
             reader: reader.clone(),
+            find_bar: find_bar.clone(),
+            find_gate: None,
+            find_matches: None,
+            find_request_id: 0,
             chooser: None,
             reload: reload.clone(),
             poll_source: None,
@@ -143,6 +323,7 @@ pub fn attach(window: &gtk::ApplicationWindow, label: &gtk::Label) {
         })
     });
     WINDOWS.with(|all| all.borrow_mut().insert(key(window), state.clone()));
+
     let weak = Rc::downgrade(&state);
     reload.connect_activate(move |_, _| {
         if let Some(state) = weak.upgrade() {
@@ -151,6 +332,185 @@ pub fn attach(window: &gtk::ApplicationWindow, label: &gtk::Label) {
             state.loading();
         }
     });
+
+    // Window actions for find and zoom
+    let find_act = gio::SimpleAction::new("find", None);
+    let weak = Rc::downgrade(&state);
+    find_act.connect_activate(move |_, _| {
+        if let Some(state) = weak.upgrade() {
+            let mut state = state.borrow_mut();
+            state.find_bar.show();
+            if !state.find_bar.entry.text().is_empty() {
+                state.run_find();
+            }
+        }
+    });
+    window.add_action(&find_act);
+
+    let find_next_act = gio::SimpleAction::new("find-next", None);
+    let weak = Rc::downgrade(&state);
+    find_next_act.connect_activate(move |_, _| {
+        if let Some(state) = weak.upgrade() {
+            let mut state = state.borrow_mut();
+            if !state.find_bar.is_revealed() {
+                state.find_bar.show();
+                if !state.find_bar.entry.text().is_empty() {
+                    state.run_find();
+                }
+            } else {
+                state.next_find_match();
+            }
+        }
+    });
+    window.add_action(&find_next_act);
+
+    let find_prev_act = gio::SimpleAction::new("find-prev", None);
+    let weak = Rc::downgrade(&state);
+    find_prev_act.connect_activate(move |_, _| {
+        if let Some(state) = weak.upgrade() {
+            let mut state = state.borrow_mut();
+            if !state.find_bar.is_revealed() {
+                state.find_bar.show();
+                if !state.find_bar.entry.text().is_empty() {
+                    state.run_find();
+                }
+            } else {
+                state.prev_find_match();
+            }
+        }
+    });
+    window.add_action(&find_prev_act);
+
+    let zoom_in_act = gio::SimpleAction::new("zoom-in", None);
+    let weak = Rc::downgrade(&state);
+    zoom_in_act.connect_activate(move |_, _| {
+        if let Some(state) = weak.upgrade() {
+            let state = state.borrow();
+            let cur = state.reader.text_scale();
+            let next = markdown_linux::preferences::next_scale(cur);
+            state.reader.set_text_scale(next);
+            let mut prefs = markdown_linux::preferences::load();
+            prefs.text_scale = next;
+            markdown_linux::preferences::save(&prefs);
+        }
+    });
+    window.add_action(&zoom_in_act);
+
+    let zoom_out_act = gio::SimpleAction::new("zoom-out", None);
+    let weak = Rc::downgrade(&state);
+    zoom_out_act.connect_activate(move |_, _| {
+        if let Some(state) = weak.upgrade() {
+            let state = state.borrow();
+            let cur = state.reader.text_scale();
+            let prev = markdown_linux::preferences::prev_scale(cur);
+            state.reader.set_text_scale(prev);
+            let mut prefs = markdown_linux::preferences::load();
+            prefs.text_scale = prev;
+            markdown_linux::preferences::save(&prefs);
+        }
+    });
+    window.add_action(&zoom_out_act);
+
+    let zoom_reset_act = gio::SimpleAction::new("zoom-reset", None);
+    let weak = Rc::downgrade(&state);
+    zoom_reset_act.connect_activate(move |_, _| {
+        if let Some(state) = weak.upgrade() {
+            let state = state.borrow();
+            let reset = markdown_linux::preferences::reset_scale();
+            state.reader.set_text_scale(reset);
+            let mut prefs = markdown_linux::preferences::load();
+            prefs.text_scale = reset;
+            markdown_linux::preferences::save(&prefs);
+        }
+    });
+    window.add_action(&zoom_reset_act);
+
+    // Event handlers for FindBar controls
+    let weak = Rc::downgrade(&state);
+    find_bar.entry.connect_search_changed(move |_| {
+        if let Some(state) = weak.upgrade() {
+            state.borrow_mut().run_find();
+        }
+    });
+
+    let weak = Rc::downgrade(&state);
+    find_bar.prev_button.connect_clicked(move |_| {
+        if let Some(state) = weak.upgrade() {
+            state.borrow_mut().prev_find_match();
+        }
+    });
+
+    let weak = Rc::downgrade(&state);
+    find_bar.next_button.connect_clicked(move |_| {
+        if let Some(state) = weak.upgrade() {
+            state.borrow_mut().next_find_match();
+        }
+    });
+
+    let weak = Rc::downgrade(&state);
+    find_bar.case_button.connect_toggled(move |_| {
+        if let Some(state) = weak.upgrade() {
+            state.borrow_mut().run_find();
+        }
+    });
+
+    let weak = Rc::downgrade(&state);
+    find_bar.word_button.connect_toggled(move |_| {
+        if let Some(state) = weak.upgrade() {
+            state.borrow_mut().run_find();
+        }
+    });
+
+    let weak = Rc::downgrade(&state);
+    find_bar.close_button.connect_clicked(move |_| {
+        if let Some(state) = weak.upgrade() {
+            state.borrow_mut().dismiss_find();
+        }
+    });
+
+    let weak = Rc::downgrade(&state);
+    find_bar.entry.connect_stop_search(move |_| {
+        if let Some(state) = weak.upgrade() {
+            state.borrow_mut().dismiss_find();
+        }
+    });
+
+    // Key events: Escape to dismiss find bar; Return / Shift+Return to cycle matches
+    let key_controller = gtk::EventControllerKey::new();
+    let weak = Rc::downgrade(&state);
+    key_controller.connect_key_pressed(move |_, keyval, _, _| {
+        if keyval == gtk::gdk::Key::Escape
+            && let Some(state) = weak.upgrade()
+        {
+            let mut state = state.borrow_mut();
+            if state.find_bar.is_revealed() {
+                state.dismiss_find();
+                return glib::Propagation::Stop;
+            }
+        }
+        glib::Propagation::Proceed
+    });
+    window.add_controller(key_controller);
+
+    let entry_key = gtk::EventControllerKey::new();
+    let weak = Rc::downgrade(&state);
+    entry_key.connect_key_pressed(move |_, keyval, _, mods| {
+        if keyval == gtk::gdk::Key::Return || keyval == gtk::gdk::Key::KP_Enter {
+            let is_shift = mods.contains(gtk::gdk::ModifierType::SHIFT_MASK);
+            if let Some(state) = weak.upgrade() {
+                let mut state = state.borrow_mut();
+                if is_shift {
+                    state.prev_find_match();
+                } else {
+                    state.next_find_match();
+                }
+                return glib::Propagation::Stop;
+            }
+        }
+        glib::Propagation::Proceed
+    });
+    find_bar.entry.add_controller(entry_key);
+
     window.connect_close_request(|window| {
         detach(window);
         glib::Propagation::Proceed
@@ -309,4 +669,12 @@ pub fn attached(window: &gtk::ApplicationWindow) -> bool {
 
 pub fn reader(window: &gtk::ApplicationWindow) -> Option<crate::reader::Reader> {
     state(window).map(|s| s.borrow().reader.clone())
+}
+
+pub fn find_bar(window: &gtk::ApplicationWindow) -> Option<crate::find_bar::FindBar> {
+    state(window).map(|s| s.borrow().find_bar.clone())
+}
+
+pub fn text_scale(window: &gtk::ApplicationWindow) -> Option<f64> {
+    state(window).map(|s| s.borrow().reader.text_scale())
 }
