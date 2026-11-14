@@ -38,13 +38,14 @@ recorded; repeated-load RSS remains an open MAC-001G gate. MAC-001C added file
 access and background loading, and MAC-001D renders headings, prose, lists,
 links and code on TextKit 2 with an outline sidebar. The
 [Linux GTK shell](apps/linux/README.md) (LNX-001A) provides native windows,
-commands and a debug/release CI smoke. LNX-001B integrates the model-v2 core;
-LNX-001C adds native file opening, Reload, desktop file delivery and bounded
-background loading with typed access errors. LNX-001D adds virtualized native
-headings, prose, lists, links and code, with outline navigation and basic
-within-fragment text selection. LNX-001D1 must prove document accessibility
-before deeper Linux renderer work. Accessibility and whole-app performance
-still require platform evidence; the core alone
+commands and a debug/release CI smoke. LNX-001B–LNX-001I (including LNX-001D1)
+deliver the full Linux single-document walking skeleton (model-v2 core,
+file access, virtualized GTK 4 reader, AT-SPI accessibility verification,
+tables/task lists/images, find/theme/text scaling, global selection and budgets,
+external refresh/restoration, and local development tarball artifact), closed in
+the [LNX-001 aggregate](docs/Linux-Skeleton-Acceptance.md#lnx-001-aggregate).
+All three desktop walking skeletons (MAC-001, WIN-001, LNX-001) are complete;
+`DESK-001` (cross-desktop skeleton gate) and the D-030 milestone review are next.
 delivers no working reader UI. The closed shared track also reaches the next
 owner-reviewed milestone into `main` (D-030). The accepted
 [implementation baseline](docs/Implementation-Baseline.md) and
