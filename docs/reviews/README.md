@@ -11,6 +11,7 @@ newest first.
 
 | Date | Review | Scope | Baseline |
 | --- | --- | --- | --- |
+| 2026-11-14 | [Desktop skeletons milestone review](2026-11-14-desktop-skeletons-milestone-review.md) | Second milestone (D-030): CORE-001–006, MAC-001, WIN-001, LNX-001, DESK-001, PRs #29 to #70 | `2c40fc2` |
 | 2026-10-29 | [Codex CORE-FIX milestone review](2026-10-29-codex-core-fix-milestone-review.md) | Independent milestone review: earlier Codex findings reconciled, ready for owner merge | `f540318` |
 | 2026-10-29 | [Grok CORE-FIX milestone review](2026-10-29-grok-core-fix-milestone-review.md) | Independent milestone review of review/core-fix: ready for main | `ffc0ba4` |
 | 2026-10-29 | [CORE-FIX milestone review](2026-10-29-core-fix-milestone-review.md) | First milestone (D-030): CORE-FIX, TOOL-002, TOOL-003, PRs #17 to #27 | `ff625e7` |
