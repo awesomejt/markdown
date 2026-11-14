@@ -52,7 +52,7 @@ separate Linux Cargo workspace under the dependency policy and required
 debug/release consumer tests, a 5 MiB host source limit and measured
 encode/copy/RSS costs. LNX-001C closed in PR #51 with native file opening,
 association delivery and generation-safe loading. LNX-001D closed in PR #52
-with native fragments, outline and basic selection; LNX-001D1 closed under D-035 (AT-SPI semantics verified, off-screen Orca continuous reading deferred to ADV-001); LNX-001E closed in PR #64 (tables, task list markers, and folder-contained image resource policy); LNX-001F closed in PR #65 (document find, theme, and text controls); LNX-001G closed in PR #66 with large-document layout, global selection, dual-format clipboard copy, interaction/repeated measurement harness, and AT-SPI accessibility verification; LNX-001H is next on Linux.
+with native fragments, outline and basic selection; LNX-001D1 closed under D-035 (AT-SPI semantics verified, off-screen Orca continuous reading deferred to ADV-001); LNX-001E closed in PR #64 (tables, task list markers, and folder-contained image resource policy); LNX-001F closed in PR #65 (document find, theme, and text controls); LNX-001G closed in PR #66 with large-document layout, global selection, dual-format clipboard copy, interaction/repeated measurement harness, and AT-SPI accessibility verification; LNX-001H closed in PR #67 with external refresh, anchors, reading position restoration, and relaunch checks; LNX-001I is next on Linux.
 WIN-001A closed in PR #53 with the [WinUI 3 C# Native AOT shell](apps/windows/README.md)
 and required `windows-native` CI. WIN-001B closed in PR #54 with the
 [model-v2 core DLL package and C# Native AOT adapter](docs/Windows-Core-Integration.md),
@@ -96,7 +96,7 @@ and explicit reference-syntax boundaries. CORE-006 closed in PR #38 with
 [facade acceptance](docs/Core-Facade-Acceptance.md), the ABI v1 default-change
 history and fresh three-OS all-feature release CI. The desktop chains are
 eligible; MAC-001A to MAC-001I closed in PRs #39 to #47 and the MAC-001 aggregate in PR #48. The macOS
-skeleton milestone review is next on this Mac. LNX-001A through LNX-001D closed in PRs #49 through #52, LNX-001D1 closed under D-035 in PR #63, LNX-001E closed in PR #64, LNX-001F closed in PR #65, and LNX-001G closed in PR #66 (LNX-001H next on Linux); WIN-001A through WIN-001I closed in PRs #53 to #61 and the WIN-001 aggregate in PR #62. The Windows skeleton milestone review is next on this Windows machine. Inspect
+skeleton milestone review is next on this Mac. LNX-001A through LNX-001D closed in PRs #49 through #52, LNX-001D1 closed under D-035 in PR #63, LNX-001E closed in PR #64, LNX-001F closed in PR #65, LNX-001G closed in PR #66, and LNX-001H closed in PR #67 (LNX-001I next on Linux); WIN-001A through WIN-001I closed in PRs #53 to #61 and the WIN-001 aggregate in PR #62. The Windows skeleton milestone review is next on this Windows machine. Inspect
 state and `HANDOFF.md` before any pass. Scoped commits, pushes, PR updates and
 review requests are authorized; a Grok review with no serious finding approves
 a merge into `develop` (D-029); only the owner merges into `main` (D-030);

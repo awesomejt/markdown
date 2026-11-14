@@ -5,6 +5,7 @@ pub mod files;
 pub mod find_bar;
 mod measure;
 pub mod reader;
+mod relaunch;
 mod smoke;
 
 use gtk::prelude::*;
@@ -62,6 +63,18 @@ fn main() -> glib::ExitCode {
             }
         };
     }
+    if let Some(arg) = std::env::args_os().nth(1)
+        && arg == "--relaunch-check"
+    {
+        let args: Vec<String> = std::env::args().skip(2).collect();
+        return match relaunch::run(&args) {
+            Ok(()) => glib::ExitCode::SUCCESS,
+            Err(e) => {
+                eprintln!("relaunch-check error: {e}");
+                glib::ExitCode::FAILURE
+            }
+        };
+    }
     let smoke = smoke::Mode::from_args(std::env::args_os().skip(1));
     // Shell smokes are independent; the isolated association smoke must exercise
     // real single-instance forwarding on the private bus provided by its helper.
@@ -85,7 +98,18 @@ fn main() -> glib::ExitCode {
             files::detach(window);
         }
     });
+    let initial_activate = std::cell::Cell::new(true);
     app.connect_activate(move |app| {
+        if initial_activate.replace(false) && smoke.is_none() {
+            let restored = markdown_linux::restoration::load();
+            if !restored.is_empty() {
+                for st in &restored {
+                    let win = new_window(app);
+                    files::open_restored_state(&win, st);
+                }
+                return;
+            }
+        }
         // A second launch activates the primary instance, which opens another window.
         new_window(app);
         if let Some(mode) = smoke.filter(|mode| !matches!(mode, smoke::Mode::Association)) {
@@ -144,7 +168,7 @@ pub fn apply_theme(theme: markdown_linux::preferences::ThemePreference) {
     }
 }
 
-fn install_commands(app: &gtk::Application) {
+pub(crate) fn install_commands(app: &gtk::Application) {
     let prefs = markdown_linux::preferences::load();
     apply_theme(prefs.theme);
 

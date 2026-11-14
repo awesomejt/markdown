@@ -10,6 +10,7 @@ use std::{
     collections::HashMap,
     rc::Rc,
     sync::Arc,
+    time::{Duration, Instant},
 };
 
 type Binding = Rc<Cell<Option<(u64, u32)>>>;
@@ -41,6 +42,7 @@ struct State {
     text_scale: f64,
     scale_provider: gtk::CssProvider,
     class_name: String,
+    last_scrolled_fragment: Option<(u32, Instant)>,
 }
 
 impl Drop for State {
@@ -131,6 +133,7 @@ impl Reader {
             text_scale: 1.0,
             scale_provider,
             class_name,
+            last_scrolled_fragment: None,
         }));
         let weak = Rc::downgrade(&state);
         factory.connect_setup(move |_, item| {
@@ -226,13 +229,19 @@ impl Reader {
                 return;
             };
             let mut state = state.borrow_mut();
+            let index = item.position();
+            if state
+                .last_scrolled_fragment
+                .is_some_and(|(target, _)| (index as isize - target as isize).abs() <= 1)
+            {
+                state.last_scrolled_fragment = None;
+            }
             let Some(row_state) = state.rows.get(&(item.as_ptr() as usize)) else {
                 return;
             };
             let Some(plan) = state.plan.clone() else {
                 return;
             };
-            let index = item.position();
             let Some(fragment) = plan.fragments.get(index as usize) else {
                 return;
             };
@@ -443,11 +452,10 @@ impl Reader {
         let weak = Rc::downgrade(&state);
         outline.connect_activate(move |_, index| {
             let jump = weak.upgrade().and_then(|state| {
-                let state = state.borrow();
-                Some((
-                    state.view.clone(),
-                    state.plan.as_ref()?.outline.get(index as usize)?.fragment,
-                ))
+                let mut state = state.borrow_mut();
+                let frag = state.plan.as_ref()?.outline.get(index as usize)?.fragment;
+                state.last_scrolled_fragment = Some((frag, Instant::now()));
+                Some((state.view.clone(), frag))
             });
             if let Some((view, index)) = jump {
                 view.scroll_to(index, gtk::ListScrollFlags::FOCUS, None);
@@ -785,8 +793,12 @@ impl Reader {
     }
 
     pub fn scroll_to_fragment(&self, fragment_index: usize) {
+        {
+            let mut state = self.state.borrow_mut();
+            state.last_scrolled_fragment = Some((fragment_index as u32, Instant::now()));
+        }
         let view = self.state.borrow().view.clone();
-        view.scroll_to(fragment_index as u32, gtk::ListScrollFlags::FOCUS, None);
+        view.scroll_to(fragment_index as u32, gtk::ListScrollFlags::NONE, None);
     }
 
     pub fn step_selection(&self, delta: isize) {
@@ -815,6 +827,80 @@ impl Reader {
 
     pub fn activate_outline(&self, index: u32) {
         self.outline.emit_by_name::<()>("activate", &[&index]);
+    }
+
+    pub fn is_outline_visible(&self) -> bool {
+        self.widget.start_child().is_some_and(|w| w.is_visible())
+    }
+
+    pub fn set_outline_visible(&self, visible: bool) {
+        if let Some(w) = self.widget.start_child() {
+            w.set_visible(visible);
+        }
+    }
+
+    pub fn save_position(
+        &self,
+        document: &markdown_linux_core::CoreDocument,
+    ) -> Option<markdown_linux::restoration::SavedPosition> {
+        let plan = self.plan()?;
+        if plan.fragments.is_empty() {
+            return None;
+        }
+        let top_frag = self.first_visible_fragment().unwrap_or(0) as usize;
+        let top_offset = plan.source_offset_at(DocumentPosition::new(top_frag, 0), document);
+        let top_anchor = document.anchor_at(top_offset).ok()?;
+
+        if let Some(sel) = self.selection()
+            && !sel.is_empty()
+        {
+            let start_offset = plan.source_offset_at(sel.start(), document);
+            let end_offset = plan.source_offset_at(sel.end(), document);
+            let start_anchor = document.anchor_at(start_offset).ok()?;
+            let end_anchor = document.anchor_at(end_offset).ok()?;
+            return Some(markdown_linux::restoration::SavedPosition {
+                top: top_anchor,
+                selection_start: start_anchor,
+                selection_end: Some(end_anchor),
+            });
+        }
+
+        Some(markdown_linux::restoration::SavedPosition {
+            top: top_anchor.clone(),
+            selection_start: top_anchor,
+            selection_end: None,
+        })
+    }
+
+    pub fn restore_position(
+        &self,
+        saved: &markdown_linux::restoration::SavedPosition,
+        document: &markdown_linux_core::CoreDocument,
+    ) {
+        let Some(plan) = self.plan() else { return };
+        if plan.fragments.is_empty() {
+            return;
+        }
+
+        if let Ok(Some(top_res)) = document.resolve_anchor(&saved.top) {
+            let top_pos = plan.position_at_source_offset(top_res.source_offset, document);
+            self.scroll_to_fragment(top_pos.fragment_index);
+        }
+
+        if let Some(ref end_anchor) = saved.selection_end {
+            if let (Ok(Some(start_res)), Ok(Some(end_res))) = (
+                document.resolve_anchor(&saved.selection_start),
+                document.resolve_anchor(end_anchor),
+            ) {
+                let start_pos = plan.position_at_source_offset(start_res.source_offset, document);
+                let end_pos = plan.position_at_source_offset(end_res.source_offset, document);
+                self.set_selection(Some(DocumentSelection::new(start_pos, end_pos)));
+            } else {
+                self.clear_selection();
+            }
+        } else {
+            self.clear_selection();
+        }
     }
 
     pub fn activate_fragment_link(&self) -> bool {
@@ -1003,9 +1089,42 @@ impl State {
     }
 
     pub fn first_visible_fragment(&self) -> Option<u32> {
-        let mut observed = self.observed();
-        observed.sort_by_key(|(idx, _)| *idx);
-        observed.first().map(|(idx, _)| *idx)
+        let observed = self.observed();
+        if let Some((target, instant)) = self.last_scrolled_fragment
+            && instant.elapsed() < Duration::from_millis(1500)
+        {
+            let bound_near_target = observed
+                .iter()
+                .any(|(idx, _)| (*idx as isize - target as isize).abs() <= 1);
+            if !bound_near_target {
+                return Some(target);
+            }
+        }
+        if let Some(scrolled) = self.scrolled.upgrade() {
+            let mut in_view: Vec<(u32, f32)> = observed
+                .iter()
+                .filter_map(|(idx, label)| {
+                    let bounds = label.compute_bounds(&scrolled)?;
+                    if bounds.height() > 0.0 && bounds.y() + bounds.height() > 0.0 {
+                        Some((*idx, bounds.y()))
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+            if !in_view.is_empty() {
+                in_view.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
+                return in_view.first().map(|(idx, _)| *idx);
+            }
+        }
+        if let Some((target, instant)) = self.last_scrolled_fragment
+            && instant.elapsed() < Duration::from_millis(1500)
+        {
+            return Some(target);
+        }
+        let mut fallback = observed;
+        fallback.sort_by_key(|(idx, _)| *idx);
+        fallback.first().map(|(idx, _)| *idx)
     }
 
     pub fn default_anchor(&self) -> DocumentPosition {

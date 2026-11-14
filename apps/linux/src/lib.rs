@@ -2,3 +2,4 @@
 pub mod document;
 pub mod preferences;
 pub mod render;
+pub mod restoration;

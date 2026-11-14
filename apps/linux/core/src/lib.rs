@@ -10,6 +10,7 @@ pub mod ffi;
 pub mod find;
 pub mod runtime;
 pub mod session;
+pub mod snapshot;
 
 pub use document::CoreDocument;
 pub use find::{CoreFindMatch, CoreFindOptions, CoreFindResult, CoreFindSegment, FindGate};
@@ -18,6 +19,7 @@ pub use runtime::{
     pending_parses, validate,
 };
 pub use session::{
-    CoreAvailability, CoreOutcome, CoreParseFailure, CoreResult, CoreSession, CoreTimings,
-    CoreUnavailability, ParseRequest,
+    CoreAvailability, CoreChangeDisposition, CoreOutcome, CoreParseFailure, CoreResult,
+    CoreSession, CoreTimings, CoreUnavailability, ParseRequest,
 };
+pub use snapshot::{AnchorQuality, CoreAnchorResolution, CoreSnapshot};

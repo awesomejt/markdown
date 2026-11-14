@@ -7,6 +7,7 @@ use gtk::{gio, glib};
 use markdown_linux::document::{DocumentCapability, DocumentError, DocumentLoader, LoadEvent};
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::path::Path;
 use std::rc::{Rc, Weak};
 use std::sync::Arc;
 use std::time::Duration;
@@ -23,6 +24,8 @@ struct WindowDocument {
     chooser: Option<gtk::FileChooserNative>,
     reload: gio::SimpleAction,
     poll_source: Option<glib::SourceId>,
+    watcher: Option<Rc<markdown_linux::document::DocumentWatcher>>,
+    saved_position: Option<markdown_linux::restoration::SavedPosition>,
     weak_self: Weak<RefCell<WindowDocument>>,
 }
 thread_local! { static WINDOWS: RefCell<HashMap<usize, Rc<RefCell<WindowDocument>>>> = RefCell::new(HashMap::new()); }
@@ -60,8 +63,45 @@ impl WindowDocument {
         self.find_bar.next_button.set_sensitive(false);
 
         self.reload.set_enabled(self.loader.has_file());
+        if let Some(doc) = &self.loader.document {
+            self.saved_position = self.reader.save_position(doc);
+        }
         self.reader.clear();
         self.status("Loading document…");
+        self.start_poll();
+
+        if let Some(window) = self.window.upgrade() {
+            window.set_title(Some(&format!(
+                "{} — Markdown",
+                self.loader.display_name().unwrap_or_default()
+            )));
+        }
+    }
+    fn refresh_external(&mut self) {
+        if let Some(doc) = &self.loader.document {
+            self.saved_position = self.reader.save_position(doc);
+        }
+        self.loader.refresh_external();
+        self.start_poll();
+    }
+    fn arm_watcher(&mut self) {
+        let Some(cap) = self.loader.capability() else {
+            self.watcher = None;
+            return;
+        };
+        let weak = self.weak_self.clone();
+        let watcher = markdown_linux::document::DocumentWatcher::new(cap.path(), move || {
+            let weak = weak.clone();
+            glib::idle_add_local(move || {
+                if let Some(state) = weak.upgrade() {
+                    state.borrow_mut().refresh_external();
+                }
+                glib::ControlFlow::Break
+            });
+        });
+        self.watcher = Some(watcher);
+    }
+    fn start_poll(&mut self) {
         if self.poll_source.is_none() {
             let weak = self.weak_self.clone();
             self.poll_source = Some(glib::timeout_add_local(
@@ -70,49 +110,60 @@ impl WindowDocument {
                     let Some(state) = weak.upgrade() else {
                         return glib::ControlFlow::Break;
                     };
-                    let mut state = state.borrow_mut();
-                    let Some(event) = state.loader.poll() else {
+                    let mut state_ref = state.borrow_mut();
+                    let Some(event) = state_ref.loader.poll() else {
                         return glib::ControlFlow::Continue;
                     };
-                    state.poll_source.take();
-                    match event {
+                    state_ref.poll_source.take();
+                    let should_save = match event {
                         LoadEvent::Loaded {
                             document,
                             plan,
                             unchanged,
                             ..
                         } => {
-                            state.reader.install_document(plan, Some(document.clone()));
-                            state.status(&format!(
+                            if !unchanged {
+                                state_ref
+                                    .reader
+                                    .install_document(plan, Some(document.clone()));
+                                if let Some(saved) = state_ref.saved_position.take() {
+                                    state_ref.reader.restore_position(&saved, &document);
+                                }
+                                state_ref.arm_watcher();
+                            }
+                            state_ref.status(&format!(
                                 "Document loaded · {} bytes · {} headings{}",
                                 document.source.len(),
                                 document.outline.len(),
                                 if unchanged { " (unchanged)" } else { "" }
                             ));
-                            if let Some(label) = state.label.upgrade() {
+                            if let Some(label) = state_ref.label.upgrade() {
                                 label.set_visible(false);
                             }
-                            if state.find_bar.is_revealed()
-                                && !state.find_bar.entry.text().is_empty()
+                            if state_ref.find_bar.is_revealed()
+                                && !state_ref.find_bar.entry.text().is_empty()
                             {
-                                state.run_find();
+                                state_ref.run_find();
                             }
+                            !unchanged
                         }
                         LoadEvent::Failed(error) => {
-                            state.reader.clear();
-                            state.status(&error.to_string());
+                            if state_ref.loader.document.is_some() {
+                                state_ref.status(&format!("{error} · Retaining last version"));
+                            } else {
+                                state_ref.reader.clear();
+                                state_ref.status(&error.to_string());
+                            }
+                            false
                         }
+                    };
+                    drop(state_ref);
+                    if should_save {
+                        save_all_restoration();
                     }
                     glib::ControlFlow::Break
                 },
             ));
-        }
-
-        if let Some(window) = self.window.upgrade() {
-            window.set_title(Some(&format!(
-                "{} — Markdown",
-                self.loader.display_name().unwrap_or_default()
-            )));
         }
     }
     fn run_find(&mut self) {
@@ -251,8 +302,17 @@ impl WindowDocument {
             .status_label
             .set_text(&matches.status(Some(prev)));
     }
-    fn open(&mut self, file: &gio::File) {
+    fn open_internal(
+        &mut self,
+        file: &gio::File,
+        restore: Option<markdown_linux::restoration::SavedPosition>,
+    ) {
+        if let Some(watcher) = self.watcher.take() {
+            watcher.cancel();
+        }
+        self.saved_position = restore;
         let Some(path) = file.path() else {
+            self.saved_position = None;
             self.reader.clear();
             self.loader.reject_selection();
             self.stop_polling();
@@ -263,10 +323,14 @@ impl WindowDocument {
         match self.loader.open(DocumentCapability::from_local_file(path)) {
             Ok(()) => self.loading(),
             Err(error) => {
+                self.saved_position = None;
                 self.reload.set_enabled(self.loader.has_file());
                 self.status(&error.to_string());
             }
         }
+    }
+    fn open(&mut self, file: &gio::File) {
+        self.open_internal(file, None);
     }
     fn stop_polling(&mut self) {
         if let Some(source) = self.poll_source.take() {
@@ -280,6 +344,9 @@ impl WindowDocument {
         }
         if let Some(chooser) = self.chooser.take() {
             chooser.destroy();
+        }
+        if let Some(watcher) = self.watcher.take() {
+            watcher.cancel();
         }
         self.reader.clear();
         self.loader.close();
@@ -319,6 +386,8 @@ pub fn attach(window: &gtk::ApplicationWindow, label: &gtk::Label) {
             chooser: None,
             reload: reload.clone(),
             poll_source: None,
+            watcher: None,
+            saved_position: None,
             weak_self: weak.clone(),
         })
     });
@@ -551,15 +620,68 @@ pub fn attach(window: &gtk::ApplicationWindow, label: &gtk::Label) {
     });
     window.connect_destroy(detach);
 }
-pub fn detach(window: &gtk::ApplicationWindow) {
-    if let Some(state) = WINDOWS.with(|all| all.borrow_mut().remove(&key(window))) {
-        state.borrow_mut().close();
+pub fn save_all_restoration() {
+    let mut states = Vec::new();
+    WINDOWS.with(|all| {
+        for doc_rc in all.borrow().values() {
+            if let Ok(doc) = doc_rc.try_borrow()
+                && let Some(cap) = doc.loader.capability()
+                && let Some(core_doc) = &doc.loader.document
+            {
+                let path_str = cap.path().to_string_lossy().to_string();
+                let saved = doc.reader.save_position(core_doc);
+                let state =
+                    markdown_linux::restoration::WindowRestorationState::from_saved_position(
+                        path_str,
+                        saved.as_ref(),
+                        doc.reader.text_scale(),
+                        doc.reader.is_outline_visible(),
+                    );
+                states.push(state);
+            }
+        }
+    });
+    if !states.is_empty() {
+        markdown_linux::restoration::save(&states);
     }
 }
+
+pub fn detach(window: &gtk::ApplicationWindow) {
+    let k = key(window);
+    let count = WINDOWS.with(|all| all.borrow().len());
+    if count == 1 {
+        // Last window closing: save its position right before close so it is restored on relaunch.
+        save_all_restoration();
+    }
+    WINDOWS.with(|all| {
+        if let Some(state) = all.borrow_mut().remove(&k) {
+            state.borrow_mut().close();
+        }
+    });
+    if count > 1 {
+        save_all_restoration();
+    }
+}
+
 pub fn shutdown() {
+    save_all_restoration();
     let states = WINDOWS.with(|all| std::mem::take(&mut *all.borrow_mut()));
     for state in states.into_values() {
         state.borrow_mut().close();
+    }
+}
+
+pub fn open_restored_state(
+    window: &gtk::ApplicationWindow,
+    rest: &markdown_linux::restoration::WindowRestorationState,
+) {
+    if let Some(state_rc) = state(window) {
+        let mut st = state_rc.borrow_mut();
+        st.reader.set_text_scale(rest.text_scale);
+        st.reader.set_outline_visible(rest.outline_shown);
+        let file = gio::File::for_path(Path::new(&rest.file_path));
+        let pos = rest.to_saved_position();
+        st.open_internal(&file, pos);
     }
 }
 pub fn choose(app: &gtk::Application) {

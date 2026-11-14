@@ -674,3 +674,94 @@ fn find_over_current_snapshot() {
         .unwrap_err();
     assert_eq!(err, CoreError::Closed);
 }
+
+#[test]
+fn anchors_and_external_changes() {
+    let _isolated = isolated();
+    let session = CoreSession::new("anchors").unwrap();
+    let old_text = "# One\n\nFirst paragraph.\n\n## Two\n\nSecond paragraph.\n";
+    let old_bytes = old_text.as_bytes().to_vec();
+    let first = session
+        .parse_blocking(old_bytes.clone(), Some(b"a"), true)
+        .unwrap();
+    let first_doc = first.document.unwrap();
+
+    assert_eq!(
+        session.external_change(Some("a")).unwrap(),
+        markdown_linux_core::CoreChangeDisposition::Unchanged
+    );
+    assert_eq!(
+        session.external_change(Some("b")).unwrap(),
+        markdown_linux_core::CoreChangeDisposition::ReadRequired
+    );
+    assert_eq!(
+        session.external_change(None).unwrap(),
+        markdown_linux_core::CoreChangeDisposition::ReadRequired
+    );
+
+    let offset = (old_bytes.len() - "Second paragraph.\n".len() + 7) as u64;
+    let anchor = first_doc.anchor_at(offset).unwrap();
+    assert!(!anchor.is_empty() && anchor.len() <= 1024);
+
+    let first_res = first_doc.resolve_anchor(&anchor).unwrap();
+    assert!(first_res.is_some());
+    assert_eq!(first_res.unwrap().source_offset, offset);
+
+    let new_text = "# One\n\nInserted.\n\nFirst paragraph.\n\n## Two\n\nSecond paragraph.\n";
+    let new_bytes = new_text.as_bytes().to_vec();
+    let second = session
+        .parse_blocking(new_bytes.clone(), Some(b"b"), true)
+        .unwrap();
+    let second_doc = second.document.unwrap();
+
+    let moved = second_doc.resolve_anchor(&anchor).unwrap().unwrap();
+    assert_eq!(moved.quality, markdown_linux_core::AnchorQuality::Exact);
+    let inserted_bytes = "Inserted.\n\n".len() as u64;
+    assert_eq!(moved.source_offset, offset + inserted_bytes);
+
+    let old_check = first_doc.resolve_anchor(&anchor).unwrap().unwrap();
+    assert_eq!(old_check.source_offset, offset);
+
+    let unchanged = session
+        .parse_blocking(new_bytes.clone(), Some(b"c"), false)
+        .unwrap();
+    assert_eq!(unchanged.outcome, CoreOutcome::Unchanged);
+    assert!(unchanged.document.is_none());
+    assert_eq!(
+        session.external_change(Some("c")).unwrap(),
+        markdown_linux_core::CoreChangeDisposition::Unchanged
+    );
+
+    assert!(second_doc.resolve_anchor(b"{}").is_err());
+    assert!(second_doc.resolve_anchor(&vec![0u8; 2048]).is_err());
+
+    let empty = session
+        .parse_blocking(Vec::new(), Some(b"d"), true)
+        .unwrap();
+    let empty_doc = empty.document.unwrap();
+    assert!(empty_doc.resolve_anchor(&anchor).unwrap().is_none());
+    assert_eq!(empty_doc.anchor_at(0).unwrap_err(), CoreError::NoBlocks);
+    session.close().unwrap();
+}
+
+#[test]
+fn documents_release_their_snapshots() {
+    let _isolated = isolated();
+    {
+        let session = CoreSession::new("release").unwrap();
+        let res = session
+            .parse_blocking(b"# Kept\n".to_vec(), None, true)
+            .unwrap();
+        let doc = res.document.unwrap();
+        session.close().unwrap();
+        drain_worker();
+        let handles = live_handles().unwrap();
+        assert_eq!(handles.sessions, 0);
+        assert_eq!(handles.snapshots, 1);
+        drop(doc);
+    }
+    drain_worker();
+    let final_handles = live_handles().unwrap();
+    assert_eq!(final_handles.sessions, 0);
+    assert_eq!(final_handles.snapshots, 0);
+}

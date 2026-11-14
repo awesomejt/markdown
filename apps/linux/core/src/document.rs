@@ -31,6 +31,8 @@ pub struct CoreDocument {
     pub title: Option<String>,
     /// Bytes copied from the view: the source and every table.
     pub copied_bytes: u64,
+    /// Live core snapshot handle, kept for creating and resolving anchors.
+    pub snapshot: Option<std::sync::Arc<crate::snapshot::CoreSnapshot>>,
 }
 
 /// A view array: `count` records at `pointer`, which may be null only when empty.
@@ -120,6 +122,7 @@ impl CoreDocument {
             title,
             strings,
             copied_bytes: bytes,
+            snapshot: None,
         };
         document.check_indices()?;
         Ok(document)
@@ -186,5 +189,23 @@ impl CoreDocument {
     /// A string-table entry, checked for range and UTF-8.
     pub fn text(&self, range: md_str) -> Result<&str, CoreError> {
         decode(&self.strings, range)
+    }
+
+    pub fn anchor_at(&self, source_offset: u64) -> Result<Vec<u8>, CoreError> {
+        let snapshot = self.snapshot.as_ref().ok_or(CoreError::InvalidSnapshot)?;
+        snapshot.anchor_at(source_offset)
+    }
+
+    pub fn anchor_for_node(&self, node: u32, offset: u64) -> Result<Vec<u8>, CoreError> {
+        let snapshot = self.snapshot.as_ref().ok_or(CoreError::InvalidSnapshot)?;
+        snapshot.anchor_for_node(node, offset)
+    }
+
+    pub fn resolve_anchor(
+        &self,
+        anchor: &[u8],
+    ) -> Result<Option<crate::snapshot::CoreAnchorResolution>, CoreError> {
+        let snapshot = self.snapshot.as_ref().ok_or(CoreError::InvalidSnapshot)?;
+        snapshot.resolve_anchor(anchor)
     }
 }

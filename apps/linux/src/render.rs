@@ -1312,4 +1312,144 @@ impl RenderPlan {
         };
         if e > s { Some((s, e)) } else { None }
     }
+
+    pub fn source_offset_at(&self, pos: DocumentPosition, doc: &CoreDocument) -> u64 {
+        if doc.source.is_empty() || self.fragments.is_empty() {
+            return 0;
+        }
+
+        let f_idx = pos
+            .fragment_index
+            .min(self.fragments.len().saturating_sub(1));
+        let frag = &self.fragments[f_idx];
+        let c_offset = pos.char_offset.min(frag.text().chars().count());
+
+        let mut char_pos = 0;
+        let mut matched_run: Option<&Run> = None;
+        let mut run_start_char = 0;
+
+        for run in &frag.runs {
+            let run_len = run.text.chars().count();
+            let run_end = char_pos + run_len;
+            if c_offset >= char_pos
+                && (c_offset < run_end
+                    || (c_offset == run_end && run_end == frag.text().chars().count()))
+            {
+                matched_run = Some(run);
+                run_start_char = char_pos;
+                break;
+            }
+            char_pos = run_end;
+        }
+
+        if let Some(run) = matched_run
+            && let Some(node_id) = run.node_id
+            && let Some(node) = doc.nodes.get(node_id as usize)
+            && node.span_start <= node.span_end
+            && (node.span_end as usize) <= doc.source.len()
+        {
+            if run.atomic {
+                return node.span_start as u64;
+            }
+            let local_char = c_offset.saturating_sub(run_start_char);
+            let node_char = run.node_char_offset + local_char;
+            let node_bytes = &doc.source[node.span_start as usize..node.span_end as usize];
+            let byte_offset = char_offset_to_utf8_byte_offset(node_bytes, node_char);
+            return ((node.span_start as usize) + byte_offset).min(doc.source.len()) as u64;
+        }
+
+        // Backward fallback
+        for f in (0..=f_idx).rev() {
+            for r in &self.fragments[f].runs {
+                if let Some(node_id) = r.node_id
+                    && let Some(node) = doc.nodes.get(node_id as usize)
+                {
+                    return node.span_start as u64;
+                }
+            }
+        }
+
+        // Forward fallback
+        for f in (f_idx + 1)..self.fragments.len() {
+            for r in &self.fragments[f].runs {
+                if let Some(node_id) = r.node_id
+                    && let Some(node) = doc.nodes.get(node_id as usize)
+                {
+                    return node.span_start as u64;
+                }
+            }
+        }
+
+        0
+    }
+
+    pub fn position_at_source_offset(
+        &self,
+        source_offset: u64,
+        doc: &CoreDocument,
+    ) -> DocumentPosition {
+        if self.fragments.is_empty() {
+            return DocumentPosition::default();
+        }
+
+        let mut nearest_after: Option<(usize, usize)> = None;
+        let mut nearest_after_offset = u64::MAX;
+
+        for (f_idx, frag) in self.fragments.iter().enumerate() {
+            let mut char_pos = 0;
+            for run in &frag.runs {
+                let run_start = char_pos;
+                let run_len = run.text.chars().count();
+                char_pos += run_len;
+
+                let Some(node_id) = run.node_id else { continue };
+                let Some(node) = doc.nodes.get(node_id as usize) else {
+                    continue;
+                };
+
+                if (source_offset as u32) >= node.span_start
+                    && (source_offset as u32) < node.span_end
+                {
+                    if run.atomic {
+                        return DocumentPosition::new(f_idx, run_start);
+                    }
+                    let byte_in_node = ((source_offset as u32) - node.span_start) as usize;
+                    let node_bytes = &doc.source[node.span_start as usize..node.span_end as usize];
+                    let node_str = std::str::from_utf8(node_bytes).unwrap_or("");
+                    let char_in_node = byte_offset_to_char_offset(node_str, byte_in_node);
+                    if char_in_node >= run.node_char_offset
+                        && char_in_node <= run.node_char_offset + run_len
+                    {
+                        let local_char = (char_in_node - run.node_char_offset).min(run_len);
+                        return DocumentPosition::new(f_idx, run_start + local_char);
+                    }
+                } else if (node.span_start as u64) >= source_offset
+                    && (node.span_start as u64) < nearest_after_offset
+                {
+                    nearest_after_offset = node.span_start as u64;
+                    nearest_after = Some((f_idx, run_start));
+                }
+            }
+        }
+
+        if let Some((f_idx, c_offset)) = nearest_after {
+            return DocumentPosition::new(f_idx, c_offset);
+        }
+
+        // Fallback to end
+        let last_f = self.fragments.len().saturating_sub(1);
+        let last_c = self.fragments[last_f].text().chars().count();
+        DocumentPosition::new(last_f, last_c)
+    }
+}
+
+fn char_offset_to_utf8_byte_offset(bytes: &[u8], char_offset: usize) -> usize {
+    if let Ok(s) = std::str::from_utf8(bytes) {
+        s.char_indices()
+            .nth(char_offset)
+            .map(|(b, _)| b)
+            .unwrap_or(bytes.len())
+    } else {
+        char_offset.min(bytes.len())
+    }
 }
