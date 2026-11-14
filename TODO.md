@@ -601,12 +601,20 @@ Measured budgets that merged skeleton tasks left open for the owner, from
 [the DESK-001 gate](docs/Desktop-Skeleton-Gate.md).
 They stay open until fixed or explicitly accepted; none is waived.
 
-- **5 MiB prose warm launch and refresh (D-016, 400 ms):** all three hosts
-  exceed 400 ms on the 5 MiB stress fixture (macOS 547 ms first text / 1,155 ms
-  whole doc / 1,050 ms refresh; Windows 993.20 ms pipeline / 996.00 ms refresh;
-  Linux 578.36 ms pipeline / 582.07 ms refresh). Prose 1 MiB passes on Windows
-  (170.19 ms) and Linux (89.86 ms) and had 1/5 macOS runs at 404 ms (median
-  355 ms first text).
+- **5 MiB prose warm launch (macOS) and pipeline/refresh (all three hosts; D-016, 400 ms):**
+  all three hosts exceed 400 ms on the 5 MiB stress fixture: macOS warm launch
+  takes 533–573 ms to first text (median 547 ms; about 255 ms is AppKit start-up
+  and about 215 ms the core read and parse, so meeting 400 ms needs a faster or
+  incremental core parse, or an owner revision of the target), 1,155 ms whole doc,
+  and 1,050 ms refresh; Windows in-process `read/parse/plan` pipeline takes
+  993.20 ms (refresh 996.00 ms); Linux in-process `read/parse/plan` pipeline takes
+  578.36 ms (refresh 582.07 ms). On `prose-1mib`, the in-process pipeline is
+  170.19 ms on Windows and 89.86 ms on Linux, while macOS Launch Services warm
+  launch had one of five runs at 404 ms (median 355 ms first text).
+- **Windows and Linux warm launch to presented frame (D-012/D-016, 400 ms):**
+  unmeasured end-to-end (`measure.py` currently measures the in-process
+  `read/parse/plan` pipeline on Windows and Linux, not process launch to first
+  presented frame).
 - **Cold launches across all three hosts (D-012/D-016, 700 ms):** unmeasured on
   macOS (`measure.py launch --cold`), Windows, and Linux.
 - **Mixed-scale displays and display pacing (CAP-14):** unmeasured on macOS,

@@ -52,15 +52,15 @@ Measurements below are taken from each host's Release acceptance evidence (`apps
    - **CAP-06 (Network shares):** Network-folder watching and remote URIs remain deferred/rejected across all three hosts.
    - **CAP-14 (Mixed-DPI / display pacing):** Multi-display mixed scaling and frame pacing remain unmeasured on all three hosts.
    - **CAP-28 / CAP-29 / CAP-30 (Packaging & signing):** Unsigned local development artifacts are verified only on their build hosts (plus `ubuntu-24.04` CI for Linux); store/distro packaging (`002F`) and signing/notarization require separate owner authorization.
-   - **Open native budgets:** Reconciled in [TODO.md](../TODO.md#open-native-budgets) to track 5 MiB warm launch/refresh (> 400 ms on all three hosts), unmeasured cold launches (≤ 700 ms target) on all three hosts, macOS VoiceOver first 5 MiB line query (3.6 s, ~1 GiB), macOS 5 MiB refresh footprint (887–1,043 MiB), and Linux end-to-end GTK frame-clock jump timing.
+   - **Open native budgets:** Reconciled in [TODO.md](../TODO.md#open-native-budgets) to track 5 MiB prose warm launch (macOS) and 5 MiB pipeline/refresh (> 400 ms on all three hosts), unmeasured Windows/Linux warm launch to presented frame, unmeasured cold launches (≤ 700 ms target) on all three hosts, macOS VoiceOver first 5 MiB line query (3.6 s, ~1 GiB), macOS 5 MiB refresh footprint (887–1,043 MiB), and Linux end-to-end GTK frame-clock jump timing.
 
 ## MVP deepening order and materialized tasks
 
 Per [Implementation-Plan.md](Implementation-Plan.md#desktop-mvp-after-desk-001) and [Delivery-Workflow.md](Delivery-Workflow.md#work-in-batches-on-the-current-host), each platform's `002` MVP chain is independent after `DESK-001`, and `HARD-001` (shared release hardening: fuzzing, sanitizers, dependency advisory scan) runs in parallel before `DESK-002`.
 
 - **Per-host phase sequence:**
-  - `002A` (Folder capability/access recovery and recents) → `002B` (Native workspace browser and navigation) → `002C` (Workspace search UI) → `002E` (Workspace watching/restoration and performance) → `002F` (Development packaging and complete R1 conformance) → `002` aggregate.
-  - `002A` → `002D` (Persistent preferences/native settings) → `002E` runs in parallel with `002B`–`002C`.
+  - `002A` (Folder capability/access recovery and recents) → `002B` (Native workspace browser and navigation) → `002C` (Workspace search UI).
+  - `002D` (Persistent preferences/native settings) runs after `002A` in parallel with `002B`–`002C`; `002E` (Workspace watching/restoration and performance) waits for both `002C` and `002D`, then `002F` (Development packaging and complete R1 conformance) → `002` aggregate.
 - **Deepening order:** Retain the D-018 baseline preference (`macOS`, `Linux`, `Windows` when choosing between hosts), while allowing the active host to batch its ready `002A`–`002F` phases without waiting on another OS's counterpart (`Delivery-Workflow.md`).
 - **Materialized in `project.yaml`:** `MAC-002A`–`MAC-002F`, `WIN-002A`–`WIN-002F`, and `LNX-002A`–`LNX-002F` (18 tasks), wired into `MAC-002`, `WIN-002`, and `LNX-002` aggregates and `DESK-002`.
 
