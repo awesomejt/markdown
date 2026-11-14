@@ -1,8 +1,7 @@
 # Linux skeleton acceptance
 
 LNX-001I completes the Linux walking skeleton: LNX-001A to LNX-001I (including
-LNX-001D1), delivered into `develop` through PRs #49 to #52 and #63 to #67 plus
-the LNX-001I PR. This page checks the
+LNX-001D1), delivered into `develop` through PRs #49 to #52 and #63 to #68. This page checks the
 [Phase 3 slice](Implementation-Plan.md#phase-3--desktop-walking-skeletons)
 and the [LNX-001 milestone](../TODO.md) on this host, and lists what stays
 open. Per-task details, commands and measurements are in the

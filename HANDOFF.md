@@ -1,19 +1,18 @@
 # Agent Session and Platform Handoff
 
-Updated: 2026-11-13 (America/Denver), LNX-001I completed under D-029 (PR #68 closed out and merged into `develop`).
-Active task: Next execution task `LNX-001` (`a5d4fd1b-fccb-418f-bdd4-41a1f3cc346a`) Linux single-document skeleton aggregate, or Windows/macOS walking skeleton milestone review under D-030.
-Pass `e0f0ed57-ce5a-4d9c-9730-1b9d4127722c` completed, approved PR #68 merged into `develop`.
-`apps/linux/` delivers LNX-001I:
+Updated: 2026-11-13 (America/Denver), LNX-001 completed under D-029 (PR #69 closed out and merged into `develop`).
+Active task: Next execution task `DESK-001` (`bbdf88c3-f928-473f-934a-a58df74b9890`) Pass cross-desktop skeleton gate, and D-030 milestone review boundary (all three desktop walking skeletons `MAC-001`, `WIN-001`, `LNX-001` complete).
+Pass `fc847f28-64be-4449-b824-1951488f68d7` completed, approved PR #69 ready for merge into `develop`.
+`docs/Linux-Skeleton-Acceptance.md` records `LNX-001` aggregate acceptance:
 
-- Local development artifact (`apps/linux/tools/artifact.py`): unsigned release `.tar.gz` with stripped `bin/markdown-linux` (`$ORIGIN/../lib` `RUNPATH`), stripped `lib/libmarkdown_ffi.so` (24 `md_` C ABI exports), desktop entry, `BuildInfo.json`, and `Licenses/`.
-- License inventory (`apps/linux/tools/licenses.py`): inventories all 74 linked normal Rust packages across `markdown-ffi` (`model-v2`) and `markdown-linux`, validates SPDX expressions, and writes `LICENSE`, `THIRD-PARTY-NOTICES.txt`, and `inventory.json`.
-- Relocated verification & acceptance: extracted outside the checkout and verified ELF64, 24 exports, strict `$ORIGIN/../lib` `RUNPATH`, `ldd` resolution, zero build-machine path leaks, smokes, isolated association, and scratch-XDG relaunch; documented in `docs/Linux-Skeleton-Acceptance.md`.
+- Fresh `apps/linux/tools/check.py` passed in Debug and Release at `develop` head `072cf41` (14 `markdown_linux` unit tests, 19 `render` integration tests, 18 `markdown-linux-core` consumer tests, `cargo fmt`, `cargo clippy`, `check_dependencies.py linux`, GTK 4 smokes, isolated `gio launch` association, two-phase relaunch restoration, release `core-probe single`, 74-package license inventory, and relocated x86-64 `.tar.gz` artifact verification).
+- Hosted `develop` CI run `43542760925` at `072cf41` passed.
 
-PR #68 reviewed by Grok Bot (0 Blockers, 1 Concern, 2 Nits; approved under D-029; all findings fixed at `4f9b15e`).
+PR #69 reviewed by Grok Bot (0 Blockers, 0 Concerns, 1 Nit; approved under D-029; nit fixed in closeout).
 
-Next Linux task: `LNX-001` (Linux single-document skeleton aggregate, which also completes all three desktop skeletons before `DESK-001` and the D-030 milestone review). Next Windows/macOS task: walking skeleton milestone review (D-030).
+Next task: `DESK-001` (cross-desktop skeleton gate: compare semantics and performance across macOS, Windows, and Linux, fix contract bias, document deviations, choose MVP deepening order, and materialize platform MVP delivery tasks) and D-030 milestone review into `main` (only the owner merges milestone reviews into `main`).
 
-Previous Linux task: `LNX-001I` merged in [PR #68](https://github.com/awesomejt/markdown/pull/68). Previous Windows task: `WIN-001I` merged in [PR #61](https://github.com/awesomejt/markdown/pull/61).
+Previous Linux task: `LNX-001` in [PR #69](https://github.com/awesomejt/markdown/pull/69). Previous Windows task: `WIN-001` in [PR #62](https://github.com/awesomejt/markdown/pull/62). Previous macOS task: `MAC-001` in [PR #48](https://github.com/awesomejt/markdown/pull/48).
 
 Previous Linux handoff baseline: `develop` after PR #52; reviewed head `f12d2e5`, non-serious
 review fixes at `27e84df`, followed by one state/docs closeout. The merge SHA is

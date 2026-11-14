@@ -343,7 +343,16 @@ read.
   `ldd` resolution, zero build-machine path leaks, smokes, association, and scratch-XDG relaunch),
   and [Linux skeleton acceptance](docs/Linux-Skeleton-Acceptance.md). Grok review 1 at `a0e171e`
   reported 0 Blockers, 1 Concern, 2 Nits (approved under D-029); all 3 findings were fixed at `4f9b15e`.
-  The `LNX-001` aggregate is next on Linux.
+- **LNX-001 (PR #69)**: closes the Linux single-document walking skeleton aggregate
+  on already-merged evidence across LNX-001A through LNX-001I (including LNX-001D1,
+  PRs #49–#52 and #63–#68). Fresh `apps/linux/tools/check.py` passed in Debug and Release
+  at `develop` head `072cf41` (14 unit, 19 render, 18 core consumer tests, smokes,
+  association, relaunch, release `core-probe single`, 74-package license inventory, and
+  relocated tarball artifact); hosted `develop` CI run `43542760925` passed. Grok review 1
+  at `1c83b79` reported 0 Blockers, 0 Concerns, 1 Nit (approved under D-029; nit fixed in
+  closeout). All three desktop walking skeletons (`MAC-001`, `WIN-001`, `LNX-001`) are
+  now complete; `DESK-001` (cross-desktop skeleton gate) and the D-030 milestone review
+  are next.
 - Workflow: task PRs target `develop` and merge on a Grok review with no
   serious finding (D-029). `main` takes only owner-approved milestone reviews
   from `review/<milestone>`, tagged `m-<milestone>` (D-030). The shared-core
