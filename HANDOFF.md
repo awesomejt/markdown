@@ -1,22 +1,20 @@
 # Agent Session and Platform Handoff
 
-Updated: 2026-11-13 (America/Denver), LNX-001G completed under D-029 (PR #66 closed out and merged into `develop`).
-Active task: Next execution task `LNX-001H` (`83d1a575-8746-40fa-8af5-d2299f064e6e`) external refresh, anchors and reading restoration on Linux, or Windows/macOS walking skeleton milestone review under D-030.
-Pass `c5847458-7ef0-42a8-9d05-6b34c6cbe3c0` completed, approved PR #66 merged into `develop`.
-`apps/linux/` delivers LNX-001G:
+Updated: 2026-11-13 (America/Denver), LNX-001H completed under D-029 (PR #67 closed out and merged into `develop`).
+Active task: Next execution task `LNX-001I` (`5f484073-f083-404e-bb0d-47cdc3531582`) local development artifact, licenses, relocated launch on Linux, or Windows/macOS walking skeleton milestone review under D-030.
+Pass `aa39b32d-c984-4deb-99b9-36392cba77d1` completed, approved PR #67 merged into `develop`.
+`apps/linux/` delivers LNX-001H:
 
-- Document selection model: contiguous cross-fragment selection across lazy GTK ListView rows (`SelectionRange`, `Reader::set_selection`, `clear_selection`, `select_all`), visual Pango selection highlighting (`selection_active`/`selection_start_byte`/`selection_end_byte`), and keyboard navigation/selection (`Shift+Up/Down/Page_Up/Page_Down/Home/End`, `Ctrl+A`, `Escape`).
-- Drag and click gestures: `gtk::GestureDrag` with 4 px drag threshold claiming (preserving link activations and label clicks), auto-scroll edge velocity driving smooth scrolling while dragging beyond viewport bounds, Shift-click selection range extension, and clean `RefCell` borrow hygiene during re-entrant GTK scroll/signal dispatches.
-- Dual-format clipboard copy: native GDK clipboard provider offering both `text/plain;charset=utf-8` and `text/markdown;charset=utf-8` (`Ctrl+C`), exact source byte slices for whole document and whole fragments, and exact rendered UTF-8 fallback for partial fragment selections.
-- Performance measurement harness: automated interaction benchmarks (`apps/linux/tools/measure.py interaction`) measuring pipeline latency (1 MiB prose 89.86 ms, 1 MiB long lines 9.20 ms, both well within 400 ms budget), copy slice (< 5 ms for 1 MiB prose, target < 15 ms), outline target resolution (0.01 ms), and repeated 5x load/close cycles (`measure.py repeated`) verifying complete glibc heap reclamation via `malloc_trim` (retained delta ~0.08 MiB).
-- Accessibility: automated AT-SPI tree inspection and GTK accessible state verification confirming `accessible-role`, `accessible-description`, and fragment selection announcements.
-- Verification: local `python3 apps/linux/tools/check.py` passed in Debug and Release (12 loader unit tests, 17 render unit tests, 16 core consumer tests, shell smoke with selection/copy/drag verification, last-window smoke, desktop association smoke, and release core probe with 0 leaked handles).
+- Core snapshot anchors: `md_snapshot_anchor_at`, `md_snapshot_anchor_for_node`, and `md_snapshot_resolve_anchor` with `CoreSnapshot` thread-safe handle and non-blocking worker drop release, plus `CoreSession::external_change`.
+- External file watching & refresh: inotify file monitoring with generation validation, preserving reading position via node anchor or fallback fragment scroll ratio; replacement/deletion/truncation/race resilience.
+- Session & position restoration: atomic JSON restoration persistence under `$XDG_STATE_HOME/markdown/restoration.json`, multi-window and single-window lifecycle management (window count tracked, store preserved across clean exits), and virtualized layout transition scroll tracking to avoid layout race conditions.
+- Test suites & verification: `apps/linux/tools/check.py` comprehensive test suite passes in Debug and Release (render mapping, JSON parser, relaunch checks with headless Xvfb, core probe with 0 leaked handles); `apps/linux/tools/measure.py refresh` passes performance budgets across all document profiles (`kept_place: true`).
 
-PR #66 reviewed by Grok Bot across 3 reviews; review 3 reported 0 Blockers, 0 Concerns, 1 Nit (addressed in `apps/linux/tools/measure.py`, clean approval under D-029).
+PR #67 reviewed by Grok Bot across 3 reviews; review 3 reported 0 Blockers (clean approval under D-029).
 
-Next Linux task: `LNX-001H` (external refresh, anchors and reading restoration). Next Windows/macOS task: walking skeleton milestone review (D-030).
+Next Linux task: `LNX-001I` (local development artifact, licenses, relocated launch). Next Windows/macOS task: walking skeleton milestone review (D-030).
 
-Previous Linux task: `LNX-001G` merged in [PR #66](https://github.com/awesomejt/markdown/pull/66). Previous Windows task: `WIN-001I` merged in [PR #61](https://github.com/awesomejt/markdown/pull/61).
+Previous Linux task: `LNX-001H` merged in [PR #67](https://github.com/awesomejt/markdown/pull/67). Previous Windows task: `WIN-001I` merged in [PR #61](https://github.com/awesomejt/markdown/pull/61).
 
 Previous Linux handoff baseline: `develop` after PR #52; reviewed head `f12d2e5`, non-serious
 review fixes at `27e84df`, followed by one state/docs closeout. The merge SHA is

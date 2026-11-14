@@ -281,7 +281,7 @@ read.
   deferred to H in TODO.md. LNX-001D1 is closed under D-035 in PR #63: automated
   AT-SPI inspection verifies heading/paragraph semantics and reading order, with
   off-screen Orca structural navigation and continuous reading deferred to ADV-001.
-  LNX-001E is merged. LNX-001F is merged. LNX-001G is merged. LNX-001H is next on Linux.
+  LNX-001E is merged. LNX-001F is merged. LNX-001G is merged. LNX-001H is merged. LNX-001I is next on Linux.
 - LNX-001E (PR #64): delivers Linux native tables (tab-separated cell rows for
   native TSV clipboard copying, monospace font, bold header row, table-relative
   zebra striping), read-only task list markers (`☑` / `☐`) with accent/muted
@@ -321,8 +321,22 @@ read.
   load/close cycles demonstrate complete glibc memory return via `malloc_trim`
   (retained RSS delta ~0.08 MiB). Grok review 3 at `63971c7` reported 0 Blockers,
   0 Concerns, 1 Nit (addressed in `apps/linux/tools/measure.py`, clean
-  approval under D-029). LNX-001H (external refresh, anchors and reading
-  restoration) is next on Linux.
+  approval under D-029). LNX-001H is merged in PR #67. LNX-001I (local
+  development artifact, licenses, relocated launch) is next on Linux.
+- LNX-001H (PR #67): delivers Linux native external file refresh, anchor resolution,
+  reading position restoration, and relaunch checks. Adds core snapshot anchor
+  functions (`md_snapshot_anchor_at`, `md_snapshot_anchor_for_node`,
+  `md_snapshot_resolve_anchor`), `CoreSnapshot` thread-safe handle with non-blocking
+  drop release, and `CoreSession::external_change`. In the Linux app, implements
+  external file change detection via inotify (`FileMonitor`), external refresh
+  preserving reading position via node anchor or fragment percentage fallback,
+  atomic JSON session restoration state stored under `$XDG_STATE_HOME/markdown/restoration.json`,
+  multi-window and single-window lifecycle management (window count tracked, store
+  preserved across clean shutdowns), virtualized layout transition scroll tracking
+  preventing race conditions during programmatic repositioning, and comprehensive
+  relaunch and refresh test suites (`apps/linux/tools/check.py`, `apps/linux/tools/measure.py refresh`).
+  Clean approval under D-029 (0 Blocker, all review feedback resolved). LNX-001I
+  (local development artifact, licenses, relocated launch) is next on Linux.
 - Workflow: task PRs target `develop` and merge on a Grok review with no
   serious finding (D-029). `main` takes only owner-approved milestone reviews
   from `review/<milestone>`, tagged `m-<milestone>` (D-030). The shared-core
