@@ -83,6 +83,7 @@ struct WindowDocument {
     label: glib::WeakRef<gtk::Label>,
     loader: DocumentLoader,
     active_folder: Option<FolderCapability>,
+    workspace_browser: crate::workspace_browser::WorkspaceBrowser,
     recovery_bar: RecoveryBar,
     recents_window: Option<gtk::Window>,
     reader: crate::reader::Reader,
@@ -452,7 +453,7 @@ impl WindowDocument {
             Ok(cap) => {
                 let name = cap.display_name();
                 recents::record_workspace(cap.path(), &name);
-                self.active_folder = Some(cap);
+                self.active_folder = Some(cap.clone());
                 self.recovery_bar.hide();
                 if !self.loader.has_file() {
                     self.status(&format!("Workspace folder ready: {name}"));
@@ -460,9 +461,11 @@ impl WindowDocument {
                         window.set_title(Some(&format!("{name} — Markdown")));
                     }
                 }
+                self.load_workspace_tree(&cap);
             }
             Err(error) => {
                 self.active_folder = None;
+                self.workspace_browser.clear();
                 self.status(&error.to_string());
                 if let Some(btn_label) = recoverable_folder_error(error) {
                     self.recovery_bar.show(
@@ -473,6 +476,49 @@ impl WindowDocument {
                 }
             }
         }
+    }
+    fn load_workspace_tree(&self, cap: &FolderCapability) {
+        let name = cap.display_name();
+        let serial = self.workspace_browser.next_load_serial();
+        self.workspace_browser.set_loading(&name);
+        let cap_clone = cap.clone();
+        let browser = self.workspace_browser.clone();
+        let weak = self.weak_self.clone();
+        glib::spawn_future_local(async move {
+            let result = gio::spawn_blocking(move || {
+                markdown_linux::document::WorkspaceTree::enumerate(&cap_clone)
+            })
+            .await;
+            if browser.current_load_serial() != serial {
+                return;
+            }
+            match result {
+                Ok(Ok(tree)) => {
+                    browser.set_tree(tree);
+                }
+                Ok(Err(error)) => {
+                    browser.clear();
+                    if let Some(state_rc) = weak.upgrade()
+                        && let Ok(mut state) = state_rc.try_borrow_mut()
+                    {
+                        let folder_path =
+                            state.active_folder.as_ref().map(|f| f.path().to_path_buf());
+                        state.active_folder = None;
+                        state.status(&error.to_string());
+                        if let Some(btn_label) = recoverable_folder_error(error) {
+                            state.recovery_bar.show(
+                                &error.to_string(),
+                                btn_label,
+                                RecoveryTarget::Folder(folder_path),
+                            );
+                        }
+                    }
+                }
+                Err(_) => {
+                    browser.clear();
+                }
+            }
+        });
     }
     fn start_relocate_chooser(&mut self, target: RecoveryTarget) {
         let Some(window) = self.window.upgrade() else {
@@ -832,13 +878,23 @@ pub fn attach(window: &gtk::ApplicationWindow, label: &gtk::Label) {
 
     let find_bar = crate::find_bar::FindBar::new();
     let recovery_bar = RecoveryBar::new();
+    let workspace_browser = crate::workspace_browser::WorkspaceBrowser::new();
+
+    let workspace_paned = gtk::Paned::new(gtk::Orientation::Horizontal);
+    workspace_paned.set_start_child(Some(&workspace_browser.widget));
+    workspace_paned.set_resize_start_child(false);
+    workspace_paned.set_shrink_start_child(false);
+    workspace_paned.set_end_child(Some(&reader.widget));
+    workspace_paned.set_position(240);
+    workspace_paned.set_hexpand(true);
+    workspace_paned.set_vexpand(true);
 
     let container = gtk::Box::new(gtk::Orientation::Vertical, 0);
     window.set_child(None::<&gtk::Widget>);
     container.append(label);
     container.append(&recovery_bar.container);
     container.append(&find_bar.container);
-    container.append(&reader.widget);
+    container.append(&workspace_paned);
     reader.widget.set_hexpand(true);
     reader.widget.set_vexpand(true);
     reader.clear();
@@ -854,6 +910,7 @@ pub fn attach(window: &gtk::ApplicationWindow, label: &gtk::Label) {
             label: label.downgrade(),
             loader: DocumentLoader::new(),
             active_folder: None,
+            workspace_browser: workspace_browser.clone(),
             recovery_bar: recovery_bar.clone(),
             recents_window: None,
             reader: reader.clone(),
@@ -870,6 +927,45 @@ pub fn attach(window: &gtk::ApplicationWindow, label: &gtk::Label) {
         })
     });
     WINDOWS.with(|all| all.borrow_mut().insert(key(window), state.clone()));
+
+    let weak_open = Rc::downgrade(&state);
+    let weak_refresh = Rc::downgrade(&state);
+    let weak_close = Rc::downgrade(&state);
+    workspace_browser.set_callbacks(
+        move |path| {
+            if let Some(state_rc) = weak_open.upgrade() {
+                state_rc.borrow_mut().open(&gio::File::for_path(&path));
+            }
+        },
+        move || {
+            if let Some(state_rc) = weak_refresh.upgrade() {
+                let st = state_rc.borrow();
+                if let Some(cap) = &st.active_folder {
+                    st.load_workspace_tree(cap);
+                }
+            }
+        },
+        move || {
+            if let Some(state_rc) = weak_close.upgrade() {
+                let mut st = state_rc.borrow_mut();
+                st.active_folder = None;
+                st.workspace_browser.clear();
+            }
+        },
+    );
+
+    let toggle_ws = gio::SimpleAction::new("toggle-workspace", None);
+    let weak = Rc::downgrade(&state);
+    toggle_ws.connect_activate(move |_, _| {
+        if let Some(state_rc) = weak.upgrade() {
+            let st = state_rc.borrow();
+            if st.workspace_browser.has_workspace() {
+                let visible = st.workspace_browser.widget.is_visible();
+                st.workspace_browser.widget.set_visible(!visible);
+            }
+        }
+    });
+    window.add_action(&toggle_ws);
 
     let weak = Rc::downgrade(&state);
     recovery_bar.action_button.connect_clicked(move |_| {
@@ -1415,4 +1511,10 @@ pub fn close_recents_dialog_for_smoke(window: &gtk::ApplicationWindow) {
     {
         win.close();
     }
+}
+
+pub fn workspace_browser(
+    window: &gtk::ApplicationWindow,
+) -> Option<crate::workspace_browser::WorkspaceBrowser> {
+    state(window).map(|s| s.borrow().workspace_browser.clone())
 }

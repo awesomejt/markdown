@@ -39,6 +39,12 @@ const EXPECTED: &[(&str, &str, &str, &[&str])] = &[
         &["<Control>minus"],
     ),
     ("View", "Actual Size", "win.zoom-reset", &["<Control>0"]),
+    (
+        "View",
+        "Workspace Sidebar",
+        "win.toggle-workspace",
+        &["<Control>b"],
+    ),
     ("View", "Theme: System", "app.theme-system", &[]),
     ("View", "Theme: Light", "app.theme-light", &[]),
     ("View", "Theme: Dark", "app.theme-dark", &[]),
@@ -889,9 +895,16 @@ async fn find_and_zoom(
 async fn folder_and_recents(window: &gtk::ApplicationWindow) -> Result<(), String> {
     markdown_linux::recents::clear();
     let dir = std::env::temp_dir().join(format!("markdown-smoke-ws-{}", std::process::id()));
-    std::fs::create_dir_all(&dir).map_err(|e| format!("create smoke workspace: {e}"))?;
+    let sub = dir.join("nested");
+    std::fs::create_dir_all(&sub).map_err(|e| format!("create smoke workspace: {e}"))?;
+    std::fs::write(sub.join("child.md"), b"# Child\n").map_err(|e| format!("write child: {e}"))?;
+    for i in 0..1000 {
+        let name = format!("file-{i:04}.md");
+        std::fs::write(dir.join(name), format!("# File {i}\n").as_bytes())
+            .map_err(|e| format!("write large folder file: {e}"))?;
+    }
 
-    // 1. Open valid workspace folder and verify capability + recents entry.
+    // 1. Open valid workspace folder and verify capability + recents + browser.
     crate::files::open_folder_for_smoke(window, &gio::File::for_path(&dir));
     check(
         crate::files::active_folder_name(window).is_some(),
@@ -901,6 +914,58 @@ async fn folder_and_recents(window: &gtk::ApplicationWindow) -> Result<(), Strin
         !crate::files::recovery_visible(window),
         "recovery bar hidden for valid folder",
     )?;
+    let browser = crate::files::workspace_browser(window)
+        .ok_or_else(|| "workspace browser missing".to_string())?;
+    wait_until("workspace browser loaded", || browser.has_workspace()).await?;
+    check(
+        browser.widget.is_visible(),
+        "workspace browser visible after opening folder",
+    )?;
+    check(
+        browser.visible_count() == 1001,
+        "workspace browser shows 1 nested folder + 1000 markdown files",
+    )?;
+
+    // Keyboard navigation: Right expands folder at index 0, Left collapses it.
+    browser.select_index(0);
+    check(
+        browser.send_key_for_smoke(gtk::gdk::Key::Right),
+        "Right key expands nested folder",
+    )?;
+    check(
+        browser.visible_count() == 1002,
+        "expanding nested folder reveals child.md",
+    )?;
+    check(
+        browser.send_key_for_smoke(gtk::gdk::Key::Left),
+        "Left key collapses nested folder",
+    )?;
+    check(
+        browser.visible_count() == 1001,
+        "collapsing nested folder restores count",
+    )?;
+
+    // Activate file-0000.md at index 1 and verify it loads.
+    browser.activate_row_for_smoke(1);
+    wait_until("workspace file opened in reader", || {
+        crate::files::source(window).as_deref() == Some(b"# File 0\n".as_slice())
+    })
+    .await?;
+
+    // Toggle sidebar visibility via win.toggle-workspace.
+    WidgetExt::activate_action(window, "win.toggle-workspace", None)
+        .map_err(|e| format!("activate win.toggle-workspace: {e}"))?;
+    check(
+        !browser.widget.is_visible(),
+        "workspace sidebar hidden after toggle",
+    )?;
+    WidgetExt::activate_action(window, "win.toggle-workspace", None)
+        .map_err(|e| format!("activate win.toggle-workspace: {e}"))?;
+    check(
+        browser.widget.is_visible(),
+        "workspace sidebar shown after second toggle",
+    )?;
+
     let recents_state = markdown_linux::recents::load();
     check(
         recents_state.workspaces.len() == 1 && recents_state.workspaces[0].path == dir,

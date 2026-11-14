@@ -155,7 +155,8 @@ pub fn validate() -> Result<(), CoreError> {
         && size_of::<ffi::md_find_options>() == ffi::MD_FIND_OPTIONS_SIZE
         && size_of::<ffi::md_find_result>() == ffi::MD_FIND_RESULT_SIZE
         && size_of::<ffi::md_find_match>() == ffi::MD_FIND_MATCH_SIZE
-        && size_of::<ffi::md_match_segment>() == ffi::MD_MATCH_SEGMENT_SIZE;
+        && size_of::<ffi::md_match_segment>() == ffi::MD_MATCH_SEGMENT_SIZE
+        && size_of::<ffi::md_workspace_path_info>() == ffi::MD_WORKSPACE_PATH_INFO_SIZE;
     if compatible {
         Ok(())
     } else {

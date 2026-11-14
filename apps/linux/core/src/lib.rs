@@ -11,6 +11,7 @@ pub mod find;
 pub mod runtime;
 pub mod session;
 pub mod snapshot;
+pub mod workspace;
 
 pub use document::CoreDocument;
 pub use find::{CoreFindMatch, CoreFindOptions, CoreFindResult, CoreFindSegment, FindGate};
@@ -23,3 +24,4 @@ pub use session::{
     CoreSession, CoreTimings, CoreUnavailability, ParseRequest,
 };
 pub use snapshot::{AnchorQuality, CoreAnchorResolution, CoreSnapshot};
+pub use workspace::{WorkspacePathError, WorkspacePathInfo, classify_workspace_path};

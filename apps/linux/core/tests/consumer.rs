@@ -765,3 +765,48 @@ fn documents_release_their_snapshots() {
     assert_eq!(final_handles.sessions, 0);
     assert_eq!(final_handles.snapshots, 0);
 }
+
+#[test]
+fn workspace_path_classification() {
+    use markdown_linux_core::{WorkspacePathError, classify_workspace_path};
+
+    validate().unwrap();
+    let md = classify_workspace_path(b"docs/Guide.MD").unwrap().unwrap();
+    assert!(md.is_markdown);
+    assert!(!md.is_hidden);
+    assert!(!md.has_invisible);
+    assert_eq!(md.name_start, 5);
+
+    let hidden = classify_workspace_path(b".git/config.md").unwrap().unwrap();
+    assert!(hidden.is_markdown);
+    assert!(hidden.is_hidden);
+
+    let inv = classify_workspace_path("notes/\u{2800}blank.mdx".as_bytes())
+        .unwrap()
+        .unwrap();
+    assert!(inv.is_markdown);
+    assert!(inv.has_invisible);
+
+    let emoji = classify_workspace_path("❤️.md".as_bytes())
+        .unwrap()
+        .unwrap();
+    assert!(emoji.is_markdown);
+    assert!(!emoji.has_invisible);
+
+    assert_eq!(
+        classify_workspace_path(b"/abs.md").unwrap(),
+        Err(WorkspacePathError::Absolute)
+    );
+    assert_eq!(
+        classify_workspace_path(b"a/../b.md").unwrap(),
+        Err(WorkspacePathError::DotComponent)
+    );
+    assert_eq!(
+        classify_workspace_path(b"bad\x01.md").unwrap(),
+        Err(WorkspacePathError::Control)
+    );
+    assert_eq!(
+        classify_workspace_path(&[0xff, b'.', b'm', b'd']).unwrap(),
+        Err(WorkspacePathError::InvalidUtf8)
+    );
+}

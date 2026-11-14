@@ -7,6 +7,7 @@ mod measure;
 pub mod reader;
 mod relaunch;
 mod smoke;
+mod workspace_browser;
 
 use gtk::prelude::*;
 use gtk::{gio, glib, pango};
@@ -46,6 +47,12 @@ pub const COMMANDS: &[(&str, &str, &str, Option<&str>)] = &[
         Some("<Control>minus"),
     ),
     ("View", "Actual Size", "win.zoom-reset", Some("<Control>0")),
+    (
+        "View",
+        "Workspace Sidebar",
+        "win.toggle-workspace",
+        Some("<Control>b"),
+    ),
     ("View", "Theme: System", "app.theme-system", None),
     ("View", "Theme: Light", "app.theme-light", None),
     ("View", "Theme: Dark", "app.theme-dark", None),
