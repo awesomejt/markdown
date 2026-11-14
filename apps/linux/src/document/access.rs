@@ -9,12 +9,159 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use super::loader::Cancellation;
 use markdown_linux_core::CoreUnavailability;
 
+/// Sanitize a file or folder basename for UI display without leaking control or bidi characters.
+pub fn sanitize_basename(path: &std::path::Path) -> String {
+    path.file_name()
+        .unwrap_or_default()
+        .to_string_lossy()
+        .chars()
+        .map(|c| {
+            if c.is_control() || matches!(c, '\u{202a}'..='\u{202e}' | '\u{2066}'..='\u{2069}') {
+                '\u{fffd}'
+            } else {
+                c
+            }
+        })
+        .take(160)
+        .collect()
+}
+
+/// An explicit grant for one user-selected folder root.
+#[derive(Clone)]
+pub struct FolderCapability {
+    root: PathBuf,
+    revoked: Arc<AtomicBool>,
+}
+impl fmt::Debug for FolderCapability {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("FolderCapability(<private>)")
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum FolderError {
+    NotFound,
+    PermissionDenied,
+    AccessRevoked,
+    VolumeUnavailable,
+    NotDirectory,
+    NonLocalFolder,
+    OutsideFolder,
+    ReadFailed,
+}
+
+impl fmt::Display for FolderError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(match self {
+            Self::NotFound => "The folder is missing or was moved. Relocate it or choose another.",
+            Self::PermissionDenied => {
+                "Folder access is denied. Check permissions or re-grant access."
+            }
+            Self::AccessRevoked => {
+                "Folder access was revoked. Open the folder again to grant access."
+            }
+            Self::VolumeUnavailable => "The storage is unavailable. Reconnect it and try again.",
+            Self::NotDirectory => "Choose a folder, rather than a file.",
+            Self::NonLocalFolder => "Only local folders are supported.",
+            Self::OutsideFolder => "The selected file is outside the active workspace folder.",
+            Self::ReadFailed => "The folder could not be opened. Check access and try again.",
+        })
+    }
+}
+
+impl FolderError {
+    pub fn is_recoverable(self) -> bool {
+        matches!(
+            self,
+            Self::NotFound | Self::PermissionDenied | Self::AccessRevoked | Self::VolumeUnavailable
+        )
+    }
+
+    pub(super) fn io(error: io::Error) -> Self {
+        match error.raw_os_error() {
+            Some(2 | 20) => Self::NotFound, // ENOENT / ENOTDIR
+            Some(1 | 13) => Self::PermissionDenied,
+            Some(6 | 19 | 110 | 116) => Self::VolumeUnavailable,
+            _ => Self::ReadFailed,
+        }
+    }
+}
+
+impl FolderCapability {
+    pub fn from_local_folder(path: PathBuf) -> Result<Self, FolderError> {
+        let cap = Self {
+            root: path,
+            revoked: Arc::new(AtomicBool::new(false)),
+        };
+        cap.validate()?;
+        Ok(cap)
+    }
+
+    pub fn from_persisted(path: PathBuf, grant_active: bool) -> Self {
+        Self {
+            root: path,
+            revoked: Arc::new(AtomicBool::new(!grant_active)),
+        }
+    }
+
+    pub fn validate(&self) -> Result<(), FolderError> {
+        if self.is_revoked() {
+            return Err(FolderError::AccessRevoked);
+        }
+        let meta = std::fs::metadata(&self.root).map_err(FolderError::io)?;
+        if !meta.is_dir() {
+            return Err(FolderError::NotDirectory);
+        }
+        std::fs::read_dir(&self.root).map_err(FolderError::io)?;
+        Ok(())
+    }
+
+    pub fn revoke(&self) {
+        self.revoked.store(true, Ordering::Release);
+    }
+
+    pub fn is_revoked(&self) -> bool {
+        self.revoked.load(Ordering::Acquire)
+    }
+
+    pub fn path(&self) -> &std::path::Path {
+        &self.root
+    }
+
+    pub fn display_name(&self) -> String {
+        sanitize_basename(&self.root)
+    }
+
+    pub fn contains_file(&self, file_path: &std::path::Path) -> Result<PathBuf, FolderError> {
+        self.validate()?;
+        let canonical_root = std::fs::canonicalize(&self.root).map_err(FolderError::io)?;
+        let canonical_file = std::fs::canonicalize(file_path).map_err(FolderError::io)?;
+        if !canonical_file.starts_with(&canonical_root) {
+            return Err(FolderError::OutsideFolder);
+        }
+        Ok(canonical_file)
+    }
+
+    pub fn open_document(
+        &self,
+        file_path: &std::path::Path,
+    ) -> Result<DocumentCapability, FolderError> {
+        self.contains_file(file_path)?;
+        Ok(DocumentCapability::from_local_file_with_folder(
+            file_path.to_path_buf(),
+            Some(self.clone()),
+        ))
+    }
+}
+
 /// An explicit grant for one selected path, including its symlink target. No
-/// parent-directory authority is implied. Reload follows atomic replacement.
+/// parent-directory authority is implied unless an explicit folder grant is attached.
+/// Reload follows atomic replacement.
 #[derive(Clone)]
 pub struct DocumentCapability {
     path: PathBuf,
     revoked: Arc<AtomicBool>,
+    folder: Option<FolderCapability>,
 }
 impl fmt::Debug for DocumentCapability {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -23,9 +170,13 @@ impl fmt::Debug for DocumentCapability {
 }
 impl DocumentCapability {
     pub fn from_local_file(path: PathBuf) -> Self {
+        Self::from_local_file_with_folder(path, None)
+    }
+    pub fn from_local_file_with_folder(path: PathBuf, folder: Option<FolderCapability>) -> Self {
         Self {
             path,
             revoked: Arc::new(AtomicBool::new(false)),
+            folder,
         }
     }
     pub fn revoke(&self) {
@@ -33,29 +184,26 @@ impl DocumentCapability {
     }
     pub fn is_revoked(&self) -> bool {
         self.revoked.load(Ordering::Acquire)
+            || self
+                .folder
+                .as_ref()
+                .is_some_and(FolderCapability::is_revoked)
     }
     pub fn display_name(&self) -> String {
-        self.path
-            .file_name()
-            .unwrap_or_default()
-            .to_string_lossy()
-            .chars()
-            .map(|c| {
-                if c.is_control() || matches!(c, '\u{202a}'..='\u{202e}' | '\u{2066}'..='\u{2069}')
-                {
-                    '\u{fffd}'
-                } else {
-                    c
-                }
-            })
-            .take(160)
-            .collect()
+        sanitize_basename(&self.path)
     }
     pub fn path(&self) -> &std::path::Path {
         &self.path
     }
+    pub fn folder(&self) -> Option<&FolderCapability> {
+        self.folder.as_ref()
+    }
     pub fn resources(&self) -> super::resources::DocumentResources {
-        let folder = self.path.parent().map(std::path::Path::to_path_buf);
+        let folder = self
+            .folder
+            .as_ref()
+            .map(|f| f.path().to_path_buf())
+            .or_else(|| self.path.parent().map(std::path::Path::to_path_buf));
         super::resources::DocumentResources::new(folder)
     }
 }
@@ -171,6 +319,10 @@ pub(super) fn read_document(
     .into_bytes();
     let bytes = read_bounded(&mut file, cap, cancel, limit, meta.len() as usize + 1)?;
     Ok(ReadDocument { bytes, revision })
+}
+
+pub fn revision_token_status(cap: &DocumentCapability) -> Result<(), DocumentError> {
+    revision_token(cap).map(|_| ())
 }
 
 pub fn revision_token(cap: &DocumentCapability) -> Result<String, DocumentError> {
@@ -346,5 +498,72 @@ mod tests {
             );
         }
         std::fs::remove_dir_all(dir).unwrap();
+    }
+    #[test]
+    fn folder_capability_containment_revocation_and_recovery_errors() {
+        use std::os::unix::fs::PermissionsExt;
+        let (dir, doc_cap) = fixture();
+        let folder = FolderCapability::from_local_folder(dir.clone()).unwrap();
+        assert!(!format!("{folder:?}").contains("markdown-access"));
+        assert!(!folder.display_name().is_empty());
+
+        // Inside-folder document succeeds and inherits folder resources.
+        let scoped = folder.open_document(doc_cap.path()).unwrap();
+        assert_eq!(
+            scoped.resources().folder(),
+            std::fs::canonicalize(&dir).ok().as_deref()
+        );
+
+        // Outside-folder document is rejected with non-recoverable OutsideFolder.
+        let outside = std::env::temp_dir().join(format!(
+            "markdown-outside-{}-{}.md",
+            std::process::id(),
+            NEXT.fetch_add(1, Ordering::Relaxed)
+        ));
+        std::fs::write(&outside, b"# Outside\n").unwrap();
+        assert_eq!(
+            folder.open_document(&outside).err(),
+            Some(FolderError::OutsideFolder)
+        );
+        assert!(!FolderError::OutsideFolder.is_recoverable());
+        std::fs::remove_file(&outside).unwrap();
+
+        // NotDirectory error when pointing at a file.
+        assert_eq!(
+            FolderCapability::from_local_folder(doc_cap.path().to_path_buf()).err(),
+            Some(FolderError::NotDirectory)
+        );
+
+        // Revocation propagates to folder and folder-scoped documents.
+        folder.revoke();
+        assert!(folder.is_revoked());
+        assert!(scoped.is_revoked());
+        assert_eq!(folder.validate().err(), Some(FolderError::AccessRevoked));
+        assert!(FolderError::AccessRevoked.is_recoverable());
+
+        // PermissionDenied on chmod 0o000 folder (non-root).
+        let locked_dir = dir.join("locked");
+        std::fs::create_dir(&locked_dir).unwrap();
+        std::fs::set_permissions(&locked_dir, std::fs::Permissions::from_mode(0o0)).unwrap();
+        let locked_res = FolderCapability::from_local_folder(locked_dir.clone());
+        if std::process::Command::new("id")
+            .arg("-u")
+            .output()
+            .unwrap()
+            .stdout
+            != b"0\n"
+        {
+            assert_eq!(locked_res.err(), Some(FolderError::PermissionDenied));
+            assert!(FolderError::PermissionDenied.is_recoverable());
+        }
+        std::fs::set_permissions(&locked_dir, std::fs::Permissions::from_mode(0o755)).unwrap();
+
+        // Moved/missing folder returns NotFound (recoverable).
+        std::fs::remove_dir_all(&dir).unwrap();
+        assert_eq!(
+            FolderCapability::from_local_folder(dir).err(),
+            Some(FolderError::NotFound)
+        );
+        assert!(FolderError::NotFound.is_recoverable());
     }
 }

@@ -4,18 +4,87 @@
 //! GTK ownership and presentation. All file I/O and parsing belongs to document.
 use gtk::prelude::*;
 use gtk::{gio, glib};
-use markdown_linux::document::{DocumentCapability, DocumentError, DocumentLoader, LoadEvent};
+use markdown_linux::document::{
+    DocumentCapability, DocumentError, DocumentLoader, FolderCapability, FolderError, LoadEvent,
+    sanitize_basename,
+};
+use markdown_linux::recents::{self, RecentKind, RecentStatus};
 use std::cell::RefCell;
 use std::collections::HashMap;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::rc::{Rc, Weak};
 use std::sync::Arc;
 use std::time::Duration;
+
+#[derive(Clone, Debug)]
+enum RecoveryTarget {
+    File(Option<PathBuf>),
+    Folder(Option<PathBuf>),
+}
+
+#[derive(Clone)]
+struct RecoveryBar {
+    container: gtk::Box,
+    label: gtk::Label,
+    action_button: gtk::Button,
+    dismiss_button: gtk::Button,
+    target: Rc<RefCell<Option<RecoveryTarget>>>,
+}
+
+impl RecoveryBar {
+    fn new() -> Self {
+        let container = gtk::Box::new(gtk::Orientation::Horizontal, 8);
+        container.set_margin_start(12);
+        container.set_margin_end(12);
+        container.set_margin_top(6);
+        container.set_margin_bottom(6);
+        container.set_visible(false);
+
+        let label = gtk::Label::new(None);
+        label.set_hexpand(true);
+        label.set_xalign(0.0);
+        label.set_wrap(true);
+
+        let action_button = gtk::Button::with_label("Relocate…");
+        let dismiss_button = gtk::Button::with_label("Dismiss");
+
+        container.append(&label);
+        container.append(&action_button);
+        container.append(&dismiss_button);
+
+        Self {
+            container,
+            label,
+            action_button,
+            dismiss_button,
+            target: Rc::new(RefCell::new(None)),
+        }
+    }
+
+    fn show(&self, message: &str, button_label: &str, target: RecoveryTarget) {
+        self.label.set_text(message);
+        self.action_button.set_label(button_label);
+        *self.target.borrow_mut() = Some(target);
+        self.container.set_visible(true);
+    }
+
+    fn hide(&self) {
+        *self.target.borrow_mut() = None;
+        self.container.set_visible(false);
+    }
+
+    fn is_visible(&self) -> bool {
+        self.container.is_visible()
+    }
+}
 
 struct WindowDocument {
     window: glib::WeakRef<gtk::ApplicationWindow>,
     label: glib::WeakRef<gtk::Label>,
     loader: DocumentLoader,
+    active_folder: Option<FolderCapability>,
+    recovery_bar: RecoveryBar,
+    recents_window: Option<gtk::Window>,
     reader: crate::reader::Reader,
     find_bar: crate::find_bar::FindBar,
     find_gate: Option<markdown_linux_core::FindGate>,
@@ -122,7 +191,11 @@ impl WindowDocument {
                             unchanged,
                             ..
                         } => {
+                            state_ref.recovery_bar.hide();
                             if !unchanged {
+                                if let Some(cap) = state_ref.loader.capability() {
+                                    recents::record_file(cap.path(), &cap.display_name());
+                                }
                                 state_ref
                                     .reader
                                     .install_document(plan, Some(document.clone()));
@@ -153,6 +226,15 @@ impl WindowDocument {
                             } else {
                                 state_ref.reader.clear();
                                 state_ref.status(&error.to_string());
+                            }
+                            if let Some((btn_label, target_path)) =
+                                recoverable_file_error(error, state_ref.loader.capability())
+                            {
+                                state_ref.recovery_bar.show(
+                                    &error.to_string(),
+                                    btn_label,
+                                    RecoveryTarget::File(target_path),
+                                );
                             }
                             false
                         }
@@ -317,11 +399,40 @@ impl WindowDocument {
             self.loader.reject_selection();
             self.stop_polling();
             self.reload.set_enabled(false);
+            self.recovery_bar.hide();
             self.status(&DocumentError::NonLocalFile.to_string());
             return;
         };
-        match self.loader.open(DocumentCapability::from_local_file(path)) {
-            Ok(()) => self.loading(),
+        let cap = if let Some(folder) = &self.active_folder {
+            match folder.open_document(&path) {
+                Ok(cap) => cap,
+                Err(FolderError::OutsideFolder) => DocumentCapability::from_local_file(path),
+                Err(error) => {
+                    let folder_path = folder.path().to_path_buf();
+                    self.active_folder = None;
+                    self.saved_position = None;
+                    self.reader.clear();
+                    self.stop_polling();
+                    self.reload.set_enabled(false);
+                    self.status(&error.to_string());
+                    if let Some(btn_label) = recoverable_folder_error(error) {
+                        self.recovery_bar.show(
+                            &error.to_string(),
+                            btn_label,
+                            RecoveryTarget::Folder(Some(folder_path)),
+                        );
+                    }
+                    return;
+                }
+            }
+        } else {
+            DocumentCapability::from_local_file(path)
+        };
+        match self.loader.open(cap) {
+            Ok(()) => {
+                self.recovery_bar.hide();
+                self.loading();
+            }
             Err(error) => {
                 self.saved_position = None;
                 self.reload.set_enabled(self.loader.has_file());
@@ -331,6 +442,196 @@ impl WindowDocument {
     }
     fn open(&mut self, file: &gio::File) {
         self.open_internal(file, None);
+    }
+    fn open_folder(&mut self, folder: &gio::File) {
+        let Some(path) = folder.path() else {
+            self.status(&FolderError::NonLocalFolder.to_string());
+            return;
+        };
+        match FolderCapability::from_local_folder(path.clone()) {
+            Ok(cap) => {
+                let name = cap.display_name();
+                recents::record_workspace(cap.path(), &name);
+                self.active_folder = Some(cap);
+                self.recovery_bar.hide();
+                if !self.loader.has_file() {
+                    self.status(&format!("Workspace folder ready: {name}"));
+                    if let Some(window) = self.window.upgrade() {
+                        window.set_title(Some(&format!("{name} — Markdown")));
+                    }
+                }
+            }
+            Err(error) => {
+                self.active_folder = None;
+                self.status(&error.to_string());
+                if let Some(btn_label) = recoverable_folder_error(error) {
+                    self.recovery_bar.show(
+                        &error.to_string(),
+                        btn_label,
+                        RecoveryTarget::Folder(Some(path)),
+                    );
+                }
+            }
+        }
+    }
+    fn start_relocate_chooser(&mut self, target: RecoveryTarget) {
+        let Some(window) = self.window.upgrade() else {
+            return;
+        };
+        if let Some(existing) = self.chooser.take() {
+            existing.destroy();
+        }
+        let (title, action, is_folder, old_path) = match target {
+            RecoveryTarget::File(old) => (
+                "Relocate Document",
+                gtk::FileChooserAction::Open,
+                false,
+                old,
+            ),
+            RecoveryTarget::Folder(old) => (
+                "Relocate Workspace Folder",
+                gtk::FileChooserAction::SelectFolder,
+                true,
+                old,
+            ),
+        };
+        let chooser = gtk::FileChooserNative::new(
+            Some(title),
+            Some(&window),
+            action,
+            Some("Open"),
+            Some("Cancel"),
+        );
+        if !is_folder {
+            let markdown = gtk::FileFilter::new();
+            markdown.set_name(Some("Markdown and text"));
+            for pattern in ["*.md", "*.markdown", "*.mdown", "*.mkd", "*.txt"] {
+                markdown.add_pattern(pattern);
+            }
+            chooser.add_filter(&markdown);
+            let all = gtk::FileFilter::new();
+            all.set_name(Some("All files"));
+            all.add_pattern("*");
+            chooser.add_filter(&all);
+        }
+        let weak = self.weak_self.clone();
+        chooser.connect_response(move |chooser, response| {
+            if let Some(state_rc) = weak.upgrade()
+                && let Ok(mut state) = state_rc.try_borrow_mut()
+            {
+                state.chooser = None;
+                if response == gtk::ResponseType::Accept
+                    && let Some(file) = chooser.file()
+                    && let Some(new_path) = file.path()
+                {
+                    if let Some(old) = &old_path {
+                        let kind = if is_folder {
+                            RecentKind::Workspace
+                        } else {
+                            RecentKind::File
+                        };
+                        let name = sanitize_basename(&new_path);
+                        recents::relocate_entry(kind, old, &new_path, &name);
+                    }
+                    if is_folder {
+                        state.open_folder(&file);
+                    } else {
+                        state.open(&file);
+                    }
+                }
+            }
+            chooser.destroy();
+        });
+        self.chooser = Some(chooser.clone());
+        chooser.show();
+    }
+    fn open_recents_dialog(&mut self) {
+        if let Some(existing) = &self.recents_window {
+            existing.present();
+            return;
+        }
+        let Some(parent) = self.window.upgrade() else {
+            return;
+        };
+
+        let dialog = gtk::Window::builder()
+            .title("Recent Files & Workspaces")
+            .transient_for(&parent)
+            .modal(true)
+            .default_width(540)
+            .default_height(420)
+            .build();
+
+        let root = gtk::Box::new(gtk::Orientation::Vertical, 8);
+        root.set_margin_start(12);
+        root.set_margin_end(12);
+        root.set_margin_top(12);
+        root.set_margin_bottom(12);
+
+        let scrolled = gtk::ScrolledWindow::builder()
+            .hexpand(true)
+            .vexpand(true)
+            .build();
+        let list_box = gtk::Box::new(gtk::Orientation::Vertical, 12);
+        scrolled.set_child(Some(&list_box));
+        root.append(&scrolled);
+
+        let footer = gtk::Box::new(gtk::Orientation::Horizontal, 8);
+        let clear_btn = gtk::Button::with_label("Clear All");
+        let spacer = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+        spacer.set_hexpand(true);
+        let close_btn = gtk::Button::with_label("Close");
+        footer.append(&clear_btn);
+        footer.append(&spacer);
+        footer.append(&close_btn);
+        root.append(&footer);
+
+        dialog.set_child(Some(&root));
+
+        populate_recents_box(&list_box, &dialog, &self.weak_self);
+
+        let weak_list = list_box.downgrade();
+        let weak_dialog = dialog.downgrade();
+        let weak_state = self.weak_self.clone();
+        clear_btn.connect_clicked(move |_| {
+            recents::clear();
+            if let (Some(lb), Some(dlg)) = (weak_list.upgrade(), weak_dialog.upgrade()) {
+                populate_recents_box(&lb, &dlg, &weak_state);
+            }
+        });
+
+        let weak_dialog = dialog.downgrade();
+        close_btn.connect_clicked(move |_| {
+            if let Some(dlg) = weak_dialog.upgrade() {
+                dlg.close();
+            }
+        });
+
+        let key_ctrl = gtk::EventControllerKey::new();
+        let weak_dialog = dialog.downgrade();
+        key_ctrl.connect_key_pressed(move |_, keyval, _, _| {
+            if keyval == gtk::gdk::Key::Escape
+                && let Some(dlg) = weak_dialog.upgrade()
+            {
+                dlg.close();
+                return glib::Propagation::Stop;
+            }
+            glib::Propagation::Proceed
+        });
+        dialog.add_controller(key_ctrl);
+
+        let weak_state = self.weak_self.clone();
+        dialog.connect_close_request(move |_| {
+            if let Some(state_rc) = weak_state.upgrade()
+                && let Ok(mut st) = state_rc.try_borrow_mut()
+            {
+                st.recents_window = None;
+            }
+            glib::Propagation::Proceed
+        });
+
+        self.recents_window = Some(dialog.clone());
+        dialog.present();
     }
     fn stop_polling(&mut self) {
         if let Some(source) = self.poll_source.take() {
@@ -345,11 +646,183 @@ impl WindowDocument {
         if let Some(chooser) = self.chooser.take() {
             chooser.destroy();
         }
+        if let Some(win) = self.recents_window.take() {
+            win.close();
+        }
         if let Some(watcher) = self.watcher.take() {
             watcher.cancel();
         }
         self.reader.clear();
         self.loader.close();
+    }
+}
+
+fn populate_recents_box(
+    container: &gtk::Box,
+    dialog: &gtk::Window,
+    weak_state: &Weak<RefCell<WindowDocument>>,
+) {
+    while let Some(child) = container.first_child() {
+        container.remove(&child);
+    }
+    let state = recents::load();
+    append_recents_section(
+        container,
+        "Recent Workspaces",
+        &state.workspaces,
+        dialog,
+        weak_state,
+    );
+    append_recents_section(container, "Recent Files", &state.files, dialog, weak_state);
+}
+
+fn append_recents_section(
+    container: &gtk::Box,
+    heading: &str,
+    entries: &[recents::RecentEntry],
+    dialog: &gtk::Window,
+    weak_state: &Weak<RefCell<WindowDocument>>,
+) {
+    let header = gtk::Label::new(Some(heading));
+    header.set_xalign(0.0);
+    header.add_css_class("heading");
+    container.append(&header);
+
+    if entries.is_empty() {
+        let empty = gtk::Label::new(Some("None"));
+        empty.set_xalign(0.0);
+        empty.add_css_class("dim-label");
+        container.append(&empty);
+        return;
+    }
+
+    for entry in entries {
+        let row = gtk::Box::new(gtk::Orientation::Horizontal, 8);
+        let text_box = gtk::Box::new(gtk::Orientation::Vertical, 2);
+        text_box.set_hexpand(true);
+
+        let title = gtk::Label::new(Some(&entry.display_name));
+        title.set_xalign(0.0);
+        title.set_ellipsize(gtk::pango::EllipsizeMode::Middle);
+        let subtitle = gtk::Label::new(Some("Checking…"));
+        subtitle.set_xalign(0.0);
+        subtitle.add_css_class("dim-label");
+        text_box.append(&title);
+        text_box.append(&subtitle);
+        row.append(&text_box);
+
+        let actions_box = gtk::Box::new(gtk::Orientation::Horizontal, 6);
+        row.append(&actions_box);
+
+        let remove_btn = gtk::Button::with_label("Remove");
+        let entry_path = entry.path.clone();
+        let entry_kind = entry.kind;
+        let weak_container = container.downgrade();
+        let weak_dlg = dialog.downgrade();
+        let weak_st = weak_state.clone();
+        remove_btn.connect_clicked(move |_| {
+            recents::remove_entry(entry_kind, &entry_path);
+            if let (Some(lb), Some(dlg)) = (weak_container.upgrade(), weak_dlg.upgrade()) {
+                populate_recents_box(&lb, &dlg, &weak_st);
+            }
+        });
+        row.append(&remove_btn);
+        container.append(&row);
+
+        let entry_clone = entry.clone();
+        let entry_path = entry.path.clone();
+        let entry_kind = entry.kind;
+        let weak_sub = subtitle.downgrade();
+        let weak_actions = actions_box.downgrade();
+        let weak_container = container.downgrade();
+        let weak_dlg = dialog.downgrade();
+        let weak_st = weak_state.clone();
+        glib::spawn_future_local(async move {
+            let status = gio::spawn_blocking(move || recents::check_availability(&entry_clone))
+                .await
+                .unwrap_or(RecentStatus::InvalidTarget);
+            let (Some(sub), Some(acts)) = (weak_sub.upgrade(), weak_actions.upgrade()) else {
+                return;
+            };
+            sub.set_text(status.message());
+            if status == RecentStatus::Available {
+                let open_btn = gtk::Button::with_label("Open");
+                let entry_path_open = entry_path.clone();
+                let weak_st_open = weak_st.clone();
+                let weak_dlg_open = weak_dlg.clone();
+                open_btn.connect_clicked(move |_| {
+                    if let Some(state_rc) = weak_st_open.upgrade() {
+                        let gfile = gio::File::for_path(&entry_path_open);
+                        let mut st = state_rc.borrow_mut();
+                        match entry_kind {
+                            RecentKind::File => st.open(&gfile),
+                            RecentKind::Workspace => st.open_folder(&gfile),
+                        }
+                    }
+                    if let Some(dlg) = weak_dlg_open.upgrade() {
+                        dlg.close();
+                    }
+                });
+                acts.append(&open_btn);
+
+                let revoke_btn = gtk::Button::with_label("Revoke");
+                let entry_path_rev = entry_path.clone();
+                let weak_lb_rev = weak_container.clone();
+                let weak_dlg_rev = weak_dlg.clone();
+                let weak_st_rev = weak_st.clone();
+                revoke_btn.connect_clicked(move |_| {
+                    recents::revoke_grant(entry_kind, &entry_path_rev);
+                    if let (Some(lb), Some(dlg)) = (weak_lb_rev.upgrade(), weak_dlg_rev.upgrade()) {
+                        populate_recents_box(&lb, &dlg, &weak_st_rev);
+                    }
+                });
+                acts.append(&revoke_btn);
+            } else if status.is_recoverable() {
+                let btn_label = match status {
+                    RecentStatus::PermissionDenied | RecentStatus::AccessRevoked => "Re-grant…",
+                    _ => "Relocate…",
+                };
+                let recover_btn = gtk::Button::with_label(btn_label);
+                let entry_path_rec = entry_path;
+                let weak_st_rec = weak_st;
+                let weak_dlg_rec = weak_dlg;
+                recover_btn.connect_clicked(move |_| {
+                    if let Some(dlg) = weak_dlg_rec.upgrade() {
+                        dlg.close();
+                    }
+                    if let Some(state_rc) = weak_st_rec.upgrade() {
+                        let target = match entry_kind {
+                            RecentKind::File => RecoveryTarget::File(Some(entry_path_rec.clone())),
+                            RecentKind::Workspace => {
+                                RecoveryTarget::Folder(Some(entry_path_rec.clone()))
+                            }
+                        };
+                        state_rc.borrow_mut().start_relocate_chooser(target);
+                    }
+                });
+                acts.append(&recover_btn);
+            }
+        });
+    }
+}
+
+fn recoverable_file_error(
+    error: DocumentError,
+    cap: Option<&DocumentCapability>,
+) -> Option<(&'static str, Option<PathBuf>)> {
+    let label = match error {
+        DocumentError::NotFound | DocumentError::VolumeUnavailable => "Relocate…",
+        DocumentError::PermissionDenied | DocumentError::AccessRevoked => "Re-grant Access…",
+        _ => return None,
+    };
+    Some((label, cap.map(|c| c.path().to_path_buf())))
+}
+
+fn recoverable_folder_error(error: FolderError) -> Option<&'static str> {
+    match error {
+        FolderError::NotFound | FolderError::VolumeUnavailable => Some("Relocate…"),
+        FolderError::PermissionDenied | FolderError::AccessRevoked => Some("Re-grant Access…"),
+        _ => None,
     }
 }
 pub fn attach(window: &gtk::ApplicationWindow, label: &gtk::Label) {
@@ -358,10 +831,12 @@ pub fn attach(window: &gtk::ApplicationWindow, label: &gtk::Label) {
     reader.set_text_scale(prefs.text_scale);
 
     let find_bar = crate::find_bar::FindBar::new();
+    let recovery_bar = RecoveryBar::new();
 
     let container = gtk::Box::new(gtk::Orientation::Vertical, 0);
     window.set_child(None::<&gtk::Widget>);
     container.append(label);
+    container.append(&recovery_bar.container);
     container.append(&find_bar.container);
     container.append(&reader.widget);
     reader.widget.set_hexpand(true);
@@ -378,6 +853,9 @@ pub fn attach(window: &gtk::ApplicationWindow, label: &gtk::Label) {
             window: window.downgrade(),
             label: label.downgrade(),
             loader: DocumentLoader::new(),
+            active_folder: None,
+            recovery_bar: recovery_bar.clone(),
+            recents_window: None,
             reader: reader.clone(),
             find_bar: find_bar.clone(),
             find_gate: None,
@@ -392,6 +870,32 @@ pub fn attach(window: &gtk::ApplicationWindow, label: &gtk::Label) {
         })
     });
     WINDOWS.with(|all| all.borrow_mut().insert(key(window), state.clone()));
+
+    let weak = Rc::downgrade(&state);
+    recovery_bar.action_button.connect_clicked(move |_| {
+        if let Some(state_rc) = weak.upgrade() {
+            let target = state_rc.borrow().recovery_bar.target.borrow().clone();
+            if let Some(target) = target {
+                state_rc.borrow_mut().start_relocate_chooser(target);
+            }
+        }
+    });
+
+    let weak = Rc::downgrade(&state);
+    recovery_bar.dismiss_button.connect_clicked(move |_| {
+        if let Some(state_rc) = weak.upgrade() {
+            state_rc.borrow().recovery_bar.hide();
+        }
+    });
+
+    let recents_act = gio::SimpleAction::new("recents", None);
+    let weak = Rc::downgrade(&state);
+    recents_act.connect_activate(move |_, _| {
+        if let Some(state_rc) = weak.upgrade() {
+            state_rc.borrow_mut().open_recents_dialog();
+        }
+    });
+    window.add_action(&recents_act);
 
     let weak = Rc::downgrade(&state);
     reload.connect_activate(move |_, _| {
@@ -730,6 +1234,42 @@ pub fn choose(app: &gtk::Application) {
     state.borrow_mut().chooser = Some(chooser.clone());
     chooser.show();
 }
+pub fn choose_folder(app: &gtk::Application) {
+    let window = app
+        .active_window()
+        .and_then(|w| w.downcast::<gtk::ApplicationWindow>().ok())
+        .unwrap_or_else(|| crate::new_window(app));
+    let Some(state) = state(&window) else {
+        return;
+    };
+    if let Some(chooser) = &state.borrow().chooser {
+        chooser.show();
+        return;
+    }
+    let chooser = gtk::FileChooserNative::new(
+        Some("Open Folder"),
+        Some(&window),
+        gtk::FileChooserAction::SelectFolder,
+        Some("Open"),
+        Some("Cancel"),
+    );
+    let weak = Rc::downgrade(&state);
+    chooser.connect_response(move |chooser, response| {
+        if let Some(state) = weak.upgrade()
+            && let Ok(mut state) = state.try_borrow_mut()
+        {
+            state.chooser = None;
+            if response == gtk::ResponseType::Accept
+                && let Some(folder) = chooser.file()
+            {
+                state.open_folder(&folder);
+            }
+        }
+        chooser.destroy();
+    });
+    state.borrow_mut().chooser = Some(chooser.clone());
+    chooser.show();
+}
 pub fn deliver(app: &gtk::Application, files: &[gio::File]) {
     for (index, file) in files.iter().enumerate() {
         let empty = if index == 0 {
@@ -833,4 +1373,46 @@ pub fn find_bar(window: &gtk::ApplicationWindow) -> Option<crate::find_bar::Find
 
 pub fn text_scale(window: &gtk::ApplicationWindow) -> Option<f64> {
     state(window).map(|s| s.borrow().reader.text_scale())
+}
+
+pub fn open_folder_for_smoke(window: &gtk::ApplicationWindow, folder: &gio::File) {
+    if let Some(state) = state(window) {
+        state.borrow_mut().open_folder(folder);
+    }
+}
+
+pub fn active_folder_name(window: &gtk::ApplicationWindow) -> Option<String> {
+    state(window).and_then(|s| {
+        s.borrow()
+            .active_folder
+            .as_ref()
+            .map(FolderCapability::display_name)
+    })
+}
+
+pub fn recovery_visible(window: &gtk::ApplicationWindow) -> bool {
+    state(window).is_some_and(|s| s.borrow().recovery_bar.is_visible())
+}
+
+pub fn dismiss_recovery_for_smoke(window: &gtk::ApplicationWindow) {
+    if let Some(state) = state(window) {
+        state.borrow().recovery_bar.hide();
+    }
+}
+
+pub fn recents_dialog_visible(window: &gtk::ApplicationWindow) -> bool {
+    state(window).is_some_and(|s| {
+        s.borrow()
+            .recents_window
+            .as_ref()
+            .is_some_and(|w| w.is_visible())
+    })
+}
+
+pub fn close_recents_dialog_for_smoke(window: &gtk::ApplicationWindow) {
+    if let Some(state) = state(window)
+        && let Some(win) = state.borrow_mut().recents_window.take()
+    {
+        win.close();
+    }
 }

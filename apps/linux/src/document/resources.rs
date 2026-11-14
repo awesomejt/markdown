@@ -264,6 +264,10 @@ impl DocumentResources {
         Self { root, budget }
     }
 
+    pub fn folder(&self) -> Option<&Path> {
+        self.root.as_deref()
+    }
+
     pub fn budget(&self) -> &ImageBudget {
         &self.budget
     }

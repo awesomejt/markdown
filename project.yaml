@@ -1,11 +1,11 @@
 contract_version: project-state/v1
-revision: 818
+revision: 820
 project: &id003
   concurrency_limit: 1
   created_at: '2026-10-24T23:34:09.871478+00:00'
   project_ref: markdown-native
   status: active
-  updated_at: '2026-11-14T08:09:24.933664+00:00'
+  updated_at: '2026-11-14T20:35:27.824767+00:00'
   workflow_id: native-app-development
   workflow_version: '2'
 phases: &id005
@@ -2194,12 +2194,12 @@ tasks:
     model_tier: null
     validation_expectations: Native folder capability/recents, denied/revoked/moved-folder checks, and
       platform native CI pass.
-    status: pending
+    status: completed
     active_pass_ref: null
     blockers: []
     created_at: '2026-11-14T08:04:53.631893+00:00'
-    updated_at: '2026-11-14T08:04:53.631893+00:00'
-    completed_at: null
+    updated_at: '2026-11-14T20:35:27.824767+00:00'
+    completed_at: '2026-11-14T20:35:27.824767+00:00'
   - &id082
     id: 13b9fdd6-6e13-46fe-9207-3576db69a9d4
     task_key: LNX-002B
@@ -8685,82 +8685,42 @@ passes:
     completed_at: '2026-11-14T08:09:24.933664+00:00'
     lease_expires_at: null
     lease_version: 1
+  - &id097
+    id: 0521fb57-4bac-451c-8bef-c2edd935722e
+    sequence: 137
+    task_ref: bf1ccd88-da33-465f-a042-b4a91851a260
+    phase_ref: 1c2f7cf2-feeb-4b8d-b741-2aaaa890bbaa
+    actor: antigravity-linux
+    status: completed
+    outcome: completed
+    objective: Implement Linux persistent folder/document capability grants, recent files/workspaces,
+      and denied/revoked/moved-folder recovery.
+    summary: 'Implemented LNX-002A: FolderCapability/FolderError with canonical containment and revocation
+      propagation, persistent JSON recents store (cap 10, dedup, lossless non-UTF-8 paths, off-main availability
+      checks), File > Open Folder…, Recent Items… dialog (with Open, Revoke, Relocate/Re-grant, Remove),
+      and inline RecoveryBar (PR #74, approved under D-029).'
+    handoff: null
+    validation_result: 'python3 apps/linux/tools/check.py passed in Debug and Release (fmt, clippy, dependency
+      policy, unit/render/consumer tests, GTK smokes including folder_and_recents, isolated association,
+      two-phase relaunch, core-probe, relocated tarball); python3 tools/check.py common passed (82 md
+      files, 612 links); PR #74 Grok review 1 reported 0 Blockers, 2 Concerns, 2 Nits (approved under
+      D-029; all 4 fixed at ce11c2d).'
+    evidence:
+      pr: https://github.com/awesomejt/markdown/pull/74
+      reviewed_head: 74249a244e19f87ff44ea7b84de1f13e168fb614
+      fixes_head: ce11c2d
+      review: https://github.com/awesomejt/markdown/pull/74#pullrequestreview-PRR_kwDOVWSkys8AAAABYBUG-A
+      approval: Grok review 1 reported 0 Blockers, 2 Concerns, 2 Nits (approved under D-029); all 4 findings
+        fixed at ce11c2d.
+    participants: []
+    blocker: null
+    execution_record: {}
+    started_at: '2026-11-14T20:23:27.486953+00:00'
+    last_heartbeat_at: null
+    completed_at: '2026-11-14T20:35:27.824767+00:00'
+    lease_expires_at: null
+    lease_version: 1
 idempotency:
-  lnx-001c-start-20261101:
-    fingerprint: af7b5cb82f5bcabd750b5d319689cd8ddf7e18341c4e9478858f0ad86e82af54
-    response:
-      contract_version: project-state/v1
-      operation: start_pass
-      revision: 719
-      data:
-        pass: *id001
-        task: *id002
-      snapshot:
-        contract_version: project-state/v1
-        snapshot_at: '2026-11-01T08:10:56.373574+00:00'
-        revision: 719
-        project: *id003
-        current_phase: *id004
-        phases: *id005
-        active_tasks:
-          - *id002
-        working_tasks_without_active_lease: []
-        active_passes:
-          - *id001
-        stale_passes: []
-        blocked_tasks: []
-        eligible_tasks:
-          - *id006
-        latest_pass: *id001
-        queue_counts:
-          by_status:
-            completed: 58
-            pending: 32
-            working: 1
-          total: 91
-          active_passes: 1
-          stale_passes: 0
-          eligible: 1
-          blocked: 0
-        warnings: []
-        recommended_action: resume_active
-  3f7ba69f-f057-42bb-b23a-f8312e0b0a2c:
-    fingerprint: 79f6314e8f3987d57cb75cfbcf2078d8c1480f3400dec55674af5b8c0e8dea59
-    response:
-      contract_version: project-state/v1
-      operation: heartbeat_pass
-      revision: 720
-      data:
-        pass: *id001
-      snapshot:
-        contract_version: project-state/v1
-        snapshot_at: '2026-11-01T08:36:04.166524+00:00'
-        revision: 720
-        project: *id003
-        current_phase: *id004
-        phases: *id005
-        active_tasks:
-          - *id002
-        working_tasks_without_active_lease: []
-        active_passes:
-          - *id001
-        stale_passes: []
-        blocked_tasks: []
-        eligible_tasks:
-          - *id006
-        latest_pass: *id001
-        queue_counts:
-          by_status:
-            completed: 58
-            pending: 32
-            working: 1
-          total: 91
-          active_passes: 1
-          stale_passes: 0
-          eligible: 1
-          blocked: 0
-        warnings: []
-        recommended_action: resume_active
   fcba6c28-9ef7-47d8-a100-8ef9f1608cef:
     fingerprint: 43604ce5f6d3cb060a88ce7dd2d68c91901953143c92199e405ce360ec32e6fa
     response:
@@ -12487,6 +12447,85 @@ idempotency:
           active_passes: 0
           stale_passes: 0
           eligible: 4
+          blocked: 0
+        warnings: []
+        recommended_action: select_new_task
+  0d7e7bc8-a6a8-4801-bd30-91e82df8c5f1:
+    fingerprint: 3efc69ed2abef7e9f81db953e9a4763186c8a1866d4e35e23a5a36034082733f
+    response:
+      contract_version: project-state/v1
+      operation: start_pass
+      revision: 819
+      data:
+        pass: *id097
+        task: *id081
+      snapshot:
+        contract_version: project-state/v1
+        snapshot_at: '2026-11-14T20:23:27.486998+00:00'
+        revision: 819
+        project: *id003
+        current_phase: *id004
+        phases: *id005
+        active_tasks:
+          - *id081
+        working_tasks_without_active_lease: []
+        active_passes:
+          - *id097
+        stale_passes: []
+        blocked_tasks: []
+        eligible_tasks:
+          - *id051
+          - *id066
+          - *id096
+        latest_pass: *id097
+        queue_counts:
+          by_status:
+            completed: 78
+            pending: 30
+            working: 1
+          total: 109
+          active_passes: 1
+          stale_passes: 0
+          eligible: 3
+          blocked: 0
+        warnings: []
+        recommended_action: resume_active
+  19ad5a83-3062-44bd-aad8-5889e46d5001:
+    fingerprint: 1684b434d8cc49f8097d179e66167dc6f309863148ace24d98aee60381db30ab
+    response:
+      contract_version: project-state/v1
+      operation: finish_pass
+      revision: 820
+      data:
+        pass: *id097
+        task: *id081
+      snapshot:
+        contract_version: project-state/v1
+        snapshot_at: '2026-11-14T20:35:27.824789+00:00'
+        revision: 820
+        project: *id003
+        current_phase: *id004
+        phases: *id005
+        active_tasks: []
+        working_tasks_without_active_lease: []
+        active_passes: []
+        stale_passes: []
+        blocked_tasks: []
+        eligible_tasks:
+          - *id051
+          - *id066
+          - *id082
+          - *id084
+          - *id096
+        latest_pass: *id097
+        queue_counts:
+          by_status:
+            completed: 79
+            pending: 30
+          total: 109
+          active_passes: 0
+          stale_passes: 0
+          eligible: 5
           blocked: 0
         warnings: []
         recommended_action: select_new_task

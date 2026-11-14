@@ -10,6 +10,13 @@ use crate::{APP_ID, EMPTY_LABEL_NAME};
 /// Written out independently of `crate::COMMANDS`, so a changed menu or shortcut fails here.
 const EXPECTED: &[(&str, &str, &str, &[&str])] = &[
     ("File", "Open…", "app.open", &["<Control>o"]),
+    (
+        "File",
+        "Open Folder…",
+        "app.open-folder",
+        &["<Shift><Control>o"],
+    ),
+    ("File", "Recent Items…", "win.recents", &[]),
     ("File", "Reload", "win.reload", &["<Control>r"]),
     ("File", "New Window", "app.new-window", &["<Control>n"]),
     ("File", "Close Window", "window.close", &["<Control>w"]),
@@ -60,6 +67,9 @@ impl Mode {
 }
 
 pub fn start(app: &gtk::Application, mode: Mode) {
+    if std::env::var_os("MARKDOWN_RECENTS_PATH").is_none() {
+        unsafe { std::env::set_var("MARKDOWN_RECENTS_IN_MEMORY", "1") };
+    }
     let app = app.clone();
     // Exercise the running GTK main loop, not just the constructors.
     glib::spawn_future_local(async move {
@@ -103,6 +113,7 @@ async fn commands(app: &gtk::Application) -> Result<(), String> {
     documents(app, &first).await?;
     reader(&first).await?;
     find_and_zoom(app, &first).await?;
+    folder_and_recents(&first).await?;
 
     app.activate_action("new-window", None);
     check(
@@ -872,6 +883,58 @@ async fn find_and_zoom(
     }
 
     note("find, theme and text zoom checked");
+    Ok(())
+}
+
+async fn folder_and_recents(window: &gtk::ApplicationWindow) -> Result<(), String> {
+    markdown_linux::recents::clear();
+    let dir = std::env::temp_dir().join(format!("markdown-smoke-ws-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).map_err(|e| format!("create smoke workspace: {e}"))?;
+
+    // 1. Open valid workspace folder and verify capability + recents entry.
+    crate::files::open_folder_for_smoke(window, &gio::File::for_path(&dir));
+    check(
+        crate::files::active_folder_name(window).is_some(),
+        "active workspace folder capability set",
+    )?;
+    check(
+        !crate::files::recovery_visible(window),
+        "recovery bar hidden for valid folder",
+    )?;
+    let recents_state = markdown_linux::recents::load();
+    check(
+        recents_state.workspaces.len() == 1 && recents_state.workspaces[0].path == dir,
+        "workspace recorded in recents",
+    )?;
+
+    // 2. Remove folder (simulating moved/missing folder) and verify recovery bar appears.
+    std::fs::remove_dir_all(&dir).map_err(|e| format!("remove smoke workspace: {e}"))?;
+    crate::files::open_folder_for_smoke(window, &gio::File::for_path(&dir));
+    check(
+        crate::files::recovery_visible(window),
+        "recovery bar shown for missing/moved folder",
+    )?;
+    crate::files::dismiss_recovery_for_smoke(window);
+    check(
+        !crate::files::recovery_visible(window),
+        "recovery bar dismissed",
+    )?;
+
+    // 3. Open and close Recent Items dialog.
+    WidgetExt::activate_action(window, "win.recents", None)
+        .map_err(|e| format!("activate win.recents: {e}"))?;
+    wait_until("recents dialog visible", || {
+        crate::files::recents_dialog_visible(window)
+    })
+    .await?;
+    crate::files::close_recents_dialog_for_smoke(window);
+    wait_until("recents dialog closed", || {
+        !crate::files::recents_dialog_visible(window)
+    })
+    .await?;
+
+    markdown_linux::recents::clear();
+    note("folder capability, recovery bar and recents dialog checked");
     Ok(())
 }
 
