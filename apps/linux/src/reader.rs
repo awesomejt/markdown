@@ -229,13 +229,19 @@ impl Reader {
                 return;
             };
             let mut state = state.borrow_mut();
+            let index = item.position();
+            if state
+                .last_scrolled_fragment
+                .is_some_and(|(target, _)| (index as isize - target as isize).abs() <= 1)
+            {
+                state.last_scrolled_fragment = None;
+            }
             let Some(row_state) = state.rows.get(&(item.as_ptr() as usize)) else {
                 return;
             };
             let Some(plan) = state.plan.clone() else {
                 return;
             };
-            let index = item.position();
             let Some(fragment) = plan.fragments.get(index as usize) else {
                 return;
             };
@@ -452,7 +458,7 @@ impl Reader {
                 Some((state.view.clone(), frag))
             });
             if let Some((view, index)) = jump {
-                view.scroll_to(index, gtk::ListScrollFlags::NONE, None);
+                view.scroll_to(index, gtk::ListScrollFlags::FOCUS, None);
             }
         });
         let widget = gtk::Paned::new(gtk::Orientation::Horizontal);

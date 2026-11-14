@@ -100,8 +100,13 @@ async fn run_prepare(
         .unwrap_or(0);
 
     reader.activate_outline(heading_index as u32);
-    reader.scroll_to_fragment(outline_frag);
-    glib::timeout_future(Duration::from_millis(50)).await;
+    wait_for("target fragment is bound in prepare", || {
+        reader
+            .observed()
+            .iter()
+            .any(|(idx, _)| (*idx as isize - outline_frag as isize).abs() <= 1)
+    })
+    .await?;
 
     let mut found_frag = None;
     let mut word_start = 0;
@@ -177,10 +182,12 @@ async fn run_verify(
 
     let target_frag = plan.outline[heading_index].fragment;
 
-    wait_for("restored to target fragment in verify", || {
-        crate::files::reader(window)
-            .and_then(|r| r.first_visible_fragment())
-            .is_some_and(|f| (f as isize - target_frag as isize).abs() <= 2)
+    wait_for("target fragment is bound in verify", || {
+        crate::files::reader(window).is_some_and(|r| {
+            r.observed()
+                .iter()
+                .any(|(idx, _)| (*idx as isize - target_frag as isize).abs() <= 1)
+        })
     })
     .await?;
 

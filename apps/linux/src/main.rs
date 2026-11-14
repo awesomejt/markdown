@@ -98,8 +98,9 @@ fn main() -> glib::ExitCode {
             files::detach(window);
         }
     });
+    let initial_activate = std::cell::Cell::new(true);
     app.connect_activate(move |app| {
-        if smoke.is_none() {
+        if initial_activate.replace(false) && smoke.is_none() {
             let restored = markdown_linux::restoration::load();
             if !restored.is_empty() {
                 for st in &restored {

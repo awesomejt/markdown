@@ -643,19 +643,24 @@ pub fn save_all_restoration() {
     });
     if !states.is_empty() {
         markdown_linux::restoration::save(&states);
-    } else {
-        markdown_linux::restoration::clear();
     }
 }
 
 pub fn detach(window: &gtk::ApplicationWindow) {
     let k = key(window);
+    let count = WINDOWS.with(|all| all.borrow().len());
+    if count == 1 {
+        // Last window closing: save its position right before close so it is restored on relaunch.
+        save_all_restoration();
+    }
     WINDOWS.with(|all| {
         if let Some(state) = all.borrow_mut().remove(&k) {
             state.borrow_mut().close();
         }
     });
-    save_all_restoration();
+    if count > 1 {
+        save_all_restoration();
+    }
 }
 
 pub fn shutdown() {
