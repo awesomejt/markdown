@@ -411,6 +411,7 @@ impl WindowDocument {
                 Err(error) => {
                     let folder_path = folder.path().to_path_buf();
                     self.active_folder = None;
+                    self.workspace_browser.clear();
                     self.saved_position = None;
                     self.reader.clear();
                     self.stop_polling();
@@ -444,6 +445,49 @@ impl WindowDocument {
     fn open(&mut self, file: &gio::File) {
         self.open_internal(file, None);
     }
+    fn open_from_workspace(&mut self, path: &std::path::Path) {
+        let Some(folder) = &self.active_folder else {
+            self.workspace_browser.clear();
+            self.status(&FolderError::AccessRevoked.to_string());
+            return;
+        };
+        let cap = match folder.open_document(path) {
+            Ok(cap) => cap,
+            Err(FolderError::OutsideFolder) => {
+                self.status(&FolderError::OutsideFolder.to_string());
+                return;
+            }
+            Err(error) => {
+                let folder_path = folder.path().to_path_buf();
+                self.active_folder = None;
+                self.workspace_browser.clear();
+                self.saved_position = None;
+                self.reader.clear();
+                self.stop_polling();
+                self.reload.set_enabled(false);
+                self.status(&error.to_string());
+                if let Some(btn_label) = recoverable_folder_error(error) {
+                    self.recovery_bar.show(
+                        &error.to_string(),
+                        btn_label,
+                        RecoveryTarget::Folder(Some(folder_path)),
+                    );
+                }
+                return;
+            }
+        };
+        match self.loader.open(cap) {
+            Ok(()) => {
+                self.recovery_bar.hide();
+                self.loading();
+            }
+            Err(error) => {
+                self.saved_position = None;
+                self.reload.set_enabled(self.loader.has_file());
+                self.status(&error.to_string());
+            }
+        }
+    }
     fn open_folder(&mut self, folder: &gio::File) {
         let Some(path) = folder.path() else {
             self.status(&FolderError::NonLocalFolder.to_string());
@@ -461,7 +505,7 @@ impl WindowDocument {
                         window.set_title(Some(&format!("{name} — Markdown")));
                     }
                 }
-                self.load_workspace_tree(&cap);
+                self.load_workspace_tree(&cap, false, true);
             }
             Err(error) => {
                 self.active_folder = None;
@@ -477,10 +521,10 @@ impl WindowDocument {
             }
         }
     }
-    fn load_workspace_tree(&self, cap: &FolderCapability) {
+    fn load_workspace_tree(&self, cap: &FolderCapability, preserve_state: bool, reveal: bool) {
         let name = cap.display_name();
         let serial = self.workspace_browser.next_load_serial();
-        self.workspace_browser.set_loading(&name);
+        self.workspace_browser.set_loading(&name, reveal);
         let cap_clone = cap.clone();
         let browser = self.workspace_browser.clone();
         let weak = self.weak_self.clone();
@@ -494,7 +538,7 @@ impl WindowDocument {
             }
             match result {
                 Ok(Ok(tree)) => {
-                    browser.set_tree(tree);
+                    browser.set_tree(tree, preserve_state, reveal);
                 }
                 Ok(Err(error)) => {
                     browser.clear();
@@ -934,14 +978,14 @@ pub fn attach(window: &gtk::ApplicationWindow, label: &gtk::Label) {
     workspace_browser.set_callbacks(
         move |path| {
             if let Some(state_rc) = weak_open.upgrade() {
-                state_rc.borrow_mut().open(&gio::File::for_path(&path));
+                state_rc.borrow_mut().open_from_workspace(&path);
             }
         },
         move || {
             if let Some(state_rc) = weak_refresh.upgrade() {
                 let st = state_rc.borrow();
                 if let Some(cap) = &st.active_folder {
-                    st.load_workspace_tree(cap);
+                    st.load_workspace_tree(cap, true, false);
                 }
             }
         },

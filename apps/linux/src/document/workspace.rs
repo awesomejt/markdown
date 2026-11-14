@@ -36,6 +36,7 @@ pub struct WorkspaceTree {
     pub entries: Vec<WorkspaceEntry>,
     pub truncated: bool,
     pub skipped_invalid: usize,
+    pub skipped_symlinks: usize,
     /// Map from parent `rel_path` (empty string for root) to sorted child indices in `entries`.
     children: HashMap<String, Vec<usize>>,
     by_rel_path: HashMap<String, usize>,
@@ -49,11 +50,12 @@ impl WorkspaceTree {
 
         let mut entries = Vec::new();
         let mut skipped_invalid = 0usize;
+        let mut skipped_symlinks = 0usize;
         let mut truncated = false;
         let mut next_id = 1u64;
 
         // Iterative DFS/BFS stack: (dir_full_path, rel_prefix, depth)
-        let mut stack: Vec<(PathBuf, String, u32)> = vec![(root_path, String::new(), 0)];
+        let mut stack: Vec<(PathBuf, String, u32)> = vec![(root_path.clone(), String::new(), 0)];
 
         while let Some((dir_path, rel_prefix, depth)) = stack.pop() {
             if depth as usize >= MAX_WORKSPACE_DEPTH {
@@ -76,10 +78,23 @@ impl WorkspaceTree {
                 let Ok(ft) = entry.file_type() else {
                     continue;
                 };
-                // Never follow directory symlinks to prevent cycles or root escapes.
-                if ft.is_symlink() && std::fs::metadata(entry.path()).is_ok_and(|m| m.is_dir()) {
-                    skipped_invalid += 1;
-                    continue;
+                let full_path = entry.path();
+                if ft.is_symlink() {
+                    let Ok(canonical_target) = std::fs::canonicalize(&full_path) else {
+                        skipped_symlinks += 1;
+                        continue;
+                    };
+                    let Ok(target_meta) = std::fs::metadata(&canonical_target) else {
+                        skipped_symlinks += 1;
+                        continue;
+                    };
+                    if target_meta.is_dir()
+                        || !target_meta.is_file()
+                        || !canonical_target.starts_with(&root_path)
+                    {
+                        skipped_symlinks += 1;
+                        continue;
+                    }
                 }
                 let is_dir = ft.is_dir();
                 if !is_dir && !ft.is_file() && !ft.is_symlink() {
@@ -108,7 +123,6 @@ impl WorkspaceTree {
                     .unwrap_or(name_str)
                     .to_string();
 
-                let full_path = entry.path();
                 let parent_rel = if rel_prefix.is_empty() {
                     None
                 } else {
@@ -168,6 +182,7 @@ impl WorkspaceTree {
             entries,
             truncated,
             skipped_invalid,
+            skipped_symlinks,
             children,
             by_rel_path,
         })
@@ -292,6 +307,25 @@ impl WorkspaceBrowserModel {
         self.rebuild();
     }
 
+    pub fn expanded_paths(&self) -> impl Iterator<Item = &str> {
+        self.expanded.iter().map(String::as_str)
+    }
+
+    pub fn restore_expanded<'a>(&mut self, paths: impl Iterator<Item = &'a str>) {
+        self.expanded.clear();
+        for path in paths {
+            if self
+                .tree
+                .index_of(path)
+                .and_then(|idx| self.tree.get(idx))
+                .is_some_and(|e| e.is_dir)
+            {
+                self.expanded.insert(path.to_string());
+            }
+        }
+        self.rebuild();
+    }
+
     pub fn row_index_for_rel_path(&self, rel_path: &str) -> Option<usize> {
         self.visible.iter().position(|r| {
             self.tree
@@ -398,18 +432,29 @@ mod tests {
     }
 
     #[test]
-    fn skips_symlinked_directory_loops() {
+    fn skips_symlinked_directory_loops_and_outside_or_dangling_file_symlinks() {
         let dir = temp_dir("symlink");
+        let outside_dir = temp_dir("outside");
+        std::fs::write(outside_dir.join("secret.md"), b"# Secret").unwrap();
         std::fs::create_dir_all(dir.join("a")).unwrap();
         std::fs::write(dir.join("a/doc.md"), b"# Doc").unwrap();
         symlink(&dir, dir.join("a/loop")).unwrap();
+        symlink(outside_dir.join("secret.md"), dir.join("escape.md")).unwrap();
+        symlink(outside_dir.join("missing.md"), dir.join("dangling.md")).unwrap();
+        symlink(dir.join("a/doc.md"), dir.join("inside-link.md")).unwrap();
 
         let cap = FolderCapability::from_local_folder(dir.clone()).unwrap();
         let tree = WorkspaceTree::enumerate(&cap).unwrap();
         assert!(tree.entries.iter().any(|e| e.rel_path == "a/doc.md"));
+        assert!(tree.entries.iter().any(|e| e.rel_path == "inside-link.md"));
         assert!(!tree.entries.iter().any(|e| e.rel_path == "a/loop"));
+        assert!(!tree.entries.iter().any(|e| e.rel_path == "escape.md"));
+        assert!(!tree.entries.iter().any(|e| e.rel_path == "dangling.md"));
+        assert_eq!(tree.skipped_symlinks, 3);
+        assert_eq!(tree.skipped_invalid, 0);
 
         let _ = std::fs::remove_dir_all(&dir);
+        let _ = std::fs::remove_dir_all(&outside_dir);
     }
 
     #[test]

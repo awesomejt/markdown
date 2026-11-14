@@ -262,24 +262,45 @@ impl WorkspaceBrowser {
         self.loading_serial.get()
     }
 
-    pub fn set_loading(&self, folder_name: &str) {
+    pub fn set_loading(&self, folder_name: &str, reveal: bool) {
         let state = self.state.borrow();
         state.folder_label.set_text(folder_name);
         state.status_label.set_text("Loading folder…");
-        self.widget.set_visible(true);
+        if reveal {
+            self.widget.set_visible(true);
+        }
     }
 
-    pub fn set_tree(&self, tree: WorkspaceTree) {
+    pub fn set_tree(&self, tree: WorkspaceTree, preserve_state: bool, reveal: bool) {
         let mut model = WorkspaceBrowserModel::new(tree);
         model.set_markdown_only(!self.all_files_btn.is_active());
         model.set_show_hidden(self.hidden_btn.is_active());
-        {
+        let restored_sel = {
             let mut state = self.state.borrow_mut();
+            let mut sel_rel = None;
+            if preserve_state && let Some(prev) = &state.model {
+                let prev_expanded: Vec<String> =
+                    prev.expanded_paths().map(str::to_string).collect();
+                let prev_sel = state.selection.selected();
+                if prev_sel != gtk::INVALID_LIST_POSITION {
+                    sel_rel = prev
+                        .visible_entry(prev_sel as usize)
+                        .map(|(e, _)| e.rel_path.clone());
+                }
+                model.restore_expanded(prev_expanded.iter().map(String::as_str));
+            }
+            let idx = sel_rel
+                .as_deref()
+                .and_then(|p| model.row_index_for_rel_path(p))
+                .map(|i| i as u32);
             state.folder_label.set_text(&model.tree.root_name);
             state.model = Some(model);
+            idx
+        };
+        Self::sync_list_model(&self.state, restored_sel);
+        if reveal {
+            self.widget.set_visible(true);
         }
-        Self::sync_list_model(&self.state, None);
-        self.widget.set_visible(true);
     }
 
     pub fn clear(&self) {
