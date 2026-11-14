@@ -46,10 +46,8 @@ def main() -> None:
         check_whitespace(os.environ.get("CHECK_BASE", ""), cwd=ROOT)
     if args.suite in ("core", "core-extended", "all"):
         # The markdown-ffi C package smoke compiles against core/include with the
-        # host C compiler. It is mandatory where `cc` is standard (macOS/Linux).
-        # Windows always skips it until WIN-001B wires MSVC and the import library.
-        if sys.platform != "win32":
-            os.environ.setdefault("MD_REQUIRE_C_SMOKE", "1")
+        # host C compiler (cc on macOS/Linux, MSVC cl.exe on Windows).
+        os.environ.setdefault("MD_REQUIRE_C_SMOKE", "1")
     if args.suite in ("core", "all"):
         # PR tier (TOOL-002): lint plus the v1-default and full-feature debug builds.
         run("cargo", "fmt", "--all", "--", "--check")

@@ -701,4 +701,42 @@ fn imported_v2_metadata_text_keeps_the_front_matter_display_guard() {
     assert_eq!(parsed.metadata.title.as_deref(), Some(shown));
     let json = serde_json::to_vec(&parsed).unwrap();
     assert!(v2::Document::from_json(&json, &source, ModelLimits::default()).is_ok());
+    // Joiners and subdivision flags in display text, not keys (CORE-003F, D-034).
+    for value in [
+        "\u{645}\u{6cc}\u{200c}\u{62e}\u{648}\u{627}\u{647}\u{645}",
+        "\u{915}\u{94d}\u{200c}\u{937}",
+        "\u{1f469}\u{200d}\u{1f4bb}",
+        "\u{1f3f4}\u{e0067}\u{e0062}\u{e0077}\u{e006c}\u{e0073}\u{e007f}",
+    ] {
+        let source = format!("---\ntitle: {value}\ntags: [{value}]\n---\n[go](safe.md)\n");
+        let parsed = parse(&source).into_input();
+        assert_eq!(parsed.metadata.title.as_deref(), Some(value));
+        assert_eq!(
+            parsed.metadata.properties["tags"],
+            MetadataValue::Strings {
+                value: vec![value.into()]
+            }
+        );
+        let json = serde_json::to_vec(&parsed).unwrap();
+        assert!(v2::Document::from_json(&json, &source, ModelLimits::default()).is_ok());
+        let mut bad = d.clone();
+        bad.metadata
+            .properties
+            .insert(format!("x{value}"), MetadataValue::Null {});
+        assert_eq!(wire(&bad).unwrap_err().code, "metadata_key");
+    }
+    for value in [
+        "a\u{e0067}\u{e0062}\u{e007f}",
+        "\u{1f3f4}\u{e0067}\u{e0062}\u{e007f}",
+        "\u{200c}a",
+        "a \u{200d}b",
+        "a\u{200c}\u{200f}b",
+        "a\u{200d}\u{202d}b",
+    ] {
+        let mut bad = d.clone();
+        bad.metadata.title = Some(value.into());
+        assert_eq!(wire(&bad).unwrap_err().code, "metadata_text");
+        let source = format!("---\ntitle: {value}\n---\n[go](safe.md)\n");
+        assert_eq!(parse(&source).input().metadata.title, None);
+    }
 }

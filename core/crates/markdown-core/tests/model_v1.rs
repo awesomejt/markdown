@@ -583,7 +583,46 @@ fn imported_metadata_text_keeps_the_front_matter_display_guard() {
         },
     );
     assert!(imported(&allowed, s).is_ok());
-    let mut allowed = d;
+    let mut allowed = d.clone();
     allowed.metadata.title = Some("\u{2764}\u{fe0f} a\u{34f}b".into());
     assert!(imported(&allowed, s).is_ok());
+    // Joiners and subdivision flags in display text, not keys (CORE-003F, D-034).
+    for value in [
+        "\u{645}\u{6cc}\u{200c}\u{62e}\u{648}\u{627}\u{647}\u{645}",
+        "\u{915}\u{94d}\u{200d}\u{937}",
+        "\u{1f469}\u{200d}\u{1f4bb}",
+        "\u{1f3f4}\u{e0067}\u{e0062}\u{e0065}\u{e006e}\u{e0067}\u{e007f}",
+    ] {
+        let mut allowed = d.clone();
+        allowed.metadata.title = Some(value.into());
+        allowed.metadata.properties.insert(
+            "tags".into(),
+            MetadataValue::Strings {
+                value: vec!["a".into(), value.into()],
+            },
+        );
+        assert!(imported(&allowed, s).is_ok(), "{value:?}");
+        let mut bad = d.clone();
+        bad.metadata
+            .properties
+            .insert(format!("x{value}"), MetadataValue::Null {});
+        assert_eq!(imported(&bad, s).unwrap_err().code, "metadata_key");
+        let source = format!("---\ntitle: {value}\ntags: [{value}]\n---\n[go](safe.md)\n");
+        let produced = parsed(&source);
+        assert_eq!(produced.metadata.title.as_deref(), Some(value));
+        assert_eq!(imported(&produced, &source).unwrap().into_input(), produced);
+    }
+    for value in [
+        "a\u{e0067}\u{e0062}\u{e007f}",
+        "\u{1f3f4}\u{e0067}\u{e0062}\u{e0073}",
+        "\u{1f3f4}\u{e0047}\u{e0042}\u{e0053}\u{e007f}",
+        "\u{200d}",
+        "a\u{200c}\u{200d}b",
+        "a\u{200c}\u{200e}b",
+        "a\u{200d}\u{2067}b",
+    ] {
+        let mut bad = d.clone();
+        bad.metadata.title = Some(value.into());
+        assert_eq!(imported(&bad, s).unwrap_err().code, "metadata_text");
+    }
 }

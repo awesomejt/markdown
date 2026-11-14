@@ -1,10 +1,34 @@
 """Guard against skipping a host affected by a shared or native change."""
 import io
 import json
+import os
+import shutil
+from pathlib import Path
+import subprocess
+import tempfile
 import unittest
 from unittest import mock
 
+import yaml
+
 from ci_paths import checks_green, classify, decide
+
+
+def gate_bash(platform: str = os.name) -> str:
+    if platform == "nt":
+        git = shutil.which("git")
+        if git:
+            # Git may be exposed by cmd/, bin/, or mingw64/bin/.
+            for parent in list(Path(git).resolve().parents)[:3]:
+                for suffix in ("bin/bash.exe", "usr/bin/bash.exe"):
+                    candidate = parent / suffix
+                    if candidate.is_file():
+                        return str(candidate)
+        found = shutil.which("bash")
+        if found and Path(found).parent.name.lower() not in ("system32", "syswow64"):
+            return found
+        raise RuntimeError("Git Bash is required for the native completion-gate test")
+    return shutil.which("bash") or "bash"
 
 
 class HostSelectionTests(unittest.TestCase):
@@ -19,6 +43,17 @@ class HostSelectionTests(unittest.TestCase):
                          dict(linux=True, windows=False, macos=False))
         self.assertEqual(classify(["apps/ios/App.swift"]),
                          dict(linux=False, windows=False, macos=True))
+        for path in ("apps/macos/Sources/Markdown/MarkdownApp.swift",
+                     "apps/macos/Package.swift", "apps/macos/Info.plist",
+                     "apps/macos/tools/check.py"):
+            self.assertEqual(classify([path]),
+                             dict(linux=False, windows=False, macos=True), path)
+        for path in ("apps/linux/src/main.rs", "apps/linux/Cargo.toml",
+                     "apps/linux/Cargo.lock", "apps/linux/tools/check.py"):
+            self.assertEqual(classify([path]),
+                             dict(linux=True, windows=False, macos=False), path)
+        # The Linux license gate lives in shared tools/, so it selects every host.
+        self.assertTrue(all(classify(["tools/check_dependencies.py"]).values()))
 
     def test_docs_only_and_manual_runs(self):
         self.assertFalse(any(classify(["docs/Product.md"]).values()))
@@ -66,6 +101,54 @@ class HostSelectionTests(unittest.TestCase):
                 self.assertEqual(checks_green("abc", env), expected)
         with mock.patch("ci_paths.urllib.request.urlopen", side_effect=AssertionError("no token")):
             self.assertFalse(checks_green("abc", {}))
+
+
+class CompletionGateTests(unittest.TestCase):
+    def test_windows_prefers_git_bash_even_when_path_points_to_wsl(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            git = root / "Git/cmd/git.exe"
+            bash = root / "Git/bin/bash.exe"
+            wsl = root / "Windows/System32/bash.exe"
+            for path in (git, bash, wsl):
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.touch()
+            with mock.patch("shutil.which", side_effect=lambda name: str(git if name == "git" else wsl)):
+                self.assertEqual(Path(gate_bash("nt")), bash)
+            with mock.patch("shutil.which", side_effect=lambda name: None if name == "git" else str(wsl)):
+                with self.assertRaisesRegex(RuntimeError, "Git Bash"):
+                    gate_bash("nt")
+
+    def test_native_result_is_required_only_when_selected(self):
+        workflow = yaml.safe_load((Path(__file__).resolve().parents[1]
+                                   / ".github/workflows/ci.yml").read_text())
+        job = workflow["jobs"]["complete"]
+        self.assertIn("macos-native", job["needs"])
+        self.assertIn("linux-native", job["needs"])
+        self.assertIn("windows-native", job["needs"])
+        # A later successful command must not mask any rejected gate state.
+        gate = job["steps"][0]["run"] + "\ntrue\n"
+        green = dict(CHANGES="success", COMMON="success", CORE="success",
+                     MACOS_SELECTED="true", MACOS_NATIVE="success",
+                     LINUX_SELECTED="true", LINUX_NATIVE="success",
+                     WINDOWS_SELECTED="true", WINDOWS_NATIVE="success")
+        cases = [({}, True)]
+        for host in ("MACOS", "LINUX", "WINDOWS"):
+            selected, native = f"{host}_SELECTED", f"{host}_NATIVE"
+            cases += [({selected: "false", native: "skipped"}, True),
+                      ({selected: "", native: "skipped"}, False),
+                      ({selected: "false", native: "success"}, False)]
+            for result in ("failure", "cancelled", "skipped", ""):
+                cases.append(({native: result}, False))
+        for name in ("CHANGES", "COMMON", "CORE"):
+            cases.append(({name: "failure"}, False))
+        for overrides, passed in cases:
+            with self.subTest(overrides=overrides):
+                # On Windows CreateProcess can choose System32's WSL bash
+                # before PATH, losing the test's environment. Resolve Git Bash.
+                result = subprocess.run([gate_bash(), "-c", gate],
+                                        env={**os.environ, **green, **overrides})
+                self.assertEqual(result.returncode == 0, passed)
 
 
 if __name__ == "__main__":

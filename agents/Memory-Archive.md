@@ -578,6 +578,62 @@ shared-core and capability work still wait for Windows evidence.
 From HANDOFF.md, newest first. Each "Former resume point" was the live
 handoff at its time and is superseded.
 
+### Former resume point — CORE-FIX phase, through the milestone review
+
+PR #16 merged the three shared-core reviews
+([docs/reviews/](../docs/reviews/README.md)). The owner accepted D-025, D-026
+and D-027 ([Decisions](Decisions.md)). CORE-FIX runs seven shared tasks
+in order before any platform phase. Their scope is in
+[TODO.md](../TODO.md#core-fix-phase-shared-core-review-follow-ups).
+
+- **Done:** DOC-001, the agent-facing docs cleanup,
+  [PR #17](https://github.com/awesomejt/markdown/pull/17). Its Grok review
+  added CORE-003E (front-matter invisible-character parity), which the owner
+  placed after CORE-005D as a separate task.
+- **Done:** CORE-002B, import-policy parity and FFI host guidance,
+  [PR #18](https://github.com/awesomejt/markdown/pull/18). V1 and v2 imports
+  now re-check intents and metadata text against the producer's policy. One
+  hand-written v1 golden intent became denied, with owner approval.
+- **Done:** TOOL-002, CI speed-up,
+  [PR #19](https://github.com/awesomejt/markdown/pull/19) (D-028). PRs run
+  `tools/check.py core`; `main` and manual runs add `core-extended`. Run
+  `tools/check.py all` locally before each review request.
+- **Done:** CORE-003C, v2 corpus conformance assertions,
+  [PR #21](https://github.com/awesomejt/markdown/pull/21). Every corpus check
+  token runs on v1 and v2, with explicit per-intent pairing rules documented
+  in the [conformance contract](../specs/parsing/conformance/README.md).
+- **Done:** PR #22 (`grok` CLI reviews, D-029 review-gated merges) and the
+  D-030 milestone workflow. Task PRs now target `develop`; `main` takes only
+  owner-approved milestone reviews.
+- **Done:** TOOL-003, first-push whitespace check,
+  [PR #23](https://github.com/awesomejt/markdown/pull/23). Two deferred
+  findings are in TODO.md.
+- **Done:** CORE-003D, bare GFM autolinks (D-031),
+  [PR #24](https://github.com/awesomejt/markdown/pull/24), merged into
+  `develop` after the three-review cap with the owner's approval.
+- **Done:** CORE-005C, the content-search memory guard,
+  [PR #25](https://github.com/awesomejt/markdown/pull/25), merged into
+  `develop` on a clean Grok review (D-029). The default file budget is
+  2 MiB, and the node allowance follows it; see the
+  [workspace-search spec](../specs/workspace-search/README.md#memory-guard-core-005c).
+- **Done:** CORE-005D, wider invisible-filename warnings,
+  [PR #26](https://github.com/awesomejt/markdown/pull/26), merged into
+  `develop` on a clean Grok review (D-029). File names now flag Cf plus
+  Default_Ignorable and U+2800, except ZWJ/ZWNJ and display modifiers; the
+  shared tables live in `metadata.rs`.
+- **Done:** CORE-003E, front-matter invisible-character parity,
+  [PR #27](https://github.com/awesomejt/markdown/pull/27), merged into
+  `develop` on a clean Grok review (D-029). Front-matter text now rejects
+  the blank default-ignorable values and U+2800 too, keeping the display
+  modifiers (D-032). `metadata::hidden_character` is the one shared guard.
+- **Current:** CORE-FIX is complete, so the first milestone review is due
+  (D-030): confirm `develop` is green with no task PR waiting, cut
+  `review/core-fix` from it, and open the review PR into `main` with the
+  review packet. Only the owner merges it. Work continues on `develop`
+  meanwhile with CORE-001, the first CORE-001 to CORE-006 aggregate. Each
+  host's chain in `desktop-apps` starts after CORE-006 (D-027). Do not select
+  platform tasks before then.
+
 ### Former resume point — CORE-FIX phase, starting with DOC-001
 
 PR #16 merged after owner approval. It holds three shared-core reviews (Claude, Codex,
@@ -1019,3 +1075,175 @@ kept as a record; steps 1–3 are done.
    `docs/Platform-Capability-Evaluation.md`; its “Implications for GATE-001”
    section lists the decisions the owner must make or defer. Ask the owner to
    accept or revise GATE-001; do not accept it on the owner's behalf.
+
+## Superseded posture before CORE-001 closeout
+
+After CORE-003F (PR #32, D-034), the handoff named CORE-001 as next, including
+both TOOL-003 deferred findings from PR #23. CORE-001's shared workspace/CI
+acceptance and those findings are now closed in PR #33; CORE-002 is next.
+The earlier handoff's claim that `main` and `develop` were in sync applied to
+the milestone sync, before the subsequent task PRs on `develop`.
+
+## Superseded CORE-001 handoff before CORE-002 closeout
+
+- **Done:** CORE-001 in [PR #33](https://github.com/awesomejt/markdown/pull/33):
+  shared workspace/CI acceptance, both TOOL-003 findings and both review nits.
+  Local `tools/check.py all` passed on macOS 27.0.1 with Rust 1.99.1;
+  [hosted CI](https://github.com/awesomejt/markdown/actions/runs/40991275826)
+  passed on macOS, Linux and Windows at `29b87d4`.
+  [Grok review](https://github.com/awesomejt/markdown/pull/33#pullrequestreview-5707355475)
+  at `0440908` had no serious finding; both nits were fixed at `29b87d4`,
+  exempt from re-review under step 7. No live pass or lease remains.
+
+The next task was CORE-002; its acceptance is now closed in PR #34.
+
+## Superseded CORE-002 handoff before CORE-003 closeout
+
+- **Done:** CORE-002 in [PR #34](https://github.com/awesomejt/markdown/pull/34):
+  [aggregate model acceptance](../docs/Core-Model-Acceptance.md), with frozen
+  schemas/goldens unchanged and D-021's snapshot-local MVP identity explicit.
+  Local `tools/check.py all` passed on macOS 27.0.1 with Rust 1.99.1 at
+  source baseline `0270e6b`; common checks passed for the acceptance docs.
+  [PR CI](https://github.com/awesomejt/markdown/actions/runs/40993369885)
+  passed at `453f183`.
+  [Grok review](https://github.com/awesomejt/markdown/pull/34#pullrequestreview-5707501199)
+  at that head had no serious finding; the sole link-anchor nit is fixed in
+  the closeout commit and exempt from re-review under step 7. A second review
+  submission only corrects the suggestion's line range; no re-review was
+  requested. No live pass or lease remains.
+
+The next task was CORE-003; its parsing/safety acceptance is now closed in PR #35.
+
+## Superseded CORE-003 handoff before CORE-004 closeout
+
+- **Done:** CORE-003 in [PR #35](https://github.com/awesomejt/markdown/pull/35):
+  [parsing/safety acceptance](../docs/Core-Parser-Acceptance.md), covering corpus,
+  malformed/safety, generated/hostile inputs and parser budgets, with no
+  runtime/policy/limit/schema/golden change. Full local `tools/check.py all`
+  passed on Apple M5 Max/macOS 27.0.1 with Rust 1.99.1 at baseline `cfe3e31`.
+  Fresh 11-run release benchmarks and common documentation checks passed.
+  [PR CI](https://github.com/awesomejt/markdown/actions/runs/40994659002)
+  passed at `97d8888`.
+  [Grok review](https://github.com/awesomejt/markdown/pull/35#pullrequestreview-5707583058)
+  at that head had no serious finding. Both documentation nits are fixed in
+  the closeout: explicit v1 credential allowance and the v2 link-heavy
+  benchmark cost. They need no re-review under step 7; no findings deferred.
+  No live pass or lease remains.
+
+The next task was CORE-004; its session acceptance is now closed in PR #36.
+
+## Superseded CORE-004 handoff before CORE-005 closeout
+
+- **Done:** CORE-004 in [PR #36](https://github.com/awesomejt/markdown/pull/36):
+  [session acceptance](../docs/Core-Session-Acceptance.md), covering generations,
+  cancellation, immutable snapshots, change handling, deduplication and anchors.
+  Focused session tests passed: 28 default, 29 in each v2/all-feature debug and
+  all-feature release run, plus generation exhaustion. Full local
+  `tools/check.py all` and common documentation checks passed on macOS 27.0.1
+  with Rust 1.99.1 at baseline `b958f6e`.
+  [PR CI](https://github.com/awesomejt/markdown/actions/runs/41010966470)
+  passed at `261e587`.
+  [Grok review](https://github.com/awesomejt/markdown/pull/36#pullrequestreview-5708589037)
+  at that head had 0 blockers, 0 concerns and 0 nits. One review, no re-review
+  requested, no findings deferred. No live pass or lease remains.
+
+The next task was CORE-005; its search/read acceptance is now closed in PR #37.
+
+## Superseded shared-core posture before CORE-005 closeout
+
+  defect. Follow-ups: CORE-003F (front-matter joiners and subdivision flags,
+  D-034 amending D-032) merged in PR #32; CORE-001 closed in PR #33 with
+  hosted three-OS CI and both TOOL-003 findings fixed. CORE-002 closed in
+  PR #34 on [model acceptance](../docs/Core-Model-Acceptance.md), with the
+  frozen contracts unchanged and D-021's identity policy explicit. CORE-003
+  closed in PR #35 with [parser/safety acceptance](../docs/Core-Parser-Acceptance.md)
+  and fresh named-Mac benchmarks; runtime behavior is unchanged. CORE-004
+  closed in PR #36 with [session acceptance](../docs/Core-Session-Acceptance.md),
+  including explicit race-coverage and adapter-ordering limits. CORE-005 is next;
+
+## CORE-005 closeout handoff (2026-10-30)
+
+- **Done:** CORE-005 in [PR #37](https://github.com/awesomejt/markdown/pull/37):
+  [search/read acceptance](../docs/Core-Search-Acceptance.md), with a regression
+  for full/collapsed/shortcut/image references and corrected parity wording.
+  The accepted v1 workspace index stays unchanged; v2 find need not reproduce
+  a reference-syntax hit. No runtime/limit/ABI/schema/golden change.
+  Focused regression, final `tools/check.py all` and common checks passed on
+  macOS 27.0.1/Rust 1.99.1 after the review fixes.
+  [Fixed-head three-OS CI](https://github.com/awesomejt/markdown/actions/runs/41013505189)
+  passed at `6bd6cd5`.
+  [Grok review](https://github.com/awesomejt/markdown/pull/37#pullrequestreview-5708692468)
+  at `68cb794` had 0 blockers, 1 low wording concern and 2 nits, all fixed at
+  `6bd6cd5` and exempt from re-review under step 7. One review, no re-review
+  requested, all threads resolved, no findings deferred. No live lease remains.
+
+## CORE-006 closeout handoff (2026-10-30)
+
+- **Done:** CORE-006 in [PR #38](https://github.com/awesomejt/markdown/pull/38):
+  [facade acceptance](../docs/Core-Facade-Acceptance.md), existing ABI v1 zero
+  content-budget change from 8 to 2 MiB documented, shared/native evidence
+  boundaries reconciled. No runtime/header/schema/golden/dependency change.
+  Local `tools/check.py all` and staged common checks passed on macOS
+  27.0.1/Rust 1.99.1. Fresh
+  [three-OS debug and all-feature release CI](https://github.com/awesomejt/markdown/actions/runs/41024924816)
+  passed at `4339669265c139fa493d4e73623ad9a9c278e503`; macOS/Linux compiled
+  C smoke passed, Windows MSVC smoke remains WIN-001B.
+  [Grok review](https://github.com/awesomejt/markdown/pull/38#pullrequestreview-5709806212)
+  at that head had 0 blockers, 0 concerns and 2 nits. Both are addressed in
+  the closeout: explicit all-feature-only release scope and committed run/head
+  evidence. One review, no re-review needed, no findings deferred.
+
+## MAC-001A posture superseded by MAC-001B (2026-10-30)
+
+- MAC-001A (PR #39) adds the AppKit window/menu/lifecycle shell, SwiftPM
+  development bundle and required path-filtered macOS 27 native CI smoke.
+  The development bundle ID is `io.github.awesomejt.markdown`; no external
+  Swift packages or core link yet. MAC-001B is next: model-v2 C ABI package,
+  native lifecycle/errors/cancellation and measured encode/session/RSS bounds.
+
+- Repeated native-only 5 MiB parses on the Mac grew RSS to about 583 MiB
+  after twenty loads with zero native owners and no leaked bytes. It looks
+  like macOS allocator retention; Linux/glibc stays flat. No acceptable
+  repeated-session budget is established.
+
+## MAC-001A closeout handoff archived after MAC-001B (2026-10-30)
+
+- **Done:** MAC-001A in [PR #39](https://github.com/awesomejt/markdown/pull/39):
+  [native AppKit shell](../apps/macos/README.md), standard window/menu/keyboard
+  lifecycle, SwiftPM development bundle and required `macos-native` CI on
+  `xcode-27`. Bundle ID: `io.github.awesomejt.markdown`. No core link yet.
+  Local native debug/release smoke, full `tools/check.py all`, final common/
+  gate checks and visible native UI checks passed. Fixed-head
+  [CI run 41087967326](https://github.com/awesomejt/markdown/actions/runs/41087967326)
+  at `1d818e4eee73862e7b8d50ed1c5780c9b45bb37b` includes the actual macOS 27
+  native debug/release job; exact results are in the completion pass.
+  [Grok review](https://github.com/awesomejt/markdown/pull/39#pullrequestreview-5715121608)
+  at `d57667a` had 0 blockers, 2 soft CI concerns and 3 nits, all addressed at
+  `1d818e4`: runner proof/maintenance, bounded AppKit transition polling,
+  timeout diagnostics, plain gate checks and the GitHub-owned development ID.
+  One review, no re-review required for those non-serious fixes, all threads
+  resolved, no findings deferred.
+
+## Linux queued-step posture superseded by LNX-001C (2026-11-01)
+
+From MEMORY.md after LNX-001B:
+
+- `apps/linux`: the root package alone is the default member. LNX-001C is
+  next on Linux.
+
+From HANDOFF.md after LNX-001B:
+
+- **Next on Linux:** LNX-001C (file open/association, permission capability
+  and typed errors, generation-safe off-thread load). Use `close_then` or a
+  drop for window teardown, and coalesce or retry on `CoreError::Busy`.
+
+## Linux renderer queue posture superseded by LNX-001D (2026-11-01)
+
+From MEMORY.md after LNX-001C:
+
+- LNX-001D is next, then the mandatory LNX-001D1 accessibility gate.
+
+From HANDOFF.md after LNX-001C:
+
+- **Next on Linux:** LNX-001D (basic native blocks, outline and selection),
+  followed by the mandatory LNX-001D1 AT-SPI/Orca gate before deeper rendering.

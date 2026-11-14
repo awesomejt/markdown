@@ -72,15 +72,17 @@ fn contains(outer: SourceSpan, inner: SourceSpan) -> bool {
 fn text_present(value: &str) -> bool {
     !value.trim().is_empty()
 }
-// The front-matter producer's display guard: it never emits these characters,
-// so imported metadata must not carry them either (CORE-002B, D-032).
+// The front-matter producer's display guards: it never emits these characters,
+// so imported metadata must not carry them either (CORE-002B, D-032). Keys take
+// the full guard; titles and values allow joiners and flag tags (D-034).
 fn display_safe(value: &str) -> bool {
     !value.chars().any(crate::metadata::hidden_character)
 }
 fn metadata_value_safe(value: &MetadataValue) -> bool {
+    use crate::metadata::display_text;
     match value {
-        MetadataValue::String { value } => display_safe(value),
-        MetadataValue::Strings { value } => value.iter().all(|item| display_safe(item)),
+        MetadataValue::String { value } => display_text(value),
+        MetadataValue::Strings { value } => value.iter().all(|item| display_text(item)),
         _ => true,
     }
 }
@@ -356,7 +358,10 @@ fn validate_parts(
         "metadata",
     )?;
     require(
-        d.metadata.title.as_deref().is_none_or(display_safe)
+        d.metadata
+            .title
+            .as_deref()
+            .is_none_or(crate::metadata::display_text)
             && d.metadata.properties.values().all(metadata_value_safe),
         "metadata_text",
         "metadata",

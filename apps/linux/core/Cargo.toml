@@ -1,0 +1,9 @@
+[package]
+name = "markdown-linux-core"
+version = "0.1.0"
+edition = "2024"
+license = "Apache-2.0"
+publish = false
+description = "UI-free adapter over the core C ABI, linked from the staged model-v2 package"
+build = "build.rs"
+links = "markdown_ffi"

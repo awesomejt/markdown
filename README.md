@@ -12,21 +12,45 @@ replaced or moved into this repository.
 
 ## Current state
 
-GATE-001 is approved (D-018); **portable-core implementation** has begun.
-CORE-001A's workspace/check/CI scaffold is merged. CORE-002A now defines the
-[v1 semantic model](specs/semantic-model/v1/README.md) and schema/goldens.
-CORE-003A adds [bounded basic parsing](docs/Parsing.md) and conservative safety
-classification. CORE-003B1 adds [bounded typed front matter](docs/Front-Matter.md).
-CORE-003B2 adds opt-in [v2 references and URI targets](specs/semantic-model/v2/README.md)
-while preserving default v1. CORE-004A adds [document sessions](specs/session/README.md)
-with generations, cancellation, external-change state and anchors. CORE-006A
-adds the hand-written [C ABI](specs/ffi/README.md) facade. CORE-005A adds
-[document find and reading metadata](specs/search/README.md). Three reviews of
-the shared core ([reviews](docs/reviews/README.md)) led to the CORE-FIX phase
-(D-026) in [TODO.md](TODO.md). It finishes the shared track before the native
-application shells start (D-027). Native shells remain separate phases; no working reader is delivered by the core alone. The accepted
+GATE-001 is approved (D-018), and the **portable-core phase is complete**
+through CORE-006. The shared Rust implementation provides the
+[v1 semantic model](specs/semantic-model/v1/README.md), opt-in
+[v2 provenance and URI targets](specs/semantic-model/v2/README.md),
+[bounded parsing](docs/Parsing.md), [front matter](docs/Front-Matter.md),
+[document sessions](specs/session/README.md),
+[find and reading metadata](specs/search/README.md), workspace search and the
+hand-written [C ABI](specs/ffi/README.md). Aggregate acceptance evidence is
+linked from [HANDOFF.md](HANDOFF.md) and [Architecture.md](docs/Architecture.md).
+
+The [Windows WinUI shell](apps/windows/README.md) provides a C# Native AOT
+window, commands and Debug/Release lifecycle smoke (WIN-001A), the
+[model-v2 core DLL package and owned C ABI adapter](docs/Windows-Core-Integration.md)
+with Debug/Release consumer tests, relocated smoke/probe and required MSVC C
+smoke (WIN-001B), and native file opening, Reload, startup/association file
+delivery and bounded background loading with typed access errors and NTFS ACL
+revocation handling (WIN-001C).
+The active phase is **desktop-apps**: each host begins its own native walking
+skeleton (D-027). The [macOS AppKit shell](apps/macos/README.md) now provides
+native windows/commands, a matching model-v2 static core package and an owned
+Swift adapter with debug/release consumer CI.
+[Mac integration measurements and limits](docs/macOS-Core-Integration.md) are
+recorded; repeated-load RSS remains an open MAC-001G gate. MAC-001C added file
+access and background loading, and MAC-001D renders headings, prose, lists,
+links and code on TextKit 2 with an outline sidebar. The
+[Linux GTK shell](apps/linux/README.md) (LNX-001A) provides native windows,
+commands and a debug/release CI smoke. LNX-001B–LNX-001I (including LNX-001D1)
+deliver the full Linux single-document walking skeleton (model-v2 core,
+file access, virtualized GTK 4 reader, AT-SPI accessibility verification,
+tables/task lists/images, find/theme/text scaling, global selection and budgets,
+external refresh/restoration, and local development tarball artifact), closed in
+the [LNX-001 aggregate](docs/Linux-Skeleton-Acceptance.md#lnx-001-aggregate).
+All three desktop walking skeletons (MAC-001, WIN-001, LNX-001) are complete,
+and the [DESK-001 cross-desktop skeleton gate](docs/Desktop-Skeleton-Gate.md)
+reconciles semantics, performance, deviations, and MVP task materialization;
+the D-030 milestone review (`review/<milestone>` into `main`), `HARD-001`, and
+`002A` MVP tasks follow. The accepted
 [implementation baseline](docs/Implementation-Baseline.md) and
-[architecture](docs/Architecture.md) preserve the required native evidence.
+[architecture](docs/Architecture.md) preserve those gates.
 
 Run [development checks](docs/Development.md); see
 [dependency/license policy](docs/Dependencies.md). New implementation source
@@ -54,6 +78,10 @@ Start with:
   ownership, cancellation, packaging and memory findings.
 - [Linux core integration](docs/Shared-Core-Linux-Evaluation.md) — gtk-rs C-ABI
   ownership, cancellation, debugging, GTK timing and relocatable packaging.
+- [macOS skeleton acceptance](docs/macOS-Skeleton-Acceptance.md) — MAC-001A
+  to MAC-001I against the walking-skeleton slice, and what stays open.
+- [Windows skeleton acceptance](docs/Windows-Skeleton-Acceptance.md) — WIN-001A
+  to WIN-001I against the walking-skeleton slice, and what stays open.
 - [macOS rendering evaluation](docs/macOS-Rendering-Evaluation.md) — AppKit
   TextKit comparisons, native interaction, memory, and development bundles.
 - [Platform capability evaluation](docs/Platform-Capability-Evaluation.md) —
@@ -98,7 +126,7 @@ in [MEMORY.md](MEMORY.md), decisions in [agents/Decisions.md](agents/Decisions.m
 and operational task state in `project.yaml`. [AGENT_WORKFLOW.md](AGENT_WORKFLOW.md)
 defines the recovery-safe task loop. From core implementation onward,
 [Delivery workflow](docs/Delivery-Workflow.md) defines small platform-focused
-phases, feature branches, PRs and the `grok` CLI review request.
+phases, feature branches, PRs and the Grok review they start.
 
 ## Relationship to `markdown-viewer`
 

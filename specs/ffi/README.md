@@ -8,8 +8,9 @@ implements it over the [session contract](../session/README.md) and the
 [v1](../semantic-model/v1/README.md)/[v2](../semantic-model/v2/README.md)
 semantic models. It adds no new dependency beyond the core graph, no generated
 bindings, no I/O, no threads and no UI types. It enables the native B phases;
-it does not by itself prove a Swift, C# or gtk-rs consumer (CORE-006 remains
-open until those pass on their hosts).
+it does not by itself prove a Swift, C# or gtk-rs consumer. Under D-027,
+CORE-006 closes on shared release-mode Rust/FFI checks on all three desktop
+OSes; each native consumer package remains its platform's 001B acceptance.
 
 ## Artifacts
 
@@ -342,9 +343,18 @@ is meaningful; `MD_CONTENT_DEFAULT_SNIPPET_CONTEXT` (40) is the default.
 accepts up to `MD_CONTENT_MAX_FILE_BYTES` (8 MiB). The parse's node and event
 allowance follows it, as the
 [memory guard](../workspace-search/README.md#memory-guard-core-005c)
-describes. CORE-005C changed only that zero default and the allowance, and
-added the header constant. No struct, function or existing constant changed
-(D-022).
+describes.
+
+**ABI v1 behavior change (CORE-005C, PR #25).** Before CORE-005C, zero
+`md_content_options.max_file_bytes` selected 8 MiB. It now selects 2 MiB.
+This changed behavior under ABI v1 without changing any layout or function
+signature, before any native host shipped. CORE-005C also made the parse's
+node/event allowance follow the file budget and added
+`MD_CONTENT_DEFAULT_MAX_FILE_BYTES`; no existing constant changed (D-022).
+An explicit 8 MiB remains accepted and restores the reader's node/event
+limits, with its higher memory cost. Hosts that use zero receive the current
+2 MiB default; an unchanged ABI version does not imply the old resource budget.
+
 Out-of-range limits, an empty or whitespace-only query (an error here, unlike
 name search, because a workspace pass would otherwise charge budgets for
 files it cannot match) and an invalid path are `MD_ERR_INVALID_ARGUMENT`.
@@ -473,10 +483,12 @@ in practice.
   per-run directory (with an `@rpath` install name on macOS; DT_RPATH via
   `--disable-new-dtags` on Linux), compiles
   `tests/c/smoke.c` with the host C compiler (`-std=c11 -Wall -Wextra -Werror
-  -pedantic`), compares every struct size and field offset with Rust and runs
+  -pedantic` on macOS/Linux; MSVC `cl.exe /std:c11 /W4 /WX /O1` linked against
+  `markdown_ffi.dll.lib` on Windows), compares every struct size and field offset with Rust and runs
   the C smoke with `LD_LIBRARY_PATH`, `DYLD_LIBRARY_PATH` and
   `DYLD_FALLBACK_LIBRARY_PATH` removed. The smoke reports the file that
-  provides `md_abi_negotiate` via `dladdr`, which must canonicalize to the
+  provides `md_abi_negotiate` via `dladdr` (or `GetModuleHandleExW` and
+  `GetModuleFileNameW` on Windows), which must canonicalize to the
   staged copy, and asserts the library's model mask matches the build: negotiation, v1 and (when built) v2 sessions, bulk copy, two-call
   find with segment highlighting checked against the view, reading statistics
   and their argument checks, workspace path classification, name search over
@@ -486,10 +498,14 @@ in practice.
   (equal hash, exact anchor), anchor round trip, external change, cancellation,
   snapshot-outlives-session and 200 lifecycle iterations ending with zero live
   handles. The smoke also `_Static_assert`s every D-022 size constant.
-- `tools/check.py core` runs both in debug and release across default,
-  `model-v2` and all-feature builds; it requires the C smoke on macOS/Linux.
-  Windows runs the Rust tests and constant check but skips the C smoke until
-  the WIN-001B consumer wires MSVC and the import library.
+- `tools/check.py core` runs the default and all-feature debug configurations;
+  `core-extended` adds model-v2-only debug and all-feature release tests.
+  Release evidence covers the all-feature build; default-feature-only release
+  is not a separately tested configuration.
+  `all` runs both tiers locally. Push/manual CI runs both tiers on selected
+  hosts; task PR CI normally runs only `core`. The checks set
+  `MD_REQUIRE_C_SMOKE=1` on macOS, Linux and Windows so the C smoke is required
+  on all three platforms.
 
 Not covered here: Swift/AppKit, C# Native AOT and gtk-rs consumers, install
 names/rpaths for relocated packages, symbol visibility audits on Windows/Linux,

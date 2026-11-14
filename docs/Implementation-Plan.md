@@ -3,7 +3,7 @@
 ## Planning principles
 
 - Follow [Delivery-Workflow.md](Delivery-Workflow.md): one small delivery phase,
-  one feature branch, one PR, and a Grok review through the `grok` CLI when ready.
+  one feature branch, one PR, and the Grok review that opening the PR starts.
 - Batch dependency-ready work on the current OS before switching machines.
 - Extract and prioritize requirements before selecting implementation reuse.
 - Prove native performance on every desktop before deepening one platform.
@@ -73,6 +73,7 @@ Refine an oversized row before coding, preserving its parent acceptance criteria
 | CORE-005C | CORE-FIX 5. Workspace content-search memory guard: lower per-file default and/or density admission check with a typed skip and false-positive tests; content search documented as a model-independent text index; counted heap budget and Rust/FFI parity pass | CORE-005B2, CORE-003D |
 | CORE-005D | CORE-FIX 6. Invisible-filename flag also covers blank characters that are not Cf (Hangul fillers, Braille blank), never rejecting names; Rust/FFI parity pass | CORE-005C |
 | CORE-003E | CORE-FIX 7 (owner-added from the PR #17 Grok review). Front-matter strings: decide and apply treatment of invisible characters that are not Cf (Hangul fillers, U+2800, default-ignorables), keeping the variation-selector/CGJ allowance; producer and shared validation at v1/v2 parity; decision recorded | CORE-005D |
+| CORE-003F | CORE-FIX milestone review M1 (all three reviewers). Front-matter title and string/list values allow ZWNJ and ZWJ (keys do not); bidi controls stay rejected; emoji tag sequences decided and recorded; amends D-032; producer and shared validation at v1/v2 parity | CORE-003E |
 
 CORE-003B was refined after CORE-003A review because metadata, reference/model
 compatibility, extension semantics and fuzz/performance acceptance were too
@@ -94,7 +95,8 @@ CORE-005 depends on CORE-005B2.
 The CORE-FIX rows come from the three
 [shared-core reviews](reviews/README.md) of 2026-10-28, which the owner
 reconciled in D-026. They run in the numbered order, and state encodes it as
-dependency edges. CORE-003E (added after D-026) then leads into the CORE aggregates (below), so
+dependency edges. CORE-003E (added after D-026) and CORE-003F (added by the
+[CORE-FIX milestone review](reviews/README.md)) then lead into the CORE aggregates (below), so
 no platform phase starts before CORE-FIX completes. When the 002 tasks are
 created, each platform's 002B needs CORE-005D and each 002C needs CORE-005C.
 
@@ -105,8 +107,8 @@ predecessor. Only DESK-001 and DESK-002 join tracks:
 
 ```text
 Shared (portable-core):  DOC-001 -> CORE-002B -> CORE-003C -> CORE-003D -> CORE-005C
-                         -> CORE-005D -> CORE-003E -> CORE-001 -> CORE-002 -> CORE-003
-                         -> CORE-004 -> CORE-005 -> CORE-006 -> phase complete
+                         -> CORE-005D -> CORE-003E -> CORE-003F -> CORE-001 -> CORE-002
+                         -> CORE-003 -> CORE-004 -> CORE-005 -> CORE-006 -> phase complete
 Each host (desktop-apps): CORE-006 -> 001A -> 001B -> 001C -> 001D [-> LNX-001D1]
                          -> 001E -> 001F -> 001G -> 001H -> 001I -> 001 aggregate
 Joins:                   MAC-001 + LNX-001 + WIN-001 -> DESK-001 -> HARD-001,
@@ -152,14 +154,13 @@ Platform-specific early gate under D-017:
 
 | Delivery phase | Scope and acceptance evidence | Merged prerequisites |
 | --- | --- | --- |
-| LNX-001D1 | Prove native document/heading semantics, off-screen heading navigation and continuous reading beyond visible rows with AT-SPI inspection and owner-confirmed Orca behavior on the KDE Wayland baseline; retain correct focus, reading order and basic selection | LNX-001D |
+| LNX-001D1 | Prove native document/heading semantics and reading order with AT-SPI inspection, with outline navigation and fragment selection via native smoke; off-screen Orca structural heading navigation and continuous reading deferred to post-MVP under owner decision D-035 | LNX-001D |
 
-On Linux the chain is LNX-001D, LNX-001D1, then LNX-001E. Do not deepen the
-Linux renderer before that proof. If it fails, stop those dependent phases,
-record the failing behavior and return to the owner for a native accessibility
-design revision or explicit renderer decision. App-level shortcuts alone do
-not establish screen-reader heading navigation or continuous reading. Other
-desktop environments remain later coverage under the accepted MVP baseline.
+On Linux the chain is LNX-001D, LNX-001D1, then LNX-001E. LNX-001D1 is
+satisfied for MVP scope under D-035 by automated AT-SPI inspection proving GTK
+heading/paragraph semantics and reading order, and native smoke proving outline navigation
+and fragment selection; off-screen Orca structural navigation and continuous reading are
+deferred to post-MVP (ADV-001). LNX-001E follows.
 
 Use measured platform strategies: Windows must prove global selection/UIA and
 mixed-DPI behavior; Linux must prove cross-block selection/AT-SPI on supported

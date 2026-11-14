@@ -273,6 +273,13 @@ all-feature builds:
   boundaries, containment, reading order, exact-segment source equality and
   segment round trip to the normalized query.
 - Snapshot/document/v1/v2 parity and anchor round trips from match offsets.
+  The cross-model parity test skips the entire
+  `specs/semantic-model/v1/fixtures/gfm.source.txt` file because it contains
+  reference syntax; the remaining inputs are not asserted to be reference-free.
+  This is bounded corpus evidence, not universal parity. A separate regression
+  pins full/collapsed/shortcut link and full image references: v1 searches the
+  literal fallback, v2 searches link/alt text. V1 counts no fallback words;
+  v2 counts link text but excludes image alt from reading stats.
 - Word segmentation cases against `Intl.Segmenter` values (Node 24.14), with
   the deviations listed above.
 - Inclusion rules, own and cumulative sections, rounding and rate bounds.

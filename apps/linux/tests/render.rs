@@ -1,0 +1,1222 @@
+//! Real packaged C-ABI model-v2 values, never a second Markdown parser.
+use markdown_linux::document::{
+    DocumentResources, ImageBudget, ImageFormatInspector, ResourceError,
+};
+use markdown_linux::render::{RenderError, RenderPlan, Target};
+use markdown_linux_core::{CoreDocument, CoreSession};
+use std::{cell::Cell, collections::BTreeMap, path::Path};
+static SERIAL: std::sync::Mutex<()> = std::sync::Mutex::new(());
+fn document(source: &str) -> CoreDocument {
+    let session = CoreSession::new("renderer-test").unwrap();
+    let _guard = SERIAL.lock().unwrap_or_else(|e| e.into_inner());
+    let result = session
+        .parse_blocking(source.as_bytes().to_vec(), None, true)
+        .unwrap();
+    session.close().unwrap();
+    result.document.unwrap()
+}
+fn plan(source: &str) -> RenderPlan {
+    RenderPlan::build(&document(source), || false).unwrap()
+}
+#[test]
+fn inline_lists_code_html_and_links() {
+    let p = plan(
+        "# Héllo\n\n[go](#héllo) **bold *both*** ~~gone~~ `a<&`  \nnext\n\n3. first\n   - nested\n\n   second paragraph\n4. last\n\n```rust\n<&>\n```\n\n<script>alert(1)</script>\n\n![image alt](image.png)\n\n[external](https://example.com/a) [mail](mailto:a@example.com) [relative](other.md) [unsafe](javascript:alert) [missing](#absent)\n",
+    );
+    let text = p
+        .fragments
+        .iter()
+        .map(|f| f.text())
+        .collect::<Vec<_>>()
+        .join("\n");
+    assert!(text.contains("3. first"), "{text}");
+    assert!(text.contains("4. last"));
+    assert!(text.contains("• nested"));
+    assert!(text.contains("second paragraph"));
+    assert!(text.contains("<script>alert(1)</script>"));
+    assert!(text.contains("image alt"));
+    assert!(p.fragments.iter().any(|f| f.code && f.text() == "<&>\n"));
+    let markup = p
+        .fragments
+        .iter()
+        .enumerate()
+        .map(|(i, f)| f.markup(17, i as u32))
+        .collect::<String>();
+    assert!(markup.contains("<b><i>both</i></b>"));
+    assert!(markup.contains("<s>gone</s>"));
+    assert!(markup.contains("<tt>a&lt;&amp;</tt>"));
+    assert!(!markup.contains("<script>"));
+    assert_eq!(p.targets[0], Target::Fragment(0));
+    assert!(
+        p.targets
+            .iter()
+            .any(|t| matches!(t,Target::External(s) if s.starts_with("https:")))
+    );
+    assert!(
+        p.targets
+            .iter()
+            .any(|t| matches!(t,Target::External(s) if s.starts_with("mailto:")))
+    );
+    assert_eq!(p.targets.iter().filter(|t| **t == Target::Inert).count(), 3);
+    let (index, fragment) = p
+        .fragments
+        .iter()
+        .enumerate()
+        .find(|(_, f)| f.has_link(0))
+        .unwrap();
+    assert!(fragment.markup(17, index as u32).contains("md:17:"));
+    assert_eq!(
+        p.token_target(&format!("md:17:{index}:0"), 17, index as u32),
+        Some(&Target::Fragment(0))
+    );
+    for token in [
+        format!("md:16:{index}:0"),
+        format!("md:17:{index}:1"),
+        format!("md:17:{index}:0:extra"),
+        "https://example.com".into(),
+    ] {
+        assert!(p.token_target(&token, 17, index as u32).is_none());
+    }
+}
+#[test]
+fn unicode_fragments_styles_budget_and_cancellation() {
+    for text in [
+        "文🦀".repeat(2000),
+        format!("{}end", "word 文 🦀 ".repeat(2000)),
+    ] {
+        let p = plan(&format!("[**{text}**](https://example.com)"));
+        assert_eq!(
+            p.fragments.iter().map(|f| f.text()).collect::<String>(),
+            text
+        );
+        for (index, f) in p.fragments.iter().enumerate() {
+            assert!(!f.text().is_empty());
+            assert!(f.text().len() <= 512);
+            assert!(f.runs.iter().all(|r| r.style & 1 != 0 && r.link == Some(0)));
+            assert!(
+                p.token_target(&format!("md:2:{index}:0"), 2, index as u32)
+                    .is_some()
+            );
+        }
+    }
+    let doc = document(&"word ".repeat(2000));
+    assert_eq!(
+        RenderPlan::with_budget(&doc, || false, 128).unwrap_err(),
+        RenderError::Budget
+    );
+    let calls = Cell::new(0);
+    assert_eq!(
+        RenderPlan::build(&doc, || {
+            calls.set(calls.get() + 1);
+            calls.get() > 30
+        })
+        .unwrap_err(),
+        RenderError::Cancelled
+    );
+    let mut broken = document("[link](https://example.com)");
+    let node = broken
+        .nodes
+        .iter_mut()
+        .find(|n| n.kind == markdown_linux_core::ffi::MD_NODE_LINK)
+        .unwrap();
+    node.aux = u32::MAX;
+    assert_eq!(
+        RenderPlan::build(&broken, || false).unwrap_err(),
+        RenderError::InvalidModel
+    );
+}
+#[test]
+fn corpus_outlines_match_published_core_and_expected_contracts() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../fixtures");
+    for (dir, name) in [
+        ("foundation", "gfm-tour"),
+        ("foundation", "code-fences"),
+        ("foundation", "unsafe-html"),
+        ("advanced", "inline-diagrams"),
+        ("advanced", "voice-parity"),
+        ("advanced", "math-alerts"),
+        ("paths", "unicode-filename"),
+        ("paths", "nfd-filename"),
+    ] {
+        let source =
+            std::fs::read_to_string(root.join(format!("markdown/{dir}/{name}.md"))).unwrap();
+        let d = document(&source);
+        let p = RenderPlan::build(&d, || false).unwrap();
+        let expected = std::fs::read_to_string(root.join(format!("expected/{name}.yaml"))).unwrap();
+        assert_eq!(p.outline.len(), d.outline.len(), "{name}");
+        for (entry, core) in p.outline.iter().zip(&d.outline) {
+            assert_eq!(entry.title, d.text(core.title).unwrap());
+            assert_eq!(entry.anchor, d.text(core.anchor).unwrap());
+            assert_eq!(entry.level, core.level);
+            assert!(expected.contains(&entry.anchor), "{name}: {}", entry.anchor);
+            assert_eq!(p.fragments[entry.fragment as usize].heading, entry.level);
+        }
+        assert!(p.fragments.iter().all(|f| f.text().len() <= 512));
+    }
+}
+
+#[test]
+fn list_only_and_empty_items_keep_markers() {
+    let p = plan("1. - nested\n2.\n");
+    let text = p
+        .fragments
+        .iter()
+        .map(|f| f.text())
+        .collect::<Vec<_>>()
+        .join("\n");
+    assert!(text.contains("1. "));
+    assert!(text.contains("2. "));
+    assert!(text.contains("• nested"));
+}
+
+#[test]
+fn nul_and_xml_controls_become_visible_replacement_in_native_text() {
+    let p = plan("```\ncode \0<&>\u{1}\n```\n\n<div>raw \0\u{1}</div>\n");
+    let text = p.fragments.iter().map(|f| f.text()).collect::<String>();
+    assert!(!text.contains('\0'));
+    assert!(!text.contains('\u{1}'));
+    assert!(text.contains('\u{fffd}'));
+    for (i, f) in p.fragments.iter().enumerate() {
+        assert!(!f.markup(1, i as u32).contains('\0'));
+    }
+}
+
+#[test]
+fn soft_breaks_flow_as_spaces_and_hard_breaks_preserve_newlines() {
+    let p = plan("ordinary\nwrapped\n\nexplicit  \nbreak\n\nbackslash\\\nbreak\n");
+    let text = p.fragments.iter().map(|f| f.text()).collect::<Vec<_>>();
+    assert_eq!(
+        text,
+        ["ordinary wrapped", "explicit\nbreak", "backslash\nbreak"]
+    );
+}
+
+#[test]
+fn long_heading_keeps_one_semantic_start_and_bounded_styled_continuations() {
+    let title = format!("{}end", "word 文 ".repeat(220));
+    let p = plan(&format!("## {title}\n"));
+    assert!(p.fragments.len() > 2);
+    assert_eq!(
+        p.fragments.iter().map(|f| f.text()).collect::<String>(),
+        title
+    );
+    assert!(
+        p.fragments
+            .iter()
+            .all(|f| f.heading == 2 && f.text().len() <= 512)
+    );
+    assert_eq!(p.fragments.iter().filter(|f| f.heading_start).count(), 1);
+    assert!(p.fragments[0].heading_start);
+    assert_eq!(p.outline.len(), 1);
+    assert_eq!(p.outline[0].fragment, 0);
+}
+
+#[test]
+fn mixed_case_source_schemes_use_the_core_canonical_external_target() {
+    let doc = document(
+        "[secure](HTTPS://example.com/a) [web](HtTp://example.com/b) [mail](MAILTO:Person@example.com) [mixed](MailTo:Other@example.com)",
+    );
+    let p = RenderPlan::build(&doc, || false).unwrap();
+    assert_eq!(p.targets.len(), 4);
+    for (target, intent) in p.targets.iter().zip(&doc.links) {
+        let canonical = doc.text(intent.target).unwrap();
+        assert_eq!(target, &Target::External(canonical.to_owned()));
+        assert!(
+            ["https:", "http:", "mailto:"]
+                .iter()
+                .any(|scheme| canonical.starts_with(scheme)),
+            "core scheme must be canonical: {canonical}"
+        );
+    }
+}
+
+fn create_png(width: u32, height: u32) -> Vec<u8> {
+    let mut data = Vec::new();
+    data.extend_from_slice(&[0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]);
+    data.extend_from_slice(&13u32.to_be_bytes());
+    data.extend_from_slice(b"IHDR");
+    data.extend_from_slice(&width.to_be_bytes());
+    data.extend_from_slice(&height.to_be_bytes());
+    data.extend_from_slice(&[8, 2, 0, 0, 0]);
+    data.extend_from_slice(&[0, 0, 0, 0]);
+    data
+}
+
+fn create_bmp(width: i32, height: i32) -> Vec<u8> {
+    let mut data = Vec::new();
+    data.extend_from_slice(&[0x42, 0x4D]);
+    data.extend_from_slice(&[0; 16]);
+    data.extend_from_slice(&width.to_le_bytes());
+    data.extend_from_slice(&height.to_le_bytes());
+    data.extend_from_slice(&[1, 0, 24, 0]);
+    data
+}
+
+#[test]
+fn tables_align_header_and_tsv_copy() {
+    let source = "| Name   | Type    | Score |\n\
+                  | :----- | :-----: | ----: |\n\
+                  | Alpha  | string  |    10 |\n\
+                  | Beta   | number  |   200 |\n\
+                  | Gamma  | boolean |     3 |\n";
+
+    let p = plan(source);
+    let table_fragments: Vec<_> = p.fragments.iter().filter(|f| f.is_table_row).collect();
+    assert_eq!(table_fragments.len(), 4, "expected 4 table row fragments");
+
+    assert!(table_fragments[0].is_table_header, "row 0 must be header");
+    assert_eq!(table_fragments[0].table_row_ordinal, 0);
+    assert!(
+        !table_fragments[1].is_table_header,
+        "row 1 must not be header"
+    );
+    assert_eq!(table_fragments[1].table_row_ordinal, 1);
+    assert!(
+        !table_fragments[2].is_table_header,
+        "row 2 must not be header"
+    );
+    assert_eq!(table_fragments[2].table_row_ordinal, 2);
+    assert!(
+        !table_fragments[3].is_table_header,
+        "row 3 must not be header"
+    );
+    assert_eq!(table_fragments[3].table_row_ordinal, 3);
+
+    assert!(
+        table_fragments[0]
+            .runs
+            .iter()
+            .any(|r| (r.style & 1) != 0 && r.text.contains("Score")),
+        "header row cells must have Strong style"
+    );
+    assert!(
+        table_fragments[1].runs.iter().all(|r| (r.style & 1) == 0),
+        "body row cells must not have Strong style"
+    );
+
+    let expected_rows = [
+        "Name\tType\tScore",
+        "Alpha\tstring\t10",
+        "Beta\tnumber\t200",
+        "Gamma\tboolean\t3",
+    ];
+    for (i, expected) in expected_rows.iter().enumerate() {
+        assert_eq!(
+            table_fragments[i].text(),
+            *expected,
+            "row {i} mismatch: expected '{expected}', got '{}'",
+            table_fragments[i].text()
+        );
+    }
+
+    let short_table = plan("| # | Item |\n| -: | --- |\n| 1 | one |\n| 22 |\n");
+    let short_rows: Vec<_> = short_table
+        .fragments
+        .iter()
+        .filter(|f| f.is_table_row)
+        .collect();
+    assert_eq!(short_rows.len(), 3, "expected 3 rows for short table");
+    assert_eq!(
+        short_rows[2].text(),
+        "22\t",
+        "expected padded short row '22\\t'"
+    );
+
+    let quoted = plan("> | q |\n> | - |\n> | x |\n");
+    let quoted_rows: Vec<_> = quoted.fragments.iter().filter(|f| f.is_table_row).collect();
+    assert_eq!(quoted_rows.len(), 2, "expected 2 rows in quoted table");
+}
+
+#[test]
+fn task_markers_and_accessible_text() {
+    let p = plan("- [x] done\n- [ ] open\n- plain\n");
+    assert_eq!(p.fragments.len(), 3, "expected 3 list fragments");
+
+    assert_eq!(p.fragments[0].text(), "☑ done");
+    assert_eq!(p.fragments[1].text(), "☐ open");
+    assert_eq!(p.fragments[2].text(), "• plain");
+
+    let f0_marker = &p.fragments[0].runs[0];
+    assert!(
+        (f0_marker.style & 32) != 0,
+        "checked item must have TaskChecked style"
+    );
+
+    let f1_marker = &p.fragments[1].runs[0];
+    assert!(
+        (f1_marker.style & 64) != 0,
+        "unchecked item must have TaskUnchecked style"
+    );
+
+    let f2_marker = &p.fragments[2].runs[0];
+    assert!(
+        (f2_marker.style & (32 | 64)) == 0,
+        "plain item must not have task style"
+    );
+}
+
+#[test]
+fn images_follow_resource_policy_and_limits() {
+    let small_png = create_png(64, 64);
+    let wide_png = create_png(2000, 100);
+    let huge_bomb = create_png(20000, 20000);
+
+    let images = std::cell::RefCell::new(BTreeMap::new());
+    {
+        let mut img = images.borrow_mut();
+        img.insert("small.png".to_string(), small_png.clone());
+        img.insert("wide.png".to_string(), wide_png);
+        img.insert("huge.png".to_string(), huge_bomb);
+        img.insert(
+            "vector.svg".to_string(),
+            b"<svg xmlns='http://www.w3.org/2000/svg'/>".to_vec(),
+        );
+        img.insert(
+            "disguised.png".to_string(),
+            b"<?xml version='1.0'?><svg></svg>".to_vec(),
+        );
+        img.insert("corrupt.png".to_string(), b"not an image at all".to_vec());
+    }
+
+    let load_count = Cell::new(0);
+    let mock_loader =
+        |path: &str, _limit: usize| -> Result<(Vec<u8>, usize, usize), ResourceError> {
+            load_count.set(load_count.get() + 1);
+            if let Some(data) = images.borrow().get(path) {
+                let (w, h) = ImageFormatInspector::inspect(data, 32 * 1024 * 1024, 2048)?;
+                return Ok((data.clone(), w, h));
+            }
+            if path == "../up.png" {
+                return Err(ResourceError::OutsideFolder);
+            }
+            Err(ResourceError::NotFound)
+        };
+
+    let md = "![small](small.png)\n\n\
+              ![huge](huge.png)\n\n\
+              ![svg](vector.svg)\n\n\
+              ![disguised](disguised.png)\n\n\
+              ![corrupt](corrupt.png)\n\n\
+              ![up](../up.png)\n\n\
+              ![missing](missing.png)\n\n\
+              ![remote](https://example.com/pic.png)\n\n\
+              ![data](data:image/png;base64,abc)\n";
+
+    let doc = document(md);
+    let plan = RenderPlan::build_with_resources(
+        &doc,
+        || false,
+        markdown_linux::render::PLAN_BUDGET,
+        Some(&mock_loader),
+        ImageBudget::default(),
+    )
+    .unwrap();
+
+    assert_eq!(plan.images.len(), 9, "expected 9 images");
+    assert_eq!(plan.images[0].failure, None, "small image should succeed");
+    assert_eq!(plan.images[0].width, 64);
+    assert_eq!(plan.images[0].height, 64);
+    assert!(plan.images[0].data.is_some());
+
+    assert_eq!(
+        plan.images[1].failure,
+        Some(ResourceError::TooLarge),
+        "huge image should fail with TooLarge"
+    );
+    assert_eq!(
+        plan.images[2].failure,
+        Some(ResourceError::UnsupportedType),
+        "svg should fail with UnsupportedType"
+    );
+    assert_eq!(
+        plan.images[3].failure,
+        Some(ResourceError::UnsupportedType),
+        "disguised svg should fail with UnsupportedType"
+    );
+    assert_eq!(
+        plan.images[4].failure,
+        Some(ResourceError::Undecodable),
+        "corrupt should fail with Undecodable"
+    );
+    assert_eq!(
+        plan.images[5].failure,
+        Some(ResourceError::OutsideFolder),
+        "up should fail with OutsideFolder"
+    );
+    assert_eq!(
+        plan.images[6].failure,
+        Some(ResourceError::NotFound),
+        "missing should fail with NotFound"
+    );
+    assert_eq!(
+        plan.images[7].failure,
+        Some(ResourceError::Remote),
+        "https image should fail with Remote"
+    );
+    assert_eq!(
+        plan.images[8].failure,
+        Some(ResourceError::Blocked),
+        "data: image should fail with Blocked"
+    );
+
+    // Budget limit: max 3 images
+    let budget = ImageBudget {
+        max_images: 3,
+        ..Default::default()
+    };
+    let multi_md = "![1](small.png) ![2](wide.png) ![3](i3.png) ![4](i4.png) ![5](i5.png)\n";
+    {
+        let mut img = images.borrow_mut();
+        img.insert("i3.png".to_string(), small_png.clone());
+        img.insert("i4.png".to_string(), small_png.clone());
+        img.insert("i5.png".to_string(), small_png.clone());
+    }
+
+    let budget_doc = document(multi_md);
+    let budget_plan = RenderPlan::build_with_resources(
+        &budget_doc,
+        || false,
+        markdown_linux::render::PLAN_BUDGET,
+        Some(&mock_loader),
+        budget,
+    )
+    .unwrap();
+    assert_eq!(budget_plan.images.len(), 5);
+    assert_eq!(budget_plan.images[0].failure, None);
+    assert_eq!(budget_plan.images[1].failure, None);
+    assert_eq!(budget_plan.images[2].failure, None);
+    assert_eq!(budget_plan.images[3].failure, Some(ResourceError::Limit));
+    assert_eq!(budget_plan.images[4].failure, Some(ResourceError::Limit));
+
+    // Decoded memory budget limit
+    let mem_budget = ImageBudget {
+        max_decoded_bytes: 64 * 64 * 4 * 2,
+        ..Default::default()
+    };
+    let mem_md = "![w](wide.png) ![s1](s1.png) ![s2](s2.png) ![s3](s3.png)\n";
+    {
+        let mut img = images.borrow_mut();
+        img.insert("s1.png".to_string(), small_png.clone());
+        img.insert("s2.png".to_string(), small_png.clone());
+        img.insert("s3.png".to_string(), small_png.clone());
+    }
+
+    let mem_doc = document(mem_md);
+    let mem_plan = RenderPlan::build_with_resources(
+        &mem_doc,
+        || false,
+        markdown_linux::render::PLAN_BUDGET,
+        Some(&mock_loader),
+        mem_budget,
+    )
+    .unwrap();
+    assert_eq!(mem_plan.images[0].failure, Some(ResourceError::Limit));
+    assert_eq!(mem_plan.images[1].failure, None);
+    assert_eq!(mem_plan.images[2].failure, None);
+    assert_eq!(mem_plan.images[3].failure, Some(ResourceError::Limit));
+
+    // Deduplication check
+    load_count.set(0);
+    let dedup_md = "![first](small.png)\n\n![second](small.png)\n";
+    let dedup_doc = document(dedup_md);
+    let dedup_plan = RenderPlan::build_with_resources(
+        &dedup_doc,
+        || false,
+        markdown_linux::render::PLAN_BUDGET,
+        Some(&mock_loader),
+        ImageBudget::default(),
+    )
+    .unwrap();
+    assert_eq!(dedup_plan.images.len(), 2);
+    assert_eq!(
+        load_count.get(),
+        1,
+        "expected exactly 1 loader call for duplicate image"
+    );
+    assert!(dedup_plan.images[0].failure.is_none());
+    assert!(dedup_plan.images[1].failure.is_none());
+    assert!(
+        std::sync::Arc::ptr_eq(
+            dedup_plan.images[0].data.as_ref().unwrap(),
+            dedup_plan.images[1].data.as_ref().unwrap()
+        ),
+        "duplicate images must share the same Arc<[u8]> allocation"
+    );
+
+    // Many duplicate references to one image stay bounded in memory and share Arc allocation
+    load_count.set(0);
+    let mut repeat_md = String::new();
+    for i in 0..50 {
+        repeat_md.push_str(&format!("![img{i}](small.png)\n\n"));
+    }
+    let repeat_doc = document(&repeat_md);
+    let repeat_plan = RenderPlan::build_with_resources(
+        &repeat_doc,
+        || false,
+        markdown_linux::render::PLAN_BUDGET,
+        Some(&mock_loader),
+        ImageBudget::default(),
+    )
+    .unwrap();
+    assert_eq!(load_count.get(), 1);
+    assert_eq!(repeat_plan.images.len(), 50);
+    let first_ptr = repeat_plan.images[0].data.as_ref().unwrap();
+    for img in &repeat_plan.images {
+        assert!(img.failure.is_none());
+        assert!(std::sync::Arc::ptr_eq(
+            first_ptr,
+            img.data.as_ref().unwrap()
+        ));
+    }
+
+    // Mixed paragraph with text, link, and multiple images
+    let mixed_md =
+        "See ![first](small.png) for details and [docs](#test) plus ![second](small.png)\n";
+    let mixed_doc = document(mixed_md);
+    let mixed_plan = RenderPlan::build_with_resources(
+        &mixed_doc,
+        || false,
+        markdown_linux::render::PLAN_BUDGET,
+        Some(&mock_loader),
+        ImageBudget::default(),
+    )
+    .unwrap();
+    let mixed_frag = mixed_plan
+        .fragments
+        .iter()
+        .find(|f| f.text().contains("See"))
+        .unwrap();
+    assert_eq!(mixed_frag.images.len(), 2);
+    assert!(
+        mixed_frag
+            .runs
+            .iter()
+            .any(|r| r.text == "docs" && r.link.is_some())
+    );
+    assert!(mixed_frag.text().contains("See ") && mixed_frag.text().contains(" for details and "));
+
+    // Image in table cell must not leak into subsequent paragraph
+    let table_with_img_md = "| Header |\n| --- |\n| ![cell](small.png) |\n\nNext paragraph text\n";
+    let table_doc = document(table_with_img_md);
+    let table_plan = RenderPlan::build_with_resources(
+        &table_doc,
+        || false,
+        markdown_linux::render::PLAN_BUDGET,
+        Some(&mock_loader),
+        ImageBudget::default(),
+    )
+    .unwrap();
+    let next_frag = table_plan
+        .fragments
+        .iter()
+        .find(|f| f.text().contains("Next paragraph"))
+        .unwrap();
+    assert_eq!(
+        next_frag.images.len(),
+        0,
+        "table cell image must not leak into subsequent paragraph"
+    );
+
+    // Max pixel side (2048) enforcement: 2049x10 fails with TooLarge
+    let long_side_png = create_png(2049, 10);
+    images
+        .borrow_mut()
+        .insert("longside.png".to_string(), long_side_png);
+    let side_doc = document("![side](longside.png)\n");
+    let side_plan = RenderPlan::build_with_resources(
+        &side_doc,
+        || false,
+        markdown_linux::render::PLAN_BUDGET,
+        Some(&mock_loader),
+        ImageBudget::default(),
+    )
+    .unwrap();
+    assert_eq!(side_plan.images[0].failure, Some(ResourceError::TooLarge));
+
+    // Crafted BMP with negative/overflow height handled safely
+    let min_bmp = create_bmp(100, i32::MIN);
+    let bmp_res = ImageFormatInspector::inspect(&min_bmp, 32 * 1024 * 1024, 2048);
+    assert_eq!(bmp_res, Err(ResourceError::TooLarge));
+}
+
+#[test]
+fn document_resources_filesystem_security() {
+    let temp_dir = std::env::temp_dir().join(format!("markdown-res-test-{}", std::process::id()));
+    std::fs::create_dir_all(&temp_dir).unwrap();
+    let sub_dir = temp_dir.join("sub");
+    std::fs::create_dir_all(&sub_dir).unwrap();
+    let outside_dir =
+        std::env::temp_dir().join(format!("markdown-outside-test-{}", std::process::id()));
+    std::fs::create_dir_all(&outside_dir).unwrap();
+
+    let valid_png = create_png(32, 32);
+    let valid_file = temp_dir.join("valid.png");
+    std::fs::write(&valid_file, &valid_png).unwrap();
+
+    let sub_file = sub_dir.join("sub.png");
+    std::fs::write(&sub_file, &valid_png).unwrap();
+
+    let outside_file = outside_dir.join("outside.png");
+    std::fs::write(&outside_file, &valid_png).unwrap();
+
+    let outside_symlink = temp_dir.join("sym_outside.png");
+    let _ = std::os::unix::fs::symlink(&outside_file, &outside_symlink);
+
+    let svg_file = temp_dir.join("image.svg");
+    std::fs::write(&svg_file, b"<svg></svg>").unwrap();
+
+    let non_image_file = temp_dir.join("doc.txt");
+    std::fs::write(&non_image_file, b"plain text").unwrap();
+
+    let resources = DocumentResources::new(Some(temp_dir.clone()));
+
+    // 1. Direct sibling image
+    let read_valid = resources.read_image("valid.png", 1024 * 1024);
+    assert!(read_valid.is_ok(), "valid sibling image should succeed");
+    let (data, w, h) = read_valid.unwrap();
+    assert_eq!(data.len(), valid_png.len());
+    assert_eq!(w, 32);
+    assert_eq!(h, 32);
+
+    // 2. Subfolder image
+    let read_sub = resources.read_image("sub/sub.png", 1024 * 1024);
+    assert!(read_sub.is_ok(), "subfolder image should succeed");
+
+    // 3. Escaping with ..
+    let read_escape = resources.read_image("../outside.png", 1024 * 1024);
+    assert_eq!(read_escape, Err(ResourceError::OutsideFolder));
+
+    // 4. Symlink escaping outside folder
+    if outside_symlink.exists() {
+        let read_sym = resources.read_image("sym_outside.png", 1024 * 1024);
+        assert_eq!(read_sym, Err(ResourceError::OutsideFolder));
+    }
+
+    // 5. Absolute path or empty path
+    assert_eq!(
+        resources.read_image("/etc/passwd", 1024),
+        Err(ResourceError::OutsideFolder)
+    );
+    assert_eq!(
+        resources.read_image("", 1024),
+        Err(ResourceError::OutsideFolder)
+    );
+    assert_eq!(
+        resources.read_image("valid.png\0extra", 1024),
+        Err(ResourceError::OutsideFolder)
+    );
+
+    // 6. Missing file
+    assert_eq!(
+        resources.read_image("nonexistent.png", 1024),
+        Err(ResourceError::NotFound)
+    );
+
+    // 7. Directory path
+    assert_eq!(
+        resources.read_image("sub", 1024),
+        Err(ResourceError::UnsupportedType)
+    );
+
+    // 8. SVG rejected
+    assert_eq!(
+        resources.read_image("image.svg", 1024),
+        Err(ResourceError::UnsupportedType)
+    );
+
+    // 9. Non-image rejected
+    assert_eq!(
+        resources.read_image("doc.txt", 1024),
+        Err(ResourceError::UnsupportedType)
+    );
+
+    // 10. File exceeding limit
+    assert_eq!(
+        resources.read_image("valid.png", 10),
+        Err(ResourceError::TooLarge)
+    );
+
+    let _ = std::fs::remove_dir_all(&temp_dir);
+    let _ = std::fs::remove_dir_all(&outside_dir);
+}
+
+#[test]
+fn messages_name_no_path() {
+    let all_errors = [
+        ResourceError::OutsideFolder,
+        ResourceError::NotFound,
+        ResourceError::PermissionDenied,
+        ResourceError::NotRegularFile,
+        ResourceError::UnsupportedType,
+        ResourceError::TooLarge,
+        ResourceError::Limit,
+        ResourceError::Undecodable,
+        ResourceError::Remote,
+        ResourceError::Blocked,
+        ResourceError::NotLoaded,
+    ];
+
+    for err in all_errors {
+        let msg = err.message();
+        assert!(
+            !msg.contains('/'),
+            "error message must not contain '/': {msg}"
+        );
+        assert!(
+            !msg.contains('\\'),
+            "error message must not contain '\\': {msg}"
+        );
+        assert!(
+            !msg.contains(".png"),
+            "error message must not contain file extension: {msg}"
+        );
+        assert!(
+            !msg.contains(".md"),
+            "error message must not contain file extension: {msg}"
+        );
+        assert!(!msg.is_empty(), "error message must not be empty");
+    }
+}
+
+#[test]
+fn text_scale_clamped_and_steps() {
+    use markdown_linux::preferences::{
+        DEFAULT_SCALE_INDEX, SCALE_STEPS, clamped_scale, larger_scale, smaller_scale,
+    };
+
+    assert!((clamped_scale(1.0) - 1.0).abs() < 0.001, "clamped standard");
+    assert!(
+        (clamped_scale(1.04) - 1.0).abs() < 0.001,
+        "clamped near 1.0"
+    );
+    assert!(
+        (clamped_scale(9.0) - SCALE_STEPS[SCALE_STEPS.len() - 1]).abs() < 0.001,
+        "clamped max"
+    );
+    assert!(
+        (clamped_scale(-1.0) - SCALE_STEPS[0]).abs() < 0.001,
+        "clamped min"
+    );
+    assert!(
+        (clamped_scale(f64::NAN) - SCALE_STEPS[DEFAULT_SCALE_INDEX]).abs() < 0.001,
+        "clamped NaN"
+    );
+    assert!(
+        (clamped_scale(f64::INFINITY) - SCALE_STEPS[DEFAULT_SCALE_INDEX]).abs() < 0.001,
+        "clamped inf"
+    );
+
+    let larger = larger_scale(1.0);
+    assert!(
+        larger.is_some() && (larger.unwrap() - 1.15).abs() < 0.001,
+        "larger step"
+    );
+    let smaller = smaller_scale(1.0);
+    assert!(
+        smaller.is_some() && (smaller.unwrap() - 0.85).abs() < 0.001,
+        "smaller step"
+    );
+
+    assert!(
+        larger_scale(SCALE_STEPS[SCALE_STEPS.len() - 1]).is_none(),
+        "larger at max is none"
+    );
+    assert!(
+        smaller_scale(SCALE_STEPS[0]).is_none(),
+        "smaller at min is none"
+    );
+}
+
+#[test]
+fn preferences_memory_and_local_settings() {
+    use markdown_linux::preferences::{
+        Preferences, ThemePreference, load, parse_preferences, save,
+    };
+
+    // Single-line JSON and NaN safety
+    let p1 = parse_preferences(r#"{"theme": "light", "text_scale": 1.30}"#);
+    assert_eq!(p1.theme, ThemePreference::Light);
+    assert!((p1.text_scale - 1.30).abs() < 0.001);
+
+    let p_nan = parse_preferences(r#"{"theme": "dark", "text_scale": NaN}"#);
+    assert_eq!(p_nan.theme, ThemePreference::Dark);
+    assert!((p_nan.text_scale - 1.0).abs() < 0.001, "NaN clamped to 1.0");
+
+    let p_clamp = parse_preferences(r#"{"theme": "system", "text_scale": 999.0}"#);
+    assert_eq!(p_clamp.theme, ThemePreference::System);
+    assert!(
+        (p_clamp.text_scale - 2.50).abs() < 0.001,
+        "clamped to max 2.5"
+    );
+
+    // Force memory mode for test isolation
+    // SAFETY: Single-threaded test context within this function
+    unsafe { std::env::set_var("MARKDOWN_PREFERENCES_IN_MEMORY", "1") };
+
+    let prefs = load();
+    assert_eq!(prefs.theme, ThemePreference::System, "default theme system");
+    assert!(
+        (prefs.text_scale - 1.0).abs() < 0.001,
+        "default text scale 1.0"
+    );
+
+    let updated = Preferences {
+        theme: ThemePreference::Dark,
+        text_scale: 1.5,
+    };
+    save(&updated);
+
+    let reloaded = load();
+    assert_eq!(reloaded.theme, ThemePreference::Dark, "reloaded theme dark");
+    assert!(
+        (reloaded.text_scale - 1.5).abs() < 0.001,
+        "reloaded text scale 1.5"
+    );
+}
+
+#[test]
+fn document_find_unicode_mappings_and_wrapping() {
+    use markdown_linux_core::find::CoreFindOptions;
+
+    let source = "# Find 𝒳 heading\n\n\
+        Plain foo **bar** baz, 𝒳𝒴 target, AT&amp;T and `code span`.\n\
+        soft\nbreak and hard\\\nline.\n\n\
+        > ```\n> quoted code\n> second line\n> ```\n\n\
+        ![alt words](missing.png) and <span>raw html</span>\n\n\
+        | Cell one | Cell two |\n| - | - |\n| table value | 中文 |\n\n\
+        Café and cafe\u{0301}; 👨\u{200D}👩\u{200D}👧 family; עברית שלום.\n";
+
+    let session = CoreSession::new("render-find-test").unwrap();
+    let _guard = SERIAL.lock().unwrap_or_else(|e| e.into_inner());
+    let parse_res = session
+        .parse_blocking(source.as_bytes().to_vec(), None, true)
+        .unwrap();
+    let doc = parse_res.document.unwrap();
+    let plan = RenderPlan::build(&doc, || false).unwrap();
+
+    let do_find = |query: &str, options: Option<CoreFindOptions>| {
+        let opts = options.unwrap_or_default();
+        let res = session.find_blocking(query, opts, doc.generation).unwrap();
+        plan.map_matches(&doc, &res)
+    };
+
+    let match_texts = |matches: &markdown_linux::render::FindMatches| -> Vec<String> {
+        let mut list = Vec::with_capacity(matches.count());
+        for m in &matches.matches {
+            let mut s = String::new();
+            for r in &m.ranges {
+                let frag = &plan.fragments[r.fragment_index];
+                let frag_text = frag.text();
+                // Character-based slicing for range
+                let chars: Vec<char> = frag_text.chars().collect();
+                if r.start < chars.len() {
+                    let end = r.end.min(chars.len());
+                    let sub: String = chars[r.start..end].iter().collect();
+                    s.push_str(&sub);
+                }
+            }
+            list.push(s);
+        }
+        list
+    };
+
+    let cases: &[(&str, &[&str])] = &[
+        ("foo bar", &["foo bar"]),
+        ("target", &["target"]),
+        ("𝒳", &["𝒳", "𝒳"]),
+        ("AT&T", &["AT&T"]),
+        ("code span", &["code span"]),
+        ("soft break", &["soft break"]),
+        ("alt words", &["[alt words]"]),
+        ("table value", &["table value"]),
+        ("中文", &["中文"]),
+        ("café", &["Café"]),
+        ("cafe\u{0301}", &["cafe\u{0301}"]),
+        ("family", &["family"]),
+        ("שלום", &["שלום"]),
+        ("heading", &["heading"]),
+        ("missing", &[]),
+    ];
+
+    for (query, expected) in cases {
+        let matches = do_find(query, None);
+        let texts = match_texts(&matches);
+        assert_eq!(
+            &texts, expected,
+            "query '{query}' expected {:?} got {:?}",
+            expected, texts
+        );
+    }
+
+    // Navigation wrapping and status
+    let multi_matches = do_find("𝒳", None);
+    assert_eq!(multi_matches.count(), 2, "2 matches for 𝒳");
+    assert_eq!(multi_matches.status(None), "2 matches", "status plural");
+    assert_eq!(multi_matches.status(Some(0)), "1 of 2", "status 1 of 2");
+    assert_eq!(multi_matches.status(Some(1)), "2 of 2", "status 2 of 2");
+
+    assert_eq!(multi_matches.index_at_or_after(0), Some(0), "at or after 0");
+    assert_eq!(multi_matches.index_after(0, false), Some(1), "next after 0");
+    assert_eq!(
+        multi_matches.index_after(1, false),
+        Some(0),
+        "next wraps to 0"
+    );
+    assert_eq!(
+        multi_matches.index_after(0, true),
+        Some(1),
+        "prev wraps to 1"
+    );
+
+    let empty_matches = do_find("nonexistentquery", None);
+    assert_eq!(empty_matches.count(), 0, "0 matches");
+    assert_eq!(empty_matches.status(None), "Not found", "not found status");
+
+    // Stale generation
+    let stale_result = markdown_linux_core::find::CoreFindResult {
+        generation: doc.generation + 1,
+        matches: Vec::new(),
+        segments: Vec::new(),
+        truncated: false,
+    };
+    let stale_matches = plan.map_matches(&doc, &stale_result);
+    assert_eq!(
+        stale_matches.count(),
+        0,
+        "stale generation returns 0 matches"
+    );
+
+    session.close().unwrap();
+}
+
+#[test]
+fn global_document_selection_model_and_slices() {
+    use markdown_linux::render::{DocumentPosition, DocumentSelection};
+
+    // Position comparison
+    let p0 = DocumentPosition::new(0, 5);
+    let p1 = DocumentPosition::new(1, 0);
+    let p2 = DocumentPosition::new(1, 3);
+    assert!(p0 < p1);
+    assert!(p1 < p2);
+    assert_eq!(p1, DocumentPosition::new(1, 0));
+
+    // Selection range & normalization
+    let sel_fwd = DocumentSelection::new(p0, p2);
+    assert_eq!(sel_fwd.start(), p0);
+    assert_eq!(sel_fwd.end(), p2);
+    assert!(!sel_fwd.is_empty());
+
+    let sel_rev = DocumentSelection::new(p2, p0);
+    assert_eq!(sel_rev.start(), p0);
+    assert_eq!(sel_rev.end(), p2);
+    assert!(!sel_rev.is_empty());
+
+    let sel_empty = DocumentSelection::new(p1, p1);
+    assert!(sel_empty.is_empty());
+
+    // Document with headings, paragraphs, and lists
+    let source = "# Heading One\n\nFirst paragraph with **bold** text.\n\nSecond paragraph here.\n";
+    let doc = document(source);
+    let plan = RenderPlan::build(&doc, || false).unwrap();
+    assert!(plan.fragments.len() >= 3);
+
+    // Single fragment text slicing
+    let f0_text = plan.fragments[0].text();
+    let sub = plan.text_between(DocumentPosition::new(0, 0), DocumentPosition::new(0, 7));
+    assert_eq!(sub, "Heading");
+
+    // Multi-fragment text slicing with paragraph separator
+    let multi = plan.text_between(DocumentPosition::new(0, 0), DocumentPosition::new(1, 5));
+    assert!(multi.starts_with("Heading One\n\nFirst"));
+
+    // Whole-document selection gives exact source bytes
+    let last_idx = plan.fragments.len() - 1;
+    let last_len = plan.fragments[last_idx].text().chars().count();
+    let full_source = plan.source_between(
+        DocumentPosition::new(0, 0),
+        DocumentPosition::new(last_idx, last_len),
+        &doc,
+    );
+    assert_eq!(full_source, Some(source.as_bytes()));
+
+    // Whole-fragment source slicing returns node span
+    let frag1_len = plan.fragments[1].text().chars().count();
+    let whole_frag_source = plan.source_between(
+        DocumentPosition::new(1, 0),
+        DocumentPosition::new(1, frag1_len),
+        &doc,
+    );
+    assert!(whole_frag_source.is_some());
+    assert!(!whole_frag_source.unwrap().is_empty());
+
+    // Mid-paragraph partial selection: text_between returns exact characters,
+    // source_between returns None so clipboard falls back to plain bytes without
+    // expanding to the whole paragraph span.
+    let mid_text = plan.text_between(DocumentPosition::new(1, 2), DocumentPosition::new(1, 7));
+    assert_eq!(mid_text, "rst p");
+    let mid_source = plan.source_between(
+        DocumentPosition::new(1, 2),
+        DocumentPosition::new(1, 7),
+        &doc,
+    );
+    assert_eq!(mid_source, None);
+
+    // Per-fragment selection mapping
+    let sel = DocumentSelection::new(DocumentPosition::new(0, 3), DocumentPosition::new(2, 4));
+    assert_eq!(
+        plan.selection_for_fragment(0, Some(sel)),
+        Some((3, f0_text.chars().count()))
+    );
+    assert_eq!(
+        plan.selection_for_fragment(1, Some(sel)),
+        Some((0, plan.fragments[1].text().chars().count()))
+    );
+    assert_eq!(plan.selection_for_fragment(2, Some(sel)), Some((0, 4)));
+    assert_eq!(plan.selection_for_fragment(3, Some(sel)), None);
+    assert_eq!(plan.selection_for_fragment(0, Some(sel_empty)), None);
+
+    // Markup highlighting with selection and find interaction
+    let frag = &plan.fragments[1];
+    // Find highlight on chars 6..10 ("para"), selection on chars 0..8
+    let highlights = vec![(6, 10, true)];
+    let markup_sel_and_find =
+        frag.markup_with_highlights_and_selection(1, 1, &highlights, Some((0, 8)));
+    // Selection style
+    assert!(markup_sel_and_find.contains("background=\"#3584e4\" foreground=\"#ffffff\""));
+    // Find style for remaining non-selected part of match (chars 8..10)
+    assert!(markup_sel_and_find.contains("background=\"#ff7800\" foreground=\"#ffffff\""));
+}
+
+#[test]
+fn restoration_store_and_base64_serialization() {
+    use markdown_linux::restoration::{
+        SavedPosition, WindowRestorationState, base64_decode, base64_encode, clear, is_memory_mode,
+        load, save,
+    };
+
+    // 1. Base64 encode and decode roundtrip
+    let samples: &[&[u8]] = &[
+        b"",
+        b"f",
+        b"fo",
+        b"foo",
+        b"foob",
+        b"fooba",
+        b"foobar",
+        &[0, 1, 2, 254, 255],
+    ];
+    for sample in samples {
+        let enc = base64_encode(sample);
+        let dec = base64_decode(&enc).expect("decode failed");
+        assert_eq!(&dec, sample, "base64 roundtrip failed for {sample:?}");
+    }
+    assert_eq!(base64_decode("invalid base64!@#$"), None);
+
+    // 2. SavedPosition and WindowRestorationState conversion
+    let pos = SavedPosition {
+        top: vec![1, 2, 3, 4],
+        selection_start: vec![5, 6, 7, 8],
+        selection_end: Some(vec![9, 10, 11, 12]),
+    };
+    let state = WindowRestorationState::from_saved_position(
+        "/path/to/doc.md".to_string(),
+        Some(&pos),
+        1.25,
+        true,
+    );
+    assert_eq!(state.file_path, "/path/to/doc.md");
+    assert_eq!(state.text_scale, 1.25);
+    assert!(state.outline_shown);
+
+    let restored_pos = state.to_saved_position().expect("to_saved_position failed");
+    assert_eq!(restored_pos, pos);
+
+    // 3. In-memory store save/load/clear
+    unsafe { std::env::set_var("MARKDOWN_RESTORATION_IN_MEMORY", "1") };
+    assert!(is_memory_mode());
+
+    clear();
+    assert!(load().is_empty());
+
+    save(std::slice::from_ref(&state));
+    let loaded = load();
+    assert_eq!(loaded.len(), 1);
+    assert_eq!(loaded[0].file_path, "/path/to/doc.md");
+    assert_eq!(loaded[0].text_scale, 1.25);
+    assert!(loaded[0].outline_shown);
+    assert_eq!(loaded[0].to_saved_position(), Some(pos));
+
+    clear();
+    assert!(load().is_empty());
+    unsafe { std::env::remove_var("MARKDOWN_RESTORATION_IN_MEMORY") };
+}
+
+#[test]
+fn anchors_source_offset_and_restoration() {
+    use markdown_linux::render::DocumentPosition;
+
+    let source1 = "# Heading 1\n\nFirst paragraph.\n\n## Heading 2\n\nSecond paragraph with *marked* text.\n\n### Heading 3\n\nThird paragraph.\n";
+    let doc1 = document(source1);
+    let plan1 = RenderPlan::build(&doc1, || false).unwrap();
+
+    // Map fragment (Heading 2) to source offset
+    let h2_frag = plan1
+        .outline
+        .iter()
+        .find(|o| o.title == "Heading 2")
+        .unwrap()
+        .fragment as usize;
+    let pos1 = DocumentPosition::new(h2_frag, 0);
+    let offset1 = plan1.source_offset_at(pos1, &doc1);
+    assert!(offset1 > 0);
+
+    // Anchor at offset1
+    let anchor1 = doc1.anchor_at(offset1).expect("anchor_at succeeded");
+
+    // Position at source offset in plan1
+    let roundtrip_pos = plan1.position_at_source_offset(offset1, &doc1);
+    assert_eq!(roundtrip_pos.fragment_index, h2_frag);
+
+    // Modify document: prepend new text and add another section
+    let source2 = "Prepended line from external editor.\n\n# Heading 1\n\nFirst paragraph edited.\n\n## Heading 2\n\nSecond paragraph with *marked* text.\n\n### Heading 3\n\nThird paragraph.\n";
+    let doc2 = document(source2);
+    let plan2 = RenderPlan::build(&doc2, || false).unwrap();
+
+    // Resolve anchor1 against doc2
+    let resolution = doc2
+        .resolve_anchor(&anchor1)
+        .expect("resolve_anchor succeeded")
+        .expect("anchor found");
+    let restored_pos = plan2.position_at_source_offset(resolution.source_offset, &doc2);
+
+    // Check that restored position lands on Heading 2
+    let h2_frag2 = plan2
+        .outline
+        .iter()
+        .find(|o| o.title == "Heading 2")
+        .unwrap()
+        .fragment as usize;
+    assert_eq!(restored_pos.fragment_index, h2_frag2);
+    assert!(
+        plan2.fragments[restored_pos.fragment_index]
+            .text()
+            .contains("Heading 2")
+    );
+
+    // Character-exact roundtrip inside inline emphasis markup
+    let emphasis_frag = plan1
+        .fragments
+        .iter()
+        .position(|f| f.text().contains("marked"))
+        .expect("fragment with marked found");
+    let frag_text = plan1.fragments[emphasis_frag].text();
+    let marked_pos = frag_text.find("marked").unwrap();
+    let char_offset = frag_text[..marked_pos].chars().count() + 2; // middle of "marked" ('r')
+    let pos_in_emphasis = DocumentPosition::new(emphasis_frag, char_offset);
+    let src_off = plan1.source_offset_at(pos_in_emphasis, &doc1);
+    assert!(&doc1.source[src_off as usize..].starts_with(b"rked"));
+    let back_pos = plan1.position_at_source_offset(src_off, &doc1);
+    assert_eq!(back_pos.fragment_index, emphasis_frag);
+    assert_eq!(back_pos.char_offset, char_offset);
+}

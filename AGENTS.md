@@ -48,8 +48,10 @@ resolve it before changing implementation.
 - Keep changes focused, reviewable, and covered by proportionate validation.
 - From core implementation onward, execute small platform-focused delivery
   phases, each with a feature branch and PR into `develop`. Follow
-  `docs/Delivery-Workflow.md` and request the Grok review with the `grok` CLI
-  once ready; resolve feedback before merging. A PR gets at most three Grok
+  `docs/Delivery-Workflow.md`: open the PR once ready, which starts the Grok
+  review (`/grok review` requests another), monitor the PR for it, and
+  resolve feedback before merging. Unreviewed housekeeping uses a `patch/`
+  branch, which Grok ignores and green CI merges (D-033). A PR gets at most three Grok
   reviews; if the third still has a serious finding, stop and wait for the
   owner. `main` receives only
   owner-approved milestone reviews (D-030); never commit to `main` or
@@ -67,7 +69,7 @@ resolve it before changing implementation.
 - Ask before production deployment, publishing, signing, unrelated external
   communication, destructive operations, or expanding to another repository.
   The owner has authorized scoped phase commits, branch pushes, PR updates and
-  Grok CLI review requests under `docs/Delivery-Workflow.md`. A Grok review
+  `/grok review` comments under `docs/Delivery-Workflow.md`. A Grok review
   with no high or critical finding, after any such finding is fixed on the
   branch, is the owner's standing approval to merge a task PR into `develop`
   (D-029); record the remaining findings for later. Merges into `main` happen

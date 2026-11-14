@@ -97,8 +97,10 @@ Apply D-012: process launch to the first presented frame of document content,
 at least five cold and five warm runs with spread, named hardware/toolchains,
 cache treatment and package/runtime conditions. Keep outliers and describe
 presentation proxies. FEAS-008 supports these targets on its Windows/Linux
-workstation; macOS still needs equivalent measurements. Earlier Mac first-draw
-and core-entry metrics do not prove compliance.
+workstation. MAC-001G measured macOS warm launches: prose 1 MiB and long
+lines are near or under 400 ms, prose 5 MiB misses it, and cold runs are
+unmeasured. Earlier Mac first-draw and core-entry metrics do not prove
+compliance.
 
 Validate and explicitly revisit these targets using the real MVP. No current
 product, universal hardware guarantee or final release readiness is implied.
@@ -106,7 +108,9 @@ Scrolling should sustain the display's normal refresh rate without repeated
 main-thread stalls; 5 MiB loads must remain cancellable and view counts bounded.
 Obsolete-generation results must never be presented, and offline checks fail
 on unexpected network access. Numeric memory/search budgets still need task-
-appropriate measurements; Mac repeated-session RSS growth is an open risk.
+appropriate measurements. Mac repeated-session growth is fixed and bounded
+(MAC-001G); macOS D-012 warm-launch evidence is in the
+[macOS app README](../apps/macos/README.md#mac-001g-local-evidence).
 
 Historical initial feasibility hypotheses were 500 ms useful content on a
 baseline desktop and 1 s on a baseline iPad. D-016 supersedes the desktop

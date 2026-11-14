@@ -83,8 +83,8 @@ Disable Git line-ending conversion for the frozen fixture corpus.
 Starting after GATE-001, divide core and application implementation into bounded
 delivery phases, grouped by platform where possible to support booting between
 hosts. Each phase uses a feature branch and PR. Once ready, request the Grok
-review by running the `grok` CLI (amended 2026-10-28 at the owner's request;
-it was a `/grok review` PR comment), assess the actual review and address
+review (amended 2026-10-28 to the `grok` CLI, then on 2026-10-29 by D-033 to
+the Grok GitHub integration that reviews each new PR), assess the actual review and address
 findings; merge needs owner authorization, which a clean Grok review now
 gives under D-029. Scoped phase commits,
 pushes, PR updates and review requests are authorized as routine steps of this
@@ -583,8 +583,8 @@ after `main` moved, which the repository already allows. Branch and PR sizing
 **Status:** accepted by owner request
 
 **Context:** Every PR waited for an explicit owner merge approval even when
-Grok's review found nothing serious. Grok reviews are now requested through
-the `grok` CLI, which rates findings as fix-now (high or critical) or later
+Grok's review found nothing serious. Grok reviews were then requested through
+the `grok` CLI (since D-033, the Grok GitHub integration), which rates findings as fix-now (high or critical) or later
 (low or nits).
 
 **Decision:** A Grok review with no high or critical finding is the owner's
@@ -642,7 +642,9 @@ each task. Long-lived branches per phase or platform would conflict on
   settings, so that no branch carried conflicting instructions; both
   allowances have ended.
 - `develop` is the GitHub default branch, and `main` is protected (pull
-  requests only, no force pushes or deletion), applied 2026-10-28.
+  requests only, no force pushes or deletion), applied 2026-10-28. The
+  `Checks / complete` status became required on `main` on 2026-10-29, by
+  owner approval after the CORE-FIX milestone review.
 
 **Consequences:** `main` is always owner-reviewed, and tasks never wait on
 the owner. Problems found at a milestone cost more rework than per-PR review
@@ -679,7 +681,7 @@ needs them.
 
 **Date:** 2026-10-29
 
-**Status:** accepted 2026-10-29 (clean Grok review of PR #27, D-029)
+**Status:** accepted 2026-10-29 (clean Grok review of PR #27, D-029); amended by D-034
 
 **Context:** The Grok review of PR #17 found that the front-matter guard
 covered only controls and General_Category=Cf. Blank characters that are not
@@ -702,3 +704,92 @@ existing atomic rejection already keeps the source readable.
 their typed metadata and title and show a `front_matter_unsupported` warning
 instead. The frozen corpus and goldens contain none, so none changed. URI
 targets stay stricter: they also deny the display modifiers.
+
+## D-033 — Grok reviews from GitHub, and unreviewed `patch/` branches
+
+**Date:** 2026-10-29
+
+**Status:** accepted by owner request
+
+**Context:** The `grok` CLI request (D-029) was a workaround until the owner
+connected Grok to GitHub through Cursor. That integration now reviews each new
+PR, and a `/grok review` comment asks for another. The owner set Grok to
+ignore `review/*` and `patch/*` branches. Some PRs need no review at all:
+workflow and documentation changes, administrative records and nit fixes.
+
+**Decision:**
+
+- Drop the `grok` CLI step. Creating a PR starts its Grok review; the runner
+  opens the PR only when it is reviewable, monitors it until Grok's review
+  arrives, and requests later reviews with a `/grok review` comment.
+- The three-review cap (D-029) stays and counts the automatic review.
+- `patch/<short-description>` branches carry changes that need no review:
+  workflow, process and other documentation; project-state, roadmap, handoff
+  and milestone-sync records; and nit fixes that change no behavior. Anything
+  that changes code, tools, CI, specs, fixtures or goldens, or needs an owner
+  decision, uses a reviewed branch.
+- A `patch/` PR merges into `develop` once its required CI passes, which is
+  the approval. `main` still takes only milestone reviews (D-030).
+
+**Consequences:** No local tool is needed to request a review, so any agent
+on any host can run the workflow, but each must poll the PR for the review.
+Unreviewed changes rely on the runner choosing `patch/` honestly; the owner
+sees every one at the next milestone review.
+
+## D-034 — Front-matter text allows joiners and subdivision flags
+
+**Date:** 2026-10-30
+
+**Status:** accepted 2026-10-30 (Grok review of PR #32 with no serious finding, D-029)
+
+**Context:** The CORE-FIX milestone review (M1; Claude, Grok and Codex) found
+that the D-032 guard rejects ZWNJ and ZWJ, which are Cf. A front-matter title
+or value holding either discards the whole map, so Persian, Arabic-script,
+Indic and emoji ZWJ titles lose their metadata. File names already exempt
+both (CORE-005D). Grok also suggested allowing emoji tag sequences, and
+allowing LRM and RLM; Codex treated the marks as a separate choice.
+
+**Decision:** Amend D-032 for the title and string and list values, not keys.
+One shared predicate, `metadata::display_text`, serves the producer and the
+v1 and v2 `from_json` validation:
+
+- ZWNJ (U+200C) and ZWJ (U+200D) are allowed between two visible,
+  non-space characters, which is how the words and emoji that need them use
+  them. A joiner alone, at either end, beside a space or in a run stays
+  rejected: such a value could look blank, which D-032 prevents, or carry a
+  zero-width payload.
+- Tag characters are allowed only inside a subdivision flag: U+1F3F4, two
+  tag lowercase letters for the region, 1 to 4 tag digits or lowercase
+  letters, then U+E007F. That is the shape of a CLDR subdivision id, which
+  covers the flags Unicode recommends (England, Scotland, Wales). Tag
+  characters mirror ASCII, so the shape bounds hidden text to six characters
+  per flag but does not remove it; every other tag character stays rejected.
+- The bidi embedding, override and isolate controls stay rejected, and so do
+  LRM and RLM: a title is isolated display text, and the marks can reorder
+  what a reader sees without being visible.
+- Keys keep the full D-032 guard and reject joiners on import
+  (`metadata_key`); the producer already accepts only ASCII keys.
+
+**Consequences:** Such titles and properties now survive parsing and import
+unchanged. A spoofing value can use a joiner between visible characters, as
+file names already can, but not a bidi control. File names still flag tag characters, flags included.
+The frozen corpus and goldens contain none of these characters, so none
+changed.
+
+## D-035 — Linux Native Reader MVP Scope: Defer Orca Screen-Reader Continuous Reading to Post-MVP
+
+**Date:** 2026-11-02
+
+**Status:** accepted by owner
+
+**Context:** D-017 established an early stop-point gate (`LNX-001D1`) to evaluate GTK 4's virtualized `GtkListView` for screen-reader accessibility before deepening the native Linux renderer. Automated AT-SPI inspection (`apps/linux/tools/probe_accessibility.py`) and testing on the KDE Wayland baseline confirmed that while GTK 4 correctly exposes semantic `Heading` roles with levels, `Paragraph` roles, model reading order for realized fragments, outline sidebar navigation, and native GTK within-fragment selection, GTK's lazy row virtualization does not expose off-screen headings or allow unbroken continuous reading (Say All) without manual scrolling. Whole-document screen-reader traversal across virtualized rows would require constructing a custom AT-SPI document tree or waiting for advanced GTK 4.22+ accessible text APIs.
+
+**Decision:** The project owner directed that MVP delivery must minimize Orca work and not focus on deep screen-reader traversal for the initial product release, prioritizing visual document fidelity, tables, task lists, images, find, and workspace navigation.
+
+- The `LNX-001D1` early gate is satisfied for MVP scope by:
+  1. Automated AT-SPI inspection proving GTK semantic `Heading` roles with correct levels, `Paragraph` roles, and model reading order for realized fragments, with outline navigation focus and within-fragment selection proven via native smoke.
+  2. Documenting the measured architectural limitation of `GtkListView` row virtualization in `docs/Linux-Accessibility-Gate.md`.
+  3. Formally deferring off-screen Orca structural heading navigation (`H`) and unbroken continuous reading (Say All) to post-MVP (`ADV-001` reading refinement and accessibility parity).
+- Linux native renderer deepening (`LNX-001E` tables/task lists/images and `LNX-001F` find/settings) is unblocked to proceed using the GTK 4 native virtualized architecture.
+
+**Consequences:** Linux implementation advances along the accepted delivery plan without blocking on screen-reader architecture redesign or substituting a general-purpose WebView. Assistive technology on Linux can access focused on-screen content and use the outline sidebar for section navigation, while whole-document continuous reading across off-screen rows remains documented for post-MVP remediation.
