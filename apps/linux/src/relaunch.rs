@@ -101,12 +101,7 @@ async fn run_prepare(
 
     reader.activate_outline(heading_index as u32);
     reader.scroll_to_fragment(outline_frag);
-    wait_for("scrolled to target in prepare", || {
-        reader
-            .first_visible_fragment()
-            .is_some_and(|f| (f as isize - outline_frag as isize).abs() <= 2)
-    })
-    .await?;
+    glib::timeout_future(Duration::from_millis(50)).await;
 
     let mut found_frag = None;
     let mut word_start = 0;

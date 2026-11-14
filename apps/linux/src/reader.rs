@@ -10,6 +10,7 @@ use std::{
     collections::HashMap,
     rc::Rc,
     sync::Arc,
+    time::{Duration, Instant},
 };
 
 type Binding = Rc<Cell<Option<(u64, u32)>>>;
@@ -41,6 +42,7 @@ struct State {
     text_scale: f64,
     scale_provider: gtk::CssProvider,
     class_name: String,
+    last_scrolled_fragment: Option<(u32, Instant)>,
 }
 
 impl Drop for State {
@@ -131,6 +133,7 @@ impl Reader {
             text_scale: 1.0,
             scale_provider,
             class_name,
+            last_scrolled_fragment: None,
         }));
         let weak = Rc::downgrade(&state);
         factory.connect_setup(move |_, item| {
@@ -443,11 +446,10 @@ impl Reader {
         let weak = Rc::downgrade(&state);
         outline.connect_activate(move |_, index| {
             let jump = weak.upgrade().and_then(|state| {
-                let state = state.borrow();
-                Some((
-                    state.view.clone(),
-                    state.plan.as_ref()?.outline.get(index as usize)?.fragment,
-                ))
+                let mut state = state.borrow_mut();
+                let frag = state.plan.as_ref()?.outline.get(index as usize)?.fragment;
+                state.last_scrolled_fragment = Some((frag, Instant::now()));
+                Some((state.view.clone(), frag))
             });
             if let Some((view, index)) = jump {
                 view.scroll_to(index, gtk::ListScrollFlags::NONE, None);
@@ -785,6 +787,10 @@ impl Reader {
     }
 
     pub fn scroll_to_fragment(&self, fragment_index: usize) {
+        {
+            let mut state = self.state.borrow_mut();
+            state.last_scrolled_fragment = Some((fragment_index as u32, Instant::now()));
+        }
         let view = self.state.borrow().view.clone();
         view.scroll_to(fragment_index as u32, gtk::ListScrollFlags::NONE, None);
     }
@@ -1078,6 +1084,16 @@ impl State {
 
     pub fn first_visible_fragment(&self) -> Option<u32> {
         let observed = self.observed();
+        if let Some((target, instant)) = self.last_scrolled_fragment
+            && instant.elapsed() < Duration::from_millis(1500)
+        {
+            let bound_near_target = observed
+                .iter()
+                .any(|(idx, _)| (*idx as isize - target as isize).abs() <= 1);
+            if !bound_near_target {
+                return Some(target);
+            }
+        }
         if let Some(scrolled) = self.scrolled.upgrade() {
             let mut in_view: Vec<(u32, f32)> = observed
                 .iter()
@@ -1094,6 +1110,11 @@ impl State {
                 in_view.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
                 return in_view.first().map(|(idx, _)| *idx);
             }
+        }
+        if let Some((target, instant)) = self.last_scrolled_fragment
+            && instant.elapsed() < Duration::from_millis(1500)
+        {
+            return Some(target);
         }
         let mut fallback = observed;
         fallback.sort_by_key(|(idx, _)| *idx);
