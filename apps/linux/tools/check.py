@@ -8,7 +8,7 @@ import subprocess
 import sys
 import tempfile
 
-from artifact import package as package_artifact, verify as verify_artifact
+from artifact import build_release, package as package_artifact, verify as verify_artifact
 from package_core import build_environment, prepare_core, verify
 
 APP_ROOT = Path(__file__).resolve().parents[1]
@@ -119,7 +119,7 @@ def main() -> None:
     # The measurement probe refuses anything but the release package; one short run.
     run(str(TARGET_DIR / "release" / "core-probe"), "single",
         str(REPO_ROOT / "build" / "fixtures" / "performance" / "prose-1mib.md"))
-    archive = package_artifact(TARGET_DIR / "release" / "markdown-linux")
+    archive = package_artifact(build_release(prepared=True))
     verify_artifact(archive)
 
 

@@ -34,14 +34,16 @@ def app_version() -> str:
 
 
 def build_release(*, prepared: bool = False) -> Path:
-    """Build the release Linux workspace with path remapping and return the binary path."""
+    """Build the release markdown-linux binary with path remapping and packaged RUNPATH."""
     if not prepared:
         prepare_core("release")
     env = build_environment()
+    env["MARKDOWN_PACKAGED_RUNPATH"] = "$ORIGIN/../lib"
     command = [
         "cargo",
         "build",
-        "--workspace",
+        "-p",
+        "markdown-linux",
         "--release",
         "--locked",
         "--target-dir",
@@ -124,8 +126,15 @@ def package(binary: Path) -> Path:
             json.dumps(info, indent=2) + "\n", encoding="utf-8"
         )
 
+        def _normalize_tarinfo(info_entry: tarfile.TarInfo) -> tarfile.TarInfo:
+            info_entry.uid = 0
+            info_entry.gid = 0
+            info_entry.uname = ""
+            info_entry.gname = ""
+            return info_entry
+
         with tarfile.open(archive, "w:gz") as tar:
-            tar.add(bundle, arcname=name)
+            tar.add(bundle, arcname=name, filter=_normalize_tarinfo)
 
     archive_bytes = archive.read_bytes()
     record = dict(
@@ -158,16 +167,18 @@ def _smoke_env() -> dict[str, str]:
     return env
 
 
-def _run_smoke(executable: Path, cwd: Path, flag: str, marker: str) -> None:
+def _run_with_scratch_xdg(command: list[str], cwd: Path, extra_env: dict[str, str] | None = None) -> str:
     env = _smoke_env()
-    with tempfile.TemporaryDirectory(prefix="markdown-relocated-smoke-") as scratch:
+    if extra_env:
+        env.update(extra_env)
+    with tempfile.TemporaryDirectory(prefix="markdown-relocated-xdg-") as scratch:
         for name in ("DATA", "CONFIG", "CACHE"):
             directory = Path(scratch) / name.lower()
             directory.mkdir()
             env[f"XDG_{name}_HOME"] = str(directory)
         try:
             result = subprocess.run(
-                [str(executable), flag],
+                command,
                 cwd=cwd,
                 env=env,
                 text=True,
@@ -187,12 +198,16 @@ def _run_smoke(executable: Path, cwd: Path, flag: str, marker: str) -> None:
     if result.stderr:
         print(result.stderr, end="", flush=True)
     result.check_returncode()
-    if marker not in result.stdout or "shell-smoke: event loop exited" not in result.stdout:
+    return result.stdout
+
+
+def _run_smoke(executable: Path, cwd: Path, flag: str, marker: str) -> None:
+    stdout = _run_with_scratch_xdg([str(executable), flag], cwd)
+    if marker not in stdout or "shell-smoke: event loop exited" not in stdout:
         raise SystemExit(f"{executable} {flag}: exited without completing its smoke")
 
 
 def _run_relaunch(executable: Path, cwd: Path) -> None:
-    env = _smoke_env()
     with tempfile.TemporaryDirectory(prefix="markdown-relocated-relaunch-") as directory:
         relaunch_doc = Path(directory) / "live.md"
         sections = "\n\n".join(
@@ -200,22 +215,19 @@ def _run_relaunch(executable: Path, cwd: Path) -> None:
             for part in range(120)
         )
         relaunch_doc.write_text(f"# Live\n\n{sections}\n", encoding="utf-8")
-        env["MARKDOWN_RESTORATION_PATH"] = str(Path(directory) / "restoration.json")
+        restoration_env = {
+            "MARKDOWN_RESTORATION_PATH": str(Path(directory) / "restoration.json")
+        }
         for phase, marker in (
             ("prepare", "relaunch-check: prepared"),
             ("verify", "relaunch-check: pass (restored window, document, top line and selection)"),
         ):
-            result = subprocess.run(
+            stdout = _run_with_scratch_xdg(
                 [str(executable), "--relaunch-check", phase, str(relaunch_doc)],
-                cwd=cwd,
-                env=env,
-                text=True,
-                capture_output=True,
-                timeout=30,
+                cwd,
+                extra_env=restoration_env,
             )
-            print(result.stdout, end="", flush=True)
-            if result.returncode != 0 or marker not in result.stdout:
-                print(result.stderr, end="", flush=True)
+            if marker not in stdout:
                 raise SystemExit(f"{executable.name}: relocated relaunch check {phase} failed")
 
 
@@ -261,14 +273,13 @@ def verify(archive: Path) -> None:
                 f"extra={sorted(exported - expected_exports)}"
             )
 
-        # Verify RUNPATH uses only $ORIGIN-relative entries and ldd resolves the bundled .so.
+        # Verify RUNPATH is strictly $ORIGIN/../lib (no dev-tree entries).
         dynamic = subprocess.check_output(["readelf", "-d", str(executable)], text=True)
         rpath_match = re.search(r"\((?:RUNPATH|RPATH)\)\s+Library runpath:\s+\[([^\]]+)\]", dynamic)
         if not rpath_match:
             raise SystemExit("executable is missing RUNPATH")
-        for entry in rpath_match.group(1).split(":"):
-            if not entry.startswith("$ORIGIN"):
-                raise SystemExit(f"non-relative RUNPATH entry: {entry}")
+        if rpath_match.group(1) != "$ORIGIN/../lib":
+            raise SystemExit(f"unexpected RUNPATH entries: {rpath_match.group(1)}")
 
         ldd_out = subprocess.check_output(["ldd", str(executable)], text=True)
         resolved_core = core_lib.resolve()
