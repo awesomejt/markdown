@@ -42,6 +42,21 @@ pub const MD_FIND_WHOLE_WORD: u32 = 2;
 pub const MD_FIND_TRUNCATED: u32 = 1;
 pub const MD_MATCH_EXACT: u32 = 1;
 
+pub const MD_WORKSPACE_PATH_INFO_SIZE: u32 = 16;
+pub const MD_WORKSPACE_MAX_PATH_BYTES: u32 = 4096;
+pub const MD_PATH_VALID: u32 = 0;
+pub const MD_PATH_EMPTY: u32 = 1;
+pub const MD_PATH_TOO_LONG: u32 = 2;
+pub const MD_PATH_TOO_DEEP: u32 = 3;
+pub const MD_PATH_ABSOLUTE: u32 = 4;
+pub const MD_PATH_EMPTY_COMPONENT: u32 = 5;
+pub const MD_PATH_DOT_COMPONENT: u32 = 6;
+pub const MD_PATH_CONTROL: u32 = 7;
+pub const MD_PATH_INVALID_UTF8: u32 = 8;
+pub const MD_PATH_MARKDOWN: u32 = 1;
+pub const MD_PATH_HIDDEN: u32 = 2;
+pub const MD_PATH_INVISIBLE: u32 = 4;
+
 pub const MD_MODEL_V1: u32 = 1;
 pub const MD_MODEL_V2: u32 = 2;
 
@@ -296,6 +311,15 @@ impl Default for md_snapshot_view {
 }
 
 #[repr(C)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct md_workspace_path_info {
+    pub struct_size: u32,
+    pub error: u32,
+    pub flags: u32,
+    pub name_start: u32,
+}
+
+#[repr(C)]
 #[derive(Clone, Copy, Debug, Default)]
 pub struct md_anchor_resolution {
     pub struct_size: u32,
@@ -432,4 +456,9 @@ unsafe extern "C" {
         out_result: *mut md_find_result,
     ) -> md_status;
     pub fn md_snapshot_release(snapshot: md_snapshot) -> md_status;
+    pub fn md_workspace_classify_path(
+        path: *const u8,
+        path_length: usize,
+        out_info: *mut md_workspace_path_info,
+    ) -> md_status;
 }

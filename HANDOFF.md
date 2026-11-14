@@ -1,15 +1,15 @@
 # Agent Session and Platform Handoff
 
-Updated: 2026-11-14 (America/Denver), LNX-002A completed under D-029 (PR #74 closed out and merged into `develop`).
-Active task: None. Eligible tasks: `LNX-002B`, `LNX-002D`, `MAC-002A`, `WIN-002A`, and `HARD-001`. Phase 3 (Desktop Walking Skeletons) is complete, reaching the D-030 milestone review boundary (`review/<milestone>` into `main`; only the owner merges into `main`); desktop MVP deepening (`002A`+) is active on `develop`.
-Pass `0521fb57-4bac-451c-8bef-c2edd935722e` completed, approved PR #74 ready for merge into `develop`:
+Updated: 2026-11-14 (America/Denver), LNX-002B completed under D-029 (PR #75 closed out and merged into `develop`).
+Active task: None. Eligible tasks: `LNX-002C`, `LNX-002D`, `MAC-002A`, `WIN-002A`, and `HARD-001`. Phase 3 (Desktop Walking Skeletons) is complete, reaching the D-030 milestone review boundary (`review/<milestone>` into `main`; only the owner merges into `main`); desktop MVP deepening (`002A`+) is active on `develop`.
+Pass `5814207c-53a9-489b-b024-515c166986d7` completed, approved PR #75 ready for merge into `develop`:
 
-- Implemented `LNX-002A` (`apps/linux/src/document/access.rs`, `apps/linux/src/recents.rs`, `apps/linux/src/files.rs`, `apps/linux/src/main.rs`, `apps/linux/src/smoke.rs`, `apps/linux/README.md`): `FolderCapability`/`FolderError` with canonical containment and revocation propagation, persistent JSON recents store (cap 10, dedup, lossless non-UTF-8 paths, off-main `gio::spawn_blocking` availability checks), `File > Open Folder…` (`Ctrl+Shift+O`), `Recent Items…` dialog (with `Open`, `Revoke`, `Relocate…`/`Re-grant…`, `Remove`, `Clear All`), and inline `RecoveryBar`.
-- `python3 apps/linux/tools/check.py` passed in Debug and Release (`fmt`, `clippy`, `check_dependencies.py linux`, unit/render/consumer tests, GTK smokes including `folder_and_recents`, isolated D-Bus association, two-phase relaunch, `core-probe single`, and relocated tarball artifact verification); `python3 tools/check.py common` passed (82 Markdown files, 612 links).
+- Implemented `LNX-002B` (`apps/linux/core/src/workspace.rs`, `apps/linux/src/document/workspace.rs`, `apps/linux/src/workspace_browser.rs`, `apps/linux/src/files.rs`, `apps/linux/src/main.rs`, `apps/linux/src/smoke.rs`, `apps/linux/README.md`): `md_workspace_classify_path` C ABI binding/wrapper, off-thread `WorkspaceTree`/`WorkspaceBrowserModel` enumeration (100,000-entry / 256-depth cap, symlinked dir/outside-root/dangling symlink filtering, `MD_PATH_INVISIBLE` warning badge), and virtualized GTK 4 `WorkspaceBrowser` sidebar with keyboard navigation (`Up`/`Down`/`Left`/`Right`/`Return`) and `Ctrl+B` toggle.
+- `python3 apps/linux/tools/check.py` passed in Debug and Release (`fmt`, `clippy`, `check_dependencies.py linux`, unit/render/consumer tests, GTK smokes including 1,001-entry workspace browser + keyboard expand/collapse + file open + sidebar toggle, isolated D-Bus association, two-phase relaunch, `core-probe single`, and relocated tarball artifact verification); `python3 tools/check.py common` passed (82 Markdown files, 612 links).
 
-PR #74 reviewed by Grok Bot (0 Blockers, 2 Concerns, 2 Nits; approved under D-029; all 4 findings fixed at `ce11c2d`).
+PR #75 reviewed by Grok Bot (0 Blockers, 2 Concerns, 3 Nits; approved under D-029; all 5 findings fixed at `5f6dc09`).
 
-Next task: `LNX-002B` (Native workspace browser and navigation) or `LNX-002D` (Persistent preferences/native settings) on Linux, `HARD-001` (shared), `MAC-002A` (macOS), `WIN-002A` (Windows), or D-030 milestone review into `main` (owner-merged).
+Next task: `LNX-002C` (Native workspace search UI) or `LNX-002D` (Persistent preferences/native settings) on Linux, `HARD-001` (shared), `MAC-002A` (macOS), `WIN-002A` (Windows), or D-030 milestone review into `main` (owner-merged).
 
 Previous Linux task: `LNX-001` in [PR #69](https://github.com/awesomejt/markdown/pull/69). Previous Windows task: `WIN-001` in [PR #62](https://github.com/awesomejt/markdown/pull/62). Previous macOS task: `MAC-001` in [PR #48](https://github.com/awesomejt/markdown/pull/48).
 

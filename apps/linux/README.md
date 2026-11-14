@@ -609,3 +609,23 @@ debug` for debug, or `--prepare-only` for a persistent public owner-test fixture
     `AccessRevoked`, `VolumeUnavailable`), an inline recovery bar offers `Relocate…` or
     `Re-grant Access…`, updating the recents store (`relocate_entry`) and opening the recovered
     target.
+
+## Native workspace browser and navigation (LNX-002B)
+
+- **Adapter-owned enumeration and core path classification (`apps/linux/src/document/workspace.rs`, `apps/linux/core/src/workspace.rs`)**:
+  - Opening a folder enumerates directory entries off the main thread (`gio::spawn_blocking`)
+    under the active `FolderCapability` (bounded at 100,000 entries and 256 levels; symlinked
+    directories are skipped to prevent loops or root escapes).
+  - Each relative path is classified through the C ABI `md_workspace_classify_path`: invalid
+    UTF-8, control/bidi, or malformed names are skipped (`skipped_invalid`), while valid names
+    with invisible characters (`MD_PATH_INVISIBLE`) are kept and flagged visually and accessibly
+    with a `⚠` indicator.
+- **Virtualized GTK 4 browser and keyboard navigation (`apps/linux/src/workspace_browser.rs`)**:
+  - Uses `gtk::ListView` + `gtk::SingleSelection` over `CountModel` so large folders (1,000+
+    entries) materialize only visible viewport rows, with `AccessibleRole::TreeItem`,
+    `AccessibleProperty::Level`, and `AccessibleState::Expanded`.
+  - Keyboard navigation supports `Up`/`Down`/`Home`/`End`/`PageUp`/`PageDown`, `Right` (expand
+    folder or move into first child), `Left` (collapse folder or jump to parent), `Return`
+    (toggle folder or open file through `FolderCapability`), and `View > Workspace Sidebar`
+    (`Ctrl+B`) to toggle visibility, alongside `All` (Markdown-only vs all files), `.*` (hidden
+    entries), `↻` (refresh), and `×` (close workspace) controls.
