@@ -1,16 +1,16 @@
 # Agent Session and Platform Handoff
 
-Updated: 2026-11-13 (America/Denver), LNX-001 completed under D-029 (PR #69 closed out and merged into `develop`).
-Active task: Next execution task `DESK-001` (`bbdf88c3-f928-473f-934a-a58df74b9890`) Pass cross-desktop skeleton gate, and D-030 milestone review boundary (all three desktop walking skeletons `MAC-001`, `WIN-001`, `LNX-001` complete).
-Pass `fc847f28-64be-4449-b824-1951488f68d7` completed, approved PR #69 ready for merge into `develop`.
-`docs/Linux-Skeleton-Acceptance.md` records `LNX-001` aggregate acceptance:
+Updated: 2026-11-14 (America/Denver), DESK-001 completed under D-029 (PR #70 closed out and merged into `develop`).
+Active task: None. Eligible tasks: `LNX-002A`, `MAC-002A`, `WIN-002A`, and `HARD-001`. Phase 3 (Desktop Walking Skeletons) is complete, reaching the D-030 milestone review boundary (`review/<milestone>` into `main`; only the owner merges into `main`).
+Pass `b4b9a560-579f-4d3b-b919-1df5d346f5ce` completed, approved PR #70 ready for merge into `develop`.
+`docs/Desktop-Skeleton-Gate.md` records `DESK-001` gate acceptance:
 
-- Fresh `apps/linux/tools/check.py` passed in Debug and Release at `develop` head `072cf41` (14 `markdown_linux` unit tests, 19 `render` integration tests, 18 `markdown-linux-core` consumer tests, `cargo fmt`, `cargo clippy`, `check_dependencies.py linux`, GTK 4 smokes, isolated `gio launch` association, two-phase relaunch restoration, release `core-probe single`, 74-package license inventory, and relocated x86-64 `.tar.gz` artifact verification).
-- Hosted `develop` CI run `43542760925` at `072cf41` passed.
+- Compared semantic conformance, performance/memory, contract bias, and accepted capability deviations across `MAC-001` (PR #48), `WIN-001` (PR #62), and `LNX-001` (PR #69); reconciled `TODO.md#open-native-budgets` across all three hosts; materialized `MAC-002A`–`F`, `WIN-002A`–`F`, and `LNX-002A`–`F` in `project.yaml`.
+- `python3 tools/check.py common` passed (fixtures, capabilities, model, 601 local links, markdownlint across 81 files); hosted PR #70 `Checks` passed (`common`, `core` on all three OSes, `complete`).
 
-PR #69 reviewed by Grok Bot (0 Blockers, 0 Concerns, 1 Nit; approved under D-029; nit fixed in closeout).
+PR #70 reviewed by Grok Bot (0 Blockers, 2 Concerns, 1 Nit; approved under D-029; all 3 findings fixed in closeout).
 
-Next task: `DESK-001` (cross-desktop skeleton gate: compare semantics and performance across macOS, Windows, and Linux, fix contract bias, document deviations, choose MVP deepening order, and materialize platform MVP delivery tasks) and D-030 milestone review into `main` (only the owner merges milestone reviews into `main`).
+Next task: D-030 milestone review into `main` (owner-merged), or `LNX-002A` (on Linux) / `HARD-001` (shared) / `MAC-002A` (on macOS) / `WIN-002A` (on Windows).
 
 Previous Linux task: `LNX-001` in [PR #69](https://github.com/awesomejt/markdown/pull/69). Previous Windows task: `WIN-001` in [PR #62](https://github.com/awesomejt/markdown/pull/62). Previous macOS task: `MAC-001` in [PR #48](https://github.com/awesomejt/markdown/pull/48).
 

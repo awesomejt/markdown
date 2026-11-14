@@ -44,10 +44,11 @@ file access, virtualized GTK 4 reader, AT-SPI accessibility verification,
 tables/task lists/images, find/theme/text scaling, global selection and budgets,
 external refresh/restoration, and local development tarball artifact), closed in
 the [LNX-001 aggregate](docs/Linux-Skeleton-Acceptance.md#lnx-001-aggregate).
-All three desktop walking skeletons (MAC-001, WIN-001, LNX-001) are complete;
-`DESK-001` (cross-desktop skeleton gate) and the D-030 milestone review are next.
-delivers no working reader UI. The closed shared track also reaches the next
-owner-reviewed milestone into `main` (D-030). The accepted
+All three desktop walking skeletons (MAC-001, WIN-001, LNX-001) are complete,
+and the [DESK-001 cross-desktop skeleton gate](docs/Desktop-Skeleton-Gate.md)
+reconciles semantics, performance, deviations, and MVP task materialization;
+the D-030 milestone review (`review/<milestone>` into `main`), `HARD-001`, and
+`002A` MVP tasks follow. The accepted
 [implementation baseline](docs/Implementation-Baseline.md) and
 [architecture](docs/Architecture.md) preserve those gates.
 
