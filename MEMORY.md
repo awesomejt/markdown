@@ -353,6 +353,15 @@ read.
   closeout). All three desktop walking skeletons (`MAC-001`, `WIN-001`, `LNX-001`) are
   now complete; `DESK-001` (cross-desktop skeleton gate) and the D-030 milestone review
   are next.
+- **LNX-002A (PR #74)**: delivers Linux persistent folder/document capability grants
+  (`FolderCapability`/`FolderError` with canonical containment, `OutsideFolder` non-recoverable
+  variant, and revocation propagation), persistent JSON recents store (`apps/linux/src/recents.rs`,
+  capped at 10 files + 10 workspaces, deduplicated, lossless hex encoding for non-UTF-8 paths,
+  off-main `gio::spawn_blocking` availability checks), `File > Open Folder…` (`Ctrl+Shift+O`),
+  `Recent Items…` dialog (`Open`, `Revoke`, `Relocate…`/`Re-grant…`, `Remove`, `Clear All`),
+  and inline `RecoveryBar`. Grok review 1 at `74249a2` reported 0 Blockers, 2 Concerns, 2 Nits
+  (approved under D-029); all 4 findings fixed at `ce11c2d` with full Debug/Release
+  `apps/linux/tools/check.py` passing. `LNX-002B` and `LNX-002D` are next on Linux.
 - Workflow: task PRs target `develop` and merge on a Grok review with no
   serious finding (D-029). `main` takes only owner-approved milestone reviews
   from `review/<milestone>`, tagged `m-<milestone>` (D-030). The shared-core

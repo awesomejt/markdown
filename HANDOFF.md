@@ -1,16 +1,15 @@
 # Agent Session and Platform Handoff
 
-Updated: 2026-11-14 (America/Denver), DESK-001 completed under D-029 (PR #70 closed out and merged into `develop`).
-Active task: None. Eligible tasks: `LNX-002A`, `MAC-002A`, `WIN-002A`, and `HARD-001`. Phase 3 (Desktop Walking Skeletons) is complete, reaching the D-030 milestone review boundary (`review/<milestone>` into `main`; only the owner merges into `main`).
-Pass `b4b9a560-579f-4d3b-b919-1df5d346f5ce` completed, approved PR #70 ready for merge into `develop`.
-`docs/Desktop-Skeleton-Gate.md` records `DESK-001` gate acceptance:
+Updated: 2026-11-14 (America/Denver), LNX-002A completed under D-029 (PR #74 closed out and merged into `develop`).
+Active task: None. Eligible tasks: `LNX-002B`, `LNX-002D`, `MAC-002A`, `WIN-002A`, and `HARD-001`. Phase 3 (Desktop Walking Skeletons) is complete, reaching the D-030 milestone review boundary (`review/<milestone>` into `main`; only the owner merges into `main`); desktop MVP deepening (`002A`+) is active on `develop`.
+Pass `0521fb57-4bac-451c-8bef-c2edd935722e` completed, approved PR #74 ready for merge into `develop`:
 
-- Compared semantic conformance, performance/memory, contract bias, and accepted capability deviations across `MAC-001` (PR #48), `WIN-001` (PR #62), and `LNX-001` (PR #69); reconciled `TODO.md#open-native-budgets` across all three hosts; materialized `MAC-002A`–`F`, `WIN-002A`–`F`, and `LNX-002A`–`F` in `project.yaml`.
-- `python3 tools/check.py common` passed (fixtures, capabilities, model, 601 local links, markdownlint across 81 files); hosted PR #70 `Checks` passed (`common`, `core` on all three OSes, `complete`).
+- Implemented `LNX-002A` (`apps/linux/src/document/access.rs`, `apps/linux/src/recents.rs`, `apps/linux/src/files.rs`, `apps/linux/src/main.rs`, `apps/linux/src/smoke.rs`, `apps/linux/README.md`): `FolderCapability`/`FolderError` with canonical containment and revocation propagation, persistent JSON recents store (cap 10, dedup, lossless non-UTF-8 paths, off-main `gio::spawn_blocking` availability checks), `File > Open Folder…` (`Ctrl+Shift+O`), `Recent Items…` dialog (with `Open`, `Revoke`, `Relocate…`/`Re-grant…`, `Remove`, `Clear All`), and inline `RecoveryBar`.
+- `python3 apps/linux/tools/check.py` passed in Debug and Release (`fmt`, `clippy`, `check_dependencies.py linux`, unit/render/consumer tests, GTK smokes including `folder_and_recents`, isolated D-Bus association, two-phase relaunch, `core-probe single`, and relocated tarball artifact verification); `python3 tools/check.py common` passed (82 Markdown files, 612 links).
 
-PR #70 reviewed by Grok Bot (0 Blockers, 2 Concerns, 1 Nit; approved under D-029; all 3 findings fixed in closeout).
+PR #74 reviewed by Grok Bot (0 Blockers, 2 Concerns, 2 Nits; approved under D-029; all 4 findings fixed at `ce11c2d`).
 
-Next task: D-030 milestone review into `main` (owner-merged), or `LNX-002A` (on Linux) / `HARD-001` (shared) / `MAC-002A` (on macOS) / `WIN-002A` (on Windows).
+Next task: `LNX-002B` (Native workspace browser and navigation) or `LNX-002D` (Persistent preferences/native settings) on Linux, `HARD-001` (shared), `MAC-002A` (macOS), `WIN-002A` (Windows), or D-030 milestone review into `main` (owner-merged).
 
 Previous Linux task: `LNX-001` in [PR #69](https://github.com/awesomejt/markdown/pull/69). Previous Windows task: `WIN-001` in [PR #62](https://github.com/awesomejt/markdown/pull/62). Previous macOS task: `MAC-001` in [PR #48](https://github.com/awesomejt/markdown/pull/48).
 
