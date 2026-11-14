@@ -404,9 +404,27 @@ impl WindowDocument {
             return;
         };
         let cap = if let Some(folder) = &self.active_folder {
-            folder
-                .open_document(&path)
-                .unwrap_or_else(|_| DocumentCapability::from_local_file(path))
+            match folder.open_document(&path) {
+                Ok(cap) => cap,
+                Err(FolderError::OutsideFolder) => DocumentCapability::from_local_file(path),
+                Err(error) => {
+                    let folder_path = folder.path().to_path_buf();
+                    self.active_folder = None;
+                    self.saved_position = None;
+                    self.reader.clear();
+                    self.stop_polling();
+                    self.reload.set_enabled(false);
+                    self.status(&error.to_string());
+                    if let Some(btn_label) = recoverable_folder_error(error) {
+                        self.recovery_bar.show(
+                            &error.to_string(),
+                            btn_label,
+                            RecoveryTarget::Folder(Some(folder_path)),
+                        );
+                    }
+                    return;
+                }
+            }
         } else {
             DocumentCapability::from_local_file(path)
         };
@@ -444,6 +462,7 @@ impl WindowDocument {
                 }
             }
             Err(error) => {
+                self.active_folder = None;
                 self.status(&error.to_string());
                 if let Some(btn_label) = recoverable_folder_error(error) {
                     self.recovery_bar.show(
@@ -678,7 +697,6 @@ fn append_recents_section(
     }
 
     for entry in entries {
-        let status = recents::check_availability(entry);
         let row = gtk::Box::new(gtk::Orientation::Horizontal, 8);
         let text_box = gtk::Box::new(gtk::Orientation::Vertical, 2);
         text_box.set_hexpand(true);
@@ -686,57 +704,15 @@ fn append_recents_section(
         let title = gtk::Label::new(Some(&entry.display_name));
         title.set_xalign(0.0);
         title.set_ellipsize(gtk::pango::EllipsizeMode::Middle);
-        let subtitle = gtk::Label::new(Some(status.message()));
+        let subtitle = gtk::Label::new(Some("Checking…"));
         subtitle.set_xalign(0.0);
         subtitle.add_css_class("dim-label");
         text_box.append(&title);
         text_box.append(&subtitle);
         row.append(&text_box);
 
-        if status == RecentStatus::Available {
-            let open_btn = gtk::Button::with_label("Open");
-            let entry_path = entry.path.clone();
-            let entry_kind = entry.kind;
-            let weak_st = weak_state.clone();
-            let weak_dlg = dialog.downgrade();
-            open_btn.connect_clicked(move |_| {
-                if let Some(state_rc) = weak_st.upgrade() {
-                    let gfile = gio::File::for_path(&entry_path);
-                    let mut st = state_rc.borrow_mut();
-                    match entry_kind {
-                        RecentKind::File => st.open(&gfile),
-                        RecentKind::Workspace => st.open_folder(&gfile),
-                    }
-                }
-                if let Some(dlg) = weak_dlg.upgrade() {
-                    dlg.close();
-                }
-            });
-            row.append(&open_btn);
-        } else if status.is_recoverable() {
-            let btn_label = match status {
-                RecentStatus::PermissionDenied | RecentStatus::AccessRevoked => "Re-grant…",
-                _ => "Relocate…",
-            };
-            let recover_btn = gtk::Button::with_label(btn_label);
-            let entry_path = entry.path.clone();
-            let entry_kind = entry.kind;
-            let weak_st = weak_state.clone();
-            let weak_dlg = dialog.downgrade();
-            recover_btn.connect_clicked(move |_| {
-                if let Some(dlg) = weak_dlg.upgrade() {
-                    dlg.close();
-                }
-                if let Some(state_rc) = weak_st.upgrade() {
-                    let target = match entry_kind {
-                        RecentKind::File => RecoveryTarget::File(Some(entry_path.clone())),
-                        RecentKind::Workspace => RecoveryTarget::Folder(Some(entry_path.clone())),
-                    };
-                    state_rc.borrow_mut().start_relocate_chooser(target);
-                }
-            });
-            row.append(&recover_btn);
-        }
+        let actions_box = gtk::Box::new(gtk::Orientation::Horizontal, 6);
+        row.append(&actions_box);
 
         let remove_btn = gtk::Button::with_label("Remove");
         let entry_path = entry.path.clone();
@@ -752,6 +728,81 @@ fn append_recents_section(
         });
         row.append(&remove_btn);
         container.append(&row);
+
+        let entry_clone = entry.clone();
+        let entry_path = entry.path.clone();
+        let entry_kind = entry.kind;
+        let weak_sub = subtitle.downgrade();
+        let weak_actions = actions_box.downgrade();
+        let weak_container = container.downgrade();
+        let weak_dlg = dialog.downgrade();
+        let weak_st = weak_state.clone();
+        glib::spawn_future_local(async move {
+            let status = gio::spawn_blocking(move || recents::check_availability(&entry_clone))
+                .await
+                .unwrap_or(RecentStatus::InvalidTarget);
+            let (Some(sub), Some(acts)) = (weak_sub.upgrade(), weak_actions.upgrade()) else {
+                return;
+            };
+            sub.set_text(status.message());
+            if status == RecentStatus::Available {
+                let open_btn = gtk::Button::with_label("Open");
+                let entry_path_open = entry_path.clone();
+                let weak_st_open = weak_st.clone();
+                let weak_dlg_open = weak_dlg.clone();
+                open_btn.connect_clicked(move |_| {
+                    if let Some(state_rc) = weak_st_open.upgrade() {
+                        let gfile = gio::File::for_path(&entry_path_open);
+                        let mut st = state_rc.borrow_mut();
+                        match entry_kind {
+                            RecentKind::File => st.open(&gfile),
+                            RecentKind::Workspace => st.open_folder(&gfile),
+                        }
+                    }
+                    if let Some(dlg) = weak_dlg_open.upgrade() {
+                        dlg.close();
+                    }
+                });
+                acts.append(&open_btn);
+
+                let revoke_btn = gtk::Button::with_label("Revoke");
+                let entry_path_rev = entry_path.clone();
+                let weak_lb_rev = weak_container.clone();
+                let weak_dlg_rev = weak_dlg.clone();
+                let weak_st_rev = weak_st.clone();
+                revoke_btn.connect_clicked(move |_| {
+                    recents::revoke_grant(entry_kind, &entry_path_rev);
+                    if let (Some(lb), Some(dlg)) = (weak_lb_rev.upgrade(), weak_dlg_rev.upgrade()) {
+                        populate_recents_box(&lb, &dlg, &weak_st_rev);
+                    }
+                });
+                acts.append(&revoke_btn);
+            } else if status.is_recoverable() {
+                let btn_label = match status {
+                    RecentStatus::PermissionDenied | RecentStatus::AccessRevoked => "Re-grant…",
+                    _ => "Relocate…",
+                };
+                let recover_btn = gtk::Button::with_label(btn_label);
+                let entry_path_rec = entry_path;
+                let weak_st_rec = weak_st;
+                let weak_dlg_rec = weak_dlg;
+                recover_btn.connect_clicked(move |_| {
+                    if let Some(dlg) = weak_dlg_rec.upgrade() {
+                        dlg.close();
+                    }
+                    if let Some(state_rc) = weak_st_rec.upgrade() {
+                        let target = match entry_kind {
+                            RecentKind::File => RecoveryTarget::File(Some(entry_path_rec.clone())),
+                            RecentKind::Workspace => {
+                                RecoveryTarget::Folder(Some(entry_path_rec.clone()))
+                            }
+                        };
+                        state_rc.borrow_mut().start_relocate_chooser(target);
+                    }
+                });
+                acts.append(&recover_btn);
+            }
+        });
     }
 }
 

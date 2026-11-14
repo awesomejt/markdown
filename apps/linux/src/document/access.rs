@@ -46,6 +46,7 @@ pub enum FolderError {
     VolumeUnavailable,
     NotDirectory,
     NonLocalFolder,
+    OutsideFolder,
     ReadFailed,
 }
 
@@ -62,6 +63,7 @@ impl fmt::Display for FolderError {
             Self::VolumeUnavailable => "The storage is unavailable. Reconnect it and try again.",
             Self::NotDirectory => "Choose a folder, rather than a file.",
             Self::NonLocalFolder => "Only local folders are supported.",
+            Self::OutsideFolder => "The selected file is outside the active workspace folder.",
             Self::ReadFailed => "The folder could not be opened. Check access and try again.",
         })
     }
@@ -135,7 +137,7 @@ impl FolderCapability {
         let canonical_root = std::fs::canonicalize(&self.root).map_err(FolderError::io)?;
         let canonical_file = std::fs::canonicalize(file_path).map_err(FolderError::io)?;
         if !canonical_file.starts_with(&canonical_root) {
-            return Err(FolderError::PermissionDenied);
+            return Err(FolderError::OutsideFolder);
         }
         Ok(canonical_file)
     }
@@ -512,7 +514,7 @@ mod tests {
             std::fs::canonicalize(&dir).ok().as_deref()
         );
 
-        // Outside-folder document is rejected.
+        // Outside-folder document is rejected with non-recoverable OutsideFolder.
         let outside = std::env::temp_dir().join(format!(
             "markdown-outside-{}-{}.md",
             std::process::id(),
@@ -521,8 +523,9 @@ mod tests {
         std::fs::write(&outside, b"# Outside\n").unwrap();
         assert_eq!(
             folder.open_document(&outside).err(),
-            Some(FolderError::PermissionDenied)
+            Some(FolderError::OutsideFolder)
         );
+        assert!(!FolderError::OutsideFolder.is_recoverable());
         std::fs::remove_file(&outside).unwrap();
 
         // NotDirectory error when pointing at a file.

@@ -588,11 +588,13 @@ debug` for debug, or `--prepare-only` for a persistent public owner-test fixture
 - **Folder capability (`FolderCapability` / `FolderError`)**:
   - `File > Open Folder…` (`Ctrl+Shift+O`) opens `GtkFileChooserNative` in folder-selection mode and
     validates an explicit `FolderCapability` (`apps/linux/src/document/access.rs`).
-  - Folder grants enforce canonical containment for opened documents (`contains_file`) and
-    propagate revocation to folder-scoped `DocumentCapability` instances.
+  - Folder grants scope sibling resources for in-folder documents (`contains_file`) and
+    propagate revocation to folder-scoped `DocumentCapability` instances; explicitly opened
+    outside-folder documents fall back to per-file capability while folder-level errors
+    (`AccessRevoked`, `NotFound`, etc.) surface through the recovery bar.
   - Typed path-free `FolderError` variants distinguish `NotFound` (missing/moved),
-    `PermissionDenied`, `AccessRevoked`, `VolumeUnavailable`, `NotDirectory`, `NonLocalFolder`, and
-    `ReadFailed`.
+    `PermissionDenied`, `AccessRevoked`, `VolumeUnavailable`, `NotDirectory`, `NonLocalFolder`,
+    `OutsideFolder`, and `ReadFailed`.
 - **Persistent recents (`apps/linux/src/recents.rs`)**:
   - Records recent files and workspace folders (capped at 10 each, deduplicated by exact path,
     including lossless hex encoding for non-UTF-8 Linux paths) with `grant_active` state in
