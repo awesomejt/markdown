@@ -8,7 +8,117 @@ read.
 
 ## Current posture
 
-- Phase: `portable-core`, the shared track (GATE-001 approved, D-018).
+- WIN-001A (PR #53) delivers the
+  [Windows shell](apps/windows/README.md) in C# Native AOT/WinUI with native
+  New Window/Close/Exit commands, locally deployed App SDK and Debug/Release
+  smoke checks.
+- WIN-001B (PR #54) adds `apps/windows/tools/package_core.py`
+  (`build/windows/core-package/<debug|release>/` with the model-v2
+  `markdown_ffi.dll`, import library, header, license, manifest, PE32+ export
+  audit of the exact 24 `md_` symbols, and `--remap-path-prefix` / `/PDBALTPATH`
+  path-leak checks), the UI-free C# Native AOT adapter under `apps/windows/Core/`
+  (5 MiB source, 500k nodes, 1M events, 16 MiB text, 128 MiB copied payload;
+  one shared process-wide `markdown-core` worker thread, two process-wide admitted
+  parses, prompt queued cancellation and non-blocking `CloseThen`/`Dispose`), 17 consumer tests
+  in Debug/Release, relocated Release smoke/probe and required MSVC `cl.exe` C
+  smoke (`MD_REQUIRE_C_SMOKE=1` on all three OSes). Release 5 MiB prose: median
+  parse 528.5 ms, encode 169.0 ms, copy 18.2 ms (47.77 MiB copied); retained
+  working set after 20 sessions is flat at 51.6–52.5 MiB (GC heap 5.13 MiB,
+  handles 0,0,0); dense `*a` peaks at 796.9 MiB (8 MiB default) and 502.9 MiB
+  (5 MiB host). Grok review 1 at `11aecab` had 0 blockers, 3 concerns and 2 nits;
+  all 5 findings were fixed at `059d18c`, threads resolved, and all-host CI run
+  41375068539 is green. D-029 approves closeout/merge. See
+  [Windows-Core-Integration.md](docs/Windows-Core-Integration.md).
+- WIN-001C (PR #55) adds the Windows document capability and loading layer under
+  `apps/windows/Document/` (`DocumentAccess.cs`, `DocumentLoader.cs`,
+  `DocumentPicker.cs`): native Win32 `GetOpenFileNameW` picker (`File > Open…`,
+  `Ctrl+O`), `File > Reload` (`Ctrl+R`), per-user file-association template
+  `apps/windows/resources/io.github.awesomejt.markdown.reg.in` (`.md`,
+  `.markdown`, `.mdown`, `.mkd`, `.txt`) with primary-instance mutex and
+  current-user named-pipe forwarding, path-free `DocumentCapability` with explicit
+  `Revoke()`, NTFS ACL withdrawal (`AccessRevoked`), volume-detachment promotion
+  (`VolumeUnavailable`), device/non-regular/remote-handle rejection
+  (`GetFileType`, `GetFileInformationByHandle`, `GetFinalPathNameByHandleW`),
+  64 KiB chunked bounded reads, and serial-tagged `DocumentLoader` cancellation
+  with off-thread `Busy` admission retries. Debug, Release, and relocated Release
+  each pass 17 core tests, 12 document tests, shell/picker/reload smoke, and
+  4-delivery multi-process association check (`apps/windows/tools/check_association.py`).
+  Grok review 1 at `3915231` had 0 blockers, 4 concerns and 1 nit; all 5 findings
+  were fixed at `60f0970` and all 5 threads resolved.
+- WIN-001D (PR #56) delivers the native WinUI 3 virtualized presentation and outline
+  navigation view in C# Native AOT linked against the model-v2 core package
+  (`apps/windows/Render/`: `RenderPlan.cs`, `IndexList.cs`, `RowItem.cs`,
+  `ReaderControl.cs`, `ErrorBanner` InfoBar, within-fragment selection,
+  UIA heading level automation properties, 9 `--render-tests` unit tests, and
+  extended native smoke). Grok review 1 at `8db9048` reported 0 Blockers, 5 Concerns,
+  3 Nits; all findings were addressed at `046178b`, all review threads resolved, and
+  fixed-head CI run 41394098208 passed all checks under D-029. WIN-001E is merged.
+- WIN-001E (PR #57) delivers Windows native tables (tab-separated cell rows for native TSV clipboard
+  copying, monospace font, header bold styling, zebra striping, and border separators), task list
+  checkbox markers (`[x]` -> checked `☑`, `[ ]` -> unchecked `☐`) with accent styling and accessible
+  UIA labels, and strict folder-contained image resource policy (`DocumentResources.cs`) with raster-only
+  format validation (PNG, JPEG, GIF, BMP, WebP), dimension and 32 MP bomb caps, 2048px side cap,
+  128 MiB memory budget, off-thread decoding, and per-`ReaderControl` `BitmapImage` surface caching
+  (`ImageSourceCache.cs`). Grok review 1 at `4dd0922` reported 1 Blocker, 5 Concerns, 3 Nits; all findings
+  were addressed at `fad0ab7`, and follow-up Grok review 2 at `fad0ab7` reported 0 Blockers, 0 Concerns,
+  3 Nits (approval under D-029). Minor review nits addressed in `8c4f500`. WIN-001F is merged.
+- WIN-001F (PR #58) delivers Windows native document find (`md_snapshot_find` C ABI
+  binding, core find integration, UTF-8 to UTF-16 match mapping across fragments and runs,
+  FindBar UI with match cycling, status text, and `TextHighlighter` highlights), discrete
+  text scaling across 9 steps with scroll retention and keyboard shortcuts (`Ctrl++`/`Ctrl--`/`Ctrl+0`),
+  theme switching (System, Light, Dark), and persistent settings via `LocalSettingsPreferenceStore`
+  using `%LOCALAPPDATA%` JSON storage. Grok review 1 at `b6070ad` reported 0 Blockers, 5 Concerns, 2 Nits;
+  follow-up review 2 at `292e868` reported 0 Blockers, 1 Concern, 2 Nits; follow-up review 3 at `2fcac41`
+  reported 0 Blockers, 0 Concerns, 0 Nits (clean approval under D-029). All checks in CI run 41487555337
+  passed.
+- WIN-001G delivers Windows large-document layout, global multi-fragment
+  selection across virtualized rows (`DocumentPosition`, `DocumentSelection`,
+  `ReaderControl`), pointer drag selection with edge auto-scrolling, keyboard selection
+  extension (Shift+arrows, Shift+Home/End, Escape), Select All (`Ctrl+A`), dual-format
+  native Win32 clipboard copy (`CF_UNICODETEXT` plain text with block/table separators and
+  registered `"text/markdown"` UTF-8 source bytes, `NativeClipboard.cs`), UIA accessibility
+  single-reading fix (`AutomationProperties.SetName(this, ShownText)` on container for focused item
+  `ItemType`, `PositionInSet`, and child `TextBlock` heading levels, resolving the Narrator
+  double-reading defect), and independent selection vs find text highlighters. Automated
+  pipeline measurements (`apps/windows/tools/measure.py`) confirm: 1 MiB prose median
+  170.19ms and 1 MiB long lines 22.56ms (both within 400ms target);
+  outline target resolution 0.03ms (budget 150ms); copy slice 7.47ms and clipboard write 1.37ms
+  for 1 MiB prose (< 10ms total); repeated 5x load/close cycles confirm full memory reclamation
+  (RSS drops back to baseline ~19.1 MiB).
+- WIN-001H (PR #60) delivers Windows external file watching (`FileSystemWatcher` / `ReadDirectoryChangesW`
+  with 100ms debouncing, parent-directory fallback with separator-aware `IsSubpathOrEqual` filtering, burst coalescing, and error recovery),
+  external change detection (`CoreSession.ExternalChange` with `copyUnchanged: false` background check),
+  anchor preservation and resolution (`CoreSnapshot` wrapping `md_snapshot` with deterministic non-blocking
+  worker release), reading position retention across edits and reloads (`ReadingPosition`, `SavedPosition`),
+  window state persistence across restarts (`RestorationStore` saving file path, base64 anchors, text scale,
+  and outline visibility to `%LOCALAPPDATA%\MarkdownReader\restoration.json`), deletion recovery (retaining
+  stale view with warning banner, tracking file recreation), and automated two-phase relaunch verification
+  (`--relaunch-check prepare`/`verify`). Automated refresh benchmark measurements (`apps/windows/tools/measure.py refresh --count 5`):
+  1 MiB prose median 166.25ms (`kept_place: true`), 1 MiB long lines median 24.63ms
+  (`kept_place: true`), 5 MiB prose median 1011.11ms (`kept_place: true`). Grok reviews 1-4 on PR #60:
+  review 4 at `6ba3649` reported 0 Blockers, 0 Concerns, 0 Nits (clean approval under D-029).
+- WIN-001I (PR #61) delivers the Windows unsigned local development artifact
+  (`build/windows/artifacts/Markdown-0.1.0-<commit>-windows-x64.zip`), complete license
+  inventory (`Licenses/inventory.json` for 42 linked Rust packages and 19 locked NuGet platform packages)
+  and third-party notices (`Licenses/THIRD-PARTY-NOTICES.txt`), build record (`BuildInfo.json`),
+  and zero build-machine path leaks via `/PDBALTPATH:Markdown.Windows.pdb`. Relocated extraction
+  and launch verification outside the checkout passed all 20 core consumer tests, 14 document tests,
+  20 render tests, 13-stage Native AOT smoke, file association check, two-phase relaunch restoration,
+  and relocated core probe with 0 leaked handles. Full walking skeleton acceptance across WIN-001A
+  through WIN-001I is documented in `docs/Windows-Skeleton-Acceptance.md`. Grok reviews 1 and 2:
+  review 2 at `d57dc8f` reported 0 Blockers, 0 Concerns, 0 Nits (clean approval under D-029).
+- WIN-001 (PR #62) closes the Windows single-document walking skeleton aggregate
+  milestone on already-merged evidence across WIN-001A through WIN-001I (PRs #53 to #61).
+  C# Native AOT with WinUI 3 and Windows App SDK 2.5.1 is the accepted Windows desktop host
+  (D-017), without general-purpose WebViews or CoreCLR. Fresh native checks (`apps/windows/tools/check.py`)
+  passed at `develop` head `5aeed91` across all suites (20 core consumer tests, 14 document
+  tests, 20 render tests, Native AOT WinUI smoke, association checks, two-phase relaunch
+  restoration, license inventory for 42 Rust + 19 NuGet packages, and relocated development
+  artifact verification outside checkout with 0 leaked handles). Full walking skeleton
+  acceptance is documented in `docs/Windows-Skeleton-Acceptance.md`. The Windows skeleton
+  milestone review (D-030) is next on Windows, and LNX-001D1 is eligible on Linux.
+- Phase: `desktop-apps`; the portable-core shared track is complete through
+  CORE-006 (GATE-001 approved, D-018). Native chains are now eligible (D-027).
 - Product: local-first, read-only native Markdown reader. Windows, macOS and
   Linux desktop apps come first; iOS and iPadOS follow once the desktop
   contracts are stable.
@@ -26,20 +136,240 @@ read.
   accepted D-025 (native 001B packages build `model-v2` and request v2; v1
   stays the Rust default), D-026 (the CORE-FIX phase) and D-027 (one linear
   shared track, then one independent chain per host from CORE-006).
-- CORE-FIX order: DOC-001, CORE-002B, CORE-003C, CORE-003D, CORE-005C,
-  CORE-005D, then CORE-003E (owner-added from the PR #17 review). The CORE-001 to CORE-006 aggregates follow and close on shared
-  acceptance. HARD-001 sits between DESK-001 and DESK-002.
-- DOC-001, CORE-002B, TOOL-002 (CI tiers, D-028) and CORE-003C (v2 corpus
-  conformance) merged in PRs #17 to #21, TOOL-003 in #23, CORE-003D (bare autolinks, D-031) in #24, CORE-005C
-  (content-search memory guard) in #25, CORE-005D (wider invisible-filename
-  warnings) in #26, CORE-003E (front-matter blank-character guard, D-032) in
-  #27. CORE-FIX is complete. Now: the first milestone review
-  (`review/core-fix`, D-030), with CORE-001 next on `develop`. See
-  [HANDOFF.md](HANDOFF.md) and [TODO.md](TODO.md).
+- CORE-FIX (DOC-001, CORE-002B, TOOL-002, CORE-003C, TOOL-003, CORE-003D,
+  CORE-005C, CORE-005D, CORE-003E; PRs #17 to #27, D-028 to D-032) is merged
+  into `main` through the first milestone review, PR #28, tagged
+  `m-core-fix`. Its three reviews (Claude, Grok, Codex) found no blocking
+  defect. CORE-003F merged in PR #32 (D-034 amends D-032). The CORE-001
+  through CORE-006 aggregates closed in PRs #33 to #38; their acceptance
+  evidence is linked from [HANDOFF.md](HANDOFF.md). CORE-005 pinned existing
+  reference-syntax differences between the v1 workspace index and v2 find.
+  CORE-006 documented the ABI v1 zero content-budget change from 8 to 2 MiB
+  and passed fresh all-feature release CI on all three OSes. Native packages
+  remain platform 001B work; each 001B sets a session memory bound. The next
+  Mac step is the macOS skeleton milestone review (MAC-001 closed, PR #48). `main` now requires the
+  `Checks / complete` status (M4, 2026-10-29). See [HANDOFF.md](HANDOFF.md) and
+  [TODO.md](TODO.md#core-fix-milestone-follow-ups). HARD-001 sits between
+  DESK-001 and DESK-002.
+- MAC-001A/B (PRs #39/#40) provide the AppKit shell and matching local
+  model-v2 static package/Swift owned-value adapter, required debug/release
+  consumer CI and explicit per-call bounds: source 5 MiB, nodes 500k, events
+  1M, text 16 MiB, copied payload 128 MiB; one worker/two admitted calls.
+  Queued cancellation promptly clears owned input/admission; concurrent close
+  awaits shared worker cleanup. Bundle ID: `io.github.awesomejt.markdown`.
+  [Measurements](docs/macOS-Core-Integration.md) leave repeated-load RSS open
+  for MAC-001G before skeleton acceptance.
+- MAC-001C (PR #41) adds the Foundation-only `MarkdownDocument` target. It
+  covers Open…/Reload, Launch Services delivery with a Viewer/Alternate
+  Markdown document type, path-free typed errors (revoked and disk-unavailable
+  are distinguished), serial coordinated bounded reads and a per-window
+  newest-request-only loader that records failed reads in the core session.
+  `NSFileCoordinator` blocks opening a FIFO, so non-regular items are rejected
+  before coordination. Not sandboxed.
+- MAC-001D (PR #42) adds the `MarkdownRender` target: an off-main renderer
+  from the owned v2 snapshot to one attributed string and heading map, shown
+  in one read-only TextKit 2 `NSTextView` (never touch `layoutManager`), with
+  an outline sidebar and fragment/external link navigation. Only fragment and
+  core-external http/https/mailto links get a `.link`. Decode fragments with
+  `url.fragment(percentEncoded: false)`, because anchors keep non-ASCII
+  letters.
+- MAC-001E (PR #43): TextKit 2 stacks `NSTextTable` cells, so tables are one
+  paragraph per row with measured, aligned tab stops and a `TableRowFragment`
+  (text-layout-manager delegate) drawing the grid. Copy gives TSV. Relative
+  images go through `DocumentResources`, which keeps them in the document's
+  folder (`realpath` containment, `O_NOFOLLOW_ANY`, regular raster files up
+  to 16 MiB, no SVG; it resolves off-main). They decode off-main through
+  ImageIO: 32 Mi source pixels, 2,048 px retained side, 128 images and
+  128 MiB retained per document. Remote and denied images never reach the
+  loader. Share decoded `CGImage`s, never `NSImage`s: alt text is set on each
+  `NSImage`.
+- MAC-001F (PR #44): find calls `md_snapshot_find` on the core worker over
+  `md_session_current`, refusing any generation but the one on screen
+  (`CoreError.superseded`). The renderer records each node's display-text
+  range, so core segments map exactly to TextKit ranges. Highlight with TextKit
+  2 rendering attributes added eagerly (about 26 ms for 10,000 matches): the
+  `renderingAttributesValidator` is not re-run for laid-out fragments by
+  invalidation. While the find field has focus, don't select the current
+  match; the inactive selection paints over it. Text size re-renders at a
+  `scale` (75–250%). Settings live in user defaults; the smoke uses
+  `MemoryPreferenceStore`, because deleting a suite domain races Quit and
+  leaves a plist. Never put the reading surface in an `NSStackView`: hidden
+  views detach and lose their frame.
+- MAC-001G (PR #45): on macOS 27, a `realloc` that grows a block in the large
+  range leaks dirty "Malloc Large (empty)" regions. `markdown-ffi` has a
+  macOS-only global allocator that copies reallocations of 1 MiB and more.
+  Measure memory with `phys_footprint`, not RSS. TextKit 2 pitfalls: replacing
+  a long text in place takes seconds (clear the view first); a paragraph is
+  laid out whole (the renderer bounds them); `writablePasteboardTypes` scans
+  long selections (~1 s at 5 MiB) and uses legacy type names; and
+  `accessibilityLine(for:)` lays out all earlier text. Named pasteboards don't
+  send `pasteboardChangedOwner`, so track `changeCount`. A code-built `NSWindow`
+  in tests needs `isReleasedWhenClosed = false`. Measure with
+  `apps/macos/tools/measure.py`; open budgets are in TODO.md.
+- MAC-001H (PR #46): a kqueue vnode watcher (`O_EVTONLY`, re-armed on the
+  path after a rename/delete, falling back to the folder) plus a stat on
+  window activation feed `md_session_external_change`; refreshes keep the
+  shown revision until the new one is ready. `CoreDocument` owns its
+  snapshot handle, so positions are anchored in the old snapshot and
+  resolved in the new one; keep that in mind for handle-count checks
+  (release is async on the worker). Restoration uses AppKit with a cached
+  bookmark; `-NSQuitAlwaysKeepsWindows YES` makes a scripted quit keep
+  windows. `Data.range(of:)` indexes its argument from zero: never pass a
+  slice.
+- MAC-001I (PR #47): `apps/macos/tools/artifact.py` zips a `strip -S` copy
+  of the release app (strip reapplies the linker ad hoc signature) and
+  verifies it extracted outside the checkout, launched directly and through
+  Launch Services. `open -a` registers the temporary copy, so unregister it
+  with `lsregister -u`. Every bundle carries `Resources/Licenses` from
+  `licenses.py` (43 linked packages, a safe superset). The core builds with
+  `--remap-path-prefix` for the checkout and CARGO_HOME. Skeleton
+  acceptance: [docs/macOS-Skeleton-Acceptance.md](docs/macOS-Skeleton-Acceptance.md).
+- MAC-001 aggregate (PR #48) closed on that page with fresh native checks at
+  `96d8aea`. The skeleton is AppKit throughout, Settings included; SwiftUI
+  stays allowed for later shell surfaces (D-010). No Mac task is eligible
+  until DESK-001; the macOS skeleton milestone review (D-030) is next here.
+- LNX-001A (PR #49): the [GTK 4 shell](apps/linux/README.md) is Rust/gtk4
+  0.11.5 without libadwaita, in its own Cargo workspace (`apps/linux`,
+  own `Cargo.lock`, target `build/linux/target`), because the root policy only
+  admits members under `core/`. `tools/check_dependencies.py linux` checks it;
+  `target-lexicon` 0.13.5 (LLVM exception, build scripts only) is reviewed for
+  that graph alone. GTK conventions: single instance over D-Bus as
+  `io.github.awesomejt.markdown`, last-window close quits. Smokes run
+  `NON_UNIQUE` so they never hand checks to a running reader; only smoke runs
+  strip GApplication arguments. CI `linux-native` runs on `ubuntu-24.04`
+  (GTK 4.14) under `dbus-run-session xvfb-run` with `GDK_BACKEND=x11`.
+  gtk-rs: `WidgetExt::activate_action` and `ActionGroupExt::activate_action`
+  clash on windows; read the accessible role through the `accessible-role`
+  property.
+- LNX-001B (PR #50): `apps/linux/tools/package_core.py` stages
+  `build/linux/core-package/<debug|release>/` with the model-v2
+  **cdylib** `libmarkdown_ffi.so` (exactly the 24 `md_` exports). Never link
+  the Rust staticlib into the Rust host: its private `std` collides with the
+  host's in the thin-LTO release link. `apps/linux/core`
+  (`markdown-linux-core`, no deps, hand-written bindings) is the UI-free
+  adapter; its build.rs links the package matching Cargo's `PROFILE` and sets
+  an `$ORIGIN`-relative RUNPATH (the app's build.rs repeats it via
+  `DEP_MARKDOWN_FFI_RUNPATH`). Host limits match macOS (5 MiB source, 500k
+  nodes, 1M events, 128 MiB copy); admission (two parses) is process-wide.
+  Never call blocking `close()` on the GTK main thread; use `close_then` or
+  drop. Retained RSS after closing is glibc caching (`malloc_trim` returns
+  it); LNX-001G should evaluate trimming. Use `cargo … --workspace` in
+  `apps/linux`: the root package alone is the default member.
+- LNX-001C (PR #51): native Open/Reload and desktop-entry delivery share a
+  selected-file capability and bounded background dispatcher. Request serials
+  suppress obsolete reads/errors/results; cancelled reads and admission retries
+  release cooperatively, with two process-wide core parses. Poll GTK only during
+  a load; clean up on close, application window removal and widget destruction.
+  Session creation is transactional. Reload follows the selected path (including
+  symlink retargeting), with no sibling authority or persisted grant. Both native
+  backends pass 11 document and 15 core tests per debug/release build plus smokes.
+  Grok review 1 has no high/critical finding; concerns/nits were fixed or disposed
+  at `aef0cd4`. Cross-window read/admission delays and disposal threads remain
+  LNX-001G follow-ups in TODO.md. Live AT-SPI inspection failed on this session's
+  bus; no new screen-reader evidence is claimed. The Linux 001A–001C milestone packet
+  is due under D-030; only the owner merges milestone reviews into `main`.
+- LNX-001D (PR #52): a lazy GTK ListView presents bounded native text fragments
+  with outline/fragment navigation and within-fragment selection. Plans prepare
+  on the core worker under host request cancellation and a 128 MiB accounted
+  payload bound. Text/markup is escaped, URI tokens bind to plan/row membership,
+  and only core-approved fragments or canonical http/https/mailto can activate.
+  Fragments are at most 512 UTF-8 bytes; global selection remains G. Long headings
+  retain one Heading role, with styled Paragraph continuations. GTK 4.14 is the
+  floor; local Wayland/X11 debug/release suites pass 12 loader, 8 render and
+  15 core tests per build plus native smokes. Grok review 1 has no high/critical
+  finding; non-serious fixes are at `27e84df`. Reload-position restoration is
+  deferred to H in TODO.md. LNX-001D1 is closed under D-035 in PR #63: automated
+  AT-SPI inspection verifies heading/paragraph semantics and reading order, with
+  off-screen Orca structural navigation and continuous reading deferred to ADV-001.
+  LNX-001E is merged. LNX-001F is merged. LNX-001G is merged. LNX-001H is merged. LNX-001I is merged. The LNX-001 aggregate is next on Linux.
+- LNX-001E (PR #64): delivers Linux native tables (tab-separated cell rows for
+  native TSV clipboard copying, monospace font, bold header row, table-relative
+  zebra striping), read-only task list markers (`☑` / `☐`) with accent/muted
+  styling and accessible text, and strict folder-contained image resource policy
+  (`DocumentResources`) with raster format validation (PNG, JPEG, GIF, BMP, WebP),
+  SVG/XML rejection (`UnsupportedType`), canonicalize→open TOCTOU hardening via
+  `/proc/self/fd` containment re-check, 32 MP dimension bomb and 2048px side caps,
+  128-image count and 128 MiB memory budget, alt-text status messages naming no
+  paths, shared `Arc<[u8]>` image data reuse with bounded deduplication accounting,
+  and native `gtk::Picture` rendering of decoded GDK textures with per-reader caching
+  and `Undecodable` failure surfacing. Grok review 3 at `fcfc2a9` reported 0 Blockers,
+  0 Concerns, 0 Nits (clean approval under D-029).
+- LNX-001F (PR #65): delivers Linux native document find (`md_snapshot_find` C ABI
+  binding in `apps/linux/core/src/ffi.rs`, non-blocking worker find with `FindGate`
+  cancellation and buffer retry, `FindMatches`/`RenderPlan::map_matches` mapping core
+  node matches into virtualized fragment runs with Pango highlights, `FindBar` GTK 4
+  widget with `Ctrl+F`/`F3`/`Shift+F3` navigation, match case/whole word filters,
+  and `stop-search` Escape dismissal), discrete 9-step text scaling (75%–250%,
+  `Ctrl++`/`Ctrl+-`/`Ctrl+0`, per-reader scoped CSS isolation `.reader-scale-{id}`),
+  theme switching (System, Light, Dark) resetting or overriding `gtk-interface-color-scheme`
+  and `gtk-application-prefer-dark-theme`, and atomic persistent JSON settings under
+  `$XDG_CONFIG_HOME/markdown/preferences.json` with memory mode support. Grok review 3
+  at `4b72dd1` reported 0 Blockers, 0 Concerns, 1 Nit (addressed in `41978ee`, clean
+  approval under D-029).
+- LNX-001G (PR #66): delivers Linux native large-document layout, global
+  selection and accessibility; native reader/copy, scaling and performance
+  budgets. Implements global document selection model across virtualized
+  fragments, continuous drag and keyboard selection with auto-scroll and
+  Shift-click expansion, native dual-format GDK clipboard copy (UTF-8
+  markdown / plain text via exact byte slices and fallback), AT-SPI
+  accessibility tree verification with accessible descriptions and selection
+  reporting, and comprehensive interaction / repeated load performance
+  measurement harness (`apps/linux/tools/measure.py interaction` /
+  `repeated`). Measured budgets: 1 MiB prose pipeline 89.86 ms (< 400 ms target),
+  1 MiB long lines pipeline 9.20 ms (< 400 ms target), outline target
+  resolution 0.01 ms, 1 MiB copy slice 4.93 ms (< 15 ms target), repeated 5x
+  load/close cycles demonstrate complete glibc memory return via `malloc_trim`
+  (retained RSS delta ~0.08 MiB). Grok review 3 at `63971c7` reported 0 Blockers,
+  0 Concerns, 1 Nit (addressed in `apps/linux/tools/measure.py`, clean
+  approval under D-029). LNX-001H is merged in PR #67. LNX-001I (local
+  development artifact, licenses, relocated launch) is next on Linux.
+- LNX-001H (PR #67): delivers Linux native external file refresh, anchor resolution,
+  reading position restoration, and relaunch checks. Adds core snapshot anchor
+  functions (`md_snapshot_anchor_at`, `md_snapshot_anchor_for_node`,
+  `md_snapshot_resolve_anchor`), `CoreSnapshot` thread-safe handle with non-blocking
+  drop release, and `CoreSession::external_change`. In the Linux app, implements
+  external file change detection via inotify (`FileMonitor`), external refresh
+  preserving reading position via node anchor or fragment percentage fallback,
+  atomic JSON session restoration state stored under `$XDG_STATE_HOME/markdown/restoration.json`,
+  multi-window and single-window lifecycle management (window count tracked, store
+  preserved across clean shutdowns), virtualized layout transition scroll tracking
+  preventing race conditions during programmatic repositioning, and comprehensive
+  relaunch and refresh test suites (`apps/linux/tools/check.py`, `apps/linux/tools/measure.py refresh`).
+  Clean approval under D-029 (0 Blocker, all review feedback resolved).
+- **LNX-001I (PR #68)**: delivers the unsigned Linux x86-64 `.tar.gz` local development artifact
+  (`apps/linux/tools/artifact.py`), 74-package linked Rust license inventory and notices
+  (`apps/linux/tools/licenses.py`), strict `$ORIGIN/../lib` packaged `RUNPATH` (`apps/linux/build.rs`),
+  normalized tarball metadata, relocated verification outside the checkout (ELF64, 24 `md_` exports,
+  `ldd` resolution, zero build-machine path leaks, smokes, association, and scratch-XDG relaunch),
+  and [Linux skeleton acceptance](docs/Linux-Skeleton-Acceptance.md). Grok review 1 at `a0e171e`
+  reported 0 Blockers, 1 Concern, 2 Nits (approved under D-029); all 3 findings were fixed at `4f9b15e`.
+- **LNX-001 (PR #69)**: closes the Linux single-document walking skeleton aggregate
+  on already-merged evidence across LNX-001A through LNX-001I (including LNX-001D1,
+  PRs #49–#52 and #63–#68). Fresh `apps/linux/tools/check.py` passed in Debug and Release
+  at `develop` head `072cf41` (14 unit, 19 render, 18 core consumer tests, smokes,
+  association, relaunch, release `core-probe single`, 74-package license inventory, and
+  relocated tarball artifact); hosted `develop` CI run `43542760925` passed. Grok review 1
+  at `1c83b79` reported 0 Blockers, 0 Concerns, 1 Nit (approved under D-029; nit fixed in
+  closeout). All three desktop walking skeletons (`MAC-001`, `WIN-001`, `LNX-001`) are
+  now complete; `DESK-001` (cross-desktop skeleton gate) and the D-030 milestone review
+  are next.
 - Workflow: task PRs target `develop` and merge on a Grok review with no
   serious finding (D-029). `main` takes only owner-approved milestone reviews
-  from `review/<milestone>`, tagged `m-<milestone>` (D-030). The first
-  milestone is the end of CORE-FIX.
+  from `review/<milestone>`, tagged `m-<milestone>` (D-030). The shared-core
+  milestone boundary is reached: CORE-001 through CORE-006 are closed.
+  Hand off the combined packet to Claude, then owner review; task completion
+  does not approve a merge into `main`.
+- Milestone reviews: Claude writes the packet; Grok and Codex add independent
+  reviews in `docs/reviews/` on the review branch, not normal PR reviews.
+- Grok reviews come from its GitHub integration (D-033): creating a PR starts
+  one, `/grok review` asks for another, and the runner polls the PR for it.
+  Grok ignores `review/*` and `patch/*`; `patch/` carries unreviewed docs,
+  workflow, state and behavior-free nit changes and merges on green CI.
+- The owner confirmed on 2026-10-29 that Cursor/Grok reviews post as
+  `awesomejt`, with no GitHub app identity and the heading “🤖 Automated
+  first-pass review by Grok Bot” (PR #33). Task PRs merge after Grok and CI;
+  only critical/high/important fixes need re-review, within the three-review
+  cap. The owner handles combined milestone reviews into `main`.
 - Each 001B also measures flat-view and retained RSS on its host, and WIN-001B
   makes the MSVC C smoke a required CI step.
 - Node IDs are snapshot-local and block anchors carry position (D-021). ABI v1
@@ -80,6 +410,19 @@ read.
 - On this Mac, Homebrew `python3` lacks PyYAML. Use
   `.build/feas004-venv/bin/python` for `tools/check.py` and
   `tools/project_state.py`.
+
+- Linux host (CachyOS, KDE Plasma 6.8 Wayland, Ryzen 9 5950X): system
+  `cargo`/`rustc` 1.99.1 from Arch (no rustup), GTK 4.24.1, Orca, flatpak and
+  `gh`. Run Linux smokes on the live Wayland session or with
+  `GDK_BACKEND=x11` via Xwayland. Local `tools/check.py common` fails only on
+  stale ignored `.agents/loop/` Markdown that markdownlint's `**/*.md` glob
+  picks up; lint tracked files instead and leave that runtime state alone
+  (`npx markdownlint-cli2 --no-globs <files>`). Also installed: gdb, Orca,
+  Accerciser, python-gobject with AT-SPI, xvfb-run, patchelf, appstreamcli,
+  desktop-file-validate, makepkg and the Flathub GNOME 50/51 and
+  Freedesktop runtimes. Missing on 2026-11-01: flatpak-builder, the GNOME
+  SDK and rust-stable SDK extension, namcap (LNX-001I), heaptrack/valgrind
+  (LNX-001G) and xdotool/ydotool.
 
 ## Durable context
 
@@ -146,10 +489,14 @@ read.
 - Feasibility FFI and local package consumption pass on Windows, macOS, and
   Linux, but production ABI stability, clean deployment, platform packages and
   Apple XCFramework concerns remain open.
-- Repeated native-only 5 MiB parses on the Mac grew RSS to about 583 MiB
-  after twenty loads with zero native owners and no leaked bytes. It looks
-  like macOS allocator retention; Linux/glibc stays flat. No acceptable
-  repeated-session budget is established.
+- MAC-001B release consumer repeats retained 112.2 MiB RSS after the first
+  5 MiB document and 1,698.1 MiB after twenty sessions, despite zero native
+  handles, live malloc about 5.1–5.2 MiB and a separate zero-leak diagnostic.
+  The host bound is 5 MiB source; dense 8 MiB core/default and 5 MiB host
+  sessions peak at 577.9/361.8 MiB process RSS before NodeLimit, distinct
+  from the older counted-heap metric below. No whole-app memory acceptance
+  is claimed: MAC-001G must resolve or obtain owner disposition before the
+  skeleton aggregate. See the current integration report for methodology.
 - Dense token input at the 8 MiB source ceiling peaks at about 1,152 MiB
   before the node limit stops it (D-024): pulldown-cmark's first pass costs
   up to 144 bytes per source byte, and the model a few hundred per node.

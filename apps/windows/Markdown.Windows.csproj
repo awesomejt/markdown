@@ -1,0 +1,43 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows10.0.26100.0</TargetFramework>
+    <TargetPlatformMinVersion>10.0.22000.0</TargetPlatformMinVersion>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <Platforms>x64</Platforms>
+    <Version>0.1.0</Version>
+    <UseWinUI>true</UseWinUI>
+    <WinUISDKReferences>false</WinUISDKReferences>
+    <DefineConstants>$(DefineConstants);DISABLE_XAML_GENERATED_MAIN</DefineConstants>
+    <WindowsPackageType>None</WindowsPackageType>
+    <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <PublishAot>true</PublishAot>
+    <IsAotCompatible>true</IsAotCompatible>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+    <BaseOutputPath>../../build/windows/bin/</BaseOutputPath>
+    <CorePackageConfiguration Condition="'$(Configuration)' == 'Release'">release</CorePackageConfiguration>
+    <CorePackageConfiguration Condition="'$(CorePackageConfiguration)' == ''">debug</CorePackageConfiguration>
+    <CorePackageDir>../../build/windows/core-package/$(CorePackageConfiguration)</CorePackageDir>
+  </PropertyGroup>
+  <ItemGroup>
+    <LinkerArg Include="/PDBALTPATH:Markdown.Windows.pdb" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.5.1" />
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.2705" />
+    <Compile Include="$(CorePackageDir)/PackageIdentity.g.cs" Link="Core/PackageIdentity.g.cs" />
+    <Content Include="$(CorePackageDir)/bin/markdown_ffi.dll"
+             Link="markdown_ffi.dll"
+             CopyToOutputDirectory="PreserveNewest"
+             CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+  <!-- The WinUI targets generate these after publish items are collected. -->
+  <Target Name="PublishShellResources" AfterTargets="Publish">
+    <Copy SourceFiles="$(TargetDir)$(AssemblyName).pri;$(TargetDir)App.xbf"
+          DestinationFolder="$(PublishDir)" />
+  </Target>
+</Project>

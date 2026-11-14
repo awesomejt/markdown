@@ -1,6 +1,7 @@
-"""Check the resolved production Rust graph; spike/tooling graphs are separate."""
+"""Check the resolved production Rust graphs; spike/tooling graphs are separate."""
 from __future__ import annotations
 
+import argparse
 import json
 from pathlib import Path
 import subprocess
@@ -35,22 +36,34 @@ REVIEWED = {
     ('zerovec', '0.11.9'): "Unicode-3.0",
     ('zerovec-derive', '0.11.7'): "Unicode-3.0",
 }
+# The Linux GTK host is a separate Cargo workspace. target-lexicon runs only in
+# gtk-rs build scripts (system-deps -> cfg-expr); the LLVM exception relaxes Apache-2.0.
+LINUX_REVIEWED = REVIEWED | {
+    ("target-lexicon", "0.13.5"): "Apache-2.0 WITH LLVM-exception",
+}
+# Graph name -> (Cargo workspace, root its members must live under, reviewed declarations).
+GRAPHS = {
+    "core": (ROOT, ROOT / "core", REVIEWED),
+    "linux": (ROOT / "apps" / "linux", ROOT / "apps" / "linux", LINUX_REVIEWED),
+}
 
 
-def violations(metadata: dict) -> list[str]:
+def violations(metadata: dict, graph: str = "core") -> list[str]:
+    _, member_root, reviewed = GRAPHS[graph]
     errors = []
     members = set(metadata["workspace_members"])
     for package in metadata["packages"]:
         name = f"{package['name']} {package['version']}"
         expression = " ".join((package.get("license") or "").split())
-        if expression not in ALLOWED and expression != REVIEWED.get((package["name"], package["version"])):
+        if expression not in ALLOWED and expression != reviewed.get((package["name"], package["version"])):
             errors.append(f"{name}: unapproved or missing SPDX license {expression!r}")
         manifest = Path(package["manifest_path"]).resolve()
         if package["id"] in members:
             if package.get("source") is not None:
                 errors.append(f"{name}: workspace source must be local")
-            if not manifest.is_relative_to(ROOT / "core"):
-                errors.append(f"{name}: portable workspace member outside core/")
+            if not manifest.is_relative_to(member_root):
+                errors.append(f"{name}: {graph} workspace member outside "
+                              f"{member_root.relative_to(ROOT).as_posix()}/")
             if package.get("publish") != []:
                 errors.append(f"{name}: production crates must remain unpublished")
         elif package.get("source") != CRATES_IO:
@@ -61,16 +74,21 @@ def violations(metadata: dict) -> list[str]:
 
 
 def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("graph", choices=sorted(GRAPHS), default="core", nargs="?")
+    graph = parser.parse_args().graph
     metadata = json.loads(subprocess.check_output(
-        ["cargo", "metadata", "--locked", "--all-features", "--format-version", "1"], cwd=ROOT, text=True))
-    errors = violations(metadata)
+        ["cargo", "metadata", "--locked", "--all-features", "--format-version", "1"],
+        cwd=GRAPHS[graph][0], text=True))
+    errors = violations(metadata, graph)
     if errors:
         print("\n".join(errors), file=sys.stderr)
         return 1
     for package in sorted(metadata["packages"], key=lambda p: p["name"]):
         kind = "workspace" if package["id"] in metadata["workspace_members"] else "third-party"
         print(f"{package['name']} {package['version']}: {package['license']} ({kind})")
-    print("Production dependency/license policy passed; tooling and spikes have separate inventories.")
+    print(f"Production {graph} dependency/license policy passed; "
+          "tooling and spikes have separate inventories.")
     return 0
 
 

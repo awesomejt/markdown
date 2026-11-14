@@ -3,13 +3,13 @@
 //! `header_constants_match_rust` parses `core/include/markdown_core.h`.
 //! `c_smoke` builds the `markdown_ffi` shared library for this test's profile
 //! and features, compiles `tests/c/smoke.c` with the host C compiler (`$CC`,
-//! else `cc`), links a private copy of the library and runs it: once to
-//! compare every struct size/field offset with Rust, once to exercise the ABI
-//! (asserting the model mask the linked library reports).
+//! else `cc` on Unix or MSVC `cl.exe` on Windows), links a private copy of the
+//! library and runs it: once to compare every struct size/field offset with
+//! Rust, once to exercise the ABI (asserting the model mask the linked library
+//! reports).
 //! Without a compiler the smoke is skipped unless `MD_REQUIRE_C_SMOKE=1`
-//! (set by `tools/check.py` on macOS/Linux), which turns a skip into a failure.
-//! Windows always skips the C smoke (MSVC/import-library wiring is WIN-001B);
-//! the drift check of constants still runs there.
+//! (set by `tools/check.py` on all platforms), which turns a skip into a
+//! failure.
 use markdown_ffi::abi::*;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -159,11 +159,14 @@ fn rust_layout() -> BTreeMap<String, usize> {
     }
 }
 
-const LIBRARY: &str = if cfg!(target_os = "macos") {
+const LIBRARY: &str = if cfg!(windows) {
+    "markdown_ffi.dll"
+} else if cfg!(target_os = "macos") {
     "libmarkdown_ffi.dylib"
 } else {
     "libmarkdown_ffi.so"
 };
+const IMPORT_LIBRARY: &str = "markdown_ffi.dll.lib";
 
 /// Build the shared library for exactly this test binary's profile and
 /// feature set. The cdylib cargo leaves in `target/<profile>/deps` is not
@@ -223,8 +226,13 @@ fn expected_models() -> u32 {
 /// `@rpath` install name: a cargo-built dylib records its absolute build
 /// path, which would make the smoke load that file instead of the copy.
 fn stage_library(dir: &Path) {
-    std::fs::copy(built_library(), dir.join(LIBRARY)).unwrap();
-    if cfg!(target_os = "macos") {
+    let built = built_library();
+    std::fs::copy(&built, dir.join(LIBRARY)).unwrap();
+    if cfg!(windows) {
+        let import_lib = built.parent().unwrap().join(IMPORT_LIBRARY);
+        assert!(import_lib.is_file(), "missing {}", import_lib.display());
+        std::fs::copy(import_lib, dir.join(IMPORT_LIBRARY)).unwrap();
+    } else if cfg!(target_os = "macos") {
         let status = Command::new("install_name_tool")
             .arg("-id")
             .arg(format!("@rpath/{LIBRARY}"))
@@ -237,9 +245,36 @@ fn stage_library(dir: &Path) {
 
 fn compiler() -> Option<String> {
     if cfg!(windows) {
-        // Not wired up: MSVC needs a developer environment and links the
-        // `markdown_ffi.dll.lib` import library. WIN-001B owns that consumer.
-        return None;
+        let pf86 =
+            std::env::var("ProgramFiles(x86)").unwrap_or_else(|_| r"C:\Program Files (x86)".into());
+        let vswhere = PathBuf::from(pf86).join(r"Microsoft Visual Studio\Installer\vswhere.exe");
+        if vswhere.is_file()
+            && let Ok(output) = Command::new(&vswhere)
+                .args([
+                    "-latest",
+                    "-products",
+                    "*",
+                    "-requires",
+                    "Microsoft.VisualStudio.Component.VC.Tools.x86.x64",
+                    "-property",
+                    "installationPath",
+                ])
+                .output()
+            && output.status.success()
+        {
+            let install = String::from_utf8_lossy(&output.stdout).trim().to_owned();
+            if !install.is_empty() {
+                let vcvars = PathBuf::from(install).join(r"VC\Auxiliary\Build\vcvars64.bat");
+                if vcvars.is_file() {
+                    return Some(vcvars.to_string_lossy().into_owned());
+                }
+            }
+        }
+        return Command::new("cl.exe")
+            .output()
+            .ok()
+            .filter(|o| o.status.success())
+            .map(|_| "cl.exe".to_owned());
     }
     let cc = std::env::var("CC").unwrap_or_else(|_| "cc".into());
     Command::new(&cc)
@@ -252,6 +287,41 @@ fn compiler() -> Option<String> {
 
 fn build_smoke(cc: &str, out: &Path) -> PathBuf {
     stage_library(out);
+    if cfg!(windows) {
+        let exe = out.join("smoke.exe");
+        let obj = out.join("smoke.obj");
+        let include = root().join("core/include");
+        let source = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/c/smoke.c");
+        let import_lib = out.join(IMPORT_LIBRARY);
+        let script_path = out.join("compile.cmd");
+        let mut script = String::from("@echo off\r\n");
+        if cc.ends_with(".bat") {
+            script.push_str(&format!("call \"{cc}\" >nul || exit /b 1\r\n"));
+        }
+        script.push_str(&format!(
+            "cl.exe /nologo /std:c11 /W4 /WX /O1 /I \"{}\" \"{}\" /Fe:\"{}\" /Fo:\"{}\" /link \"{}\"\r\n",
+            include.display(),
+            source.display(),
+            exe.display(),
+            obj.display(),
+            import_lib.display()
+        ));
+        std::fs::write(&script_path, script).unwrap();
+        let output = Command::new("cmd.exe")
+            .arg("/d")
+            .arg("/c")
+            .arg(&script_path)
+            .current_dir(out)
+            .output()
+            .expect("run MSVC C compiler");
+        assert!(
+            output.status.success(),
+            "C smoke failed to compile/link:\n{}\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+        return exe;
+    }
     let lib = out;
     let exe = out.join("smoke");
     let mut command = Command::new(cc);
@@ -289,6 +359,13 @@ fn build_smoke(cc: &str, out: &Path) -> PathBuf {
 /// `target/<profile>` and `deps` on them), so only the staged copy can load.
 fn smoke(exe: &Path) -> Command {
     let mut command = Command::new(exe);
+    if cfg!(windows) {
+        if let Some(dir) = exe.parent() {
+            command.current_dir(dir);
+        }
+        let sysroot = std::env::var("SystemRoot").unwrap_or_else(|_| r"C:\Windows".into());
+        command.env("PATH", format!(r"{sysroot}\System32;{sysroot}"));
+    }
     for variable in [
         "LD_LIBRARY_PATH",
         "DYLD_LIBRARY_PATH",

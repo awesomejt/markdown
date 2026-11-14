@@ -94,7 +94,9 @@ title, property keys and string or list values: controls, General_Category=Cf
 and bidi formatting characters are rejected (`metadata_text`/`metadata_key`).
 Since CORE-003E (D-032) the blank default-ignorable values that are not Cf,
 such as the Hangul fillers and U+2800, are rejected too. Variation selectors,
-Mongolian FVS and CGJ remain allowed, as in
+Mongolian FVS and CGJ remain allowed. Since CORE-003F (D-034) the title and
+string or list values, not keys, also allow ZWNJ, ZWJ and the tag characters
+of a well-formed subdivision flag, as in
 [Front-Matter.md](../../../docs/Front-Matter.md). V2 shares this check.
 
 Capabilities are the exact set of semantic extensions present: tables, task

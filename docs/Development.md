@@ -63,11 +63,11 @@ hits equal to find, snippet invariants, anchors, budget stops, cancellation
 and 4,096 generated inputs (`WORKSPACE_CASES` raises the count).
 CORE-006A adds `markdown-ffi` extern-function tests (negotiation, handles,
 ownership, panics, cancellation, bulk-view round trips) and `tests/c_abi.rs`:
-a header constant drift check and a C smoke compiled with the host `cc`
-against `core/include`, linked to the built library, comparing struct
-layouts and exercising the [C ABI](../specs/ffi/README.md). `check.py` sets
-`MD_REQUIRE_C_SMOKE=1` on macOS/Linux so a missing compiler fails; Windows
-skips the C smoke until WIN-001B wires MSVC.
+a header constant drift check and a C smoke compiled with the host C compiler
+(`cc` on macOS/Linux, MSVC `cl.exe` via `vswhere` on Windows) against
+`core/include`, linked to the built library, comparing struct layouts and
+exercising the [C ABI](../specs/ffi/README.md). `check.py` sets
+`MD_REQUIRE_C_SMOKE=1` on all three platforms so a missing compiler fails.
 CORE-003B4 adds `tests/conformance.rs` against the generated
 [conformance contract](../specs/parsing/conformance/README.md). Regenerate the
 contract with `python tools/generate_conformance.py` after changing fixture
@@ -102,6 +102,10 @@ and new dirty lines fail. The pushed branch is named by `GITHUB_REF_NAME`; when
 it is unset or not found, or no other branch exists, the whole tree is checked. Without CHECK_BASE, local/manual runs check the latest commit plus
 staged/unstaged changes. Set `CHECK_BASE=origin/develop` for the full local branch
 range. Untracked files enter the Git whitespace check once staged.
+First-push diffs disable color even when Git configuration forces it. Captured
+output uses UTF-8 with `surrogateescape`, so non-UTF-8 problem content cannot
+abort decoding or hide new whitespace errors. Diagnostics escape invalid bytes
+in filenames so they remain printable even on strict UTF-8 output.
 `tools/test_project_state.py` remains a separate host setup check requiring the
 installed Codex state backend; CI does not depend on a private user-level skill.
 
@@ -128,11 +132,30 @@ link cases have regression tests.
 
 Actions use pinned source commits, read-only contents permission and no retained
 checkout credentials. No deploy, signing, release or automatic merge is present.
-Native app build jobs are added in MAC/LNX/WIN-001A when those apps exist;
-running a portable Rust suite on a hosted runner does not prove native UI,
+MAC-001A adds the path-filtered `macos-native` job on `xcode-27`, with Swift
+format/concurrency checks and assembled AppKit bundle smoke in debug/release.
+MAC-001B adds matching model-v2 Rust static packages, native consumer tests,
+archive/profile checks and relocation; see [the integration report](macOS-Core-Integration.md).
+The completion gate requires it whenever macOS is selected; an unselected
+native job may be skipped. See [the Mac build/check instructions](../apps/macos/README.md).
+LNX-001A adds the path-filtered `linux-native` job on `ubuntu-24.04`: format,
+Clippy, the Linux dependency/license policy and the debug/release GTK shell
+smoke under Xvfb. The completion gate requires it whenever Linux is selected.
+See [the Linux build/check instructions](../apps/linux/README.md).
+WIN-001A adds the path-filtered `windows-native` job with Debug/Release C#
+Native AOT publish and native shell command/lifecycle smokes. WIN-001B adds
+matching model-v2 Rust core DLL packages, PE32+ export/path audits, 17
+Debug/Release consumer tests and relocated Release smoke/probe checks; see
+[the Windows integration report](Windows-Core-Integration.md) and the
+[Windows instructions](../apps/windows/README.md). Its selected result is
+required by `complete`.
+The common gate test finds Git Bash beside Git on Windows, rejects the
+System32/SysWOW64 WSL launchers, and fails if no suitable Bash is available.
+This avoids CreateProcess choosing WSL and dropping test variables.
+Running a portable Rust suite on a hosted runner does not prove native UI,
 minimum-OS packaging, accessibility or performance acceptance.
 
 CORE-001A includes GATE-001's approved documentation/state closeout in its PR,
-as permitted by the delivery workflow. After checks pass, set the PR ready,
-request the Grok review through the `grok` CLI and assess the actual feedback. Keep the
+as permitted by the delivery workflow. After checks pass, open the PR, which
+starts the Grok review, and assess the actual feedback. Keep the
 task partial until the merge is approved; do not start dependent phases.

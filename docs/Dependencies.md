@@ -138,7 +138,86 @@ facts, checked against the official UCD and Python Unicode 16.0 data. Its source
 copyright/provenance and `licenses/Unicode-3.0.txt` retain the Unicode notice.
 This adds no Cargo package and does not alter the reviewed dependency graph.
 
+## macOS app runtime inventory (MAC-001I)
+
+The macOS app links the core statically, so its runtime graph is the
+normal-dependency closure of `markdown-ffi` with `model-v2` for
+`aarch64-apple-darwin`: 43 of the packages above. `apps/macos/tools/licenses.py`
+computes it from `cargo metadata` at build time and writes it, with every
+package's license files, into each bundle's `Contents/Resources/Licenses/`
+([details](../apps/macos/README.md#development-artifact-and-licenses-mac-001i)).
+It follows only normal dependencies and stops at proc-macro crates, which run
+in the compiler. Features are unified across the workspace, so the list is a
+superset of what the app links: another member's features can add a package,
+never remove one. Each declaration must still pass this policy, and a crates.io
+package without a license file fails the build.
+
+Linked: bitflags, block-buffer, cfg-if, cpufeatures, crypto-common, digest,
+form_urlencoded, generic-array, the seven icu_* packages, idna, idna_adapter,
+itoa, libc, litemap, markdown-core, markdown-ffi, memchr, percent-encoding,
+potential_utf, pulldown-cmark, ryu, serde, serde_core, serde_json, sha2,
+smallvec, stable_deref_trait, tinystr, typenum, unicase, url, utf8_iter,
+writeable, yoke, zerofrom, zerotrie and zerovec, at the versions in the table.
+
+Not linked (compile-time or optional only): displaydoc, dyn-clone,
+proc-macro2, quote, ref-cast, ref-cast-impl, schemars, schemars_derive,
+serde_derive, serde_derive_internals, both syn versions, synstructure,
+unicode-ident, version_check, yoke-derive, zerofrom-derive and
+zerovec-derive. unicode-ident's Unicode notice is therefore not needed in
+the app; the ICU packages' Unicode License V3 texts are bundled, as is
+`licenses/Unicode-3.0.txt` for markdown-core's Unicode data. The Swift
+runtime and Apple frameworks are part of macOS and are not redistributed;
+the app has no Swift package dependencies. This is a development
+inventory, not a distribution approval.
+
+## Linux app graph (LNX-001A)
+
+The [Linux GTK shell](../apps/linux/README.md) is a separate Cargo workspace
+under `apps/linux/` with its own `Cargo.lock`, so gtk-rs never enters the
+portable core graph above. `python3 tools/check_dependencies.py linux` applies
+the same policy to it: every resolved package needs an approved or reviewed
+license declaration, third-party packages must come from crates.io, workspace
+members must stay under `apps/linux/` and remain unpublished, and nothing may
+depend on a spike. `apps/linux/tools/check.py` and the `linux-native` CI job
+run it.
+
+LNX-001A depends only on gtk4 0.11.5 (gtk-rs, MIT), with default features.
+The all-feature graph resolves 65 packages. The gtk-rs crates (cairo-rs,
+gdk-pixbuf, gdk4, gio, glib, graphene-rs, gsk4, gtk4, pango and their `-sys`
+and macro crates) are MIT; the rest use the existing MIT/Apache alternatives,
+plus the memchr and unicode-ident declarations already reviewed above. One
+declaration is new and is reviewed for this graph only:
+
+| Package | Version | License declaration | Role |
+| --- | --- | --- | --- |
+| target-lexicon | 0.13.5 | Apache-2.0 WITH LLVM-exception | Build script only: system-deps → cfg-expr, used by the gtk-rs `-sys` build scripts to read pkg-config metadata |
+
+The LLVM exception only relaxes Apache-2.0's attribution terms for compiled
+forms. The package's LICENSE file carries the Apache-2.0 text and the
+exception; it runs in the compiler and is not linked into the app. Tests
+reject it in the core graph, at another version or with another expression.
+
+GTK 4, GLib, Pango, Cairo, GdkPixbuf and Graphene are system libraries,
+linked dynamically from the distribution (LGPL-2.1-or-later, except Cairo,
+LGPL-2.1 or MPL-1.1, and Graphene, MIT). They are not redistributed by a
+development build. Packaging (LNX-001I, Flatpak and Arch) adds the Linux
+runtime inventory and the notices those libraries need.
+
+Since LNX-001B the workspace also has `markdown-linux-core` (`apps/linux/core`,
+Apache-2.0, unpublished, no dependencies), so the graph resolves 66 packages
+with no new third-party package. The app does not resolve the core's Rust
+crates: it links the staged `libmarkdown_ffi.so`, built from the core graph
+above with `model-v2` ([integration report](Linux-Core-Integration.md)). Its
+linked Rust packages and their notices join the runtime inventory in
+LNX-001I.
+
 ## Development tooling and feasibility
+
+MAC-001A's [SwiftPM AppKit shell](../apps/macos/Package.swift) has no external
+Swift package dependencies. It uses the Apple system frameworks and Swift
+runtime supplied by the selected Xcode/macOS SDK. MAC-001B statically links
+the existing model-v2 Rust graph through a local header/archive package; it
+adds no Rust or Swift dependency. The app source uses the repository's Apache-2.0 license.
 
 | Tool/graph | Pin | Policy boundary |
 | --- | --- | --- |
@@ -149,6 +228,62 @@ This adds no Cargo package and does not alter the reviewed dependency graph.
 | Feasibility engines | spike-specific locks/reports | Experimental, outside production workspace; never linked by sibling paths |
 
 The Rust license gate is not an npm/Python license audit, vulnerability scanner,
-font audit or distribution approval. Preserve dependency notices and add a
-distribution inventory for the actual runtime/package when that phase exists.
+font audit or distribution approval. Preserve dependency notices. The macOS
+app has a runtime inventory (above); the Windows app adds its runtime inventory
+below (WIN-001I); Linux adds its inventory in LNX-001I.
 Signing, release publishing and production deployment still need owner approval.
+
+## Windows app runtime inventory (WIN-001I)
+
+The Windows app links markdown_ffi.dll dynamically, built from the normal-dependency
+closure of markdown-ffi with model-v2 for x86_64-pc-windows-msvc: 42 of the Rust
+packages above (excluding the Unix-only libc). In addition, the self-contained Native AOT
+publish bundles the locked NuGet platform graph (19 packages).
+
+apps/windows/tools/licenses.py computes both inventories and writes them, alongside
+project and third-party license notices, to Licenses/ (LICENSE, THIRD-PARTY-NOTICES.txt,
+and inventory.json) inside the published app and local development artifact
+([details](../apps/windows/README.md#development-artifact-and-licenses-win-001i)).
+
+Rust packages linked: bitflags, block-buffer, cfg-if, cpufeatures, crypto-common,
+digest, form_urlencoded, generic-array, the seven icu_* packages, idna,
+idna_adapter, itoa, litemap, markdown-core, markdown-ffi, memchr, percent-encoding,
+potential_utf, pulldown-cmark, ryu, serde, serde_core, serde_json, sha2, smallvec,
+stable_deref_trait, tinystr, typenum, unicase, url, utf8_iter, writeable, yoke,
+zerofrom, zerotrie, zerovec.
+
+## Windows shell NuGet graph
+
+WIN-001A uses the locked graph in apps/windows/packages.lock.json (19
+unique package/version pairs, including build-only Native AOT tools). These
+Microsoft platform packages are reviewed separately from the core Rust
+allowlist. They are used for Windows development and local testing under
+their supplied terms; this is not distribution approval. WIN-001I stages
+all required notices and redistribution terms for the actual package into Licenses/.
+
+| Package | Version | License source |
+| --- | --- | --- |
+| Microsoft.DotNet.ILCompiler | 10.0.13 | MIT (.NET); bundled third-party notices |
+| Microsoft.NET.ILLink.Tasks | 10.0.13 | MIT (.NET); bundled third-party notices |
+| Microsoft.Web.WebView2 | 1.0.3719.77 | Microsoft terms in LICENSE.txt |
+| Microsoft.Windows.AI.MachineLearning | 2.1.74 | Microsoft terms in license.txt |
+| Microsoft.Windows.SDK.BuildTools | 10.0.28000.2705 | Microsoft Windows SDK license terms (build tooling) |
+| Microsoft.Windows.SDK.BuildTools.MSIX | 1.7.251221100 | Microsoft terms in sdk_license.txt |
+| Microsoft.WindowsAppSDK | 2.5.1 | Microsoft terms in license.txt |
+| Microsoft.WindowsAppSDK.AI | 2.5.5 | Microsoft terms in license.txt |
+| Microsoft.WindowsAppSDK.Base | 2.0.4 | Microsoft terms in license.txt |
+| Microsoft.WindowsAppSDK.DWrite | 2.1.0 | Microsoft terms in license.txt |
+| Microsoft.WindowsAppSDK.Foundation | 2.3.12 | Microsoft terms in license.txt |
+| Microsoft.WindowsAppSDK.InteractiveExperiences | 2.1.9 | Microsoft terms in license.txt |
+| Microsoft.WindowsAppSDK.ML | 2.1.94 | Microsoft terms in license.txt |
+| Microsoft.WindowsAppSDK.Runtime | 2.5.1 | Microsoft terms in license.txt |
+| Microsoft.WindowsAppSDK.Search | 2.5.5 | Microsoft terms in license.txt |
+| Microsoft.WindowsAppSDK.Widgets | 2.0.5 | Microsoft terms in license.txt |
+| Microsoft.WindowsAppSDK.WinUI | 2.3.9 | Microsoft terms in license.txt |
+| System.Numerics.Tensors | 9.0.0 | MIT |
+| runtime.win-x64.Microsoft.DotNet.ILCompiler | 10.0.13 | MIT (.NET); bundled third-party notices |
+
+The Windows App SDK metapackage includes AI, ML, Widgets, Search and WebView2
+transitives. The shell invokes none of those features and does no network
+fetching. Future package trimming must preserve WinUI deployment support;
+no second renderer or language is introduced.

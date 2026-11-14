@@ -1,0 +1,147 @@
+#!/usr/bin/env python3
+"""Stage the Windows core packages, verify formatting, and publish/exercise the Native AOT shell."""
+from __future__ import annotations
+
+import json
+import os
+from pathlib import Path
+import subprocess
+import sys
+import tempfile
+
+from artifact import build_info, package, verify as verify_artifact
+from check_association import check_association
+from licenses import write_notices
+from package_core import prepare_core, verify
+
+ROOT = Path(__file__).resolve().parents[3]
+PROJECT = ROOT / "apps/windows/Markdown.Windows.csproj"
+
+
+def run(command: list[str], *, cwd: Path, env: dict[str, str], timeout: int | None = None) -> None:
+    print("+ " + " ".join(command), flush=True)
+    subprocess.run(command, cwd=cwd, env=env, check=True, timeout=timeout)
+
+
+def run_app(command: list[str], *, cwd: Path, env: dict[str, str], timeout: int) -> str:
+    print("+ " + " ".join(command), flush=True)
+    # Markdown.Windows.exe is a WinExe (GUI subsystem) binary; piping stdout/stderr
+    # attaches valid standard handles so Console output is captured and logged.
+    result = subprocess.run(
+        command,
+        cwd=cwd,
+        env=env,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        timeout=timeout,
+    )
+    if result.stdout:
+        print(result.stdout, end="", flush=True)
+    result.check_returncode()
+    return result.stdout
+
+
+def main() -> None:
+    if sys.platform != "win32":
+        raise SystemExit("Native Windows Python is required")
+    installer = Path(os.environ.get("ProgramFiles(x86)", "C:/Program Files (x86)"))
+    env = dict(os.environ)
+    env["MARKDOWN_REPO_ROOT"] = str(ROOT)
+    env["PATH"] = str(installer / "Microsoft Visual Studio/Installer") + os.pathsep + env["PATH"]
+
+    run([sys.executable, "tools/generate_performance_fixtures.py"], cwd=ROOT, env=env)
+    for configuration in ("debug", "release"):
+        prepare_core(configuration)
+
+    run(
+        ["dotnet", "restore", str(PROJECT), "--locked-mode", "-p:Platform=x64"],
+        cwd=PROJECT.parent,
+        env=env,
+    )
+    run(
+        ["dotnet", "format", str(PROJECT), "--no-restore", "--verify-no-changes", "--severity", "warn"],
+        cwd=PROJECT.parent,
+        env=env,
+    )
+
+    for profile in ("Debug", "Release"):
+        configuration = profile.lower()
+        output = ROOT / "build/windows" / profile
+        run(
+            [
+                "dotnet",
+                "publish",
+                str(PROJECT),
+                "--no-restore",
+                "-c",
+                profile,
+                "-p:Platform=x64",
+                "--nologo",
+                "-o",
+                str(output),
+            ],
+            cwd=PROJECT.parent,
+            env=env,
+        )
+        verify(configuration)
+        # No .NET runtime or globally installed App SDK is needed by this output.
+        if (output / "coreclr.dll").exists():
+            raise SystemExit("Expected Native AOT output, found CoreCLR")
+        if not (output / "markdown_ffi.dll").is_file():
+            raise SystemExit(f"Missing staged markdown_ffi.dll in {output}")
+
+        write_notices(output)
+        info = build_info(configuration)
+        (output / "BuildInfo.json").write_text(json.dumps(info, indent=2) + "\n", encoding="utf-8")
+
+        exe = str(output / "Markdown.Windows.exe")
+        run_app([exe, "--core-tests"], cwd=output, env=env, timeout=180)
+        run_app([exe, "--document-tests"], cwd=output, env=env, timeout=120)
+        run_app([exe, "--render-tests"], cwd=output, env=env, timeout=120)
+        run_app([exe, "--smoke"], cwd=output, env=env, timeout=60)
+        check_association(output / "Markdown.Windows.exe")
+
+        # Real state restoration: save window with reading position, relaunch, expect
+        # window, document, top line and selection restored (WIN-001H).
+        with tempfile.TemporaryDirectory(prefix="markdown-windows-relaunch-") as directory:
+            relaunch_doc = Path(directory) / "live.md"
+            sections = "\n\n".join(
+                f"## Part {part}\n\nProse for part {part}, with a *marked* word." for part in range(120)
+            )
+            relaunch_doc.write_text(f"# Live\n\n{sections}\n", encoding="utf-8")
+            restoration_store_path = Path(directory) / "restoration.json"
+            relaunch_env = dict(env)
+            relaunch_env["MARKDOWN_RESTORATION_PATH"] = str(restoration_store_path)
+            for phase, marker in (
+                ("prepare", "relaunch-check: prepared"),
+                ("verify", "relaunch-check: pass (restored window, document, top line and selection)"),
+            ):
+                result = subprocess.run(
+                    [exe, "--relaunch-check", phase, str(relaunch_doc)],
+                    cwd=directory,
+                    env=relaunch_env,
+                    text=True,
+                    capture_output=True,
+                    timeout=30,
+                )
+                print(result.stdout, end="", flush=True)
+                if result.returncode != 0 or marker not in result.stdout:
+                    print(result.stderr, end="", flush=True)
+                    raise SystemExit(f"{profile}: relaunch check {phase} failed")
+        print(f"{profile}: relaunch restoration passed", flush=True)
+
+        print(
+            f"{profile}: core consumer tests, document tests, render tests, Native AOT smoke, association, and relaunch restoration passed",
+            flush=True,
+        )
+
+    # Release development artifact packaging and relocated verification (WIN-001I)
+    release_output = ROOT / "build/windows/Release"
+    archive = package(release_output)
+    verify_artifact(archive, env=env)
+    print("Release: development artifact created and verified relocated", flush=True)
+
+
+if __name__ == "__main__":
+    main()

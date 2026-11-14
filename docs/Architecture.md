@@ -56,6 +56,11 @@ for reference provenance and typed URI targets. Root/default v1 APIs and its
 frozen schema stay supported; new adapters explicitly opt into v2 and future
 facade negotiation. This is additive, not an implicit model-version migration.
 
+[CORE-002 acceptance](Core-Model-Acceptance.md) maps the aggregate model
+criteria to the delivered contracts, tests and source-bound goldens. It records
+D-021's snapshot-local MVP identity policy alongside the frozen model text;
+native adapters use session anchors for position across revisions.
+
 ## Core responsibilities
 
 - Validate bounded UTF-8 input and parse the accepted Markdown dialect.
@@ -68,6 +73,11 @@ facade negotiation. This is additive, not an implicit model-version migration.
   ([workspace search primitives](../specs/workspace-search/README.md)).
 - Resolve portable settings semantics.
 - Reject or classify unsafe HTML, URLs, and resources.
+
+[CORE-005 acceptance](Core-Search-Acceptance.md) maps the search/read criteria
+to golden, source/snippet, budget and Rust/C ABI checks. It records the
+reference-syntax boundary between the v1 workspace text index and v2 document
+find, alongside the Unicode, memory and native-presentation limitations.
 
 The core never opens an arbitrary platform path, creates windows, persists OS
 preferences, watches the filesystem, or chooses a native presentation.
@@ -105,6 +115,11 @@ budgets into the semantic layer; they receive values and diagnostics back.
    block anchor (content fingerprint, neighbour context and intra-block offset)
    resolved against the new snapshot; node IDs are snapshot-local
    ([session contract](../specs/session/README.md)).
+
+[CORE-004 acceptance](Core-Session-Acceptance.md) maps the shared session
+criteria to publication, cancellation, change, lifetime and anchor tests. It
+separates those checks from native watcher ordering and UI presentation, and
+records the limits of the race and model-version coverage.
 
 ## Native rendering
 
@@ -148,9 +163,28 @@ exact struct-size negotiation, explicit v1/v2 model selection, typed status
 and outcome codes, panic containment and a bulk read-only snapshot view of
 fixed-size records plus one string table, owned by the snapshot handle.
 Native consumers are validated in each platform's 001B phase.
+The [macOS consumer](macOS-Core-Integration.md) copies the v2 flat values into
+Swift-owned storage, uses bounded worker admission and records host limits,
+encode/copy costs and the still-open repeated-load RSS risk.
+
+[CORE-006 acceptance](Core-Facade-Acceptance.md) maps the shared facade criteria
+to exported-function, release-mode and staged C-host checks, records the
+earlier ABI v1 content-budget default change, and preserves native package
+consumers and host performance as separate 001B evidence.
 
 The Linux Rust host consumes the same public C facade as the other apps;
-it does not depend on the core's internal Rust models or lifetimes.
+it does not depend on the core's internal Rust models or lifetimes. The
+[Linux consumer](Linux-Core-Integration.md) links the core's shared library
+(a Rust static archive would bring a second `std` into the Rust binary),
+copies the v2 flat values into owned Rust data on one bounded worker and
+records host limits, encode/copy costs, retained RSS and the dense-input peak.
+
+The [Windows consumer](Windows-Core-Integration.md) links the matching
+`markdown_ffi.dll` import library from C# Native AOT, verifies the PE32+
+export table for the exact 24 `md_` symbols, copies the v2 flat values into
+owned C# storage on one shared bounded worker with two process-wide
+admitted parses, and records host limits, encode/copy costs, retained working
+set and the dense-input peak.
 
 The FEAS-006 checkpoints exercise one experimental C ABI on
 [Windows](Shared-Core-Windows-Evaluation.md),

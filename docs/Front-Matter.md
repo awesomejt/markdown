@@ -35,8 +35,23 @@ that are not Cf: the Hangul fillers U+115F, U+1160, U+3164 and U+FFA0, the
 Khmer inherent vowels U+17B4 and U+17B5, U+2800 BRAILLE PATTERN BLANK and the
 unassigned default-ignorable code points. A title made of them would show as
 blank. This blocks bidi/zero-width spoofing while keeping ordinary Unicode
-letters/marks/emoji. It also excludes legitimate format-dependent text such as
-joiner sequences; unsupported values retain the source rather than being stripped.
+letters/marks/emoji; unsupported values retain the source rather than being
+stripped.
+
+Since CORE-003F (D-034) the title and string and list values, but not keys,
+allow two exceptions. ZWNJ (U+200C) and ZWJ (U+200D) are allowed between two
+visible, non-space characters, as Persian, Arabic-script and Indic words and
+emoji ZWJ sequences use them. A joiner alone, at either end, beside a space
+or next to another joiner is still rejected, so a value cannot look blank or
+hold a run of joiners. Tag characters are allowed only in a subdivision flag:
+U+1F3F4, two tag lowercase letters (U+E0061–E007A) for the region, 1 to 4 tag
+digits or lowercase letters (U+E0030–E0039, U+E0061–E007A), then CANCEL TAG
+U+E007F, as in 🏴󠁧󠁢󠁳󠁣󠁴󠁿 (Scotland). Any other tag character, such as one
+outside a flag, an uppercase or space tag, or a longer run, is still
+rejected. This limits, but does not remove, text hidden in tags: each flag
+can still carry up to six hidden letters or digits. The bidi embedding, override and isolate
+controls and the LRM and RLM marks stay rejected. Keys are ASCII identifiers,
+and imported keys reject joiners too (`metadata_key`).
 
 | Value | Semantic type | Examples |
 | --- | --- | --- |

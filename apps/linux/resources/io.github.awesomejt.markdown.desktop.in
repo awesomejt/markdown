@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Markdown
+Comment=Read local Markdown documents
+Exec=@EXEC@ %F
+Terminal=false
+Categories=Office;Viewer;
+MimeType=text/markdown;
+StartupNotify=false

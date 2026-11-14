@@ -13,6 +13,11 @@
 #![warn(clippy::undocumented_unsafe_blocks)]
 
 pub mod abi;
+// On macOS this crate claims the Rust global allocator (see `apple_alloc`):
+// a binary or library linking it can't install its own, and a host that links
+// a second Rust static library needs one combined Rust build.
+#[cfg(target_os = "macos")]
+mod apple_alloc;
 mod flat;
 mod search;
 #[cfg(test)]

@@ -87,9 +87,9 @@ HTTPS references and next-check owners that exist in `project.yaml`.
 
 | Platform | Status | Evidence | Basis and user impact | Fallback | Next check | Sources |
 | --- | --- | --- | --- | --- | --- | --- |
-| Windows | Supported | Measured | Native WinUI processes opened every frozen corpus file. The Windows App SDK file picker and shell file associations are documented, but neither was exercised. | Command-line and drag-open paths | WIN-001: picker, association and revoked-file errors through the accepted shell | M01, A01, A04 |
-| macOS | Supported | Measured | AppKit processes opened every corpus file. Open panels extend the sandbox to the chosen file, and bundle document types provide Finder association. | Open panel only, if association registration fails review | MAC-001: open panel, Finder association and sandboxed launch | M02, A20, A21 |
-| Linux | Supported | Measured | GTK processes opened every corpus file. `GtkFileDialog` uses the FileChooser portal under sandboxing, and desktop entries declare MIME associations. | Command-line open | LNX-001: dialog, portal and MIME association on GNOME and KDE | M03, A57, A59, A58 |
+| Windows | Supported | Measured | Native WinUI processes opened every frozen corpus file. WIN-001C adds a native file open dialog, Reload and startup/association file delivery to the WinUI host; bounded background reads use selected-file capabilities and path-free typed errors, with explicit revocation and post-read NTFS ACL withdrawal tested in unit and app smoke suites. Full MSIX association registration and physical removable-media removal remain unverified. | Command-line and drag-open paths | WIN-001: picker, association and MSIX packaged activation in WIN-001I | M01, A01, A04 |
+| macOS | Supported | Measured | AppKit processes opened every corpus file. Open panels extend the sandbox to the chosen file, and bundle document types provide Finder association. MAC-001C declares a Markdown Viewer type at Alternate rank; Launch Services recorded the claim, and `open -a` delivered documents to the running app on macOS 27.0.1. Typed missing, permission, revoked, unavailable-disk, folder, type, size and UTF-8 errors pass native tests and the app smoke. | Open panel only, if association registration fails review | MAC-001: interactive open panel and Finder Open With; sandboxed launch if App Sandbox is adopted | M02, A20, A21 |
+| Linux | Supported | Measured | LNX-001C adds a native chooser, Reload and desktop-entry file delivery to the GTK host. Bounded background reads use selected-file capabilities and path-free typed errors; explicit revocation is tested separately from OS permission denial. The development build is unsandboxed; portal revocation and physical storage removal remain unverified. | Open a local copy; reselect after access loss | LNX-001: interactive picker on KDE; LNX-001I: packaged associations and sandbox/portal access | M03, M11, A57, A59, A58 |
 | iOS/iPadOS | Supported | Authoritative | The document picker returns security-scoped URLs for external documents. Reads must be coordinated and presented through a file presenter. | Copy-on-import when a provider refuses in-place access | IOS-001: picker, provider and coordinated read on a named device | A40, A23 |
 
 ### CAP-02 — Open and browse a user-selected folder
@@ -123,8 +123,8 @@ HTTPS references and next-check owners that exist in `project.yaml`.
 
 | Platform | Status | Evidence | Basis and user impact | Fallback | Next check | Sources |
 | --- | --- | --- | --- | --- | --- | --- |
-| Windows | Supported | Authoritative | `ReadDirectoryChangesW` reports subtree changes. On overflow, the buffer is discarded and the app must re-enumerate. | Re-enumerate and reread on overflow or focus | WIN-001: replace, rename and overflow storms | A06 |
-| macOS | Supported | Authoritative | FSEvents reports directory-hierarchy changes. File presenters receive coordinated changes from other processes. | Reread on focus | MAC-001: atomic-replace and coordinated-write refresh | A22, A23 |
+| Windows | Supported | Measured | WIN-001H watches open documents via `FileSystemWatcher` (`ReadDirectoryChangesW`) with 100 ms debouncing, parent-directory fallback, burst coalescing, and error recovery. In-place writes, atomic replacements, deletions (retaining stale view with banner and tracking reappearance), and rapid edits are coalesced and verified in unit and smoke tests. Activation stat checks provide fallback if notifications drop. Measured on Windows 11 Pro x64. | Re-enumerate and reread on overflow or focus | WIN-002: folder-workspace watching | M13, A06 |
+| macOS | Supported | Measured | MAC-001H watches each open document with a kqueue vnode source (`O_EVTONLY`, so a volume can still unmount). Writes, growth, an atomic replacement (followed to the new file), deletion and the path's reappearance each report within about 100 ms, coalesced; uncoordinated writers are seen too. Measured on macOS 27.0.1, Apple M5 Max. FSEvents and file presenters are not used for single documents. | A stat and session token check when a window becomes key | MAC-002: folder-workspace watching | M10, A22, A23 |
 | Linux | Supported | Authoritative | inotify reports local changes. Its queue can overflow, and watches are capped per user. | Poll after `IN_Q_OVERFLOW` or watch exhaustion | LNX-001: replace, rename, overflow and watch-limit behavior | A55 |
 | iOS/iPadOS | Alternative | Authoritative | File presenters are notified only of coordinated changes. They must be removed before backgrounding, or coordinated access elsewhere can deadlock. | Re-check on scene activation | IOS-002: presenter lifecycle and foreground refresh | A23 |
 
@@ -133,7 +133,7 @@ HTTPS references and next-check owners that exist in `project.yaml`.
 | Platform | Status | Evidence | Basis and user impact | Fallback | Next check | Sources |
 | --- | --- | --- | --- | --- | --- | --- |
 | Windows | Supported | Authoritative | SMB 3 shares support change notification. Network watches need buffers of 64 KB or less, and redirectors without support return `ERROR_INVALID_FUNCTION`. | Polling when the share refuses notification | WIN-002: SMB share watch and unsupported-redirector fallback | A06 |
-| macOS | Deferred | Unverified | No official statement was found on whether FSEvents reports changes made by other machines on network volumes. | Poll and reread on focus | MAC-002: SMB and NFS change detection on a named NAS | U01, A22 |
+| macOS | Deferred | Unverified | No official statement was found on whether FSEvents or kqueue reports changes made by other machines on network volumes. | A stat check when a window becomes key (MAC-001H); no polling yet | MAC-002: SMB and NFS change detection on a named NAS | U01, A22 |
 | Linux | Alternative | Authoritative | inotify doesn't catch remote events on network filesystems, and the man page tells apps to poll. | Bounded polling with visible staleness | LNX-002: polling cost and staleness on SMB and NFS | A55 |
 | iOS/iPadOS | Alternative | Authoritative | Network locations arrive through File Provider extensions, not mounted filesystems. Only coordinated changes notify presenters. | Foreground refresh and manual reload | IOS-002: third-party provider refresh behavior | A41, A23 |
 
@@ -181,8 +181,8 @@ HTTPS references and next-check owners that exist in `project.yaml`.
 
 | Platform | Status | Evidence | Basis and user impact | Fallback | Next check | Sources |
 | --- | --- | --- | --- | --- | --- | --- |
-| Windows | Supported | Measured | A WinUI 3 `ListView` over the same bounded fragments presented 1 MiB, 5 MiB and long-line input in 240–283 ms warm and 309–356 ms cold (C# Native AOT and C++/WinRT), with off-screen jumps under 70 ms. It realizes about 15 rows. Continuous controls still time out at 5 MiB. | Bounded rich edit for small documents | WIN-001: fragment seams, tables and code within accepted budgets | M01, M04, M09 |
-| macOS | Supported | Measured | TextKit 2 reached the end of every input, including 5 MiB, with sub-millisecond end requests. Memory near 388 MiB and RSS retention across repeated parses remain open risks. | Bounded blocks for pathological lines | MAC-001: memory and repeated-session RSS budget | M02, M05 |
+| Windows | Supported | Measured | A WinUI 3 `ListView` over the same bounded fragments presented 1 MiB, 5 MiB and long-line input in 240–283 ms warm and 309–356 ms cold (C# Native AOT and C++/WinRT), with off-screen jumps under 70 ms. WIN-001D implements the native virtualized `ListView` reader over off-thread bounded render plans (headings, prose, lists, code, and safe links), with outline sidebar and heading navigation. Continuous controls still time out at 5 MiB. | Bounded rich edit for small documents | WIN-001: fragment seams, tables and code within accepted budgets | M01, M04, M09 |
+| macOS | Supported | Measured | MAC-001G: one TextKit 2 view with paragraphs bounded at 16–32K UTF-16 units and a lead shown first. Warm Launch Services launches present prose 1 MiB in 347–404 ms, long lines in 343–369 ms and prose 5 MiB in 533–573 ms, which misses D-016's 400 ms (AppKit start-up plus the core parse). Off-screen jumps take 17–46 ms. Repeated 5 MiB loads stay within 227–581 MiB after an allocator fix; they had grown about 81 MiB per load. Cold launches are unmeasured. | Bounded paragraphs for pathological lines (shipped); copied text gains line breaks there | MAC-001: cold launches; owner disposition of the 5 MiB launch target | M02, M05 |
 | Linux | Supported | Measured | Virtualized `GtkListView` fragments presented 1 MiB, 5 MiB and long-line input in 289–373 ms warm and 528–623 ms cold, with off-screen jumps under 150 ms. This requires bounded fragments and a fixed label minimum width. Monolithic `GtkTextView` is rejected. | Small-document text view only | LNX-001: fragment seams, tables and code within accepted budgets | M03, M06, M08 |
 | iOS/iPadOS | Deferred | Unverified | No mobile rendering measurement exists, and mobile memory limits are tighter than desktop. | Bounded documents | IOS-001: UIKit text layout and memory on a named device | U02 |
 
@@ -190,9 +190,9 @@ HTTPS references and next-check owners that exist in `project.yaml`.
 
 | Platform | Status | Evidence | Basis and user impact | Fallback | Next check | Sources |
 | --- | --- | --- | --- | --- | --- | --- |
-| Windows | Supported | Measured | An app-owned model selection spans virtualized rows by pointer and keyboard, drawn with `TextHighlighter`. The owner's Ctrl+A copy of 5 MiB matched the source (registered `text/markdown`) and model text (`CF_UNICODETEXT`) byte for byte when read by a separate process. | Per-block copy, disclosed to the user | WIN-001: selection during incremental updates, IME and touch | M01, M09 |
-| macOS | Supported | Measured | All 60 continuous-text runs exported matching selections, including the lead TextKit 2 surface. | Not needed | MAC-001: selection during scrolling and incremental updates | M02 |
-| Linux | Supported | Measured | An app-owned model selection spans virtualized rows by pointer and keyboard. The owner's Ctrl+A copy of 5 MiB matched the source and model text byte for byte through `wl-paste`. | Per-block copy, disclosed to the user | LNX-001: selection during incremental updates and IME | M03, M08 |
+| Windows | Supported | Measured | An app-owned model selection spans virtualized rows by pointer and keyboard, drawn with `TextHighlighter`. The owner's Ctrl+A copy of 5 MiB matched the source (registered `text/markdown`) and model text (`CF_UNICODETEXT`) byte for byte when read by a separate process. WIN-001D implements basic native within-fragment selection via `RichTextBlock`; global multi-row selection remains WIN-001G. | Within-fragment selection in the current app; global multi-row selection remains WIN-001G | WIN-001: selection during incremental updates, IME and touch | M01, M09 |
+| macOS | Supported | Measured | All 60 continuous-text runs exported matching selections, including the lead TextKit 2 surface. MAC-001G: Select All and Copy of 5 MiB take 1.6 and 25 ms; a long selection's RTF/RTFD is made only when pasted, and appending the rest of a document after its lead keeps the selection. | Not needed | MAC-001: owner paste check into TextEdit | M02 |
+| Linux | Supported | Measured | The FEAS-008 prototype's app-owned selection spans virtualized rows; the owner's Ctrl+A copy of 5 MiB matched source and model text through `wl-paste`. LNX-001D implements basic native selection within one bounded fragment; it cannot span fragment seams and resets on recycling or reload. | Within-fragment selection in the current app; global selection remains LNX-001G | LNX-001: global selection in 001G, incremental updates and IME; 001D1 reading/focus proof | M03, M08, M12 |
 | iOS/iPadOS | Deferred | Unverified | No mobile selection measurement exists. | Per-block copy | IOS-001: touch selection across blocks | U02 |
 
 ### CAP-13 — Screen-reader document reading
@@ -200,7 +200,7 @@ HTTPS references and next-check owners that exist in `project.yaml`.
 | Platform | Status | Evidence | Basis and user impact | Fallback | Next check | Sources |
 | --- | --- | --- | --- | --- | --- | --- |
 | Windows | Supported | Measured | UIA3 inspection shows rows in model order at the top, middle and end of 5 MiB with the true set size. With the heading level on each row's text element, the owner confirmed Narrator reads rows in order, moves between headings with H, and keeps reading past the screen. Each row is read twice, and whole-tree UIA searches time out at 5 MiB. | Outline navigation | WIN-001: single exposure per row and whole-tree UIA queries at scale | M01, M09 |
-| macOS | Supported | Measured | The owner confirmed audible VoiceOver reading. Rotor heading navigation and table semantics are unverified. | Outline navigation | MAC-001: semantic roles and large-document speech | M02 |
+| macOS | Supported | Measured | The owner confirmed audible VoiceOver reading (FEAS-004). MAC-001G adds Headings, Heading Level 1–6, Tables and Images rotors over text ranges, checked in tests and the app smoke; their speech is unconfirmed. Headings aren't announced while reading continuously, tables are read as lines, and the first line query near the end of 5 MiB lays out all earlier text (3.6 s, then about 1 GiB). | Outline navigation | MAC-001: owner VoiceOver rotor check and disposition of the first-query pause | M02 |
 | Linux | Supported | Measured | AT-SPI exposes on-screen rows in model order with heading roles and levels, and the owner confirmed Orca reads rows in order. Orca heading navigation (H) doesn't work, and Say All past the screen is unconfirmed. | Outline navigation | LNX-001: Orca structural navigation and Say All on GNOME and KDE | M03, M08 |
 | iOS/iPadOS | Deferred | Unverified | No VoiceOver measurement exists on iOS/iPadOS. | Outline navigation | IOS-001: VoiceOver on a named device | U02 |
 
@@ -209,7 +209,7 @@ HTTPS references and next-check owners that exist in `project.yaml`.
 | Platform | Status | Evidence | Basis and user impact | Fallback | Next check | Sources |
 | --- | --- | --- | --- | --- | --- | --- |
 | Windows | Deferred | Measured | Only a uniform 150% three-display sweep was measured. Transitions between different scales are untested. | Single-scale support statement | WIN-001: mixed-scale transitions and font scaling | M01 |
-| macOS | Deferred | Measured | Only backing scale 2 on one display was measured. | Single-scale support statement | MAC-001: mixed-display transitions | M02 |
+| macOS | Deferred | Measured | Only backing scale 2 was measured, now on two 2× displays (MAC-001G); no mixed-scale display was available. Text size scales 75–250%. | Single-scale support statement | MAC-001: mixed-display transitions | M02 |
 | Linux | Deferred | Measured | Only compositor scale 1 was measured, and forced GDK scale variables had no effect under Wayland. | Integer-scale support statement | LNX-001: fractional scaling on GNOME and KDE | M03 |
 | iOS/iPadOS | Deferred | Unverified | No device scaling or Dynamic Type measurement exists. | System text size only | IOS-001: Dynamic Type and external displays | U02 |
 
@@ -342,8 +342,8 @@ HTTPS references and next-check owners that exist in `project.yaml`.
 
 | Platform | Status | Evidence | Basis and user impact | Fallback | Next check | Sources |
 | --- | --- | --- | --- | --- | --- | --- |
-| Windows | Supported | Measured | Unsigned framework-dependent folders launched locally with the normal core DLL. Clean-machine deployment wasn't tested. | Run from build output | WIN-001: relocated launch on a clean machine | M01, M04 |
-| macOS | Supported | Measured | Ad-hoc signed bundles with the normal dylib relocated and launched. | Run from build output | MAC-001: relocated bundle with the accepted floor | M02, M05 |
+| Windows | Supported | Measured | WIN-001I packages the release Native AOT app, with its model-v2 core DLL, license inventory (42 Rust, 19 NuGet packages), notices, and BuildInfo.json, as an unsigned zip development artifact; extracted outside the checkout on Windows 11 it has zero leaked build-machine paths and passed relocated tests, smoke, association, relaunch, and probe. | Run from build output | DESK-002: test on a clean second Windows machine | M01, M04 |
+| macOS | Supported | Measured | Ad-hoc signed bundles with the normal dylib relocated and launched. MAC-001I packages the release app, with its static core and license notices, as an unsigned zip; extracted outside the checkout on macOS 27.0.1 it links only system libraries and passed direct and Launch Services smokes. | Run from build output | DESK-002: a quarantined copy on a clean second Mac (Gatekeeper refuses unsigned apps until allowed) | M02, M05 |
 | Linux | Supported | Measured | A relocated normal-library package passed lifecycle, console and GTK smokes with loader overrides removed. | Run from build output | LNX-001: package on a second distribution | M06 |
 | iOS/iPadOS | Deferred | Unverified | No iOS build exists. Device installs need development signing. | Simulator build, labeled as simulator evidence | IOS-001: device install of the packaged core | U02 |
 
@@ -393,8 +393,9 @@ These measured results remain open and are not reclassified by this matrix:
   document-wide selection and a proven UIA reading order (FEAS-003, FEAS-006).
 - Linux monolithic `GtkTextView` doesn't converge on far-scroll, and a 1 MiB
   logical line takes about 11.4 seconds (FEAS-005, FEAS-006).
-- macOS twenty native-only 5 MiB parses grew RSS to about 583 MiB with zero
-  native owners; there is no leak proof or accepted budget (FEAS-006).
+- macOS repeated 5 MiB parses grew RSS without bound (FEAS-006, MAC-001B)
+  until MAC-001G found the large-block `realloc` cause and fixed it in the
+  core's Apple allocator; there is still no accepted numeric budget.
 - Mixed or fractional display scaling is unmeasured on every platform (CAP-14).
 - No signing, notarization, store, clean-machine or distribution-floor test was
   run on any platform (CAP-28–30).
@@ -434,6 +435,10 @@ Sources were read on 2026-10-25. Measured paths are relative to this file.
 | M07 | Measured | [FEAS-004 results](../spikes/feas004/results-2026-10-24.yaml) | macOS Unicode and NFD corpus runs |
 | M08 | Measured | [Linux virtualized renderer evaluation](Virtualized-Renderer-Linux-Evaluation.md) | FEAS-008 GTK virtualized blocks, selection, Orca and WebKitGTK baseline |
 | M09 | Measured | [Windows virtualized renderer evaluation](Virtualized-Renderer-Windows-Evaluation.md) | FEAS-008 WinUI virtualized blocks in C# JIT, Native AOT and C++/WinRT, selection, Narrator, UIA and WebView2 baseline |
+| M10 | Measured | [macOS app README](../apps/macos/README.md) | MAC-001H local evidence: document watching, atomic replacement, deletion, refresh and relaunch restoration |
+| M11 | Measured | [Linux app README](../apps/linux/README.md) | LNX-001C native file opening, bounded loading, typed errors and isolated desktop-entry delivery |
+| M12 | Measured | [Linux app README](../apps/linux/README.md) | LNX-001D native rendering, outline navigation and basic fragment selection; document accessibility remains LNX-001D1 |
+| M13 | Measured | [Windows app README](../apps/windows/README.md) | WIN-001H local evidence: document watching, atomic replacement, deletion, refresh, reading position restoration and relaunch check |
 | A01 | Authoritative | [FileOpenPicker](https://learn.microsoft.com/en-us/windows/windows-app-sdk/api/winrt/microsoft.windows.storage.pickers.fileopenpicker) | Windows App SDK file picker |
 | A02 | Authoritative | [FolderPicker](https://learn.microsoft.com/en-us/windows/windows-app-sdk/api/winrt/microsoft.windows.storage.pickers.folderpicker) | Windows App SDK folder picker |
 | A03 | Authoritative | [FileSavePicker](https://learn.microsoft.com/en-us/windows/windows-app-sdk/api/winrt/microsoft.windows.storage.pickers.filesavepicker) | Windows App SDK save picker |

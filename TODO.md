@@ -8,9 +8,9 @@ leases, and passes. This document defines task scope and acceptance criteria.
 CORE/WIN/MAC/LNX/IOS entries below are aggregate milestones. Execute the small,
 platform-focused delivery phases in [the catalog](docs/Implementation-Plan.md),
 batching ready work on the current OS. Each delivery phase uses one feature
-branch and PR into `develop`. Once ready, request the Grok review through the
-`grok` CLI, address the feedback, and merge into `develop` once a review has no
-serious finding (D-029). The owner reviews and merges milestones from
+branch and PR into `develop`. Opening the PR when ready starts the Grok review;
+address the feedback, and merge into `develop` once a review has no serious
+finding (D-029). Unreviewed housekeeping uses `patch/` branches (D-033). The owner reviews and merges milestones from
 `review/<milestone>` into `main` (D-030). Follow
 [Delivery-Workflow.md](docs/Delivery-Workflow.md) for branch, review and handoff
 rules. GATE-001 is approved (D-018). CORE-001A through CORE-003A, CORE-003B1
@@ -26,11 +26,44 @@ linear shared track, then one independent chain per host (D-027; see the
 [dependency summary](#dependency-summary)). ADV-005 carries deferred engine
 work after DESK-002.
 
-## Current phase: portable core (shared track)
+## Current phase: desktop apps
 
-The gate is complete; the small child tasks are materialized in project state.
-`portable-core` now holds only shared work. It completes when CORE-006 closes,
-which activates `desktop-apps` and the platform chains.
+The shared `portable-core` phase is complete through CORE-006 (PR #38).
+`desktop-apps` is active and each platform chain begins at its 001A task.
+MAC-001A closed in PR #39 with the [AppKit shell](apps/macos/README.md),
+native build/check instructions and required macOS 27 debug/release CI.
+MAC-001B closed in PR #40 with the [model-v2 core package/adapter](docs/macOS-Core-Integration.md),
+release consumer tests and measured session/source bounds. MAC-001C closed in
+PR #41 with [file open, typed access errors and generation-safe loading](apps/macos/README.md#opening-documents-mac-001c).
+MAC-001D closed in PR #42 with [TextKit 2 rendering, outline and navigation](apps/macos/README.md#reading-documents-mac-001d).
+MAC-001E closed in PR #43 with [tables, task lists and the image resource policy](apps/macos/README.md#tables-task-lists-and-images-mac-001e).
+MAC-001F closed in PR #44 with [find, text size and appearance](apps/macos/README.md#find-text-size-and-appearance-mac-001f).
+MAC-001G closed in PR #45 with [large documents, copy, VoiceOver rotors and budgets](apps/macos/README.md#large-documents-and-accessibility-mac-001g);
+its fix bounds repeated-load memory, and its open budgets are [listed below](#open-native-budgets).
+MAC-001H closed in PR #46 with [external refresh, anchored reading positions and restoration](apps/macos/README.md#external-refresh-and-restoration-mac-001h).
+MAC-001I closed in PR #47 with [the development artifact, license inventory and relocated launch](apps/macos/README.md#development-artifact-and-licenses-mac-001i)
+and [skeleton acceptance](docs/macOS-Skeleton-Acceptance.md). The MAC-001 aggregate closed in PR #48
+([aggregate evidence](docs/macOS-Skeleton-Acceptance.md#mac-001-aggregate)); the macOS skeleton
+milestone review (D-030) is next on this Mac.
+LNX-001A closed in PR #49 with the [GTK 4 shell](apps/linux/README.md), a
+separate Linux Cargo workspace under the dependency policy and required
+`linux-native` debug/release CI. LNX-001B closed in PR #50 with the
+[model-v2 core library package and Rust adapter](docs/Linux-Core-Integration.md),
+debug/release consumer tests, a 5 MiB host source limit and measured
+encode/copy/RSS costs. LNX-001C closed in PR #51 with native file opening,
+association delivery and generation-safe loading. LNX-001D closed in PR #52
+with native fragments, outline and basic selection; LNX-001D1 closed under D-035 (AT-SPI semantics verified, off-screen Orca continuous reading deferred to ADV-001); LNX-001E closed in PR #64 (tables, task list markers, and folder-contained image resource policy); LNX-001F closed in PR #65 (document find, theme, and text controls); LNX-001G closed in PR #66 with large-document layout, global selection, dual-format clipboard copy, interaction/repeated measurement harness, and AT-SPI accessibility verification; LNX-001H closed in PR #67 with external refresh, anchors, reading position restoration, and relaunch checks; LNX-001I closed in PR #68 with the unsigned x86-64 `.tar.gz` development artifact, 74-package license inventory, relocated verification, and [Linux skeleton acceptance](docs/Linux-Skeleton-Acceptance.md). The `LNX-001` aggregate closed in PR #69 ([aggregate evidence](docs/Linux-Skeleton-Acceptance.md#lnx-001-aggregate)). All three desktop walking skeletons (`MAC-001`, `WIN-001`, `LNX-001`) are complete, and `DESK-001` ([cross-desktop skeleton gate](docs/Desktop-Skeleton-Gate.md)) reconciles semantics, performance, deviations, and MVP task materialization; the D-030 milestone review (`review/<milestone>` into `main`), `HARD-001`, and `002A` MVP tasks follow.
+WIN-001A closed in PR #53 with the [WinUI 3 C# Native AOT shell](apps/windows/README.md)
+and required `windows-native` CI. WIN-001B closed in PR #54 with the
+[model-v2 core DLL package and C# Native AOT adapter](docs/Windows-Core-Integration.md),
+required MSVC C smoke, 5 MiB host source bound and measured encode/copy/working-set
+costs. WIN-001C closed in PR #55 with native file opening, association delivery and
+generation-safe background loading. WIN-001D closed in PR #56 with native virtualized
+presentation and outline navigation. WIN-001E closed in PR #57 with tables, task lists,
+and folder-contained image resource policy. WIN-001F closed in PR #58 with native document find, theme switching, and text scaling; WIN-001G closed in PR #59 with large-document selection, native clipboard, UIA accessibility fixes, and performance budgets; WIN-001H closed in PR #60 with external file watching, change detection, anchors, reading position restoration, and relaunch checks; WIN-001I closed in PR #61 with [the development artifact, license inventory and relocated launch](apps/windows/README.md#development-artifact-and-licenses-win-001i) and [skeleton acceptance](docs/Windows-Skeleton-Acceptance.md). The WIN-001 aggregate closed in PR #62 ([aggregate evidence](docs/Windows-Skeleton-Acceptance.md#win-001-aggregate)); the Windows skeleton milestone review (D-030) is next on this Windows machine.
+The shared-core milestone boundary is reached:
+Claude prepares the combined packet for the owner under D-030; only the owner
+merges that milestone into `main`.
 CORE-001A infrastructure, CORE-002A semantic v1 and CORE-003A basic parsing are
 merged. CORE-003B1 adds [bounded typed front matter](docs/Front-Matter.md).
 CORE-003B2 adds [opt-in v2 provenance/URI targets](specs/semantic-model/v2/README.md)
@@ -46,12 +79,24 @@ core alone.
   scope and the GATE-001 preparation steps are in
   [the memory archive](agents/Memory-Archive.md#todomd-session-handoff-history).
 
-The shared-core reviews (PR #16) are merged. The current work is the
+The shared-core reviews (PR #16) are merged, and so is the
 [CORE-FIX phase](#core-fix-phase-shared-core-review-follow-ups): DOC-001,
-CORE-002B, TOOL-002 and CORE-003C merged in PRs #17 to #21, the D-029 and
-D-030 workflow changes in PR #22 and on `main`, TOOL-003 in PR #23, CORE-003D in PR #24, CORE-005C in PR #25, CORE-005D in PR #26 and CORE-003E in PR #27 (D-032).
-CORE-FIX is complete: the first milestone review (`review/core-fix`, D-030) is
-due, and CORE-001 is next on `develop`. Inspect
+CORE-002B, TOOL-002 and CORE-003C in PRs #17 to #21, the D-029 and D-030
+workflow changes in PR #22 and on `main`, TOOL-003 in PR #23, CORE-003D in
+PR #24, CORE-005C in PR #25, CORE-005D in PR #26 and CORE-003E in PR #27
+(D-032). The owner merged the first milestone review (PR #28) into `main`,
+tagged `m-core-fix`. Its first [follow-up](#core-fix-milestone-follow-ups),
+CORE-003F, merged in PR #32 (D-034); CORE-001 closed in PR #33 with both
+TOOL-003 findings fixed and hosted three-OS CI green. CORE-002 closed in PR #34
+with [model acceptance](docs/Core-Model-Acceptance.md). CORE-003 closed in PR #35
+with [parsing/safety acceptance](docs/Core-Parser-Acceptance.md). CORE-004 closed
+in PR #36 with [session acceptance](docs/Core-Session-Acceptance.md). CORE-005
+closed in PR #37 with [search/read acceptance](docs/Core-Search-Acceptance.md)
+and explicit reference-syntax boundaries. CORE-006 closed in PR #38 with
+[facade acceptance](docs/Core-Facade-Acceptance.md), the ABI v1 default-change
+history and fresh three-OS all-feature release CI. The desktop chains are
+eligible; MAC-001A to MAC-001I closed in PRs #39 to #47 and the MAC-001 aggregate in PR #48. The macOS
+skeleton milestone review is next on this Mac. LNX-001A through LNX-001D closed in PRs #49 through #52, LNX-001D1 closed under D-035 in PR #63, LNX-001E closed in PR #64, LNX-001F closed in PR #65, LNX-001G closed in PR #66, LNX-001H closed in PR #67, and LNX-001I closed in PR #68 (`LNX-001` aggregate next on Linux); WIN-001A through WIN-001I closed in PRs #53 to #61 and the WIN-001 aggregate in PR #62. The Windows skeleton milestone review is next on this Windows machine. Inspect
 state and `HANDOFF.md` before any pass. Scoped commits, pushes, PR updates and
 review requests are authorized; a Grok review with no serious finding approves
 a merge into `develop` (D-029); only the owner merges into `main` (D-030);
@@ -178,7 +223,10 @@ belongs to each platform's 001A and 001B (D-027).
 - **CORE-001 — Scaffold monorepo workspaces and CI.** The accepted core
   workspace, platform-isolated CI definitions, lint/test commands, dependency
   inventory and license checks, passing in hosted CI on all three OSes. Each
-  native shell's CI job is that platform's 001A.
+  native shell's CI job is that platform's 001A. Includes the two TOOL-003
+  deferred findings: first-push whitespace checks must handle forced Git color
+  and non-UTF-8 problem content, with regression tests that still reject new
+  whitespace violations.
 - **CORE-002 — Define semantic document model v1.** Version blocks, inlines,
   spans, stable identity, diagnostics, outline, properties, link/resource
   intents, capabilities, and unsupported-feature nodes with goldens.
@@ -334,7 +382,9 @@ Not in CORE-FIX, kept where they belong:
   retained-RSS cost for one document and for repeated documents on its host,
   and on Windows makes the MSVC C smoke a required CI step. If 001F measures
   real latency from the search calls that can't be cancelled (F4), add
-  cancellable variants under D-022.
+  cancellable variants under D-022. MAC-001F measured 46–56 ms for a release
+  find over the 5 MiB prose profile, run off the main thread, so macOS needs
+  none; WIN-001F and LNX-001F measure their own hosts.
 - **HARD-001 — Release hardening (F7, G6, C7).** Follows DESK-001 and blocks
   DESK-002. Coverage-guided fuzzing of the parser, the model decoder and the
   safe FFI inputs (with valid backing buffers), sanitizer runs where
@@ -344,6 +394,49 @@ Not in CORE-FIX, kept where they belong:
   index, and stop charging footnote labels to the copy budget twice. Any
   upgrade of the `pulldown-cmark` pin is its own gated task that re-runs the
   conformance, mutation and pathological suites. No broad refactor.
+
+### CORE-FIX milestone follow-ups
+
+The [CORE-FIX milestone review](docs/reviews/README.md) (PR #28, tag
+`m-core-fix`) had three independent reviewers: Claude, Grok and Codex. None
+found a blocking defect. The items they agreed on, or that should be
+addressed later, are recorded here and in state:
+
+- **CORE-003F — Front-matter joiner allowance (M1, all three).** Done in
+  PR #32 (D-034): joiners between visible characters and subdivision flags
+  are allowed in titles and values, not keys; LRM, RLM and bidi controls
+  stay rejected. A new task
+  between CORE-003E and CORE-001. Front matter rejects ZWNJ and ZWJ (Cf), so a
+  title or value holding either discards the whole map: Persian,
+  Arabic-script, Indic and emoji ZWJ titles lose their metadata. File names
+  already exempt both.
+  - Allow ZWNJ and ZWJ in the title and string and list values, not in keys,
+    in the producer and in shared validation (v1, v2, `from_json`).
+  - Keep the bidi embedding, override and isolate controls rejected. LRM and
+    RLM stay rejected unless the owner decides otherwise (Grok suggested
+    allowing them; Codex treats it as a separate choice).
+  - Decide and record whether emoji tag characters are allowed only inside a
+    well-formed tag sequence (U+1F3F4 … U+E007F), as Grok suggests.
+  - It amends D-032, so record a new decision. Acceptance: v1 and v2 tests
+    for Persian, Devanagari and ZWJ emoji, keys still rejecting joiners, bidi
+    controls still rejected, goldens unchanged or regenerated with a reviewed
+    diff.
+- **TOOL-003 deferred findings (M3, C-M4).** Resolved by CORE-001 in PR #33:
+  color-free diffs, lossless decoding and safe filename diagnostics, with
+  real-Git regressions; new whitespace violations still fail.
+- **2 MiB content-search default (Grok, C-M2).** A zero `max_file_bytes` now
+  means 2 MiB instead of 8 MiB. Reviewers differ on whether that strains
+  D-022; it changes no layout or signature and no host had shipped. CORE-006
+  records the before/after behavior in the FFI spec.
+- **Session memory bound (Grok, C-M3).** Content search is bounded, but a
+  session can still reach about 1,152 MiB on a dense 8 MiB input. Each
+  host's 001B now measures that and sets the host's session
+  `max_source_bytes`, or records why the default is acceptable, before
+  IOS-001.
+- **No change:** the ASCII-letter autolink boundary matches cmark-gfm (M2).
+  The specs already tell hosts to cap concurrent content searches.
+- **Done:** `main` requires `Checks / complete` (M4, C-M5), approved by the
+  owner and applied 2026-10-29.
 
 ### Desktop walking skeletons
 
@@ -358,17 +451,23 @@ CORE-006 no longer carry. The three host chains are independent.
   external refresh, and a development package. Following FEAS-003, prove
   off-thread bounded parsing/cancellation and virtualized blocks with global
   selection and UIA reading order; exercise mixed DPI, font scaling and real
-  input frame pacing before accepting a large-document strategy.
+  input frame pacing before accepting a large-document strategy. Outcome:
+  C# Native AOT throughout with WinUI 3 and Windows App SDK 2.5.1
+  ([aggregate evidence](docs/Windows-Skeleton-Acceptance.md#win-001-aggregate)).
 - **MAC-001 — macOS single-document skeleton.** Equivalent native macOS slice
-  with AppKit/SwiftUI responsibilities decided from measurements.
+  with AppKit/SwiftUI responsibilities decided from measurements. Outcome:
+  AppKit throughout, Settings included; SwiftUI stays allowed for later
+  shell surfaces under D-010
+  ([aggregate evidence](docs/macOS-Skeleton-Acceptance.md#mac-001-aggregate)).
 - **LNX-001 — Linux single-document skeleton.** GTK/gtk-rs native virtualized
   blocks, conditional on LNX-001D1 after basic text/navigation: prove AT-SPI
-  heading semantics, off-screen heading navigation and owner-confirmed Orca
-  continuous reading on KDE Wayland. LNX-001E and everything after it depend
-  on this early proof; failure returns to the owner before deeper renderer work.
+  heading semantics, outline navigation and basic selection; off-screen Orca
+  continuous reading deferred to post-MVP (D-035). LNX-001E follows.
 - **DESK-001 — Cross-desktop skeleton gate.** Compare semantics and performance,
-  fix contract bias, document deviations, and choose the MVP deepening order.
-  Before closeout, materialize the platform MVP delivery tasks and dependencies.
+  fix contract bias, document deviations, and choose the MVP deepening order
+  ([gate report](docs/Desktop-Skeleton-Gate.md)). Before closeout, materialize
+  the platform MVP delivery tasks (`MAC-002A`–`F`, `WIN-002A`–`F`, `LNX-002A`–`F`)
+  and dependencies.
 
 ### Desktop basic MVPs
 
@@ -418,27 +517,133 @@ CORE-006 no longer carry. The three host chains are independent.
 
 ## Deferred review findings
 
+- **WIN-001A / PR #53 clock nit:** before the next cross-machine pass handoff,
+  the owner should check Windows time synchronization. `w32tm /query /status`
+  reports unsynchronized / Local CMOS Clock, and host-generated UTC pass
+  timestamps were about six hours ahead of GitHub review/CI timestamps on
+  2026-11-01. Keep helper-generated records intact; do not infer elapsed
+  cross-host time from this pass. No OS time settings were changed by the agent.
+
 Low findings and nits from Grok reviews that were merged under D-029 without
 being fixed. A later pass fixes them or records why not; remove each entry
 when it is resolved.
 
-- **TOOL-003, PR #23, Grok review 5692910610 (owner-approved merge).**
-  Both are false failures of the first-push whitespace check in
-  `tools/check_git.py`, outside default settings:
-  - With `color.ui=always` or `color.diff=always`, the `+` content lines
-    start with an ANSI code and can be parsed as problem headers. Run the
-    diffs with `--no-color`.
-  - Output is decoded as strict UTF-8, so an inherited non-UTF-8 problem line
-    raises `UnicodeDecodeError`. Read bytes, or decode with
-    `errors="surrogateescape"`.
+- **WIN-001G (PR #59, Grok review 5741891496):** `SourceBetween` narrows leaf
+  text runs to exact selected UTF-8 source bytes for literal text, and falls
+  back to whole-node spans when a node contains escapes, entities or inline
+  code formatting where decoded text length differs from raw source. Verified
+  in `RenderTests` that partial selection across code and backslash escapes
+  copies the exact selected range (`code` followed by `and \*star\*`), without byte drift
+  or over-copying trailing text. If sub-escape or sub-entity character slicing
+  is ever required, core model-v2 can provide a per-node char-to-source-byte
+  mapping in a future pass.
+
+- **WIN-001C (PR #55, Grok review 5731847930):** `Busy` admission retries now
+  yield off the `markdown-files` worker thread so other windows' file reads do
+  not stall behind admission backoff, while file reads themselves remain
+  serialized on `markdown-files`. In WIN-001G, evaluated cross-window file read
+  pooling alongside large-document measurements: 5 MiB file read overhead is
+  negligible (< 5ms on disk vs ~860ms parse in core), while busy retries yield
+  cooperatively without stalling `markdown-files`. Serialized file reads remain
+  the accepted design, avoiding cross-thread race complexity for capability
+  revocation and revision tokens.
+
+- **LNX-001D (PR #52, Grok review 5729937327), nit:** Reload clears the
+  current reader and returns to the top, including unchanged content. Preserve
+  the shown revision and restore an anchor/selection in LNX-001H, alongside
+  external refresh and reading restoration. Basic D loading still invalidates
+  stale navigation immediately; keeping an older view alive needs the H
+  lifecycle and position policy rather than a partial implementation here.
+
+- **LNX-001C (PR #51, Grok review 5727226665):** the single file dispatcher
+  permits cross-window delays from a stalled FUSE/network read or a Busy
+  admission retry (up to 30 seconds for the latter). The limitation and
+  recovery behavior are documented. In LNX-001G, measure a bounded read pool
+  and fair admission scheduling while preserving the source-buffer bound.
+  Also replace per-disposal OS threads with a bounded disposal mechanism if
+  rapid reload measurements justify it (review nit); current cancellation
+  and stale-publication checks remain intact. These performance changes
+  need their own measurements rather than expanding the file-opening slice.
+
+- **MAC-001C (PR #41, Grok review 5717458097), nit:** the window that is
+  already showing a file is found by resolved URL. A case variant on a
+  case-insensitive volume, or a hard link, opens a second window. Compare the
+  file identity (`st_dev`/`st_ino` or `fileResourceIdentifier`) along with the
+  persistent identity work for recents in MAC-002A, which avoids adding a stat
+  on the main thread for every open now.
+
+- **Hosted `macos-native` flakiness (found 2026-10-30 during PR #42), not a
+  review finding:** on the `xcode-27-arm64` image 20261026.0314.1, some
+  runners fail before any project code runs. When `rust-toolchain.toml` adds
+  `rustfmt`, rustup reports `detected conflict: 'bin/cargo-fmt'`. Two
+  dispatched runs of unchanged `develop`
+  ([41125975665](https://github.com/awesomejt/markdown/actions/runs/41125975665))
+  also failed in MAC-001C checks: once a release smoke document load exceeded
+  its 10-second settle deadline, and once `hdiutil` exited 1 in
+  `detachedVolumeIsUnavailable`. All of these passed locally and on other
+  hosted attempts. A reviewed CI/test fix should make the toolchain step
+  tolerate a preinstalled `cargo-fmt` and give the runner-sensitive smoke and
+  disk-image steps diagnostics and bounded retries, before the Mac milestone
+  review. It recurred on 2026-11-01 for PR #49
+  ([run 41266613674](https://github.com/awesomejt/markdown/actions/runs/41266613674)),
+  a Linux-only change that selects macOS through shared `tools/`.
+
+Before MAC-001C, none were open after CORE-001 (PR #33). The two TOOL-003 findings from PR #23,
+Grok review 5692910610, are resolved: forced color and non-UTF-8 problem
+content no longer cause false failures. Both PR #33 review nits are also fixed.
+
+## Open native budgets
+
+Measured budgets that merged skeleton tasks left open for the owner, from
+[the MAC-001G/H evidence](apps/macos/README.md#mac-001g-local-evidence),
+[the WIN-001G/H evidence](apps/windows/README.md),
+[the LNX-001G/H evidence](apps/linux/README.md), and
+[the DESK-001 gate](docs/Desktop-Skeleton-Gate.md).
+They stay open until fixed or explicitly accepted; none is waived.
+
+- **5 MiB prose warm launch (macOS) and pipeline/refresh (all three hosts; D-016, 400 ms):**
+  all three hosts exceed 400 ms on the 5 MiB stress fixture: macOS warm launch
+  takes 533–573 ms to first text (median 547 ms; about 255 ms is AppKit start-up
+  and about 215 ms the core read and parse, so meeting 400 ms needs a faster or
+  incremental core parse, or an owner revision of the target), 1,155 ms whole doc,
+  and 1,050 ms refresh; Windows in-process `read/parse/plan` pipeline takes
+  993.20 ms (refresh 996.00 ms); Linux in-process `read/parse/plan` pipeline takes
+  578.36 ms (refresh 582.07 ms). On `prose-1mib`, the in-process pipeline is
+  170.19 ms on Windows and 89.86 ms on Linux, while macOS Launch Services warm
+  launch had one of five runs at 404 ms (median 355 ms first text).
+- **Windows and Linux warm launch to presented frame (D-012/D-016, 400 ms):**
+  unmeasured end-to-end (`measure.py` currently measures the in-process
+  `read/parse/plan` pipeline on Windows and Linux, not process launch to first
+  presented frame).
+- **Cold launches across all three hosts (D-012/D-016, 700 ms):** unmeasured on
+  macOS (`measure.py launch --cold`), Windows, and Linux.
+- **Mixed-scale displays and display pacing (CAP-14):** unmeasured on macOS,
+  Windows, and Linux.
+- **macOS first VoiceOver line query on 5 MiB:** `accessibilityLine(for:)`
+  near the end lays out all earlier text, 3.6 s once (0.7 s for 1 MiB), and
+  the footprint then stays near 1 GiB while the document is open. Confirm
+  the effect with VoiceOver (README manual check 9) before choosing between
+  accepting it, paragraph-based accessibility lines, or a bounded
+  accessibility model.
+- **macOS footprint after external refreshes (MAC-001H):** a refresh holds
+  both revisions for a moment, and the allocator keeps the freed blocks, so
+  the footprint with prose 5 MiB open rises from 531 MiB to a flat
+  887–1,043 MiB over ten refreshes (prose 1 MiB: 288 to 348–410 MiB). It
+  stops growing after two or three refreshes. Releasing the old revision
+  before rendering the new one would lower the peak, at the cost of
+  anchoring the reader's place earlier than the moment the new text
+  appears ([evidence](apps/macos/README.md#mac-001h-local-evidence)).
+- **Linux end-to-end GTK frame-clock jump timing (LNX-001G):** target
+  resolution is 0.01 ms; end-to-end presented-frame jump latency remains
+  unmeasured.
 
 ## Process options under consideration
 
 Harder gates the owner deferred on 2026-10-28 to see how the D-030 workflow
-works first. Revisit at the first milestone review (the end of CORE-FIX).
+works first, revisited at the first milestone review (PR #28).
 
-- Require the `Checks / complete` status in `main`'s branch protection. It is
-  off so a stuck check cannot block a milestone merge.
+- None open. Requiring the `Checks / complete` status on `main` was applied
+  on 2026-10-29 after all three CORE-FIX milestone reviewers recommended it.
 
 ## Dependency summary
 
@@ -456,7 +661,7 @@ CORE-004A -> CORE-005A -> CORE-005A2;  CORE-005A -> CORE-005B -> CORE-005B2
 
 Shared track (portable-core, one chain; D-026, D-027):
 DOC-001 -> CORE-002B -> TOOL-002 -> CORE-003C -> CORE-003D -> CORE-005C -> CORE-005D
-  -> CORE-003E -> CORE-001 -> CORE-002 -> CORE-003 -> CORE-004 -> CORE-005 -> CORE-006
+  -> CORE-003E -> CORE-003F -> CORE-001 -> CORE-002 -> CORE-003 -> CORE-004 -> CORE-005 -> CORE-006
   -> portable-core complete, desktop-apps active
 
 Each host (desktop-apps; MAC, LNX and WIN chains are independent):
