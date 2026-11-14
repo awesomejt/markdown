@@ -281,7 +281,7 @@ read.
   deferred to H in TODO.md. LNX-001D1 is closed under D-035 in PR #63: automated
   AT-SPI inspection verifies heading/paragraph semantics and reading order, with
   off-screen Orca structural navigation and continuous reading deferred to ADV-001.
-  LNX-001E is merged. LNX-001F is merged. LNX-001G is merged. LNX-001H is merged. LNX-001I is next on Linux.
+  LNX-001E is merged. LNX-001F is merged. LNX-001G is merged. LNX-001H is merged. LNX-001I is merged. The LNX-001 aggregate is next on Linux.
 - LNX-001E (PR #64): delivers Linux native tables (tab-separated cell rows for
   native TSV clipboard copying, monospace font, bold header row, table-relative
   zebra striping), read-only task list markers (`☑` / `☐`) with accent/muted
@@ -335,8 +335,15 @@ read.
   preserved across clean shutdowns), virtualized layout transition scroll tracking
   preventing race conditions during programmatic repositioning, and comprehensive
   relaunch and refresh test suites (`apps/linux/tools/check.py`, `apps/linux/tools/measure.py refresh`).
-  Clean approval under D-029 (0 Blocker, all review feedback resolved). LNX-001I
-  (local development artifact, licenses, relocated launch) is next on Linux.
+  Clean approval under D-029 (0 Blocker, all review feedback resolved).
+- **LNX-001I (PR #68)**: delivers the unsigned Linux x86-64 `.tar.gz` local development artifact
+  (`apps/linux/tools/artifact.py`), 74-package linked Rust license inventory and notices
+  (`apps/linux/tools/licenses.py`), strict `$ORIGIN/../lib` packaged `RUNPATH` (`apps/linux/build.rs`),
+  normalized tarball metadata, relocated verification outside the checkout (ELF64, 24 `md_` exports,
+  `ldd` resolution, zero build-machine path leaks, smokes, association, and scratch-XDG relaunch),
+  and [Linux skeleton acceptance](docs/Linux-Skeleton-Acceptance.md). Grok review 1 at `a0e171e`
+  reported 0 Blockers, 1 Concern, 2 Nits (approved under D-029); all 3 findings were fixed at `4f9b15e`.
+  The `LNX-001` aggregate is next on Linux.
 - Workflow: task PRs target `develop` and merge on a Grok review with no
   serious finding (D-029). `main` takes only owner-approved milestone reviews
   from `review/<milestone>`, tagged `m-<milestone>` (D-030). The shared-core

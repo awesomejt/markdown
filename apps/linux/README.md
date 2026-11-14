@@ -558,3 +558,27 @@ debug` for debug, or `--prepare-only` for a persistent public owner-test fixture
     - `prose-1mib`: median refresh 82.14 ms, `kept_place: true`, footprint $\sim 175.7\,\text{MiB}$.
     - `long-lines-1mib`: median refresh 6.28 ms, `kept_place: true`, footprint $\sim 42.6\,\text{MiB}$.
     - `prose-5mib`: median refresh 582.07 ms, `kept_place: true`, footprint $\sim 774.9\,\text{MiB}$.
+
+## Development artifact and licenses (LNX-001I)
+
+- **Artifact packaging (`apps/linux/tools/artifact.py`)**:
+  - Stages an unsigned release tarball (`build/linux/artifacts/Markdown-<version>-<commit>-linux-x86_64.tar.gz`)
+    plus a sibling `<name>.json` build metadata record.
+  - Contains `bin/markdown-linux` (stripped, `$ORIGIN/../lib` `RUNPATH`),
+    `lib/libmarkdown_ffi.so` (stripped, exact 24 `md_` C ABI exports),
+    `share/applications/io.github.awesomejt.markdown.desktop`, `BuildInfo.json`, and
+    `Licenses/`.
+  - Built with `--remap-path-prefix` so no checkout, home, or `CARGO_HOME` path appears in the
+    packaged files.
+- **License inventory (`apps/linux/tools/licenses.py`)**:
+  - Inventories all linked normal Rust dependencies across both `markdown-ffi` (`model-v2`) and
+    `markdown-linux` (excluding proc-macro, build, and dev crates), validates SPDX expressions
+    against the dependency policy, and writes `Licenses/LICENSE`,
+    `Licenses/THIRD-PARTY-NOTICES.txt`, and `Licenses/inventory.json`.
+- **Relocated verification**:
+  - Extracts the tarball outside the checkout and verifies ELF64 x86-64 headers, 24 C ABI
+    symbols, `$ORIGIN`-only `RUNPATH`, `ldd` resolution to the bundled `lib/libmarkdown_ffi.so`,
+    zero leaked build-machine paths, `desktop-file-validate` (when installed), license notice
+    completeness, `--smoke-test`, `--smoke-test=last-window`, `check_association.py`, and
+    two-phase `--relaunch-check` against the relocated binary.
+- **Skeleton acceptance**: Recorded in [Linux-Skeleton-Acceptance.md](../../docs/Linux-Skeleton-Acceptance.md).

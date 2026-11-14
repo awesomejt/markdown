@@ -1,20 +1,19 @@
 # Agent Session and Platform Handoff
 
-Updated: 2026-11-13 (America/Denver), LNX-001H completed under D-029 (PR #67 closed out and merged into `develop`).
-Active task: Next execution task `LNX-001I` (`5f484073-f083-404e-bb0d-47cdc3531582`) local development artifact, licenses, relocated launch on Linux, or Windows/macOS walking skeleton milestone review under D-030.
-Pass `aa39b32d-c984-4deb-99b9-36392cba77d1` completed, approved PR #67 merged into `develop`.
-`apps/linux/` delivers LNX-001H:
+Updated: 2026-11-13 (America/Denver), LNX-001I completed under D-029 (PR #68 closed out and merged into `develop`).
+Active task: Next execution task `LNX-001` (`a5d4fd1b-fccb-418f-bdd4-41a1f3cc346a`) Linux single-document skeleton aggregate, or Windows/macOS walking skeleton milestone review under D-030.
+Pass `e0f0ed57-ce5a-4d9c-9730-1b9d4127722c` completed, approved PR #68 merged into `develop`.
+`apps/linux/` delivers LNX-001I:
 
-- Core snapshot anchors: `md_snapshot_anchor_at`, `md_snapshot_anchor_for_node`, and `md_snapshot_resolve_anchor` with `CoreSnapshot` thread-safe handle and non-blocking worker drop release, plus `CoreSession::external_change`.
-- External file watching & refresh: inotify file monitoring with generation validation, preserving reading position via node anchor or fallback fragment scroll ratio; replacement/deletion/truncation/race resilience.
-- Session & position restoration: atomic JSON restoration persistence under `$XDG_STATE_HOME/markdown/restoration.json`, multi-window and single-window lifecycle management (window count tracked, store preserved across clean exits), and virtualized layout transition scroll tracking to avoid layout race conditions.
-- Test suites & verification: `apps/linux/tools/check.py` comprehensive test suite passes in Debug and Release (render mapping, JSON parser, relaunch checks with headless Xvfb, core probe with 0 leaked handles); `apps/linux/tools/measure.py refresh` passes performance budgets across all document profiles (`kept_place: true`).
+- Local development artifact (`apps/linux/tools/artifact.py`): unsigned release `.tar.gz` with stripped `bin/markdown-linux` (`$ORIGIN/../lib` `RUNPATH`), stripped `lib/libmarkdown_ffi.so` (24 `md_` C ABI exports), desktop entry, `BuildInfo.json`, and `Licenses/`.
+- License inventory (`apps/linux/tools/licenses.py`): inventories all 74 linked normal Rust packages across `markdown-ffi` (`model-v2`) and `markdown-linux`, validates SPDX expressions, and writes `LICENSE`, `THIRD-PARTY-NOTICES.txt`, and `inventory.json`.
+- Relocated verification & acceptance: extracted outside the checkout and verified ELF64, 24 exports, strict `$ORIGIN/../lib` `RUNPATH`, `ldd` resolution, zero build-machine path leaks, smokes, isolated association, and scratch-XDG relaunch; documented in `docs/Linux-Skeleton-Acceptance.md`.
 
-PR #67 reviewed by Grok Bot across 3 reviews; review 3 reported 0 Blockers (clean approval under D-029).
+PR #68 reviewed by Grok Bot (0 Blockers, 1 Concern, 2 Nits; approved under D-029; all findings fixed at `4f9b15e`).
 
-Next Linux task: `LNX-001I` (local development artifact, licenses, relocated launch). Next Windows/macOS task: walking skeleton milestone review (D-030).
+Next Linux task: `LNX-001` (Linux single-document skeleton aggregate, which also completes all three desktop skeletons before `DESK-001` and the D-030 milestone review). Next Windows/macOS task: walking skeleton milestone review (D-030).
 
-Previous Linux task: `LNX-001H` merged in [PR #67](https://github.com/awesomejt/markdown/pull/67). Previous Windows task: `WIN-001I` merged in [PR #61](https://github.com/awesomejt/markdown/pull/61).
+Previous Linux task: `LNX-001I` merged in [PR #68](https://github.com/awesomejt/markdown/pull/68). Previous Windows task: `WIN-001I` merged in [PR #61](https://github.com/awesomejt/markdown/pull/61).
 
 Previous Linux handoff baseline: `develop` after PR #52; reviewed head `f12d2e5`, non-serious
 review fixes at `27e84df`, followed by one state/docs closeout. The merge SHA is

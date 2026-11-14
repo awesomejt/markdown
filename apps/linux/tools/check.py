@@ -8,7 +8,8 @@ import subprocess
 import sys
 import tempfile
 
-from package_core import prepare_core, verify
+from artifact import build_release, package as package_artifact, verify as verify_artifact
+from package_core import build_environment, prepare_core, verify
 
 APP_ROOT = Path(__file__).resolve().parents[1]
 REPO_ROOT = APP_ROOT.parents[1]
@@ -17,20 +18,21 @@ SMOKES = {"--smoke-test": "shell-smoke: pass (application",
           "--smoke-test=last-window": "shell-smoke: pass (closing the last window"}
 
 
-def run(*command: str, cwd: Path = APP_ROOT) -> None:
+def run(*command: str, cwd: Path = APP_ROOT, env: dict[str, str] | None = None) -> None:
     print("+ " + " ".join(command), flush=True)
-    subprocess.run(command, cwd=cwd, check=True)
+    subprocess.run(command, cwd=cwd, env=env, check=True)
 
 
-def cargo(command: str, *arguments: str) -> None:
-    run("cargo", command, "--locked", "--target-dir", str(TARGET_DIR), *arguments)
+def cargo(command: str, *arguments: str, env: dict[str, str] | None = None) -> None:
+    run("cargo", command, "--locked", "--target-dir", str(TARGET_DIR), *arguments, env=env)
 
 
 def build(configuration: str) -> Path:
     profile = ["--release"] if configuration == "release" else []
-    cargo("build", "--workspace", *profile)
+    env = build_environment() if configuration == "release" else None
+    cargo("build", "--workspace", *profile, env=env)
     # Release-mode and debug-mode consumers of the matching core package.
-    cargo("test", "--workspace", *profile)
+    cargo("test", "--workspace", *profile, env=env)
     return TARGET_DIR / configuration / "markdown-linux"
 
 
@@ -117,6 +119,8 @@ def main() -> None:
     # The measurement probe refuses anything but the release package; one short run.
     run(str(TARGET_DIR / "release" / "core-probe"), "single",
         str(REPO_ROOT / "build" / "fixtures" / "performance" / "prose-1mib.md"))
+    archive = package_artifact(build_release(prepared=True))
+    verify_artifact(archive)
 
 
 if __name__ == "__main__":
