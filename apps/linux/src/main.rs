@@ -17,6 +17,13 @@ pub const EMPTY_LABEL_NAME: &str = "empty-document-label";
 /// Menu entries and their accelerators, in menu order.
 pub const COMMANDS: &[(&str, &str, &str, Option<&str>)] = &[
     ("File", "Open…", "app.open", Some("<Control>o")),
+    (
+        "File",
+        "Open Folder…",
+        "app.open-folder",
+        Some("<Shift><Control>o"),
+    ),
+    ("File", "Recent Items…", "win.recents", None),
     ("File", "Reload", "win.reload", Some("<Control>r")),
     ("File", "New Window", "app.new-window", Some("<Control>n")),
     ("File", "Close Window", "window.close", Some("<Control>w")),
@@ -186,6 +193,9 @@ pub(crate) fn install_commands(app: &gtk::Application) {
     let open = gio::ActionEntry::builder("open")
         .activate(|app: &gtk::Application, _, _| files::choose(app))
         .build();
+    let open_folder = gio::ActionEntry::builder("open-folder")
+        .activate(|app: &gtk::Application, _, _| files::choose_folder(app))
+        .build();
     let theme_system = gio::ActionEntry::builder("theme-system")
         .activate(|_, _, _| {
             apply_theme(markdown_linux::preferences::ThemePreference::System);
@@ -215,6 +225,7 @@ pub(crate) fn install_commands(app: &gtk::Application) {
         quit,
         about,
         open,
+        open_folder,
         theme_system,
         theme_light,
         theme_dark,

@@ -14,6 +14,9 @@ use markdown_linux::render::DocumentPosition;
 use markdown_linux::restoration::{self, WindowRestorationState};
 
 pub fn run(args: &[String]) -> Result<(), String> {
+    if std::env::var_os("MARKDOWN_RECENTS_PATH").is_none() {
+        unsafe { std::env::set_var("MARKDOWN_RECENTS_IN_MEMORY", "1") };
+    }
     if args.len() < 2 {
         return Err("Usage: markdown-linux --relaunch-check <prepare|verify> <file>".into());
     }

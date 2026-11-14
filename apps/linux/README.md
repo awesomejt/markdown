@@ -582,3 +582,28 @@ debug` for debug, or `--prepare-only` for a persistent public owner-test fixture
     completeness, `--smoke-test`, `--smoke-test=last-window`, `check_association.py`, and
     two-phase `--relaunch-check` against the relocated binary.
 - **Skeleton acceptance**: Recorded in [Linux-Skeleton-Acceptance.md](../../docs/Linux-Skeleton-Acceptance.md).
+
+## Folder capability, recents and access recovery (LNX-002A)
+
+- **Folder capability (`FolderCapability` / `FolderError`)**:
+  - `File > Open Folder…` (`Ctrl+Shift+O`) opens `GtkFileChooserNative` in folder-selection mode and
+    validates an explicit `FolderCapability` (`apps/linux/src/document/access.rs`).
+  - Folder grants enforce canonical containment for opened documents (`contains_file`) and
+    propagate revocation to folder-scoped `DocumentCapability` instances.
+  - Typed path-free `FolderError` variants distinguish `NotFound` (missing/moved),
+    `PermissionDenied`, `AccessRevoked`, `VolumeUnavailable`, `NotDirectory`, `NonLocalFolder`, and
+    `ReadFailed`.
+- **Persistent recents (`apps/linux/src/recents.rs`)**:
+  - Records recent files and workspace folders (capped at 10 each, deduplicated by exact path,
+    including lossless hex encoding for non-UTF-8 Linux paths) with `grant_active` state in
+    `$XDG_CONFIG_HOME/markdown/recents.json` (or `MARKDOWN_RECENTS_PATH`, with
+    `MARKDOWN_RECENTS_IN_MEMORY` isolation for tests and smokes).
+  - `File > Recent Items…` opens a transient dialog showing recent workspaces and files with live
+    availability status (`Available`, `Missing or moved`, `Permission denied`, `Access revoked`,
+    `Storage unavailable`) and `Open`, `Relocate…` / `Re-grant…`, `Remove`, and `Clear All`
+    controls.
+- **Inline access recovery (`RecoveryBar`)**:
+  - When opening a file or folder fails with a recoverable error (`NotFound`, `PermissionDenied`,
+    `AccessRevoked`, `VolumeUnavailable`), an inline recovery bar offers `Relocate…` or
+    `Re-grant Access…`, updating the recents store (`relocate_entry`) and opening the recovered
+    target.
