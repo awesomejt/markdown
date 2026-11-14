@@ -140,6 +140,7 @@ internal static unsafe class CoreProbe
             ExecuteSingleCycle(source);
 
         var afterDocDrop = SampleMemory(collectManaged: true);
+        _ = Program.WaitZeroLiveHandles(2000);
         var handles = CoreRuntime.LiveHandles();
         if (handles != new HandleCounts(0, 0, 0))
         {
@@ -229,6 +230,7 @@ internal static unsafe class CoreProbe
         Array.Sort(copyMs);
         int mid = iterations / 2;
 
+        _ = Program.WaitZeroLiveHandles(2000);
         var handles = CoreRuntime.LiveHandles();
         if (handles != new HandleCounts(0, 0, 0))
         {
@@ -281,6 +283,7 @@ internal static unsafe class CoreProbe
         session.Close();
         var after = SampleMemory(collectManaged: true);
 
+        _ = Program.WaitZeroLiveHandles(2000);
         var handles = CoreRuntime.LiveHandles();
         if (handles != new HandleCounts(0, 0, 0))
         {
