@@ -52,7 +52,7 @@ separate Linux Cargo workspace under the dependency policy and required
 debug/release consumer tests, a 5 MiB host source limit and measured
 encode/copy/RSS costs. LNX-001C closed in PR #51 with native file opening,
 association delivery and generation-safe loading. LNX-001D closed in PR #52
-with native fragments, outline and basic selection; LNX-001D1 closed under D-035 (AT-SPI semantics verified, off-screen Orca continuous reading deferred to ADV-001); LNX-001E closed in PR #64 (tables, task list markers, and folder-contained image resource policy); LNX-001F closed in PR #65 (document find, theme, and text controls); LNX-001G closed in PR #66 with large-document layout, global selection, dual-format clipboard copy, interaction/repeated measurement harness, and AT-SPI accessibility verification; LNX-001H closed in PR #67 with external refresh, anchors, reading position restoration, and relaunch checks; LNX-001I closed in PR #68 with the unsigned x86-64 `.tar.gz` development artifact, 74-package license inventory, relocated verification, and [Linux skeleton acceptance](docs/Linux-Skeleton-Acceptance.md). The `LNX-001` aggregate closed in PR #69 ([aggregate evidence](docs/Linux-Skeleton-Acceptance.md#lnx-001-aggregate)). All three desktop walking skeletons (`MAC-001`, `WIN-001`, `LNX-001`) are complete; `DESK-001` and the D-030 milestone review are next.
+with native fragments, outline and basic selection; LNX-001D1 closed under D-035 (AT-SPI semantics verified, off-screen Orca continuous reading deferred to ADV-001); LNX-001E closed in PR #64 (tables, task list markers, and folder-contained image resource policy); LNX-001F closed in PR #65 (document find, theme, and text controls); LNX-001G closed in PR #66 with large-document layout, global selection, dual-format clipboard copy, interaction/repeated measurement harness, and AT-SPI accessibility verification; LNX-001H closed in PR #67 with external refresh, anchors, reading position restoration, and relaunch checks; LNX-001I closed in PR #68 with the unsigned x86-64 `.tar.gz` development artifact, 74-package license inventory, relocated verification, and [Linux skeleton acceptance](docs/Linux-Skeleton-Acceptance.md). The `LNX-001` aggregate closed in PR #69 ([aggregate evidence](docs/Linux-Skeleton-Acceptance.md#lnx-001-aggregate)). All three desktop walking skeletons (`MAC-001`, `WIN-001`, `LNX-001`) are complete, and `DESK-001` ([cross-desktop skeleton gate](docs/Desktop-Skeleton-Gate.md)) reconciles semantics, performance, deviations, and MVP task materialization; the D-030 milestone review (`review/<milestone>` into `main`), `HARD-001`, and `002A` MVP tasks follow.
 WIN-001A closed in PR #53 with the [WinUI 3 C# Native AOT shell](apps/windows/README.md)
 and required `windows-native` CI. WIN-001B closed in PR #54 with the
 [model-v2 core DLL package and C# Native AOT adapter](docs/Windows-Core-Integration.md),
@@ -464,8 +464,10 @@ CORE-006 no longer carry. The three host chains are independent.
   heading semantics, outline navigation and basic selection; off-screen Orca
   continuous reading deferred to post-MVP (D-035). LNX-001E follows.
 - **DESK-001 — Cross-desktop skeleton gate.** Compare semantics and performance,
-  fix contract bias, document deviations, and choose the MVP deepening order.
-  Before closeout, materialize the platform MVP delivery tasks and dependencies.
+  fix contract bias, document deviations, and choose the MVP deepening order
+  ([gate report](docs/Desktop-Skeleton-Gate.md)). Before closeout, materialize
+  the platform MVP delivery tasks (`MAC-002A`–`F`, `WIN-002A`–`F`, `LNX-002A`–`F`)
+  and dependencies.
 
 ### Desktop basic MVPs
 
@@ -592,25 +594,29 @@ content no longer cause false failures. Both PR #33 review nits are also fixed.
 
 ## Open native budgets
 
-Measured budgets that a merged task left open for the owner, from
-[the MAC-001G evidence](apps/macos/README.md#mac-001g-local-evidence).
+Measured budgets that merged skeleton tasks left open for the owner, from
+[the MAC-001G/H evidence](apps/macos/README.md#mac-001g-local-evidence),
+[the WIN-001G/H evidence](apps/windows/README.md),
+[the LNX-001G/H evidence](apps/linux/README.md), and
+[the DESK-001 gate](docs/Desktop-Skeleton-Gate.md).
 They stay open until fixed or explicitly accepted; none is waived.
 
-- **macOS prose 5 MiB warm launch (D-016, 400 ms):** 533–573 ms to first
-  text through Launch Services. About 255 ms is AppKit start-up and about
-  215 ms the core read and parse, so meeting it needs a faster or
-  incremental core parse, or an owner revision of the target. Prose 1 MiB
-  had one of five runs at 404 ms (median 355 ms).
-- **macOS cold launches (D-012/D-016, 700 ms):** unmeasured; run
-  `apps/macos/tools/measure.py launch --cold` from an administrator account.
+- **5 MiB prose warm launch and refresh (D-016, 400 ms):** all three hosts
+  exceed 400 ms on the 5 MiB stress fixture (macOS 547 ms first text / 1,155 ms
+  whole doc / 1,050 ms refresh; Windows 993.20 ms pipeline / 996.00 ms refresh;
+  Linux 578.36 ms pipeline / 582.07 ms refresh). Prose 1 MiB passes on Windows
+  (170.19 ms) and Linux (89.86 ms) and had 1/5 macOS runs at 404 ms (median
+  355 ms first text).
+- **Cold launches across all three hosts (D-012/D-016, 700 ms):** unmeasured on
+  macOS (`measure.py launch --cold`), Windows, and Linux.
+- **Mixed-scale displays and display pacing (CAP-14):** unmeasured on macOS,
+  Windows, and Linux.
 - **macOS first VoiceOver line query on 5 MiB:** `accessibilityLine(for:)`
   near the end lays out all earlier text, 3.6 s once (0.7 s for 1 MiB), and
   the footprint then stays near 1 GiB while the document is open. Confirm
   the effect with VoiceOver (README manual check 9) before choosing between
   accepting it, paragraph-based accessibility lines, or a bounded
   accessibility model.
-- **macOS mixed-scale displays and display pacing:** unmeasured; only two 2×
-  displays were available.
 - **macOS footprint after external refreshes (MAC-001H):** a refresh holds
   both revisions for a moment, and the allocator keeps the freed blocks, so
   the footprint with prose 5 MiB open rises from 531 MiB to a flat
@@ -619,6 +625,9 @@ They stay open until fixed or explicitly accepted; none is waived.
   before rendering the new one would lower the peak, at the cost of
   anchoring the reader's place earlier than the moment the new text
   appears ([evidence](apps/macos/README.md#mac-001h-local-evidence)).
+- **Linux end-to-end GTK frame-clock jump timing (LNX-001G):** target
+  resolution is 0.01 ms; end-to-end presented-frame jump latency remains
+  unmeasured.
 
 ## Process options under consideration
 
