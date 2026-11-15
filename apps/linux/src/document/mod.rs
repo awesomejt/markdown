@@ -12,7 +12,7 @@ pub use access::{
 };
 pub use loader::{DocumentLoader, LoadEvent};
 pub use resources::{DocumentResources, ImageBudget, ImageFormatInspector, ResourceError};
-pub use watcher::DocumentWatcher;
+pub use watcher::{DocumentWatcher, WorkspaceWatcher};
 pub use workspace::{
     MAX_WORKSPACE_ENTRIES, VisibleRow, WorkspaceBrowserModel, WorkspaceEntry, WorkspaceTree,
 };

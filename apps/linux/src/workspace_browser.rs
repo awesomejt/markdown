@@ -17,6 +17,7 @@ struct BrowserState {
     list_view: gtk::ListView,
     folder_label: gtk::Label,
     status_label: gtk::Label,
+    pending_expanded: Vec<String>,
     on_open_file: Option<Rc<dyn Fn(PathBuf)>>,
     on_refresh: Option<Rc<dyn Fn()>>,
     on_close: Option<Rc<dyn Fn()>>,
@@ -119,6 +120,7 @@ impl WorkspaceBrowser {
             list_view: list_view.clone(),
             folder_label,
             status_label,
+            pending_expanded: Vec::new(),
             on_open_file: None,
             on_refresh: None,
             on_close: None,
@@ -336,6 +338,9 @@ impl WorkspaceBrowser {
                         .map(|(e, _)| e.rel_path.clone());
                 }
                 model.restore_expanded(prev_expanded.iter().map(String::as_str));
+            } else if !state.pending_expanded.is_empty() {
+                let pending = std::mem::take(&mut state.pending_expanded);
+                model.restore_expanded(pending.iter().map(String::as_str));
             }
             let idx = sel_rel
                 .as_deref()
@@ -362,6 +367,7 @@ impl WorkspaceBrowser {
         {
             let mut state = self.state.borrow_mut();
             state.model = None;
+            state.pending_expanded.clear();
             state.selection.set_model(None::<&gio::ListModel>);
             state.folder_label.set_text("Workspace");
             state.status_label.set_text("");
@@ -391,6 +397,32 @@ impl WorkspaceBrowser {
 
     pub fn has_workspace(&self) -> bool {
         self.state.borrow().model.is_some()
+    }
+
+    pub fn expanded_paths(&self) -> Vec<String> {
+        self.state
+            .borrow()
+            .model
+            .as_ref()
+            .map(|m| m.expanded_paths().map(str::to_string).collect())
+            .unwrap_or_default()
+    }
+
+    pub fn show_hidden(&self) -> bool {
+        self.hidden_btn.is_active()
+    }
+
+    pub fn markdown_only(&self) -> bool {
+        !self.all_files_btn.is_active()
+    }
+
+    pub fn set_filters(&self, show_hidden: bool, markdown_only: bool) {
+        self.hidden_btn.set_active(show_hidden);
+        self.all_files_btn.set_active(!markdown_only);
+    }
+
+    pub fn set_pending_expanded(&self, paths: Vec<String>) {
+        self.state.borrow_mut().pending_expanded = paths;
     }
 
     pub fn visible_count(&self) -> u32 {

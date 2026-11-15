@@ -667,3 +667,27 @@ debug` for debug, or `--prepare-only` for a persistent public owner-test fixture
     default, Restore previous session on launch, and `Reset to Defaults` / `Close` actions.
   - Smoke and two-phase `--relaunch-check` tests verify live dialog updates, defaults reset,
     legacy v1→v2 migration on disk, and cross-launch persistence.
+
+## Workspace watching, restoration and performance (LNX-002E)
+
+- **Bounded workspace watcher (`apps/linux/src/document/watcher.rs`, `apps/linux/src/files.rs`)**:
+  - `WorkspaceWatcher` monitors the active workspace root, its parent directory (for root
+    deletion, move-out, unmount, or permission loss), and enumerated subdirectories up to
+    `MAX_WATCHED_DIRS` (256) using `gio::FileMonitor`.
+  - Rapid change storms are coalesced with a 150 ms debounce window and a 1,000 ms maximum
+    coalesce deadline. Overlapping `WorkspaceTree::enumerate` calls are prevented via
+    in-flight gating (`workspace_refresh_in_flight` / `workspace_refresh_pending`), preserving
+    expanded folders, selection, and active sidebar mode (`preserve_state: true`).
+  - Access loss on the active workspace (e.g., folder deletion or `chmod 000`) automatically
+    clears the workspace, disarms the watcher, and surfaces `RecoveryBar` for relocation or
+    re-granting access.
+- **Session and workspace restoration (`apps/linux/src/restoration.rs`, `apps/linux/src/files.rs`)**:
+  - `WindowRestorationState` persists `workspace_path`, `workspace_sidebar_visible`,
+    `workspace_expanded_paths`, `workspace_show_hidden`, and `workspace_markdown_only` alongside
+    document path, core anchors, text scale, and outline visibility, remaining backward
+    compatible with legacy v1 restoration files.
+  - Windows with only a workspace open (no active document) are saved and restored; missing or
+    revoked workspaces on relaunch surface `RecoveryBar` instead of failing silently.
+- **Performance tuning (`apps/linux/src/document/workspace.rs`)**:
+  - `WorkspaceTree::enumerate` precomputes lowercase entry names once per entry before sorting
+    directory children, avoiding $O(N \log N)$ string allocations on large workspaces.

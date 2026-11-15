@@ -84,6 +84,11 @@ pub struct WindowRestorationState {
     pub selection_end_anchor_base64: Option<String>,
     pub text_scale: f64,
     pub outline_shown: bool,
+    pub workspace_path: Option<String>,
+    pub workspace_sidebar_visible: bool,
+    pub workspace_expanded_paths: Vec<String>,
+    pub workspace_show_hidden: bool,
+    pub workspace_markdown_only: bool,
 }
 
 impl WindowRestorationState {
@@ -121,7 +126,28 @@ impl WindowRestorationState {
                 .and_then(|p| p.selection_end.as_deref().map(base64_encode)),
             text_scale,
             outline_shown,
+            workspace_path: None,
+            workspace_sidebar_visible: true,
+            workspace_expanded_paths: Vec::new(),
+            workspace_show_hidden: false,
+            workspace_markdown_only: true,
         }
+    }
+
+    pub fn with_workspace(
+        mut self,
+        workspace_path: Option<String>,
+        sidebar_visible: bool,
+        expanded_paths: Vec<String>,
+        show_hidden: bool,
+        markdown_only: bool,
+    ) -> Self {
+        self.workspace_path = workspace_path;
+        self.workspace_sidebar_visible = sidebar_visible;
+        self.workspace_expanded_paths = expanded_paths;
+        self.workspace_show_hidden = show_hidden;
+        self.workspace_markdown_only = markdown_only;
+        self
     }
 }
 
@@ -197,23 +223,47 @@ fn format_json(states: &[WindowRestorationState]) -> String {
             Some(s) => format!("\"{}\"", escape_json(s)),
             None => "null".to_string(),
         };
+        let ws_path = match &w.workspace_path {
+            Some(s) if !s.is_empty() => format!("\"{}\"", escape_json(s)),
+            _ => "null".to_string(),
+        };
+        let expanded_json = format_string_array(&w.workspace_expanded_paths);
         let valid_scale = if w.text_scale.is_finite() && w.text_scale > 0.0 {
             w.text_scale
         } else {
             1.0
         };
         out.push_str(&format!(
-            "    {{\n      \"file_path\": \"{}\",\n      \"top_anchor_base64\": \"{}\",\n      \"selection_start_anchor_base64\": {},\n      \"selection_end_anchor_base64\": {},\n      \"text_scale\": {},\n      \"outline_shown\": {}\n    }}{}\n",
+            "    {{\n      \"file_path\": \"{}\",\n      \"top_anchor_base64\": \"{}\",\n      \"selection_start_anchor_base64\": {},\n      \"selection_end_anchor_base64\": {},\n      \"text_scale\": {},\n      \"outline_shown\": {},\n      \"workspace_path\": {},\n      \"workspace_sidebar_visible\": {},\n      \"workspace_expanded_paths\": {},\n      \"workspace_show_hidden\": {},\n      \"workspace_markdown_only\": {}\n    }}{}\n",
             escape_json(&w.file_path),
             escape_json(&w.top_anchor_base64),
             sel_start,
             sel_end,
             valid_scale,
             w.outline_shown,
+            ws_path,
+            w.workspace_sidebar_visible,
+            expanded_json,
+            w.workspace_show_hidden,
+            w.workspace_markdown_only,
             comma
         ));
     }
     out.push_str("  ]\n}\n");
+    out
+}
+
+fn format_string_array(items: &[String]) -> String {
+    let mut out = String::from("[");
+    for (i, item) in items.iter().enumerate() {
+        if i > 0 {
+            out.push_str(", ");
+        }
+        out.push('"');
+        out.push_str(&escape_json(item));
+        out.push('"');
+    }
+    out.push(']');
     out
 }
 
@@ -288,7 +338,8 @@ fn parse_json(json: &str) -> Vec<WindowRestorationState> {
 
     for item_str in extract_json_objects(arr_str) {
         let file_path = extract_string(item_str, "file_path").unwrap_or_default();
-        if file_path.is_empty() {
+        let workspace_path = extract_string(item_str, "workspace_path").filter(|s| !s.is_empty());
+        if file_path.is_empty() && workspace_path.is_none() {
             continue;
         }
         let top_anchor_base64 = extract_string(item_str, "top_anchor_base64").unwrap_or_default();
@@ -297,6 +348,13 @@ fn parse_json(json: &str) -> Vec<WindowRestorationState> {
         let selection_end_anchor_base64 = extract_string(item_str, "selection_end_anchor_base64");
         let text_scale = extract_number(item_str, "text_scale").unwrap_or(1.0);
         let outline_shown = extract_bool(item_str, "outline_shown").unwrap_or(true);
+        let workspace_sidebar_visible =
+            extract_bool(item_str, "workspace_sidebar_visible").unwrap_or(true);
+        let workspace_expanded_paths = extract_string_array(item_str, "workspace_expanded_paths");
+        let workspace_show_hidden =
+            extract_bool(item_str, "workspace_show_hidden").unwrap_or(false);
+        let workspace_markdown_only =
+            extract_bool(item_str, "workspace_markdown_only").unwrap_or(true);
 
         states.push(WindowRestorationState {
             file_path,
@@ -305,10 +363,73 @@ fn parse_json(json: &str) -> Vec<WindowRestorationState> {
             selection_end_anchor_base64,
             text_scale,
             outline_shown,
+            workspace_path,
+            workspace_sidebar_visible,
+            workspace_expanded_paths,
+            workspace_show_hidden,
+            workspace_markdown_only,
         });
     }
 
     states
+}
+
+fn extract_string_array(block: &str, key: &str) -> Vec<String> {
+    let key_pat = format!("\"{key}\"");
+    let Some(key_pos) = block.find(&key_pat) else {
+        return Vec::new();
+    };
+    let after_key = &block[key_pos + key_pat.len()..];
+    let Some(colon_pos) = after_key.find(':') else {
+        return Vec::new();
+    };
+    let after_colon = after_key[colon_pos + 1..].trim_start();
+    if !after_colon.starts_with('[') {
+        return Vec::new();
+    }
+    let mut items = Vec::new();
+    let mut chars = after_colon[1..].chars();
+    let mut current = String::new();
+    let mut in_string = false;
+    let mut escape = false;
+    while let Some(c) = chars.next() {
+        if escape {
+            match c {
+                '"' => current.push('"'),
+                '\\' => current.push('\\'),
+                'n' => current.push('\n'),
+                'r' => current.push('\r'),
+                't' => current.push('\t'),
+                'u' => {
+                    let hex: String = chars.by_ref().take(4).collect();
+                    if let Ok(code) = u32::from_str_radix(&hex, 16)
+                        && let Some(ch) = char::from_u32(code)
+                    {
+                        current.push(ch);
+                    }
+                }
+                other => current.push(other),
+            }
+            escape = false;
+            continue;
+        }
+        if in_string {
+            if c == '\\' {
+                escape = true;
+            } else if c == '"' {
+                in_string = false;
+                items.push(std::mem::take(&mut current));
+            } else {
+                current.push(c);
+            }
+        } else if c == '"' {
+            in_string = true;
+            current.clear();
+        } else if c == ']' {
+            break;
+        }
+    }
+    items
 }
 
 fn extract_string(block: &str, key: &str) -> Option<String> {
@@ -417,6 +538,11 @@ mod tests {
                 selection_end_anchor_base64: Some(base64_encode(b"end-anchor")),
                 text_scale: 1.15,
                 outline_shown: true,
+                workspace_path: Some("/tmp/ws".to_string()),
+                workspace_sidebar_visible: true,
+                workspace_expanded_paths: vec!["docs".to_string(), "docs/sub".to_string()],
+                workspace_show_hidden: true,
+                workspace_markdown_only: false,
             },
             WindowRestorationState {
                 file_path: "/tmp/other.md".to_string(),
@@ -425,6 +551,24 @@ mod tests {
                 selection_end_anchor_base64: None,
                 text_scale: 0.85,
                 outline_shown: false,
+                workspace_path: None,
+                workspace_sidebar_visible: true,
+                workspace_expanded_paths: Vec::new(),
+                workspace_show_hidden: false,
+                workspace_markdown_only: true,
+            },
+            WindowRestorationState {
+                file_path: String::new(),
+                top_anchor_base64: String::new(),
+                selection_start_anchor_base64: None,
+                selection_end_anchor_base64: None,
+                text_scale: 1.0,
+                outline_shown: true,
+                workspace_path: Some("/tmp/ws-only".to_string()),
+                workspace_sidebar_visible: false,
+                workspace_expanded_paths: vec!["notes".to_string()],
+                workspace_show_hidden: false,
+                workspace_markdown_only: true,
             },
         ];
         let json = format_json(&states);
@@ -432,6 +576,7 @@ mod tests {
         assert_eq!(states.len(), parsed.len());
         assert_eq!(states[0], parsed[0]);
         assert_eq!(states[1], parsed[1]);
+        assert_eq!(states[2], parsed[2]);
 
         // Path containing braces, control characters, and non-finite text_scale
         let edge_case = vec![WindowRestorationState {
@@ -441,6 +586,11 @@ mod tests {
             selection_end_anchor_base64: None,
             text_scale: f64::NAN,
             outline_shown: true,
+            workspace_path: None,
+            workspace_sidebar_visible: true,
+            workspace_expanded_paths: Vec::new(),
+            workspace_show_hidden: false,
+            workspace_markdown_only: true,
         }];
         let json = format_json(&edge_case);
         assert!(!json.contains("NaN"));
@@ -448,5 +598,25 @@ mod tests {
         assert_eq!(parsed.len(), 1);
         assert_eq!(parsed[0].file_path, "/home/user/{special_notes}/file.md");
         assert_eq!(parsed[0].text_scale, 1.0);
+
+        // Backward compatibility with legacy v1 JSON lacking workspace fields
+        let legacy = r#"{
+  "version": 1,
+  "windows": [
+    {
+      "file_path": "/tmp/legacy.md",
+      "top_anchor_base64": "dG9w",
+      "selection_start_anchor_base64": null,
+      "selection_end_anchor_base64": null,
+      "text_scale": 1.25,
+      "outline_shown": false
+    }
+  ]
+}"#;
+        let parsed_legacy = parse_json(legacy);
+        assert_eq!(parsed_legacy.len(), 1);
+        assert_eq!(parsed_legacy[0].file_path, "/tmp/legacy.md");
+        assert_eq!(parsed_legacy[0].workspace_path, None);
+        assert!(parsed_legacy[0].workspace_markdown_only);
     }
 }

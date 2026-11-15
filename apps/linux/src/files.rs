@@ -130,6 +130,9 @@ struct WindowDocument {
     reload: gio::SimpleAction,
     poll_source: Option<glib::SourceId>,
     watcher: Option<Rc<markdown_linux::document::DocumentWatcher>>,
+    workspace_watcher: Option<Rc<markdown_linux::document::WorkspaceWatcher>>,
+    workspace_refresh_in_flight: bool,
+    workspace_refresh_pending: bool,
     saved_position: Option<markdown_linux::restoration::SavedPosition>,
     pending_search_jump: Option<WorkspaceSearchJump>,
     weak_self: Weak<RefCell<WindowDocument>>,
@@ -206,6 +209,38 @@ impl WindowDocument {
             });
         });
         self.watcher = Some(watcher);
+    }
+    fn cancel_workspace_watcher(&mut self) {
+        if let Some(watcher) = self.workspace_watcher.take() {
+            watcher.cancel();
+        }
+        self.workspace_refresh_in_flight = false;
+        self.workspace_refresh_pending = false;
+    }
+    fn arm_workspace_watcher(&mut self) {
+        self.cancel_workspace_watcher();
+        let Some(cap) = &self.active_folder else {
+            return;
+        };
+        let weak = self.weak_self.clone();
+        let watcher = markdown_linux::document::WorkspaceWatcher::new(cap.path(), move || {
+            if let Some(state) = weak.upgrade()
+                && let Ok(mut st) = state.try_borrow_mut()
+            {
+                st.refresh_workspace_from_watcher();
+            }
+        });
+        self.workspace_watcher = Some(watcher);
+    }
+    fn refresh_workspace_from_watcher(&mut self) {
+        let Some(cap) = self.active_folder.clone() else {
+            return;
+        };
+        if self.workspace_refresh_in_flight {
+            self.workspace_refresh_pending = true;
+            return;
+        }
+        self.load_workspace_tree(&cap, true, false);
     }
     fn start_poll(&mut self) {
         if self.poll_source.is_none() {
@@ -456,6 +491,7 @@ impl WindowDocument {
                 Err(error) => {
                     let folder_path = folder.path().to_path_buf();
                     self.active_folder = None;
+                    self.cancel_workspace_watcher();
                     self.workspace_browser.clear();
                     self.saved_position = None;
                     self.reader.clear();
@@ -508,6 +544,7 @@ impl WindowDocument {
             Err(error) => {
                 let folder_path = folder.path().to_path_buf();
                 self.active_folder = None;
+                self.cancel_workspace_watcher();
                 self.workspace_browser.clear();
                 self.saved_position = None;
                 self.pending_search_jump = None;
@@ -555,10 +592,18 @@ impl WindowDocument {
                         window.set_title(Some(&format!("{name} — Markdown")));
                     }
                 }
+                self.arm_workspace_watcher();
                 self.load_workspace_tree(&cap, false, true);
+                let weak_save = self.weak_self.clone();
+                glib::idle_add_local_once(move || {
+                    if weak_save.upgrade().is_some() {
+                        save_all_restoration();
+                    }
+                });
             }
             Err(error) => {
                 self.active_folder = None;
+                self.cancel_workspace_watcher();
                 self.workspace_browser.clear();
                 self.status(&error.to_string());
                 if let Some(btn_label) = recoverable_folder_error(error) {
@@ -571,10 +616,14 @@ impl WindowDocument {
             }
         }
     }
-    fn load_workspace_tree(&self, cap: &FolderCapability, preserve_state: bool, reveal: bool) {
+    fn load_workspace_tree(&mut self, cap: &FolderCapability, preserve_state: bool, reveal: bool) {
         let name = cap.display_name();
         let serial = self.workspace_browser.next_load_serial();
-        self.workspace_browser.set_loading(&name, reveal);
+        self.workspace_refresh_in_flight = true;
+        self.workspace_refresh_pending = false;
+        if !preserve_state {
+            self.workspace_browser.set_loading(&name, reveal);
+        }
         let cap_clone = cap.clone();
         let cap_for_search = cap.clone();
         let browser = self.workspace_browser.clone();
@@ -585,11 +634,29 @@ impl WindowDocument {
             })
             .await;
             if browser.current_load_serial() != serial {
+                if let Some(state_rc) = weak.upgrade()
+                    && let Ok(mut state) = state_rc.try_borrow_mut()
+                {
+                    state.workspace_refresh_in_flight = false;
+                }
                 return;
             }
             match result {
                 Ok(Ok(tree)) => {
+                    let dirs = tree.dir_paths();
                     browser.set_tree(Some(cap_for_search), tree, preserve_state, reveal);
+                    if let Some(state_rc) = weak.upgrade()
+                        && let Ok(mut state) = state_rc.try_borrow_mut()
+                    {
+                        state.workspace_refresh_in_flight = false;
+                        if let Some(watcher) = &state.workspace_watcher {
+                            watcher.sync_dirs(&dirs);
+                        }
+                        if state.workspace_refresh_pending {
+                            state.workspace_refresh_pending = false;
+                            state.refresh_workspace_from_watcher();
+                        }
+                    }
                 }
                 Ok(Err(error)) => {
                     browser.clear();
@@ -599,6 +666,7 @@ impl WindowDocument {
                         let folder_path =
                             state.active_folder.as_ref().map(|f| f.path().to_path_buf());
                         state.active_folder = None;
+                        state.cancel_workspace_watcher();
                         state.status(&error.to_string());
                         if let Some(btn_label) = recoverable_folder_error(error) {
                             state.recovery_bar.show(
@@ -611,6 +679,12 @@ impl WindowDocument {
                 }
                 Err(_) => {
                     browser.clear();
+                    if let Some(state_rc) = weak.upgrade()
+                        && let Ok(mut state) = state_rc.try_borrow_mut()
+                    {
+                        state.workspace_refresh_in_flight = false;
+                        state.workspace_refresh_pending = false;
+                    }
                 }
             }
         });
@@ -793,6 +867,7 @@ impl WindowDocument {
         if let Some(watcher) = self.watcher.take() {
             watcher.cancel();
         }
+        self.cancel_workspace_watcher();
         self.reader.clear();
         self.loader.close();
     }
@@ -1018,6 +1093,9 @@ pub fn attach(window: &gtk::ApplicationWindow, label: &gtk::Label) {
             reload: reload.clone(),
             poll_source: None,
             watcher: None,
+            workspace_watcher: None,
+            workspace_refresh_in_flight: false,
+            workspace_refresh_pending: false,
             saved_position: None,
             pending_search_jump: None,
             weak_self: weak.clone(),
@@ -1036,17 +1114,21 @@ pub fn attach(window: &gtk::ApplicationWindow, label: &gtk::Label) {
         },
         move || {
             if let Some(state_rc) = weak_refresh.upgrade() {
-                let st = state_rc.borrow();
-                if let Some(cap) = &st.active_folder {
-                    st.load_workspace_tree(cap, true, false);
+                let mut st = state_rc.borrow_mut();
+                if let Some(cap) = st.active_folder.clone() {
+                    st.load_workspace_tree(&cap, true, false);
                 }
             }
         },
         move || {
             if let Some(state_rc) = weak_close.upgrade() {
-                let mut st = state_rc.borrow_mut();
-                st.active_folder = None;
-                st.workspace_browser.clear();
+                {
+                    let mut st = state_rc.borrow_mut();
+                    st.active_folder = None;
+                    st.cancel_workspace_watcher();
+                    st.workspace_browser.clear();
+                }
+                save_all_restoration();
             }
         },
     );
@@ -1376,26 +1458,44 @@ pub fn attach(window: &gtk::ApplicationWindow, label: &gtk::Label) {
 }
 pub fn save_all_restoration() {
     let mut states = Vec::new();
+    let mut has_windows = false;
     WINDOWS.with(|all| {
-        for doc_rc in all.borrow().values() {
-            if let Ok(doc) = doc_rc.try_borrow()
-                && let Some(cap) = doc.loader.capability()
-                && let Some(core_doc) = &doc.loader.document
-            {
-                let path_str = cap.path().to_string_lossy().to_string();
-                let saved = doc.reader.save_position(core_doc);
+        let map = all.borrow();
+        has_windows = !map.is_empty();
+        for doc_rc in map.values() {
+            if let Ok(doc) = doc_rc.try_borrow() {
+                let doc_cap = doc.loader.capability();
+                let core_doc = doc.loader.document.as_ref();
+                let ws_path = doc
+                    .active_folder
+                    .as_ref()
+                    .map(|f| f.path().to_string_lossy().to_string());
+                if doc_cap.is_none() && ws_path.is_none() {
+                    continue;
+                }
+                let path_str = doc_cap
+                    .map(|c| c.path().to_string_lossy().to_string())
+                    .unwrap_or_default();
+                let saved = core_doc.and_then(|cd| doc.reader.save_position(cd));
                 let state =
                     markdown_linux::restoration::WindowRestorationState::from_saved_position(
                         path_str,
                         saved.as_ref(),
                         doc.reader.text_scale(),
                         doc.reader.is_outline_visible(),
+                    )
+                    .with_workspace(
+                        ws_path,
+                        doc.workspace_browser.widget.is_visible(),
+                        doc.workspace_browser.expanded_paths(),
+                        doc.workspace_browser.show_hidden(),
+                        doc.workspace_browser.markdown_only(),
                     );
                 states.push(state);
             }
         }
     });
-    if !states.is_empty() {
+    if has_windows {
         markdown_linux::restoration::save(&states);
     }
 }
@@ -1433,9 +1533,44 @@ pub fn open_restored_state(
         let mut st = state_rc.borrow_mut();
         st.reader.set_text_scale(rest.text_scale);
         st.reader.set_outline_visible(rest.outline_shown);
-        let file = gio::File::for_path(Path::new(&rest.file_path));
-        let pos = rest.to_saved_position();
-        st.open_internal(&file, pos);
+        if let Some(ws_path) = rest.workspace_path.as_deref().filter(|s| !s.is_empty()) {
+            let ws_buf = PathBuf::from(ws_path);
+            st.workspace_browser
+                .set_filters(rest.workspace_show_hidden, rest.workspace_markdown_only);
+            st.workspace_browser
+                .set_pending_expanded(rest.workspace_expanded_paths.clone());
+            match FolderCapability::from_local_folder(ws_buf.clone()) {
+                Ok(cap) => {
+                    let name = cap.display_name();
+                    recents::record_workspace(cap.path(), &name);
+                    st.active_folder = Some(cap.clone());
+                    st.arm_workspace_watcher();
+                    if rest.file_path.is_empty() {
+                        st.status(&format!("Workspace folder ready: {name}"));
+                        window.set_title(Some(&format!("{name} — Markdown")));
+                    }
+                    st.load_workspace_tree(&cap, false, rest.workspace_sidebar_visible);
+                }
+                Err(error) => {
+                    st.active_folder = None;
+                    st.cancel_workspace_watcher();
+                    st.workspace_browser.clear();
+                    st.status(&error.to_string());
+                    if let Some(btn_label) = recoverable_folder_error(error) {
+                        st.recovery_bar.show(
+                            &error.to_string(),
+                            btn_label,
+                            RecoveryTarget::Folder(Some(ws_buf)),
+                        );
+                    }
+                }
+            }
+        }
+        if !rest.file_path.is_empty() {
+            let file = gio::File::for_path(Path::new(&rest.file_path));
+            let pos = rest.to_saved_position();
+            st.open_internal(&file, pos);
+        }
     }
 }
 pub fn choose(app: &gtk::Application) {
@@ -1681,4 +1816,17 @@ pub fn workspace_browser(
     window: &gtk::ApplicationWindow,
 ) -> Option<crate::workspace_browser::WorkspaceBrowser> {
     state(window).map(|s| s.borrow().workspace_browser.clone())
+}
+
+pub fn is_recovery_bar_visible(window: &gtk::ApplicationWindow) -> bool {
+    state(window).is_some_and(|s| s.borrow().recovery_bar.is_visible())
+}
+
+pub fn workspace_watcher_armed(window: &gtk::ApplicationWindow) -> bool {
+    state(window).is_some_and(|s| {
+        s.borrow()
+            .workspace_watcher
+            .as_ref()
+            .is_some_and(|w| w.is_armed())
+    })
 }
