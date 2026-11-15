@@ -1,15 +1,15 @@
 # Agent Session and Platform Handoff
 
-Updated: 2026-11-15 (America/Denver), MAC-002C completed under D-029 (PR #84 approved and closed out into `develop`).
-Active task: None. Eligible tasks: `MAC-002D` (macOS), `WIN-002A` (Windows). The D-030 milestone review for `LNX-002` + `HARD-001` (`review/<milestone>` into `main`, owner-merged) is still open to cut.
-Pass `cc417f7d-18d9-42ca-a81d-b5dbd4a906cd` completed, approved PR #84 merged into `develop`:
+Updated: 2026-11-15 (America/Denver), MAC-002D completed under D-029 (PR #85 approved and closed out into `develop`).
+Active task: None. Eligible tasks: `MAC-002E` (macOS), `WIN-002A` (Windows). The D-030 milestone review for `LNX-002` + `HARD-001` (`review/<milestone>` into `main`, owner-merged) is still open to cut.
+Pass `0816b887-d302-4363-862a-096bdd4ba691` completed, approved PR #85 merged into `develop`:
 
-- Implemented `MAC-002C` (macOS workspace search: Search sidebar pane, core wrappers, bounded cancellable adapter, hit navigation by span or re-find near the anchor); see [apps/macos/README.md](apps/macos/README.md#workspace-search-mac-002c).
-- Checks at `0ada12f`: `.build/feas004-venv/bin/python apps/macos/tools/check.py` passed in debug and release (needs `~/.cargo/bin` on `PATH`); `tools/check.py common` passed with a canonical `TMPDIR`.
-- Grok review 1 at `902e428`: 0 Blockers, 0 Concerns, 1 Nit (approval); nit fixed at `0ada12f`.
-- Owner manual checks not run by the agent: VoiceOver on the search results and summary announcement, real typing in the search field, a folder on a network volume.
+- Implemented `MAC-002D` (versioned persistent settings, Settings window sidebar/reopen options and Restore Defaults); see [apps/macos/README.md](apps/macos/README.md#settings-and-preferences-mac-002d).
+- Checks at `a0c6e21`: `.build/feas004-venv/bin/python apps/macos/tools/check.py` passed in debug and release, including the new two-launch preferences check (needs `~/.cargo/bin` on `PATH`); `tools/check.py common` passed with a canonical `TMPDIR`.
+- Grok review 1 at `a0c6e21`: 0 Blockers, 0 Concerns, 0 Nits (approval).
+- Owner manual checks not run by the agent: keyboard and VoiceOver use of the Settings window, a real quit and relaunch with Reopen windows from last time off.
 
-Next task: `MAC-002C` (workspace search UI) or `MAC-002D` (preferences) on macOS, `WIN-002A` on Windows, or the D-030 milestone review.
+Next task: `MAC-002E` (workspace watching/restoration and performance) on macOS, `WIN-002A` on Windows, or the D-030 milestone review.
 
 ## Previous handoff
 

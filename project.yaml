@@ -1,11 +1,11 @@
 contract_version: project-state/v1
-revision: 845
+revision: 846
 project: &id003
   concurrency_limit: 1
   created_at: '2026-10-24T23:34:09.871478+00:00'
   project_ref: markdown-native
-  status: working
-  updated_at: '2026-11-15T19:41:40.834128+00:00'
+  status: active
+  updated_at: '2026-11-15T19:57:42.421608+00:00'
   workflow_id: native-app-development
   workflow_version: '2'
 phases: &id005
@@ -1465,7 +1465,7 @@ tasks:
     created_at: '2026-10-26T20:27:38.351267+00:00'
     updated_at: '2026-11-14T01:42:28.508775+00:00'
     completed_at: '2026-11-14T01:42:28.508775+00:00'
-  - &id007
+  - &id006
     id: 60153c41-1692-4e54-ab8c-b336189a2dfc
     task_key: WIN-001I
     title: 'WIN native: Local development artifact, license inventory and relocated launch'
@@ -1487,7 +1487,7 @@ tasks:
     created_at: '2026-10-26T20:27:38.850099+00:00'
     updated_at: '2026-11-03T02:56:26.939639+00:00'
     completed_at: '2026-11-03T02:56:26.939639+00:00'
-  - &id006
+  - &id007
     id: a8f5c6e5-6b96-4df0-8cef-92aa70977a80
     task_key: LNX-001D1
     title: 'LNX native early accessibility gate: Prove native document/heading semantics, off-screen heading
@@ -2024,12 +2024,12 @@ tasks:
     model_tier: null
     validation_expectations: Preferences persistence, migration, relaunch checks, and platform native
       CI pass.
-    status: working
-    active_pass_ref: 0816b887-d302-4363-862a-096bdd4ba691
+    status: completed
+    active_pass_ref: null
     blockers: []
     created_at: '2026-11-14T08:04:29.905430+00:00'
-    updated_at: '2026-11-15T19:41:40.834128+00:00'
-    completed_at: null
+    updated_at: '2026-11-15T19:57:42.421608+00:00'
+    completed_at: '2026-11-15T19:57:42.421608+00:00'
   - &id033
     id: d0e2238f-aefd-42c7-b7a0-cb4da4ee6cfb
     task_key: MAC-002E
@@ -9105,63 +9105,46 @@ passes:
     task_ref: 319bf596-a365-470c-8c5c-07fbe6cd5613
     phase_ref: 1c2f7cf2-feeb-4b8d-b741-2aaaa890bbaa
     actor: claude-macos
-    status: active
-    outcome: null
+    status: completed
+    outcome: completed
     objective: 'Native macOS persistent preferences: a versioned v2 preferences schema in user defaults
       with v1 (MAC-001F) migration and future-version preservation; Settings window with appearance, text
       size, show sidebar in new windows, reopen windows at launch and Restore Defaults; behavior wired
       into new and restored windows; unit tests, smoke and a two-launch preferences relaunch check; docs.'
-    summary: null
-    handoff: null
-    validation_result: null
-    evidence: {}
+    summary: 'MAC-002D delivered in PR 85: ReaderPreferences moved into MarkdownRender with a versioned
+      user defaults schema (preferencesVersion 2; MAC-001F''s unversioned appearance/textScale upgraded
+      in place, text size snapped, malformed values dropped, malformed version counts as 1, newer versions
+      never rewritten); new showsSidebar (new windows) and reopensWindows (open windows made non-restorable
+      and saved state declined when off) settings; Settings window checkboxes, macOS quit-setting note
+      and Restore Defaults; 7 PreferencesTests, extended smoke and a two-launch preferences check on a
+      throwaway defaults suite read back with defaults export. Grok review 1 clean (0/0/0).'
+    handoff: 'Merge PR 85 into develop after the closeout commit''s CI. Next on macOS: MAC-002E (workspace
+      watching/restoration and performance), then MAC-002F.'
+    validation_result:
+      checks:
+        - apps/macos/tools/check.py passed in debug and release at a0c6e21 on macOS 27.0.1 arm64, Xcode
+          27.1, Swift 6.4 (88 Swift tests per configuration incl. 7 new PreferencesTests; bundle smoke
+          with extended Settings part; relaunch restoration; new two-launch preferences check with defaults
+          export read-back and suite cleanup; release artifact; relocated CoreProbe)
+        - tools/check.py common passed (canonical TMPDIR for test_ci_paths on this Mac, pre-existing)
+        - Grok review PRR_kwDOVWSkys8AAAABYGseuA clean
+      not_run:
+        - keyboard and VoiceOver use of the Settings window
+        - real quit and relaunch with Reopen windows from last time off
+    evidence:
+      pr: https://github.com/awesomejt/markdown/pull/85
+      reviewed_head: a0c6e21c3d5c409d1993bc23f03cae7ecd3071a8
+      review: 'Grok review 1 PRR_kwDOVWSkys8AAAABYGseuA at a0c6e21: 0 Blocker, 0 Concern, 0 Nit'
+      approval: 'D-029: clean Grok review 1 approves the merge into develop'
     participants: []
     blocker: null
     execution_record: {}
     started_at: '2026-11-15T19:41:40.834128+00:00'
     last_heartbeat_at: '2026-11-15T19:54:51.682483+00:00'
-    completed_at: null
-    lease_expires_at: '2026-11-15T20:24:51.682483+00:00'
+    completed_at: '2026-11-15T19:57:42.421608+00:00'
+    lease_expires_at: null
     lease_version: 2
 idempotency:
-  win001h-resume-745:
-    fingerprint: 09a4ba49057e66e4c2583ec4809f2e4b4966d86aabf7d56d742d913e12cc0c96
-    response:
-      contract_version: project-state/v1
-      operation: start_pass
-      revision: 746
-      data:
-        pass: *id001
-        task: *id002
-      snapshot:
-        contract_version: project-state/v1
-        snapshot_at: '2026-11-03T00:33:47.972474+00:00'
-        revision: 746
-        project: *id003
-        current_phase: *id004
-        phases: *id005
-        active_tasks:
-          - *id002
-        working_tasks_without_active_lease: []
-        active_passes:
-          - *id001
-        stale_passes: []
-        blocked_tasks: []
-        eligible_tasks:
-          - *id006
-        latest_pass: *id001
-        queue_counts:
-          by_status:
-            completed: 67
-            pending: 23
-            working: 1
-          total: 91
-          active_passes: 1
-          stale_passes: 0
-          eligible: 1
-          blocked: 0
-        warnings: []
-        recommended_action: resume_active
   41eb016b-0616-4659-83a2-eabc9226c699:
     fingerprint: 8ddf8e8bb28a500b399c5fc96755246932f99fbdc7048d5b50475f69e0b1c5bd
     response:
@@ -9184,8 +9167,8 @@ idempotency:
         stale_passes: []
         blocked_tasks: []
         eligible_tasks:
-          - *id007
           - *id006
+          - *id007
         latest_pass: *id001
         queue_counts:
           by_status:
@@ -9206,7 +9189,7 @@ idempotency:
       revision: 748
       data:
         pass: *id008
-        task: *id007
+        task: *id006
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-11-03T02:15:48.521142+00:00'
@@ -9215,14 +9198,14 @@ idempotency:
         current_phase: *id004
         phases: *id005
         active_tasks:
-          - *id007
+          - *id006
         working_tasks_without_active_lease: []
         active_passes:
           - *id008
         stale_passes: []
         blocked_tasks: []
         eligible_tasks:
-          - *id006
+          - *id007
         latest_pass: *id008
         queue_counts:
           by_status:
@@ -9244,7 +9227,7 @@ idempotency:
       revision: 749
       data:
         pass: *id008
-        task: *id007
+        task: *id006
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-11-03T02:56:26.939663+00:00'
@@ -9259,7 +9242,7 @@ idempotency:
         blocked_tasks: []
         eligible_tasks:
           - *id009
-          - *id006
+          - *id007
         latest_pass: *id008
         queue_counts:
           by_status:
@@ -9296,7 +9279,7 @@ idempotency:
         stale_passes: []
         blocked_tasks: []
         eligible_tasks:
-          - *id006
+          - *id007
         latest_pass: *id010
         queue_counts:
           by_status:
@@ -9332,7 +9315,7 @@ idempotency:
         stale_passes: []
         blocked_tasks: []
         eligible_tasks:
-          - *id006
+          - *id007
         latest_pass: *id010
         queue_counts:
           by_status:
@@ -9353,7 +9336,7 @@ idempotency:
       revision: 752
       data:
         pass: *id011
-        task: *id006
+        task: *id007
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-11-03T05:07:58.305111+00:00'
@@ -9362,7 +9345,7 @@ idempotency:
         current_phase: *id004
         phases: *id005
         active_tasks:
-          - *id006
+          - *id007
         working_tasks_without_active_lease: []
         active_passes:
           - *id011
@@ -9390,7 +9373,7 @@ idempotency:
       revision: 753
       data:
         pass: *id011
-        task: *id006
+        task: *id007
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-11-03T05:33:17.868507+00:00'
@@ -12963,3 +12946,39 @@ idempotency:
           blocked: 0
         warnings: []
         recommended_action: resume_active
+  mac-002d-finish-1:
+    fingerprint: 806463ac55a33389026cf15947543d656455d4a9a8facb3e75051b3153449c06
+    response:
+      contract_version: project-state/v1
+      operation: finish_pass
+      revision: 846
+      data:
+        pass: *id086
+        task: *id032
+      snapshot:
+        contract_version: project-state/v1
+        snapshot_at: '2026-11-15T19:57:42.421621+00:00'
+        revision: 846
+        project: *id003
+        current_phase: *id004
+        phases: *id005
+        active_tasks: []
+        working_tasks_without_active_lease: []
+        active_passes: []
+        stale_passes: []
+        blocked_tasks: []
+        eligible_tasks:
+          - *id033
+          - *id044
+        latest_pass: *id086
+        queue_counts:
+          by_status:
+            completed: 90
+            pending: 19
+          total: 109
+          active_passes: 0
+          stale_passes: 0
+          eligible: 2
+          blocked: 0
+        warnings: []
+        recommended_action: select_new_task
