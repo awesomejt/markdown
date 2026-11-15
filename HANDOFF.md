@@ -1,5 +1,18 @@
 # Agent Session and Platform Handoff
 
+Updated: 2026-11-14 (America/Denver), MAC-002A completed under D-029 (PR #82 approved and closed out into `develop`).
+Active task: None. Eligible tasks: `MAC-002B` and `MAC-002D` (macOS), `WIN-002A` (Windows). The D-030 milestone review for `LNX-002` + `HARD-001` (`review/<milestone>` into `main`, owner-merged) is still open to cut.
+Pass `338b078f-e980-40ef-b269-b0f4eb3e7f34` completed, approved PR #82 merged into `develop`:
+
+- Implemented `MAC-002A` (macOS folder capability/access recovery and recents); see [apps/macos/README.md](apps/macos/README.md#folders-recents-and-access-recovery-mac-002a).
+- Checks at `a954f79`: `.build/feas004-venv/bin/python apps/macos/tools/check.py` passed in debug and release (needs `~/.cargo/bin` on `PATH`); `tools/check.py common` passed with a canonical `TMPDIR` (`tools/test_ci_paths.py` fails under the default `/var/folders` symlink on this Mac, pre-existing).
+- Grok review 1 at `ef007f9`: 0 Blockers, 2 Concerns, 2 Nits, all fixed at `f78cc0c`. Review 2 at `f78cc0c`: 0/0/1 Nit (approval), nit fixed at `a954f79`.
+- Owner manual checks not run by the agent: interactive open panel for Open Folder…/Locate…/Grant Access…, a real disconnected volume, VoiceOver on the recovery buttons.
+
+Next task: `MAC-002B` (workspace browser and navigation; also owns relative document links and the window file-identity lookup) or `MAC-002D` (preferences) on macOS, `WIN-002A` on Windows, or the D-030 milestone review.
+
+## Previous handoff
+
 Updated: 2026-11-14 (America/Denver), HARD-001 completed under D-029 (PR #81 approved and closed out into `develop`).
 Active task: None. Eligible tasks: `MAC-002A` (macOS) and `WIN-002A` (Windows). No Linux tasks remain eligible until `DESK-002` (which requires `MAC-002` and `WIN-002`). On `develop`, both `LNX-002` (Linux MVP) and `HARD-001` are complete, reaching a D-030 milestone review boundary (`review/<milestone>` into `main`; only the owner merges into `main`).
 Pass `8b234a37-3981-44b6-8ae7-671931a406de` completed, approved PR #81 merged into `develop`:
