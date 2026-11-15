@@ -4,6 +4,7 @@ mod count_model;
 pub mod files;
 pub mod find_bar;
 mod measure;
+pub mod preferences_dialog;
 pub mod reader;
 mod relaunch;
 mod smoke;
@@ -40,6 +41,12 @@ pub const COMMANDS: &[(&str, &str, &str, Option<&str>)] = &[
         "Find in Workspace…",
         "win.workspace-search",
         Some("<Shift><Control>f"),
+    ),
+    (
+        "Edit",
+        "Preferences…",
+        "app.preferences",
+        Some("<Control>comma"),
     ),
     (
         "View",
@@ -122,13 +129,16 @@ fn main() -> glib::ExitCode {
     let initial_activate = std::cell::Cell::new(true);
     app.connect_activate(move |app| {
         if initial_activate.replace(false) && smoke.is_none() {
-            let restored = markdown_linux::restoration::load();
-            if !restored.is_empty() {
-                for st in &restored {
-                    let win = new_window(app);
-                    files::open_restored_state(&win, st);
+            let prefs = markdown_linux::preferences::load();
+            if prefs.restore_session_on_launch {
+                let restored = markdown_linux::restoration::load();
+                if !restored.is_empty() {
+                    for st in &restored {
+                        let win = new_window(app);
+                        files::open_restored_state(&win, st);
+                    }
+                    return;
                 }
-                return;
             }
         }
         // A second launch activates the primary instance, which opens another window.
@@ -210,6 +220,9 @@ pub(crate) fn install_commands(app: &gtk::Application) {
     let open_folder = gio::ActionEntry::builder("open-folder")
         .activate(|app: &gtk::Application, _, _| files::choose_folder(app))
         .build();
+    let preferences_act = gio::ActionEntry::builder("preferences")
+        .activate(|app: &gtk::Application, _, _| preferences_dialog::show(app))
+        .build();
     let theme_system = gio::ActionEntry::builder("theme-system")
         .activate(|_, _, _| {
             apply_theme(markdown_linux::preferences::ThemePreference::System);
@@ -240,6 +253,7 @@ pub(crate) fn install_commands(app: &gtk::Application) {
         about,
         open,
         open_folder,
+        preferences_act,
         theme_system,
         theme_light,
         theme_dark,

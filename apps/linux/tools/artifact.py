@@ -215,8 +215,11 @@ def _run_relaunch(executable: Path, cwd: Path) -> None:
             for part in range(120)
         )
         relaunch_doc.write_text(f"# Live\n\n{sections}\n", encoding="utf-8")
+        preferences_path = Path(directory) / "preferences.json"
+        preferences_path.write_text('{"theme": "dark", "text_scale": 1.30}\n', encoding="utf-8")
         restoration_env = {
-            "MARKDOWN_RESTORATION_PATH": str(Path(directory) / "restoration.json")
+            "MARKDOWN_RESTORATION_PATH": str(Path(directory) / "restoration.json"),
+            "MARKDOWN_PREFERENCES_PATH": str(preferences_path),
         }
         for phase, marker in (
             ("prepare", "relaunch-check: prepared"),

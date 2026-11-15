@@ -895,6 +895,106 @@ async fn find_and_zoom(
     }
 
     note("find, theme and text zoom checked");
+
+    preferences_dialog_checks(app, window).await?;
+    Ok(())
+}
+
+fn find_widget_by_name<T: IsA<gtk::Widget>>(root: &gtk::Widget, name: &str) -> Option<T> {
+    if root.widget_name() == name
+        && let Ok(matched) = root.clone().downcast::<T>()
+    {
+        return Some(matched);
+    }
+    let mut child = root.first_child();
+    while let Some(c) = child {
+        if let Some(found) = find_widget_by_name::<T>(&c, name) {
+            return Some(found);
+        }
+        child = c.next_sibling();
+    }
+    None
+}
+
+async fn preferences_dialog_checks(
+    app: &gtk::Application,
+    window: &gtk::ApplicationWindow,
+) -> Result<(), String> {
+    app.activate_action("preferences", None);
+    wait_until("preferences window opens", || {
+        app.windows()
+            .into_iter()
+            .any(|w| w.widget_name() == crate::preferences_dialog::PREFERENCES_WINDOW_NAME)
+    })
+    .await?;
+
+    let pref_win = app
+        .windows()
+        .into_iter()
+        .find(|w| w.widget_name() == crate::preferences_dialog::PREFERENCES_WINDOW_NAME)
+        .ok_or("preferences window missing")?;
+    let root: gtk::Widget = pref_win.clone().upcast();
+
+    let theme_dd = find_widget_by_name::<gtk::DropDown>(&root, "pref-theme-dropdown")
+        .ok_or("pref-theme-dropdown missing")?;
+    let scale_dd = find_widget_by_name::<gtk::DropDown>(&root, "pref-scale-dropdown")
+        .ok_or("pref-scale-dropdown missing")?;
+    let outline_cb = find_widget_by_name::<gtk::CheckButton>(&root, "pref-outline-check")
+        .ok_or("pref-outline-check missing")?;
+    let restore_cb = find_widget_by_name::<gtk::CheckButton>(&root, "pref-restore-check")
+        .ok_or("pref-restore-check missing")?;
+    let reset_btn = find_widget_by_name::<gtk::Button>(&root, "pref-reset-button")
+        .ok_or("pref-reset-button missing")?;
+    let close_btn = find_widget_by_name::<gtk::Button>(&root, "pref-close-button")
+        .ok_or("pref-close-button missing")?;
+
+    // Modify settings via the native Preferences dialog
+    theme_dd.set_selected(2); // Dark
+    scale_dd.set_selected(4); // 130% (1.30)
+    outline_cb.set_active(false);
+    restore_cb.set_active(false);
+
+    let updated = markdown_linux::preferences::load();
+    check(
+        updated.theme == markdown_linux::preferences::ThemePreference::Dark,
+        "preferences dialog updated theme to dark",
+    )?;
+    check(
+        (updated.text_scale - 1.30).abs() < 0.001,
+        "preferences dialog updated text scale to 1.30",
+    )?;
+    check(
+        (crate::files::text_scale(window).unwrap_or(0.0) - 1.30).abs() < 0.001,
+        "preferences dialog applied text scale to open window",
+    )?;
+    check(
+        !updated.show_outline_by_default && !updated.restore_session_on_launch,
+        "preferences dialog updated outline and restore-session toggles",
+    )?;
+
+    // Reset to Defaults restores all settings
+    reset_btn.emit_clicked();
+    let reset = markdown_linux::preferences::load();
+    check(
+        reset.theme == markdown_linux::preferences::ThemePreference::System
+            && (reset.text_scale - 1.0).abs() < 0.001
+            && reset.show_outline_by_default
+            && reset.restore_session_on_launch,
+        "preferences reset to defaults restored all fields",
+    )?;
+    check(
+        (crate::files::text_scale(window).unwrap_or(0.0) - 1.0).abs() < 0.001,
+        "preferences reset restored open window text scale to 1.0",
+    )?;
+
+    close_btn.emit_clicked();
+    wait_until("preferences window closes", || {
+        !app.windows()
+            .into_iter()
+            .any(|w| w.widget_name() == crate::preferences_dialog::PREFERENCES_WINDOW_NAME)
+    })
+    .await?;
+    note("preferences dialog checked");
     Ok(())
 }
 

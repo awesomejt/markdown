@@ -76,8 +76,11 @@ def relaunch_check(binary: Path) -> None:
         )
         relaunch_doc.write_text(f"# Live\n\n{sections}\n", encoding="utf-8")
         restoration_store_path = Path(directory) / "restoration.json"
+        preferences_path = Path(directory) / "preferences.json"
+        preferences_path.write_text('{"theme": "dark", "text_scale": 1.30}\n', encoding="utf-8")
         relaunch_env = dict(environment)
         relaunch_env["MARKDOWN_RESTORATION_PATH"] = str(restoration_store_path)
+        relaunch_env["MARKDOWN_PREFERENCES_PATH"] = str(preferences_path)
         for phase, marker in (
             ("prepare", "relaunch-check: prepared"),
             ("verify", "relaunch-check: pass (restored window, document, top line and selection)"),

@@ -650,3 +650,20 @@ debug` for debug, or `--prepare-only` for a persistent public owner-test fixture
   - Displays file-name hits and grouped content-snippet hits with Pango match highlights in a
     virtualized `gtk::ListView`; activating a hit opens the file through `FolderCapability` and
     jumps to the matched source offset (or resolves its core anchor if the file changed).
+
+## Persistent preferences and native settings (LNX-002D)
+
+- **Versioned preferences schema and migration (`apps/linux/src/preferences.rs`)**:
+  - Upgrades `$XDG_CONFIG_HOME/markdown/preferences.json` (or `MARKDOWN_PREFERENCES_PATH`)
+    to `schema_version: 2`, adding `show_outline_by_default` and `restore_session_on_launch`
+    alongside `theme` and `text_scale`.
+  - Automatically migrates legacy v1 preferences (missing or `schema_version: 1`) to v2 on
+    load and writes the upgraded file atomically while preserving existing `theme` and clamped
+    `text_scale`. Future schema versions (`> 2`) preserve valid known fields without
+    overwriting the file on disk.
+- **Native GTK 4 Preferences dialog (`apps/linux/src/preferences_dialog.rs`, `apps/linux/src/main.rs`)**:
+  - Adds `Edit > Preferences…` (`Ctrl+,`, `app.preferences`) with live controls for Theme
+    (`System`, `Light`, `Dark`), Default text size (`75%`–`250%`), Show document outline by
+    default, Restore previous session on launch, and `Reset to Defaults` / `Close` actions.
+  - Smoke and two-phase `--relaunch-check` tests verify live dialog updates, defaults reset,
+    legacy v1→v2 migration on disk, and cross-launch persistence.
