@@ -14,6 +14,8 @@ final class SidebarController: NSViewController {
   let picker = NSSegmentedControl(
     labels: ["Files", "Outline", "Search"], trackingMode: .selectOne, target: nil, action: nil)
   private(set) var mode: Mode = .outline
+  /// The pane changed, so the window's saved state should be too (MAC-002E).
+  var onModeChange: (() -> Void)?
   /// Whether the window has a folder, so the files can be shown.
   private(set) var hasFiles = false
   private var contentTop: NSLayoutConstraint!
@@ -75,13 +77,16 @@ final class SidebarController: NSViewController {
     hasFiles = value
     mode = value ? .files : .outline
     apply()
+    onModeChange?()
   }
 
   /// Show the files, the outline or the search; all but the outline need a folder.
   func show(_ mode: Mode) {
     guard mode == .outline || hasFiles else { return }
+    let changed = mode != self.mode
     self.mode = mode
     apply()
+    if changed { onModeChange?() }
   }
 
   @objc private func pick(_ sender: NSSegmentedControl) {
@@ -119,6 +124,11 @@ final class WorkspaceBrowserController: NSViewController, NSOutlineViewDataSourc
 {
   /// Open a document; a folder row is never passed.
   var onOpen: ((WorkspaceItem) -> Void)?
+  /// A folder was expanded or collapsed (MAC-002E).
+  var onExpansionChange: (() -> Void)?
+  /// Folders to expand when a listing next shows: kept while the folder is
+  /// unavailable, or restored from saved state (MAC-002E).
+  private var retainedExpansion: [String] = []
   private(set) var listing: WorkspaceListing?
   let outlineView = WorkspaceOutlineView()
   private let message = NSTextField(wrappingLabelWithString: "")
@@ -185,17 +195,27 @@ final class WorkspaceBrowserController: NSViewController, NSOutlineViewDataSourc
   var footerText: String? { footer.isHidden ? nil : footer.stringValue }
 
   /// Show a listing, keeping the folders the reader had expanded and the
-  /// selection where they still exist.
-  func show(_ listing: WorkspaceListing) {
+  /// selection where they still exist, and expanding `restoring` too. The
+  /// scroll position is kept, so a refresh doesn't move the reader.
+  func show(_ listing: WorkspaceListing, restoring: [String] = []) {
     _ = view
-    let expanded = expandedPaths()
+    let expanded = Set(expandedPaths() + restoring)
+    retainedExpansion = []
     let selected = selectedItem?.path
+    let origin = outlineView.enclosingScrollView?.contentView.bounds.origin
     self.listing = listing
+    notifying = false
     outlineView.reloadData()
-    for path in expanded.sorted(by: { $0.count < $1.count }) {
+    // Outer folders first, so each inner one has a row to expand.
+    for path in expanded.sorted(by: { $0.utf8.count < $1.utf8.count }) {
       if let item = listing.item(at: path) { outlineView.expandItem(item) }
     }
+    notifying = true
     if let selected { reveal(selected) }
+    if let origin, let clip = outlineView.enclosingScrollView?.contentView {
+      clip.scroll(to: origin)
+      outlineView.enclosingScrollView?.reflectScrolledClipView(clip)
+    }
     let empty = listing.items.isEmpty
     setMessage(
       empty ? (listing.options.allFiles ? "This folder is empty." : "No Markdown documents") : nil)
@@ -216,8 +236,11 @@ final class WorkspaceBrowserController: NSViewController, NSOutlineViewDataSourc
   }
 
   /// No listing: the window has no folder, or it is being listed or failed.
-  func clear(message text: String?) {
+  /// A folder that became unavailable keeps its expanded folders for when
+  /// it lists again.
+  func clear(message text: String?, keepingExpansion: Bool = false) {
     _ = view
+    retainedExpansion = keepingExpansion ? expandedPaths() : []
     listing = nil
     outlineView.reloadData()
     footer.isHidden = true
@@ -229,8 +252,15 @@ final class WorkspaceBrowserController: NSViewController, NSOutlineViewDataSourc
     message.isHidden = text == nil
   }
 
-  private func expandedPaths() -> [String] {
-    (0..<outlineView.numberOfRows).compactMap {
+  /// Whether expanding or collapsing reports a change; not while a listing
+  /// is shown, which expands what was already expanded.
+  private var notifying = true
+
+  /// The display paths of the expanded folders, or those kept for the next
+  /// listing while there is none.
+  func expandedPaths() -> [String] {
+    guard listing != nil else { return retainedExpansion }
+    return (0..<outlineView.numberOfRows).compactMap {
       guard let item = outlineView.item(atRow: $0) as? WorkspaceItem,
         outlineView.isItemExpanded(item)
       else { return nil }
@@ -291,6 +321,14 @@ final class WorkspaceBrowserController: NSViewController, NSOutlineViewDataSourc
       item.kind == .folder
     else { return }
     activate(item)
+  }
+
+  func outlineViewItemDidExpand(_ notification: Notification) {
+    if notifying { onExpansionChange?() }
+  }
+
+  func outlineViewItemDidCollapse(_ notification: Notification) {
+    if notifying { onExpansionChange?() }
   }
 
   // MARK: Data source

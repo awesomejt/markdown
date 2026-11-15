@@ -95,6 +95,18 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
   private(set) var workspaceOptions = WorkspaceOptions()
   private var listTask: Task<Void, Never>?
   private var listRequest: UInt64 = 0
+  /// Watches the folder for changes and lists it again (MAC-002E).
+  private var watcher: WorkspaceWatcher?
+  /// A change arrived while a listing ran: list once more when it finishes.
+  private var watchPending = false
+  /// Why the folder couldn't be listed last time, while it is unavailable.
+  private(set) var folderLost: FolderError?
+  /// Listings shown since the folder was granted (the storm check).
+  private(set) var listingsShown = 0
+  /// The folder's bookmark for state restoration, made off the main thread.
+  private var folderBookmark: (folder: FolderCapability, data: Data)?
+  /// A restored folder's expansion and pane, applied to its first listing.
+  private var pendingWorkspace: RestorationState.WorkspaceState?
   /// Open a document from the files sidebar, a link or a search result, at
   /// an optional heading or match: in this window, or in the window already
   /// showing it.
@@ -192,6 +204,8 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
     surface.onNavigate = { [weak self] index in self?.outline.select(index) }
     surface.onOpenDocument = { [weak self] path, fragment in self?.followLink(path, fragment) }
     files.onOpen = { [weak self] item in self?.openItem(item) }
+    files.onExpansionChange = { [weak self] in self?.workspaceStateChanged() }
+    sidebar.onModeChange = { [weak self] in self?.workspaceStateChanged() }
     search.onOpen = { [weak self] item, match in self?.openItem(item, at: match.map { .match($0) })
     }
     loader.onChange = { [weak self] state in self?.present(state) }
@@ -527,6 +541,7 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
     folderRequest &+= 1
     let id = folderRequest
     folderTask?.cancel()
+    if self.folder != folder { stopWatching() }
     self.folder = folder
     clearFiles(message: "Opening folder…")
     if loader.capability != nil { loader.clear() }
@@ -545,6 +560,8 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
       switch outcome {
       case .success(let capability):
         self.onFolderReady?(self, folder)
+        self.startWatching(folder)
+        self.bookmarkFolder(folder)
         self.listFolder()
         if let capability {
           self.loader.open(capability)
@@ -553,6 +570,7 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
         }
       case .failure(let error):
         self.folder = nil
+        self.stopWatching()
         self.clearFiles()
         self.showStatus(
           error.message, error.recovery, title: folder.displayName, url: nil,
@@ -587,6 +605,7 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
       guard let error = FolderError(status), let folder = try? FolderCapability(granted: item.url)
       else { return }
       self.folder = nil
+      stopWatching()
       clearFiles()
       showStatus(
         error.message, error.recovery, title: item.name, url: nil,
@@ -615,6 +634,7 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
     folderTask = nil
     folder.revoke()
     self.folder = nil
+    stopWatching()
     clearFiles()
     if recent?.kind == .folder { recent = nil }
     if loader.capability?.folder === folder.grant {
@@ -631,6 +651,7 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
     let shared = folder?.grant === grant
     if shared {
       folder = nil
+      stopWatching()
       clearFiles()
       if recent?.kind == .folder { recent = nil }
       window?.subtitle = ""
@@ -671,8 +692,8 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
     let options = workspaceOptions
     sidebar.setHasFiles(true)
     if files.listing == nil {
-      files.clear(message: "Listing…")
-      search.setListing(nil, unavailable: "Listing the folder…")
+      files.clear(message: folderLost?.message ?? "Listing…", keepingExpansion: true)
+      search.setListing(nil, unavailable: folderLost?.message ?? "Listing the folder…")
     }
     let cancelled = ListCancellation()
     let work = Task.detached { () -> Result<WorkspaceListing, any Error> in
@@ -688,19 +709,86 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
       self.listTask = nil
       switch result {
       case .success(let listing) where listing.folder == self.folder:
-        self.files.show(listing)
+        let restoring = self.pendingWorkspace
+        self.pendingWorkspace = nil
+        let recovered = self.folderLost != nil
+        self.folderLost = nil
+        self.listingsShown += 1
+        self.files.show(listing, restoring: restoring?.expanded ?? [])
         self.search.setListing(listing)
+        if let restoring { self.sidebar.show(restoring.mode) }
         if let shown = self.shownCapability { self.revealInFiles(shown) }
+        // The document may have gone and come back with its folder.
+        if recovered { self.loader.checkForChanges() }
       case .success: break
-      case .failure(let error as FolderError):
-        self.files.clear(message: error.message)
-        self.search.setListing(nil, unavailable: error.message)
       case .failure(is CancellationError): break
-      case .failure:
-        self.files.clear(message: FolderError.unreadable.message)
-        self.search.setListing(nil, unavailable: FolderError.unreadable.message)
+      case .failure(let error):
+        // Kept: the watcher or the window becoming key lists it again.
+        let lost = error as? FolderError ?? .unreadable
+        self.folderLost = lost
+        self.files.clear(message: lost.message, keepingExpansion: true)
+        self.search.setListing(nil, unavailable: lost.message)
+      }
+      if self.watchPending {
+        self.watchPending = false
+        self.listFolder()
       }
     }
+  }
+
+  /// Watch the folder; its changes list it again (MAC-002E).
+  private func startWatching(_ folder: FolderCapability) {
+    watcher?.cancel()
+    watchPending = false
+    folderLost = nil
+    listingsShown = 0
+    watcher = WorkspaceWatcher(folder: folder, includeHidden: workspaceOptions.includeHidden) {
+      [weak self] _ in self?.folderChanged()
+    }
+  }
+
+  private func stopWatching() {
+    watcher?.cancel()
+    watcher = nil
+    watchPending = false
+    folderLost = nil
+    folderBookmark = nil
+    pendingWorkspace = nil
+    workspaceStateChanged()
+  }
+
+  /// The watcher saw a change, already coalesced. One listing runs at a
+  /// time: a change during it lists once more afterwards, so a storm costs
+  /// at most one listing in flight and one waiting. A listing of a moved or
+  /// lost folder fails and says so, and the next change or the window
+  /// becoming key lists it again.
+  private func folderChanged() {
+    guard folder != nil, folderTask == nil else { return }
+    if listTask != nil {
+      watchPending = true
+    } else {
+      listFolder()
+    }
+  }
+
+  /// Whether the folder's bookmark is ready to be saved with the window.
+  var isFolderBookmarked: Bool { folder != nil && folderBookmark?.folder == folder }
+
+  /// Bookmark the folder off the main thread for state restoration.
+  private func bookmarkFolder(_ folder: FolderCapability) {
+    guard folderBookmark?.folder != folder else { return }
+    Task { [weak self] in
+      let data = await Task.detached { folder.bookmark() }.value
+      guard let self, let data, self.folder == folder else { return }
+      self.folderBookmark = (folder, data)
+      self.workspaceStateChanged()
+    }
+  }
+
+  /// The folder, its pane, expansion or options changed: save the window again.
+  private func workspaceStateChanged() {
+    guard window?.isRestorable == true else { return }
+    invalidateRestorableState()
   }
 
   /// The window has no folder (any more): drop its listing.
@@ -872,12 +960,15 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
 
   @objc func toggleHiddenFiles(_ sender: Any?) {
     workspaceOptions.includeHidden.toggle()
+    watcher?.setIncludeHidden(workspaceOptions.includeHidden)
     listFolder()
+    workspaceStateChanged()
   }
 
   @objc func toggleAllFiles(_ sender: Any?) {
     workspaceOptions.allFiles.toggle()
     listFolder()
+    workspaceStateChanged()
   }
 
   @objc func refreshFiles(_ sender: Any?) { listFolder() }
@@ -966,24 +1057,46 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
     if restorable { invalidateRestorableState() }
   }
 
-  /// Open the document a relaunch restores, at its saved position.
-  func restore(_ state: RestorationState, document capability: DocumentCapability) {
-    let position = state.position
-    let sidebar = state.sidebar
-    bookmark = (capability, state.bookmark)
-    pendingRestore = position
-    savedPosition = position
-    split.splitViewItems[0].isCollapsed = !sidebar
-    loader.open(capability)
+  /// Open what a relaunch restores: the folder, with its pane, expanded
+  /// folders and options, and the document through it at its saved position;
+  /// or the document alone when it had no folder or the folder is gone.
+  func restore(
+    _ state: RestorationState, document capability: DocumentCapability?,
+    folder: FolderCapability?
+  ) {
+    if let capability, let data = state.bookmark {
+      bookmark = (capability, data)
+      pendingRestore = state.position
+      savedPosition = state.position
+    }
+    split.splitViewItems[0].isCollapsed = !state.sidebar
+    if let folder, let workspace = state.workspace {
+      workspaceOptions.includeHidden = workspace.includeHidden
+      workspaceOptions.allFiles = workspace.allFiles
+      showFolder(folder, then: capability?.url)
+      // After showFolder, which resets a previous folder's state.
+      folderBookmark = (folder, workspace.bookmark)
+      pendingWorkspace = workspace
+    } else if let capability {
+      loader.open(capability)
+    }
   }
 
   func window(_ window: NSWindow, willEncodeRestorableState state: NSCoder) {
     // Only a document that loaded is restored; a failed one isn't.
-    guard let capability = loader.document?.capability ?? pendingCapability,
-      let bookmark, bookmark.capability == capability
-    else { return }
+    let capability = loader.document?.capability ?? pendingCapability
+    let document = bookmark.flatMap { $0.capability == capability ? $0.data : nil }
+    var workspace: RestorationState.WorkspaceState?
+    if let folder, let folderBookmark, folderBookmark.folder == folder {
+      workspace = RestorationState.WorkspaceState(
+        bookmark: folderBookmark.data, mode: pendingWorkspace?.mode ?? sidebar.mode,
+        expanded: pendingWorkspace?.expanded ?? files.expandedPaths(),
+        includeHidden: workspaceOptions.includeHidden, allFiles: workspaceOptions.allFiles)
+    }
+    guard document != nil || workspace != nil else { return }
     RestorationState(
-      bookmark: bookmark.data, position: savedPosition, sidebar: !isSidebarCollapsed
+      bookmark: document, position: savedPosition, sidebar: !isSidebarCollapsed,
+      workspace: workspace
     ).encode(to: state)
   }
 
@@ -1230,6 +1343,8 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
   /// Look for a change the watcher may have missed, as on a network volume.
   func windowDidBecomeKey(_ notification: Notification) {
     if loader.document != nil { loader.checkForChanges() }
+    // A folder lost while the window was in the background may be back.
+    if folder != nil, folderLost != nil, listTask == nil, folderTask == nil { listFolder() }
   }
 
   func windowWillClose(_ notification: Notification) {
@@ -1242,6 +1357,8 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
     listRequest &+= 1
     listTask?.cancel()
     listTask = nil
+    watcher?.cancel()
+    watcher = nil
     search.setListing(nil)
     findRequest &+= 1
     findTask?.cancel()

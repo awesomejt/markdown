@@ -7,6 +7,11 @@ import MarkdownDocument
 /// selected, saves the position and quits; `verify` expects AppKit to have
 /// restored that window at that place, then closes every window, so the
 /// app's saved state is left empty, and quits. Settings stay in memory.
+///
+/// Given a folder instead (MAC-002E), `prepare` opens it, expands `docs`,
+/// opens `docs/live.md` from the files sidebar, switches to the search pane
+/// and saves the same position; `verify` expects the folder back with that
+/// pane and expansion, and the document through the folder's grant.
 @MainActor
 enum RelaunchCheck {
   enum Phase: String {
@@ -27,10 +32,16 @@ enum RelaunchCheck {
 
   static func run(_ phase: Phase, document url: URL, delegate: AppDelegate) async {
     do {
-      let capability = try DocumentCapability(granted: url)
+      let isFolder = (try? url.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory == true
+      let document = isFolder ? url.appendingPathComponent("docs/live.md") : url
+      let capability = try DocumentCapability(granted: document)
       if phase == .prepare {
-        delegate.open([url])
-        await delegate.opensFinished()
+        if isFolder {
+          try await openThroughFolder(url, delegate)
+        } else {
+          delegate.open([url])
+          await delegate.opensFinished()
+        }
       }
       let reader = try await settled(capability, delegate)
       let headings = reader.outline.headings
@@ -44,6 +55,10 @@ enum RelaunchCheck {
       case .prepare:
         reader.surface.reveal(heading: index)
         reader.surface.textView.setSelectedRange(word)
+        if isFolder {
+          reader.showSearch(nil)
+          try await until("folder bookmarked") { reader.isFolderBookmarked }
+        }
         await reader.makeBookmark()
         await reader.saveReadingPosition()
         guard reader.savedPosition != nil else { throw Failure(description: "position not saved") }
@@ -56,14 +71,55 @@ enum RelaunchCheck {
         guard abs(reader.surface.topLocation() - heading.location) <= 1,
           reader.surface.textView.selectedRange() == word
         else { throw Failure(description: "restored window lost the reading position") }
+        if isFolder { try await verifyFolder(reader, capability) }
         for window in delegate.windows.map(\.window) { window?.performClose(nil) }
-        note("pass (restored window, document, top line and selection)")
+        note(
+          isFolder
+            ? "pass (restored folder, pane, expansion, document through the folder, top line and selection)"
+            : "pass (restored window, document, top line and selection)")
       }
       NSApp.terminate(nil)
     } catch {
       FileHandle.standardError.write(Data("relaunch-check: FAIL: \(error)\n".utf8))
       exit(1)
     }
+  }
+
+  private static func openThroughFolder(_ url: URL, _ delegate: AppDelegate) async throws {
+    delegate.openFolder(url)
+    try await until("folder lists") {
+      delegate.windows.count == 1 && delegate.windows[0].files.listing != nil
+        && !delegate.windows[0].isListing
+    }
+    let files = delegate.windows[0].files
+    guard let docs = files.listing?.item(at: "docs"),
+      let live = files.listing?.item(at: "docs/live.md")
+    else { throw Failure(description: "folder listing is missing docs/live.md") }
+    files.outlineView.expandItem(docs)
+    files.onOpen?(live)
+  }
+
+  private static func verifyFolder(
+    _ reader: ReaderWindowController, _ capability: DocumentCapability
+  ) async throws {
+    try await until("restored folder lists") { reader.files.listing != nil && !reader.isListing }
+    guard let folder = reader.folder, reader.loader.capability?.folder === folder.grant else {
+      throw Failure(description: "the document wasn't restored through its folder")
+    }
+    guard reader.sidebar.mode == .search else {
+      throw Failure(description: "the sidebar pane wasn't restored")
+    }
+    guard let docs = reader.files.listing?.item(at: "docs"),
+      reader.files.outlineView.isItemExpanded(docs)
+    else { throw Failure(description: "the expanded folder wasn't restored") }
+  }
+
+  private static func until(_ message: String, condition: () -> Bool) async throws {
+    let deadline = ContinuousClock.now.advanced(by: .seconds(10))
+    while !condition() && ContinuousClock.now < deadline {
+      try await Task.sleep(for: .milliseconds(20))
+    }
+    if !condition() { throw Failure(description: message) }
   }
 
   private static func settled(_ capability: DocumentCapability, _ delegate: AppDelegate)

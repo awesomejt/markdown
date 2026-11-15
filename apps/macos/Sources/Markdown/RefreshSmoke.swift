@@ -124,13 +124,30 @@ enum RefreshSmoke {
 
     // Forged or stale state never crashes: a wrong version or a missing file
     // restores nothing, and unreadable anchors open the document at the top.
+    let documentBookmark = try requireValue(state.bookmark, "document bookmark")
     let forged = NSKeyedArchiver(requiringSecureCoding: true)
     forged.encode(99, forKey: "readerVersion")
-    forged.encode(state.bookmark as NSData, forKey: "documentBookmark")
+    forged.encode(documentBookmark as NSData, forKey: "documentBookmark")
     forged.finishEncoding()
     try check(
       RestorationState(from: try NSKeyedUnarchiver(forReadingFrom: forged.encodedData)) == nil,
       "another state version is ignored")
+    // State saved by a version 1 build (MAC-001H) still restores its document.
+    let saved = try requireValue(state.position, "saved position")
+    let legacy = NSKeyedArchiver(requiringSecureCoding: true)
+    legacy.encode(1, forKey: "readerVersion")
+    legacy.encode(documentBookmark as NSData, forKey: "documentBookmark")
+    legacy.encode(saved.top as NSData, forKey: "positionTop")
+    legacy.encode(saved.selectionStart as NSData, forKey: "positionSelectionStart")
+    legacy.encode(false, forKey: "sidebarShown")
+    legacy.finishEncoding()
+    let upgraded = try requireValue(
+      RestorationState(from: try NSKeyedUnarchiver(forReadingFrom: legacy.encodedData)),
+      "version 1 state")
+    try check(
+      upgraded.bookmark == documentBookmark && upgraded.position?.top == saved.top
+        && upgraded.workspace == nil && !upgraded.sidebar,
+      "version 1 state is read")
     restored.window?.performClose(nil)
     try await waitUntil("window closes") { !delegate.windows.contains { $0 === restored } }
     let garbage = RestorationState(
