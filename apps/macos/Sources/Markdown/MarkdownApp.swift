@@ -285,10 +285,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, 
     recent: RecentReference? = nil
   ) {
     if let existing = windows.first(where: { $0.loader.capability == capability }) {
-      // Choosing a file again retries a failed load, e.g. after reconnecting.
+      let shown = existing.loader.capability
+      let failed: Bool
       switch existing.loader.state {
-      case .failed, .stale: existing.loader.reload()
-      case .empty, .loading, .loaded: break
+      case .failed, .stale: failed = true
+      case .empty, .loading, .loaded: failed = false
+      }
+      if shown?.isRevoked == true || (failed && shown?.folder !== capability.folder) {
+        // The window holds the file through a revoked (or other) grant:
+        // open the new capability there instead of retrying the old one.
+        existing.recent = recent ?? existing.recent
+        if let folder {
+          existing.showFolder(folder, then: capability.url)
+        } else {
+          existing.loader.open(capability)
+        }
+      } else if failed {
+        // Choosing a file again retries a failed load, e.g. after reconnecting.
+        existing.loader.reload()
       }
       existing.showWindow(nil)
       return

@@ -110,6 +110,10 @@ public final class DocumentLoader {
         state = .failed(capability, .parseFailed)
         return
       }
+    } else {
+      // The same file through a new grant (or none): later reloads use it,
+      // not a capability whose folder grant was revoked.
+      sessionCapability = capability
     }
     start(capability)
   }

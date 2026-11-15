@@ -48,8 +48,9 @@ public struct RecentItem: Codable, Sendable, Equatable, Identifiable {
   public func resolve() -> RecentResolution {
     if let found = Bookmarks.resolve(bookmark) {
       let current = found.standardizedFileURL.resolvingSymlinksInPath()
-      // A bookmark follows an item into the Trash; that is a deletion.
-      if current.pathComponents.contains(".Trash") {
+      // A bookmark follows an item into the Trash (the home volume's
+      // `.Trash`, or another volume's `.Trashes`); that is a deletion.
+      if current.pathComponents.contains(where: { $0 == ".Trash" || $0 == ".Trashes" }) {
         return RecentResolution(status: .missing, url: nil)
       }
       let status = Self.check(current, kind: kind)
@@ -170,12 +171,35 @@ public struct FileRecentsStorage: RecentsStorage {
     return try? Data(contentsOf: url)
   }
 
+  /// Written to a 0600 temporary file in the same folder, synced, then
+  /// renamed over the list, so it is never readable by others, even briefly.
   public func save(_ data: Data) throws {
+    let folder = url.deletingLastPathComponent()
     try FileManager.default.createDirectory(
-      at: url.deletingLastPathComponent(), withIntermediateDirectories: true,
-      attributes: [.posixPermissions: 0o700])
-    try data.write(to: url, options: [.atomic])
-    _ = chmod(url.path, 0o600)
+      at: folder, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
+    // Ours alone, also when the folder already existed with wider access.
+    guard chmod(folder.path, 0o700) == 0 else { throw POSIXError(.init(rawValue: errno) ?? .EIO) }
+    let temporary = folder.appendingPathComponent(".recents-\(UUID().uuidString).tmp")
+    let fd = open(temporary.path, O_WRONLY | O_CREAT | O_EXCL | O_CLOEXEC | O_NOFOLLOW, 0o600)
+    guard fd >= 0 else { throw POSIXError(.init(rawValue: errno) ?? .EIO) }
+    var written = 0
+    let failure: Int32 = data.withUnsafeBytes { buffer in
+      while written < buffer.count {
+        let count = Darwin.write(fd, buffer.baseAddress! + written, buffer.count - written)
+        if count < 0 {
+          if errno == EINTR { continue }
+          return errno
+        }
+        written += count
+      }
+      return fsync(fd) == 0 ? 0 : errno
+    }
+    Darwin.close(fd)
+    guard failure == 0, rename(temporary.path, url.path) == 0 else {
+      let code = failure != 0 ? failure : errno
+      unlink(temporary.path)
+      throw POSIXError(.init(rawValue: code) ?? .EIO)
+    }
   }
 }
 
@@ -209,21 +233,38 @@ public final class Recents {
   /// The stored list is from a newer version; keep it as it is.
   public private(set) var readOnly = false
 
-  private struct Stored: Codable {
+  private struct Stored: Encodable {
     var version: Int
-    var documents: [RecentItem]?
-    var folders: [RecentItem]?
+    var documents: [RecentItem]
+    var folders: [RecentItem]
+  }
+
+  /// Read first and alone, so a newer list is protected even when nothing
+  /// else in it can be decoded.
+  private struct Header: Decodable { var version: Int }
+
+  /// The entry lists, each entry decoded on its own: one malformed entry (an
+  /// unknown kind, a missing or mistyped field) is skipped, not the list.
+  private struct Lists: Decodable {
+    var documents: [Entry]?
+    var folders: [Entry]?
+  }
+
+  private struct Entry: Decodable {
+    let item: RecentItem?
+    init(from decoder: any Decoder) throws { item = try? RecentItem(from: decoder) }
   }
 
   public init(storage: RecentsStorage) {
     self.storage = storage
     guard let data = storage.load(), data.count <= Self.maxStoredBytes,
-      let stored = try? JSONDecoder().decode(Stored.self, from: data)
+      let header = try? JSONDecoder().decode(Header.self, from: data)
     else { return }
-    if stored.version > Self.version { readOnly = true }
-    guard stored.version >= 1 else { return }
-    documents = Self.sanitize(stored.documents ?? [], kind: .document)
-    folders = Self.sanitize(stored.folders ?? [], kind: .folder)
+    if header.version > Self.version { readOnly = true }
+    guard header.version >= 1, let lists = try? JSONDecoder().decode(Lists.self, from: data)
+    else { return }
+    documents = Self.sanitize(lists.documents?.compactMap(\.item) ?? [], kind: .document)
+    folders = Self.sanitize(lists.folders?.compactMap(\.item) ?? [], kind: .folder)
   }
 
   private static func sanitize(_ items: [RecentItem], kind: RecentItem.Kind) -> [RecentItem] {

@@ -119,14 +119,43 @@ enum FolderSmoke {
     try check(
       second.folder != nil && second.loader.capability?.folder === second.folder?.grant
         && second.folder?.isRevoked == false, "the document reads through the new grant")
-    note("close folder revocation/re-grant checked")
+    // A window left holding a document through a revoked grant recovers
+    // when the same file is opened again by itself (Grok review 1, PR #82).
+    let regranted = try requireValue(second.folder, "re-granted folder")
+    delegate.open([alpha], folder: regranted, preferring: nil)
+    try await waitUntil("alpha opens through the new grant") {
+      first.documentTitle == "Alpha" && !first.isBusy && !first.isOpeningFolder
+    }
+    try check(
+      first.loader.capability?.folder === regranted.grant, "the empty window takes the new grant")
+    try check(
+      NSApp.sendAction(closeFolder.action!, to: second, from: closeFolder),
+      "Close Folder routes again")
+    try await waitUntil("revocation reaches the alpha window") {
+      !first.isBusy && first.statusText == DocumentError.accessRevoked.message
+    }
+    delegate.open([alpha])
+    try await waitUntil("reopening the file recovers the revoked window") {
+      first.documentTitle == "Alpha" && !first.isBusy
+    }
+    try check(
+      delegate.windows.count == 3 && first.loader.capability?.folder == nil,
+      "the same window reads the file by itself, without the revoked grant")
+    first.reloadDocument(nil)
+    try await waitUntil("reload after recovery uses the new capability") {
+      first.documentTitle == "Alpha" && !first.isBusy
+    }
+    try await waitUntil("alpha is the newest recent document") {
+      delegate.recents.documents.first?.name == "alpha.md"
+    }
+    note("close folder revocation/re-grant/reopen checked")
 
     // The Open Recent menu lists documents, then folders, then Clear Menu.
     delegate.menuNeedsUpdate(delegate.openRecentMenu)
     let titles = delegate.openRecentMenu.items.filter { !$0.isSeparatorItem }.map(\.title)
-    // alpha.md and outside.md load concurrently, so their order may vary.
+    // beta.md and outside.md loaded concurrently earlier, so their order may vary.
     try check(
-      titles.first == "beta.md" && Set(titles[1..<3]) == ["alpha.md", "outside.md"]
+      titles.first == "alpha.md" && Set(titles[1..<3]) == ["beta.md", "outside.md"]
         && titles.dropFirst(3) == ["Workspace", "Clear Menu"],
       "Open Recent lists recent items: \(titles)")
 

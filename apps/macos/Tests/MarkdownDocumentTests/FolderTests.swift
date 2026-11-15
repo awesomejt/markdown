@@ -244,6 +244,19 @@ struct FolderTests {
         "version": 1, "documents": [relative, hugeName, wrongKind, encoded, encoded],
       ]))
     #expect(mixed.documents == [valid] && mixed.folders.isEmpty)
+    // A structurally bad entry (missing bookmark, unknown kind, bad id) is
+    // skipped on its own; the valid entry beside it survives.
+    var noBookmark = try #require(encoded as? [String: Any])
+    noBookmark.removeValue(forKey: "bookmark")
+    var unknownKind = try #require(encoded as? [String: Any])
+    unknownKind["kind"] = "workspace"
+    var badID = try #require(encoded as? [String: Any])
+    badID["id"] = 42
+    let structural = Recents(
+      storage: try stored([
+        "version": 1, "documents": [noBookmark, unknownKind, badID, "text", encoded],
+      ]))
+    #expect(structural.documents == [valid])
     // Not JSON, or an unknown shape: empty, never a crash.
     #expect(Recents(storage: MemoryRecentsStorage(Data("not json".utf8))).documents.isEmpty)
     #expect(Recents(storage: try stored(["version": 0, "documents": [encoded]])).documents.isEmpty)
@@ -255,6 +268,15 @@ struct FolderTests {
     #expect(newer.readOnly && newer.documents == [valid])
     newer.clear()
     #expect(future.load() == before)
+    // Also when nothing in the newer list can be decoded by this version.
+    let alien = try stored([
+      "version": 99, "documents": [unknownKind], "folders": "a newer shape",
+    ])
+    let untouched = alien.load()
+    let alienRecents = Recents(storage: alien)
+    #expect(alienRecents.readOnly && alienRecents.documents.isEmpty)
+    alienRecents.note(valid)
+    #expect(alien.load() == untouched, "a newer list is never overwritten")
 
     // An oversized file on disk is ignored before it is read.
     let big = directory.appendingPathComponent("recents.json")
@@ -274,6 +296,15 @@ struct FolderTests {
     #expect(Recents(storage: FileRecentsStorage(url: url)).documents.count == 1)
     let mode = try FileManager.default.attributesOfItem(atPath: url.path)[.posixPermissions]
     #expect((mode as? NSNumber)?.intValue == 0o600)
+    // An existing, wider folder is narrowed; no temporary file is left.
+    #expect(chmod(url.deletingLastPathComponent().path, 0o755) == 0)
+    recents.clear()
+    let folderMode = try FileManager.default.attributesOfItem(
+      atPath: url.deletingLastPathComponent().path)[.posixPermissions]
+    #expect((folderMode as? NSNumber)?.intValue == 0o700)
+    #expect(
+      try FileManager.default.contentsOfDirectory(atPath: url.deletingLastPathComponent().path)
+        == ["recents.json"])
     #expect(
       FileRecentsStorage.standard(environment: ["MARKDOWN_RECENTS_PATH": url.path])?.url == url)
     #expect(FileRecentsStorage.standard(environment: [:])?.url.lastPathComponent == "recents.json")
