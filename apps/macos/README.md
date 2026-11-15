@@ -384,7 +384,9 @@ revisions; see the evidence below.
   short reason (“Can’t be found”, “Disk not available”, “Permission
   denied”). The list is stored as JSON at
   `~/Library/Application Support/io.github.awesomejt.markdown/recents.json`
-  (mode 0600; `MARKDOWN_RECENTS_PATH` overrides it). It is untrusted input:
+  (written through a 0600 temporary file and renamed, in a folder kept at
+  0700; `MARKDOWN_RECENTS_PATH` overrides the location and leaves its folder's
+  permissions alone; a failed save keeps the list in memory). It is untrusted input:
   files over 1 MiB are ignored before they are read, and entries with a
   wrong kind, a relative path, oversized fields or duplicates are dropped.
   A list written by a newer version is used but never overwritten. The

@@ -288,7 +288,7 @@ struct FolderTests {
 
   @Test func fileStorageAndEnvironment() throws {
     let url = directory.appendingPathComponent("nested/recents.json")
-    let storage = FileRecentsStorage(url: url)
+    let storage = FileRecentsStorage(url: url, ownsFolder: true)
     let recents = Recents(storage: storage)
     recents.note(
       try #require(
@@ -305,6 +305,32 @@ struct FolderTests {
     #expect(
       try FileManager.default.contentsOfDirectory(atPath: url.deletingLastPathComponent().path)
         == ["recents.json"])
+    #expect(!recents.saveFailed)
+
+    // A folder named through the override is never narrowed.
+    let shared = try folder("shared")
+    #expect(chmod(shared.path, 0o755) == 0)
+    let override = try #require(
+      FileRecentsStorage.standard(
+        environment: ["MARKDOWN_RECENTS_PATH": shared.appendingPathComponent("r.json").path]))
+    #expect(!override.ownsFolder)
+    Recents(storage: override).clear()
+    let sharedMode = try FileManager.default.attributesOfItem(atPath: shared.path)[
+      .posixPermissions]
+    #expect((sharedMode as? NSNumber)?.intValue == 0o755)
+    // A save that can't be written is reported, and the list stays in memory.
+    if getuid() != 0 {
+      #expect(chmod(shared.path, 0o555) == 0)
+      let blocked = Recents(storage: override)
+      blocked.note(
+        recents.documents.isEmpty
+          ? try #require(
+            RecentItem.capture(try write(directory.appendingPathComponent("b.md")), kind: .document)
+          )
+          : recents.documents[0])
+      #expect(blocked.saveFailed && blocked.documents.count == 1)
+      #expect(chmod(shared.path, 0o755) == 0)
+    }
     #expect(
       FileRecentsStorage.standard(environment: ["MARKDOWN_RECENTS_PATH": url.path])?.url == url)
     #expect(FileRecentsStorage.standard(environment: [:])?.url.lastPathComponent == "recents.json")

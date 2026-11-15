@@ -144,8 +144,14 @@ public protocol RecentsStorage: Sendable {
 /// A JSON file under Application Support, written atomically.
 public struct FileRecentsStorage: RecentsStorage {
   public let url: URL
+  /// The folder is the app's own (Application Support), so saving narrows
+  /// it to 0700. A folder named through the override is left as it is.
+  public let ownsFolder: Bool
 
-  public init(url: URL) { self.url = url }
+  public init(url: URL, ownsFolder: Bool = false) {
+    self.url = url
+    self.ownsFolder = ownsFolder
+  }
 
   /// `MARKDOWN_RECENTS_PATH`, else Application Support/<bundle id>/recents.json.
   public static func standard(environment: [String: String] = ProcessInfo.processInfo.environment)
@@ -160,7 +166,7 @@ public struct FileRecentsStorage: RecentsStorage {
     else { return nil }
     let folder = support.appendingPathComponent(
       Bundle.main.bundleIdentifier ?? "io.github.awesomejt.markdown", isDirectory: true)
-    return FileRecentsStorage(url: folder.appendingPathComponent("recents.json"))
+    return FileRecentsStorage(url: folder.appendingPathComponent("recents.json"), ownsFolder: true)
   }
 
   public func load() -> Data? {
@@ -177,8 +183,11 @@ public struct FileRecentsStorage: RecentsStorage {
     let folder = url.deletingLastPathComponent()
     try FileManager.default.createDirectory(
       at: folder, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
-    // Ours alone, also when the folder already existed with wider access.
-    guard chmod(folder.path, 0o700) == 0 else { throw POSIXError(.init(rawValue: errno) ?? .EIO) }
+    // The app's own folder is ours alone, also when it already existed with
+    // wider access; the 0600 temporary file protects the list anywhere.
+    if ownsFolder, chmod(folder.path, 0o700) != 0 {
+      throw POSIXError(.init(rawValue: errno) ?? .EIO)
+    }
     let temporary = folder.appendingPathComponent(".recents-\(UUID().uuidString).tmp")
     let fd = open(temporary.path, O_WRONLY | O_CREAT | O_EXCL | O_CLOEXEC | O_NOFOLLOW, 0o600)
     guard fd >= 0 else { throw POSIXError(.init(rawValue: errno) ?? .EIO) }
@@ -232,6 +241,8 @@ public final class Recents {
   private let storage: RecentsStorage
   /// The stored list is from a newer version; keep it as it is.
   public private(set) var readOnly = false
+  /// The last save failed (the list stays in memory); cleared by a save that works.
+  public private(set) var saveFailed = false
 
   private struct Stored: Encodable {
     var version: Int
@@ -320,7 +331,12 @@ public final class Recents {
     guard !readOnly else { return }
     let stored = Stored(version: Self.version, documents: documents, folders: folders)
     guard let data = try? JSONEncoder().encode(stored) else { return }
-    try? storage.save(data)
+    do {
+      try storage.save(data)
+      saveFailed = false
+    } catch {
+      saveFailed = true
+    }
   }
 }
 
