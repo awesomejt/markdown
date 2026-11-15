@@ -464,17 +464,6 @@ read.
   an empty plist that cfprefsd rewrites, so unit tests use memory). Grok review 1 at
   `a0c6e21` reported 0 Blockers, 0 Concerns, 0 Nits (approved under D-029). `MAC-002E` is
   next on macOS.
-- **MAC-002E (PR #86)**: delivers macOS workspace watching and restoration.
-  `MarkdownDocument/WorkspaceWatcher.swift` runs an FSEvents stream (file events, `WatchRoot`)
-  with `ChangeCoalescer` (150 ms quiet / 1 s max) and ignores hidden-only changes. The window
-  keeps one listing in flight and runs one follow-up for changes during it, and keeps
-  expansion, selection and scroll. A lost folder is reported and kept, and it relists on
-  return (event, becoming key, Reload Files). Saved window state is v2 (folder bookmark,
-  pane, bounded expanded paths, options; v1 still read; folder-only windows). `check.py`
-  adds a two-launch folder relaunch check. Smoke storm: 1,500 files, one listing. FSEvents
-  splits one write across batches, so tests settle before asserting silence. Grok review 1 at
-  `b69746f` reported 0 Blockers, 1 Concern (hidden dot-files in visible folders), 0 Nits. The
-  concern was fixed at `c78f17d` with file events, approved under D-029. `MAC-002F` is next on macOS.
 - Workflow: task PRs target `develop` and merge on a Grok review with no
   serious finding (D-029). `main` takes only owner-approved milestone reviews
   from `review/<milestone>`, tagged `m-<milestone>` (D-030). The shared-core
