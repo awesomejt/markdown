@@ -789,6 +789,9 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
 
   /// Whether a search match is being located in the shown document.
   private(set) var isRevealingMatch = false
+  /// Only the newest reveal applies: a later match or heading supersedes a
+  /// match still being located (Grok review 1, PR #84).
+  private var revealRequest: UInt64 = 0
 
   /// Show a heading, or select a search match, of the shown document. A
   /// match is located off the main thread. In the searched revision its
@@ -797,6 +800,9 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
   /// position when the query is gone). A heading or match that isn't there
   /// beeps.
   private func show(_ target: NavigationTarget) {
+    revealRequest &+= 1
+    let id = revealRequest
+    isRevealingMatch = false
     switch target {
     case .heading(let anchor):
       if !surface.reveal(anchor: anchor) { NSSound.beep() }
@@ -806,7 +812,7 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
       let loader = loader
       Task { [weak self] in
         let range = await Self.locate(match, in: rendered, loader: loader)
-        guard let self else { return }
+        guard let self, id == self.revealRequest else { return }
         self.isRevealingMatch = false
         // A newer rendering (a reload, another document) wins.
         guard self.surface.document?.snapshot === rendered.snapshot else { return }
