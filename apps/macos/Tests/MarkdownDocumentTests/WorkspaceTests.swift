@@ -146,6 +146,16 @@ struct WorkspaceTests {
     #expect(shallow.isTruncated)
     #expect(shallow.item(at: depth + "/deep.md") == nil)
 
+    // A too-deep branch drops only itself; its siblings are still listed
+    // (Grok review 1, PR #83).
+    let deep = directory.appendingPathComponent("siblings")
+    try make("a/b/c/d/deep.md", in: deep)
+    try make("z/later.md", in: deep)
+    let limited = try await list(deep, WorkspaceOptions(maxDepth: 2))
+    #expect(limited.isTruncated)
+    #expect(limited.item(at: "z/later.md") != nil)
+    #expect(limited.item(at: "a/b/c/d/deep.md") == nil)
+
     let folder = try FolderCapability(granted: root)
     await #expect(throws: CancellationError.self) {
       _ = try await Task.detached { try WorkspaceListing.list(folder, isCancelled: { true }) }
@@ -220,6 +230,17 @@ struct WorkspaceTests {
       }
     }.value
     #expect(try standalone[0].get().folder == nil)
+    // A missing target in missing folders is still placed inside, so the
+    // read reports it missing (Grok review 1, PR #83).
+    let nested = await Task.detached { () -> [Result<DocumentCapability, LinkError>] in
+      [(alone, nil), (source, folder)].map { (document, through) in
+        Result { () throws(LinkError) in
+          try document.linkedDocument("new/deeper/todo.md", through: through)
+        }
+      }
+    }.value
+    #expect(try nested[0].get().url.lastPathComponent == "todo.md")
+    #expect(try nested[1].get().folder === folder.grant)
     #expect(throws: LinkError.outsideFolder(granted: false)) { try standalone[1].get() }
 
     folder.revoke()

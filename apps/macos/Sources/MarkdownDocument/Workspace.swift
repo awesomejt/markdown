@@ -136,7 +136,7 @@ public struct WorkspaceListing: Sendable {
       return WorkspaceListing(
         folder: folder, options: options, items: items, fileCount: walk.fileCount,
         entriesExamined: walk.examined, skippedInvalid: walk.skippedInvalid,
-        isTruncated: walk.truncated, root: root, index: walk.index)
+        isTruncated: walk.truncated || walk.depthLimited, root: root, index: walk.index)
     }
   }
 }
@@ -150,7 +150,10 @@ private struct Walk {
   var examined = 0
   var fileCount = 0
   var skippedInvalid = 0
+  /// The entry limit stopped the walk: nothing more is read.
   var truncated = false
+  /// A folder was too deep to descend; its siblings are still listed.
+  var depthLimited = false
   var rootError: Int32 = 0
   var index: [String: WorkspaceItem] = [:]
 
@@ -214,7 +217,7 @@ private struct Walk {
       switch kind(of: path, type: type) {
       case .folder:
         guard depth < options.maxDepth else {
-          truncated = true
+          depthLimited = true
           continue
         }
         if truncated { continue }
@@ -341,12 +344,7 @@ extension DocumentCapability {
       }
     } else {
       guard let root = FolderCapability.realPath(base) else { throw .outsideFolder(granted: false) }
-      let standardized = candidate.standardizedFileURL
-      let resolved =
-        FolderCapability.realPath(standardized.path)
-        ?? FolderCapability.realPath(standardized.deletingLastPathComponent().path).map {
-          ($0 as NSString).appendingPathComponent(standardized.lastPathComponent)
-        }
+      let resolved = FolderCapability.resolvedPlacement(candidate)
       guard let resolved, resolved != root, resolved.hasPrefix(root == "/" ? "/" : root + "/")
       else { throw .outsideFolder(granted: false) }
       do {

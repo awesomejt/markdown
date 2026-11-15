@@ -137,13 +137,7 @@ public struct FolderCapability: Sendable, Hashable, CustomStringConvertible {
     if grant.isRevoked { throw .accessRevoked }
     guard url.isFileURL else { throw .outsideFolder }
     guard let root = Self.realPath(self.url.path) else { throw .notFound }
-    let standardized = url.standardizedFileURL
-    // A missing file is still placed by its folder, so the read reports it.
-    let resolved =
-      Self.realPath(standardized.path)
-      ?? Self.realPath(standardized.deletingLastPathComponent().path).map {
-        ($0 as NSString).appendingPathComponent(standardized.lastPathComponent)
-      }
+    let resolved = Self.resolvedPlacement(url)
     guard let resolved, resolved != root, resolved.hasPrefix(root == "/" ? "/" : root + "/")
     else { throw .outsideFolder }
     do {
@@ -171,6 +165,23 @@ public struct FolderCapability: Sendable, Hashable, CustomStringConvertible {
     case EACCES, EPERM: return grant.readLocation == nil ? .permissionDenied : .accessRevoked
     case ENXIO, ENODEV, ESTALE, ETIMEDOUT: return .volumeUnavailable
     default: return .unreadable
+    }
+  }
+
+  /// Where `url` is, through symlinks. A missing item, even in missing
+  /// folders, is placed by its nearest existing ancestor, so containment is
+  /// judged and the read reports it missing. `..` is resolved lexically first,
+  /// so the missing remainder has none.
+  static func resolvedPlacement(_ url: URL) -> String? {
+    var existing = url.standardizedFileURL
+    var missing: [String] = []
+    while true {
+      if let real = realPath(existing.path) {
+        return missing.reversed().reduce(real) { ($0 as NSString).appendingPathComponent($1) }
+      }
+      guard existing.path != "/", !existing.lastPathComponent.isEmpty else { return nil }
+      missing.append(existing.lastPathComponent)
+      existing.deleteLastPathComponent()
     }
   }
 

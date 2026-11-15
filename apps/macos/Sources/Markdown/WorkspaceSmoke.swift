@@ -160,6 +160,7 @@ enum WorkspaceSmoke {
       byExtendingSelection: false)
     browser.activateSelection()
     try await waitUntil("guide opens") { reader.documentTitle == "guide.md" && !reader.isBusy }
+    try await waitUntil("the window records its file's identity") { reader.knownIdentity != nil }
     delegate.open([hardLink])
     await delegate.opensFinished()
     try check(delegate.windows.count == 1, "a hard link focuses the window showing the file")

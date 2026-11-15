@@ -96,6 +96,9 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
   /// Open a document from the files sidebar or a link, at an optional
   /// heading anchor: in this window, or in the window already showing it.
   var onNavigate: ((ReaderWindowController, DocumentCapability, String?) -> Void)?
+  /// The loaded file's device and inode, read off the main thread when it
+  /// loads, so finding the window showing a file never stats this one.
+  private var identity: (capability: DocumentCapability, identity: FileIdentity)?
   /// A heading to show once this document loads.
   private var pendingAnchor: (capability: DocumentCapability, anchor: String)?
   /// Tells the reader why a link or file can't be opened; the smoke records it.
@@ -263,6 +266,7 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
         showStatus("Loading…", nil, title: capability.displayName, url: capability.url)
       }
     case .loaded(let loaded):
+      recordIdentity(loaded.capability)
       reloadRequested = false
       setNotice(nil)
       if loaded.capability != shownCapability { onLoaded?(self, loaded.capability) }
@@ -631,6 +635,21 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
   }
 
   // MARK: Files sidebar and links (MAC-002B)
+
+  /// The identity of the document this window holds, once known.
+  var knownIdentity: FileIdentity? {
+    guard let identity, identity.capability == loader.capability else { return nil }
+    return identity.identity
+  }
+
+  /// Read the loaded file's identity off the main thread, once per load.
+  private func recordIdentity(_ capability: DocumentCapability) {
+    Task { [weak self] in
+      let found = await Task.detached { capability.fileIdentity() }.value
+      guard let self, let found, self.loader.capability == capability else { return }
+      self.identity = (capability, found)
+    }
+  }
 
   /// Whether the folder is being listed.
   var isListing: Bool { listTask != nil }

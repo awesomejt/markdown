@@ -453,11 +453,15 @@ Limits: a restored window reopens its document without the folder grant
   sidebar opens documents, then shows the anchored heading (a missing anchor
   beeps). A link that resolves outside, through `..` or a symlink, or to a
   file that isn’t Markdown or plain text, is refused with a sheet that says
-  why; a missing target opens and reports “can’t be found” with Locate….
+  why; a missing target (even in missing folders) opens and reports “can’t be
+  found” with Locate….
 - **Finding the open window.** Every open (Finder, Open…, Open Recent, the
   sidebar, links) looks for a window already showing the file: by resolved
-  URL, else by device and inode, read off the main thread, so a hard link or
-  a case variant of the name finds it. Opens are placed one at a time, in
+  URL, else by device and inode, so a hard link or a case variant of the
+  name finds it. Each window records its file's identity off the main thread
+  when the file loads; an open reads only its target's, off the main thread
+  and for at most 2 seconds, so a stalled volume can't hold up later opens
+  (it then falls back to the URL match). Opens are placed one at a time, in
   the order asked.
 
 Limits: no file operations (rename, move, Trash) and no Back/Forward history.

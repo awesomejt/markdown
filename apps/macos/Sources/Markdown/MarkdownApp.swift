@@ -304,24 +304,37 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, 
 
   /// The window showing the same file as `capability`: the same resolved
   /// URL, or else the same device and inode, so a hard link or a case
-  /// variant of the name finds it too. The identities are read off the
-  /// main thread, since a disconnected server can stall a stat.
+  /// variant of the name finds it too. Each window records its file's
+  /// identity off the main thread when the file loads; only the target is
+  /// read here, off the main thread and for at most `identityWait`, so a
+  /// stalled volume can't hold up the opens queued behind this one.
   func existingWindow(for capability: DocumentCapability) async -> ReaderWindowController? {
     if let match = windows.first(where: { $0.loader.capability == capability }) { return match }
-    let candidates = windows.compactMap { window in window.loader.capability.map { (window, $0) } }
-    guard !candidates.isEmpty else { return nil }
-    let shown = candidates.map(\.1)
-    let index = await Task.detached { () -> Int? in
-      guard let target = capability.fileIdentity() else { return nil }
-      return shown.firstIndex { $0.fileIdentity() == target }
-    }.value
-    guard let index else { return nil }
-    let (window, held) = candidates[index]
-    // The window may have closed or moved on during the lookup.
-    guard windows.contains(where: { $0 === window }), window.loader.capability == held else {
-      return nil
+    guard windows.contains(where: { $0.knownIdentity != nil }),
+      let target = await Self.identity(of: capability, within: Self.identityWait)
+    else { return nil }
+    // Windows may have closed or moved on during the read.
+    return windows.first { $0.knownIdentity == target }
+  }
+
+  static let identityWait = Duration.seconds(2)
+
+  /// A file's identity, or nil when it can't be read within `limit`. The
+  /// stat itself can't be interrupted; a late result is dropped.
+  nonisolated static func identity(of capability: DocumentCapability, within limit: Duration)
+    async -> FileIdentity?
+  {
+    let once = ResumeOnce()
+    return await withCheckedContinuation { continuation in
+      Task.detached {
+        let found = capability.fileIdentity()
+        if once.claim() { continuation.resume(returning: found) }
+      }
+      Task.detached {
+        try? await Task.sleep(for: limit)
+        if once.claim() { continuation.resume(returning: nil) }
+      }
     }
-    return window
   }
 
   private func open(
@@ -779,5 +792,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, 
     let item = NSMenuItem(title: menu.title, action: nil, keyEquivalent: "")
     item.submenu = menu
     bar.addItem(item)
+  }
+}
+
+/// Lets exactly one of several racing tasks resume a continuation.
+private final class ResumeOnce: @unchecked Sendable {
+  private let lock = NSLock()
+  private var claimed = false
+  func claim() -> Bool {
+    lock.withLock {
+      defer { claimed = true }
+      return !claimed
+    }
   }
 }
