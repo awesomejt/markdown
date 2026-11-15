@@ -691,3 +691,47 @@ debug` for debug, or `--prepare-only` for a persistent public owner-test fixture
 - **Performance tuning (`apps/linux/src/document/workspace.rs`)**:
   - `WorkspaceTree::enumerate` precomputes lowercase entry names once per entry before sorting
     directory children, avoiding $O(N \log N)$ string allocations on large workspaces.
+
+## Development packaging and complete R1 conformance (LNX-002F)
+
+- **R1 conformance**:
+  - **Relative Markdown link navigation (`apps/linux/src/render.rs`, `apps/linux/src/reader.rs`, `apps/linux/src/files.rs`)**:
+    `MD_TARGET_REQUIRES_CAPABILITY` maps to `Target::Relative { path, fragment }`. Clicking a
+    relative Markdown link within an active workspace opens the target through
+    `FolderCapability::open_document` (canonical containment enforced) and jumps to `#fragment`
+    headings; outside-folder targets surface `OutsideFolder`, and single-file sessions without a
+    workspace folder grant prompt the user to open the containing folder.
+  - **Lazy bounded syntax highlighting (`apps/linux/src/syntax.rs`, `apps/linux/src/render.rs`)**:
+    Fenced code blocks (`MD_NODE_CODE_BLOCK`) highlight lazily in `Fragment::markup_with_highlights_and_selection`
+    only for realized viewport rows across Rust, Python, JS/TS, C/C++, Go, Shell, JSON, YAML/TOML,
+    SQL, and HTML/XML/CSS, bounded at `16 KiB` (`MAX_HIGHLIGHT_BYTES`) and `2,048` tokens
+    (`MAX_HIGHLIGHT_TOKENS`) per fragment without interfering with find or selection highlights.
+  - **YAML front matter properties and alerts (`apps/linux/src/render.rs`, `apps/linux/src/reader.rs`)**:
+    `RenderPlan` extracts typed `doc.properties` separately from document content; `Reader`
+    exposes them in a collapsible `Properties (N)` expander (`document-properties`) above the
+    reader view. `MD_NODE_ALERT` blocks render with semantic labels (`Note:`, `Tip:`, `Important:`,
+    `Warning:`, `Caution:`).
+  - **Core and semantic contract diagnostics (`apps/linux/core/src/runtime.rs`, `apps/linux/src/main.rs`)**:
+    `--version` and `Help > About Markdown` (`system_information`) report the negotiated semantic
+    contract (`model-v2`, ABI v1, anchor v1) and linked core package configuration/fingerprint.
+- **Installable development packaging (`apps/linux/tools/artifact.py`)**:
+  - The unsigned x86-64 `.tar.gz` development artifact includes `install.sh` and `uninstall.sh`
+    for user/prefix installation (`PREFIX=${HOME}/.local` default), rewriting the desktop entry's
+    `Exec=` to the installed binary path and installing `Licenses/` and `BuildInfo.json` under
+    `share/doc/markdown-linux/`.
+  - `artifact.py` verifies both relocated extraction and full `install.sh` → `--version` /
+    `desktop-file-validate` / `ldd` / `--smoke-test` / `--relaunch-check` → `uninstall.sh`.
+- **Named-host performance budgets (`apps/linux/src/measure.rs`, `apps/linux/tools/measure.py`)**:
+  - Added end-to-end GTK `window-launch` and `jump-frame` (`frame_clock` `after-paint`) modes.
+  - Measured on AMD Ryzen 9 5950X, CachyOS KDE Plasma Wayland, GTK 4.24.1 (Release, 5 runs each):
+    - `window-launch` (external `CLOCK_MONOTONIC` from `measure.py` spawn to GTK `after-paint`):
+      `prose-1mib` median `357.83 ms` (max `368.30 ms`, D-016 `<= 400 ms` met);
+      `long-lines-1mib` median `409.68 ms` (max `412.50 ms`, slightly above `400 ms` due to
+      1 MiB single-line Pango wrapping); `prose-5mib` (stress) median `914.19 ms`.
+    - `jump-frame`: `prose-1mib` median `30.26 ms` (max `33.45 ms`, D-016 `<= 150 ms` met);
+      `prose-5mib` median `30.74 ms` (max `30.83 ms`, D-016 `<= 150 ms` met);
+      `long-lines-1mib` median `181.63 ms` (max `183.16 ms`, exceeds `150 ms` due to Pango
+      wrapping of a 1 MiB single-line paragraph on first jump).
+    - In-process `launch` pipeline medians: `prose-1mib` `82.17 ms`, `prose-5mib` `534.90 ms`,
+      `long-lines-1mib` `8.90 ms`. `refresh` (`kept_place: true` 5/5): `78.76 ms`, `644.60 ms`,
+      `6.24 ms`.

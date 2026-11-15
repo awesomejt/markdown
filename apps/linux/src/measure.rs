@@ -8,6 +8,26 @@ const D016_TARGET_BYTES: usize = 1024 * 1024;
 
 unsafe extern "C" {
     fn malloc_trim(pad: usize) -> i32;
+    fn clock_gettime(clk_id: i32, tp: *mut Timespec) -> i32;
+}
+
+#[repr(C)]
+struct Timespec {
+    tv_sec: i64,
+    tv_nsec: i64,
+}
+
+fn monotonic_seconds() -> f64 {
+    let mut ts = Timespec {
+        tv_sec: 0,
+        tv_nsec: 0,
+    };
+    // CLOCK_MONOTONIC = 1 on Linux
+    if unsafe { clock_gettime(1, &mut ts) } == 0 {
+        ts.tv_sec as f64 + (ts.tv_nsec as f64) / 1_000_000_000.0
+    } else {
+        0.0
+    }
 }
 
 fn escape_json(s: &str) -> String {
@@ -85,6 +105,10 @@ pub fn run(args: &[String]) -> Result<(), String> {
         run_refresh(doc_path, count)
     } else if mode == "interaction" {
         run_interaction(doc_path)
+    } else if mode == "window-launch" {
+        run_window_launch(doc_path)
+    } else if mode == "jump-frame" {
+        run_jump_frame(doc_path)
     } else {
         Err(format!("unknown measure mode: {mode}"))
     }
@@ -392,5 +416,152 @@ fn run_refresh(doc_path: Option<&Path>, count: usize) -> Result<(), String> {
         results.join(",\n    ")
     );
 
+    Ok(())
+}
+
+fn run_window_launch(doc_path: Option<&Path>) -> Result<(), String> {
+    let doc_path = doc_path.ok_or("document path required for window-launch")?;
+    let canonical = std::fs::canonicalize(doc_path).map_err(|e| format!("canonicalize: {e}"))?;
+    let file_name = doc_path
+        .file_name()
+        .map(|s| escape_json(&s.to_string_lossy()))
+        .unwrap_or_default();
+    let start = Instant::now();
+    let app = gtk::Application::builder()
+        .application_id(crate::APP_ID)
+        .flags(gtk::gio::ApplicationFlags::NON_UNIQUE)
+        .build();
+    let presented_ms = std::rc::Rc::new(std::cell::Cell::new(None::<f64>));
+    let presented_out = presented_ms.clone();
+    app.connect_startup(crate::install_commands);
+    app.connect_activate(move |app| {
+        let win = crate::new_window(app);
+        crate::files::open_for_smoke(&win, &gtk::gio::File::for_path(&canonical));
+        let app_weak = app.downgrade();
+        let win_weak = win.downgrade();
+        let presented = presented_ms.clone();
+        let paint_hooked = std::rc::Rc::new(std::cell::Cell::new(false));
+        glib::timeout_add_local(std::time::Duration::from_millis(2), move || {
+            let Some(win) = win_weak.upgrade() else {
+                return glib::ControlFlow::Break;
+            };
+            if crate::files::source(&win).is_some()
+                && !paint_hooked.get()
+                && let Some(clock) = win.frame_clock()
+            {
+                paint_hooked.set(true);
+                let app_w = app_weak.clone();
+                let p = presented.clone();
+                let handler = std::rc::Rc::new(std::cell::RefCell::new(None));
+                let handler_ref = handler.clone();
+                let id = clock.connect_after_paint(move |c| {
+                    if p.get().is_none() {
+                        p.set(Some(monotonic_seconds()));
+                        if let Some(id) = handler_ref.borrow_mut().take() {
+                            c.disconnect(id);
+                        }
+                        if let Some(app) = app_w.upgrade() {
+                            app.quit();
+                        }
+                    }
+                });
+                *handler.borrow_mut() = Some(id);
+                win.queue_draw();
+                return glib::ControlFlow::Break;
+            }
+            if start.elapsed().as_secs() > 15 {
+                if let Some(app) = app_weak.upgrade() {
+                    app.quit();
+                }
+                return glib::ControlFlow::Break;
+            }
+            glib::ControlFlow::Continue
+        });
+    });
+    let args: [&str; 1] = ["markdown-linux"];
+    app.run_with_args(&args);
+    let after_paint_s = presented_out
+        .get()
+        .ok_or_else(|| "window-launch timed out waiting for frame paint".to_string())?;
+    let (_, peak_rss_kib) = get_rss_kib();
+    println!(
+        "{{\n  \"mode\": \"window-launch\",\n  \"document\": \"{file_name}\",\n  \"after_paint_monotonic_s\": {:.6},\n  \"in_process_ms\": {:.2},\n  \"peak_rss_kib\": {peak_rss_kib}\n}}",
+        after_paint_s,
+        start.elapsed().as_secs_f64() * 1000.0,
+    );
+    Ok(())
+}
+
+fn run_jump_frame(doc_path: Option<&Path>) -> Result<(), String> {
+    let doc_path = doc_path.ok_or("document path required for jump-frame")?;
+    let canonical = std::fs::canonicalize(doc_path).map_err(|e| format!("canonicalize: {e}"))?;
+    let file_name = doc_path
+        .file_name()
+        .map(|s| escape_json(&s.to_string_lossy()))
+        .unwrap_or_default();
+    let app = gtk::Application::builder()
+        .application_id(crate::APP_ID)
+        .flags(gtk::gio::ApplicationFlags::NON_UNIQUE)
+        .build();
+    let jump_ms = std::rc::Rc::new(std::cell::Cell::new(None::<f64>));
+    let jump_out = jump_ms.clone();
+    app.connect_startup(crate::install_commands);
+    app.connect_activate(move |app| {
+        let win = crate::new_window(app);
+        crate::files::open_for_smoke(&win, &gtk::gio::File::for_path(&canonical));
+        let app_weak = app.downgrade();
+        let win_weak = win.downgrade();
+        let jump_ms = jump_ms.clone();
+        let jumped = std::rc::Rc::new(std::cell::Cell::new(false));
+        let start = Instant::now();
+        glib::timeout_add_local(std::time::Duration::from_millis(5), move || {
+            let Some(win) = win_weak.upgrade() else {
+                return glib::ControlFlow::Break;
+            };
+            let count = crate::files::outline_count(&win);
+            if count > 0
+                && !jumped.get()
+                && let Some(clock) = win.frame_clock()
+            {
+                jumped.set(true);
+                let jump_start = Instant::now();
+                crate::files::activate_outline_for_smoke(&win, (count - 1) as u32);
+                let app_w = app_weak.clone();
+                let j = jump_ms.clone();
+                let handler = std::rc::Rc::new(std::cell::RefCell::new(None));
+                let handler_ref = handler.clone();
+                let id = clock.connect_after_paint(move |c| {
+                    if j.get().is_none() {
+                        j.set(Some(jump_start.elapsed().as_secs_f64() * 1000.0));
+                        if let Some(id) = handler_ref.borrow_mut().take() {
+                            c.disconnect(id);
+                        }
+                        if let Some(app) = app_w.upgrade() {
+                            app.quit();
+                        }
+                    }
+                });
+                *handler.borrow_mut() = Some(id);
+                win.queue_draw();
+                return glib::ControlFlow::Break;
+            }
+            if start.elapsed().as_secs() > 15 {
+                if let Some(app) = app_weak.upgrade() {
+                    app.quit();
+                }
+                return glib::ControlFlow::Break;
+            }
+            glib::ControlFlow::Continue
+        });
+    });
+    let args: [&str; 1] = ["markdown-linux"];
+    app.run_with_args(&args);
+    let ms = jump_out
+        .get()
+        .ok_or_else(|| "jump-frame timed out waiting for frame paint".to_string())?;
+    println!(
+        "{{\n  \"mode\": \"jump-frame\",\n  \"document\": \"{file_name}\",\n  \"jump_frame_ms\": {:.2}\n}}",
+        ms
+    );
     Ok(())
 }

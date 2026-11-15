@@ -16,8 +16,8 @@ pub mod workspace;
 pub use document::CoreDocument;
 pub use find::{CoreFindMatch, CoreFindOptions, CoreFindResult, CoreFindSegment, FindGate};
 pub use runtime::{
-    CoreError, HandleCounts, HostLimits, PACKAGE_CONFIGURATION, PACKAGE_FINGERPRINT, live_handles,
-    pending_parses, validate,
+    CoreError, HandleCounts, HostLimits, PACKAGE_CONFIGURATION, PACKAGE_FINGERPRINT,
+    diagnostics_summary, live_handles, pending_parses, validate,
 };
 pub use session::{
     CoreAvailability, CoreChangeDisposition, CoreOutcome, CoreParseFailure, CoreResult,

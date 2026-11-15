@@ -136,6 +136,7 @@ struct WindowDocument {
     pending_folder_recovery: Option<(String, &'static str, PathBuf)>,
     saved_position: Option<markdown_linux::restoration::SavedPosition>,
     pending_search_jump: Option<WorkspaceSearchJump>,
+    pending_anchor_jump: Option<String>,
     weak_self: Weak<RefCell<WindowDocument>>,
 }
 thread_local! { static WINDOWS: RefCell<HashMap<usize, Rc<RefCell<WindowDocument>>>> = RefCell::new(HashMap::new()); }
@@ -300,6 +301,9 @@ impl WindowDocument {
                                 {
                                     jump_to_search_hit(&state_ref.reader, &document, &jump);
                                 }
+                                if let Some(anchor) = state_ref.pending_anchor_jump.take() {
+                                    state_ref.reader.scroll_to_anchor(&anchor);
+                                }
                                 state_ref.arm_watcher();
                             }
                             state_ref.status(&format!(
@@ -320,6 +324,7 @@ impl WindowDocument {
                         }
                         LoadEvent::Failed(error) => {
                             state_ref.pending_search_jump = None;
+                            state_ref.pending_anchor_jump = None;
                             if state_ref.loader.document.is_some() {
                                 state_ref.status(&format!("{error} · Retaining last version"));
                             } else {
@@ -545,11 +550,13 @@ impl WindowDocument {
     }
     fn open(&mut self, file: &gio::File) {
         self.pending_search_jump = None;
+        self.pending_anchor_jump = None;
         self.open_internal(file, None);
     }
     fn open_from_workspace(&mut self, path: &std::path::Path) {
         let Some(folder) = &self.active_folder else {
             self.pending_search_jump = None;
+            self.pending_anchor_jump = None;
             self.workspace_browser.clear();
             self.status(&FolderError::AccessRevoked.to_string());
             return;
@@ -558,7 +565,20 @@ impl WindowDocument {
             Ok(cap) => cap,
             Err(FolderError::OutsideFolder) => {
                 self.pending_search_jump = None;
+                self.pending_anchor_jump = None;
                 self.status(&FolderError::OutsideFolder.to_string());
+                return;
+            }
+            Err(error @ (FolderError::NotFound | FolderError::NotDirectory))
+                if folder.validate().is_ok() =>
+            {
+                self.pending_search_jump = None;
+                self.pending_anchor_jump = None;
+                let name = path
+                    .file_name()
+                    .map(|n| n.to_string_lossy().into_owned())
+                    .unwrap_or_else(|| "target".to_string());
+                self.status(&format!("{error}: {name}"));
                 return;
             }
             Err(error) => {
@@ -568,6 +588,7 @@ impl WindowDocument {
                 self.workspace_browser.clear();
                 self.saved_position = None;
                 self.pending_search_jump = None;
+                self.pending_anchor_jump = None;
                 self.reader.clear();
                 self.stop_polling();
                 self.reload.set_enabled(false);
@@ -592,6 +613,7 @@ impl WindowDocument {
             Err(error) => {
                 self.saved_position = None;
                 self.pending_search_jump = None;
+                self.pending_anchor_jump = None;
                 self.reload.set_enabled(self.loader.has_file());
                 self.status(&error.to_string());
             }
@@ -1146,6 +1168,7 @@ pub fn attach(window: &gtk::ApplicationWindow, label: &gtk::Label) {
             pending_folder_recovery: None,
             saved_position: None,
             pending_search_jump: None,
+            pending_anchor_jump: None,
             weak_self: weak.clone(),
         })
     });
@@ -1241,6 +1264,59 @@ pub fn attach(window: &gtk::ApplicationWindow, label: &gtk::Label) {
             }
         },
     );
+
+    let weak_rel = Rc::downgrade(&state);
+    state
+        .borrow()
+        .reader
+        .set_on_open_relative(move |rel_path, fragment| {
+            let Some(state_rc) = weak_rel.upgrade() else {
+                return;
+            };
+            let mut st = state_rc.borrow_mut();
+            let Some(folder) = st.active_folder.as_ref() else {
+                st.status(&format!(
+                "Open the containing folder as a workspace to follow relative link \"{rel_path}\"."
+            ));
+                return;
+            };
+            let base_dir = st
+                .loader
+                .capability()
+                .and_then(|c| c.path().parent().map(std::path::Path::to_path_buf))
+                .unwrap_or_else(|| folder.path().to_path_buf());
+            let candidate = base_dir.join(rel_path);
+            let already_open = st
+                .loader
+                .capability()
+                .zip(std::fs::canonicalize(&candidate).ok())
+                .is_some_and(|(cap, canon)| cap.path() == canon.as_path());
+            if already_open {
+                if let Some(anchor) = fragment {
+                    st.reader.scroll_to_anchor(anchor);
+                }
+                return;
+            }
+            match folder.contains_file(&candidate) {
+                Ok(_) => {}
+                Err(FolderError::NotFound | FolderError::NotDirectory)
+                    if folder.validate().is_ok() =>
+                {
+                    st.pending_anchor_jump = None;
+                    st.status(&format!("Linked file \"{rel_path}\" was not found."));
+                    return;
+                }
+                Err(FolderError::OutsideFolder) => {
+                    st.pending_anchor_jump = None;
+                    st.status(&FolderError::OutsideFolder.to_string());
+                    return;
+                }
+                Err(_) => {}
+            }
+            st.pending_search_jump = None;
+            st.pending_anchor_jump = fragment.map(str::to_string);
+            st.open_from_workspace(&candidate);
+        });
 
     let ws_search_act = gio::SimpleAction::new("workspace-search", None);
     let weak = Rc::downgrade(&state);
@@ -1821,6 +1897,18 @@ pub fn apply_text_scale_to_all_windows(app: &gtk::Application, scale: f64) {
 pub fn open_folder_for_smoke(window: &gtk::ApplicationWindow, folder: &gio::File) {
     if let Some(state) = state(window) {
         state.borrow_mut().open_folder(folder);
+    }
+}
+
+pub fn outline_count(window: &gtk::ApplicationWindow) -> usize {
+    state(window)
+        .and_then(|s| s.borrow().reader.plan().map(|p| p.outline.len()))
+        .unwrap_or(0)
+}
+
+pub fn activate_outline_for_smoke(window: &gtk::ApplicationWindow, index: u32) {
+    if let Some(state) = state(window) {
+        state.borrow().reader.activate_outline(index);
     }
 }
 

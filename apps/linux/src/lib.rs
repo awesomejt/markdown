@@ -4,3 +4,4 @@ pub mod preferences;
 pub mod recents;
 pub mod render;
 pub mod restoration;
+pub mod syntax;

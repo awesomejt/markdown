@@ -159,8 +159,11 @@ async fn commands(app: &gtk::Application) -> Result<(), String> {
     let about = about_dialog().ok_or("About dialog")?;
     check(
         about.program_name().as_deref() == Some("Markdown")
-            && about.version().as_deref() == Some(env!("CARGO_PKG_VERSION")),
-        "About names the program and version",
+            && about.version().as_deref() == Some(env!("CARGO_PKG_VERSION"))
+            && about
+                .system_information()
+                .is_some_and(|s| s.contains("model-v2") && s.contains("ABI v1")),
+        "About names the program, version, and core contract diagnostics",
     )?;
     about.close();
     wait_until("About closes", || about_dialog().is_none()).await?;

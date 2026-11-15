@@ -126,6 +126,48 @@ def package(binary: Path) -> Path:
             json.dumps(info, indent=2) + "\n", encoding="utf-8"
         )
 
+        install_sh = bundle / "install.sh"
+        install_sh.write_text(
+            f"""#!/bin/sh
+set -eu
+BUNDLE_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+PREFIX=${{PREFIX:-"${{HOME}}/.local"}}
+mkdir -p "${{PREFIX}}/bin" "${{PREFIX}}/lib" "${{PREFIX}}/share/applications" "${{PREFIX}}/share/doc/markdown-linux/Licenses"
+install -m 755 "${{BUNDLE_DIR}}/bin/markdown-linux" "${{PREFIX}}/bin/markdown-linux"
+install -m 755 "${{BUNDLE_DIR}}/lib/libmarkdown_ffi.so" "${{PREFIX}}/lib/libmarkdown_ffi.so"
+sed "s|^Exec=.*|Exec=${{PREFIX}}/bin/markdown-linux %F|" "${{BUNDLE_DIR}}/share/applications/{APP_ID}.desktop" > "${{PREFIX}}/share/applications/{APP_ID}.desktop"
+chmod 644 "${{PREFIX}}/share/applications/{APP_ID}.desktop"
+install -m 644 "${{BUNDLE_DIR}}/BuildInfo.json" "${{PREFIX}}/share/doc/markdown-linux/BuildInfo.json"
+install -m 644 "${{BUNDLE_DIR}}/Licenses/LICENSE" "${{PREFIX}}/share/doc/markdown-linux/Licenses/LICENSE"
+install -m 644 "${{BUNDLE_DIR}}/Licenses/inventory.json" "${{PREFIX}}/share/doc/markdown-linux/Licenses/inventory.json"
+install -m 644 "${{BUNDLE_DIR}}/Licenses/THIRD-PARTY-NOTICES.txt" "${{PREFIX}}/share/doc/markdown-linux/Licenses/THIRD-PARTY-NOTICES.txt"
+if command -v update-desktop-database >/dev/null 2>&1; then
+    update-desktop-database "${{PREFIX}}/share/applications" >/dev/null 2>&1 || true
+fi
+echo "Installed Markdown to ${{PREFIX}}"
+""",
+            encoding="utf-8",
+        )
+        os.chmod(install_sh, 0o755)
+
+        uninstall_sh = bundle / "uninstall.sh"
+        uninstall_sh.write_text(
+            f"""#!/bin/sh
+set -eu
+PREFIX=${{PREFIX:-"${{HOME}}/.local"}}
+rm -f "${{PREFIX}}/bin/markdown-linux"
+rm -f "${{PREFIX}}/lib/libmarkdown_ffi.so"
+rm -f "${{PREFIX}}/share/applications/{APP_ID}.desktop"
+rm -rf "${{PREFIX}}/share/doc/markdown-linux"
+if command -v update-desktop-database >/dev/null 2>&1; then
+    update-desktop-database "${{PREFIX}}/share/applications" >/dev/null 2>&1 || true
+fi
+echo "Uninstalled Markdown from ${{PREFIX}}"
+""",
+            encoding="utf-8",
+        )
+        os.chmod(uninstall_sh, 0o755)
+
         def _normalize_tarinfo(info_entry: tarfile.TarInfo) -> tarfile.TarInfo:
             info_entry.uid = 0
             info_entry.gid = 0
@@ -338,6 +380,9 @@ def verify(archive: Path) -> None:
                     raise SystemExit(f"{pkg['name']}: {filename} missing from THIRD-PARTY-NOTICES.txt")
 
         # Launch from the extracted directory outside the checkout.
+        version_out = _run_with_scratch_xdg([str(executable), "--version"], root)
+        if "model-v2" not in version_out or "ABI v1" not in version_out:
+            raise SystemExit(f"unexpected --version output: {version_out!r}")
         for flag, marker in SMOKES.items():
             _run_smoke(executable, root, flag, marker)
         subprocess.run(
@@ -346,9 +391,39 @@ def verify(archive: Path) -> None:
             check=True,
         )
         _run_relaunch(executable, root)
+
+        # Install into a temporary prefix, verify installed files & launch, then uninstall.
+        prefix = root / "prefix"
+        install_env = os.environ.copy()
+        install_env["PREFIX"] = str(prefix)
+        subprocess.run(["sh", str(bundle / "install.sh")], cwd=root, env=install_env, check=True)
+        installed_bin = prefix / "bin" / "markdown-linux"
+        installed_lib = prefix / "lib" / "libmarkdown_ffi.so"
+        installed_desktop = prefix / "share" / "applications" / f"{APP_ID}.desktop"
+        for req in (
+            installed_bin,
+            installed_lib,
+            installed_desktop,
+            prefix / "share" / "doc" / "markdown-linux" / "BuildInfo.json",
+            prefix / "share" / "doc" / "markdown-linux" / "Licenses" / "THIRD-PARTY-NOTICES.txt",
+        ):
+            if not req.is_file():
+                raise SystemExit(f"missing installed file: {req}")
+        if shutil.which("desktop-file-validate"):
+            subprocess.run(["desktop-file-validate", str(installed_desktop)], check=True)
+        installed_ldd = subprocess.check_output(["ldd", str(installed_bin)], text=True)
+        installed_match = re.search(r"libmarkdown_ffi\.so\s+=>\s+(\S+)", installed_ldd)
+        if not installed_match or Path(installed_match.group(1)).resolve() != installed_lib.resolve():
+            raise SystemExit(f"installed ldd did not resolve to {installed_lib}:\n{installed_ldd}")
+        _run_smoke(installed_bin, root, "--smoke-test", SMOKES["--smoke-test"])
+        _run_relaunch(installed_bin, root)
+        subprocess.run(["sh", str(bundle / "uninstall.sh")], cwd=root, env=install_env, check=True)
+        if installed_bin.exists() or installed_lib.exists() or installed_desktop.exists():
+            raise SystemExit("uninstall.sh left installed files behind")
+
         print(
-            f"artifact: {archive.name} verified relocated ({len(inventory['packages'])} "
-            "linked packages inventoried; smoke, association, and relaunch passed)",
+            f"artifact: {archive.name} verified relocated and prefix-installed ({len(inventory['packages'])} "
+            "linked packages inventoried; smoke, association, relaunch, and install/uninstall passed)",
             flush=True,
         )
 
