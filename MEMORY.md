@@ -381,6 +381,16 @@ read.
   verification. Grok review 1 at `a2a5de8` reported 0 Blockers, 1 Concern, 1 Nit (approved
   under D-029; both findings fixed at `05765cf` with full Debug/Release
   `apps/linux/tools/check.py` passing). `LNX-002E` is next on Linux.
+- **LNX-002E (PR #78)**: delivers Linux workspace change watching (`WorkspaceWatcher` in
+  `apps/linux/src/document/watcher.rs` monitoring root, parent, and up to 256 subdirectories
+  with 150 ms debounce / 1,000 ms max coalesce, in-flight refresh gating, and automatic
+  access-loss recovery), extended `WindowRestorationState` (`apps/linux/src/restoration.rs`,
+  persisting `workspace_path`, `workspace_sidebar_visible`, `workspace_expanded_paths`,
+  `workspace_show_hidden`, and `workspace_markdown_only` with v1 back-compat and missing/revoked
+  workspace recovery alongside documents), and precomputed lowercase sorting in
+  `WorkspaceTree::enumerate`. Grok review 1 at `af7e85d` reported 0 Blockers, 2 Concerns, 2 Nits
+  (approved under D-029; all 4 findings fixed at `1a69223` with full Debug/Release
+  `apps/linux/tools/check.py` passing). `LNX-002F` is next on Linux.
 - Workflow: task PRs target `develop` and merge on a Grok review with no
   serious finding (D-029). `main` takes only owner-approved milestone reviews
   from `review/<milestone>`, tagged `m-<milestone>` (D-030). The shared-core
