@@ -370,7 +370,17 @@ read.
   `Edit > Find in Workspace…`, `Match Case`/`Whole Words`/`Stop` controls, Pango snippet
   highlights, and source-offset/anchor result navigation). Grok review 1 at `45c3cbb`
   reported 0 Blockers, 1 Concern, 3 Nits (approved under D-029); all 4 findings fixed
-  with full Debug/Release `apps/linux/tools/check.py` passing. `LNX-002D` is next on Linux.
+  with full Debug/Release `apps/linux/tools/check.py` passing.
+- **LNX-002D (PR #77)**: delivers Linux versioned preferences schema v2
+  (`apps/linux/src/preferences.rs`, `show_outline_by_default`, `restore_session_on_launch`,
+  automatic v1→v2 migration on load, future-version preservation on save,
+  `MARKDOWN_PREFERENCES_PATH` isolation), native GTK 4 Preferences dialog
+  (`apps/linux/src/preferences_dialog.rs`, `Edit > Preferences…` / `Ctrl+,` with live Theme,
+  Default text size, Outline default, Session restoration toggles, and `Reset to Defaults`),
+  and extended smoke + two-phase `--relaunch-check` v1→v2 migration and Dark-theme
+  verification. Grok review 1 at `a2a5de8` reported 0 Blockers, 1 Concern, 1 Nit (approved
+  under D-029; both findings fixed at `05765cf` with full Debug/Release
+  `apps/linux/tools/check.py` passing). `LNX-002E` is next on Linux.
 - Workflow: task PRs target `develop` and merge on a Grok review with no
   serious finding (D-029). `main` takes only owner-approved milestone reviews
   from `review/<milestone>`, tagged `m-<milestone>` (D-030). The shared-core
