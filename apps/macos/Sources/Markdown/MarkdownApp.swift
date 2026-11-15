@@ -407,11 +407,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, 
     existing.showWindow(nil)
   }
 
-  /// Open a document from a window's files sidebar or a link in it: bring
-  /// forward the window already showing it, else show it in `controller`,
-  /// which keeps its folder. `anchor` is a heading to show.
+  /// Open a document from a window's files sidebar, search results or a
+  /// link in it: bring forward the window already showing it, else show it
+  /// in `controller`, which keeps its folder. `target` is a heading or a
+  /// search match to show.
   func navigate(
-    to capability: DocumentCapability, anchor: String?, from controller: ReaderWindowController
+    to capability: DocumentCapability, target: NavigationTarget?,
+    from controller: ReaderWindowController
   ) {
     enqueueOpen { [weak self] in
       guard let self else { return }
@@ -419,13 +421,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, 
         if existing !== controller {
           self.reuse(existing, for: capability, folder: nil, recent: nil)
         }
-        if let anchor { existing.reveal(anchor: anchor) }
+        if let target { existing.reveal(target) }
         existing.window?.makeKeyAndOrderFront(nil)
         return
       }
       guard self.windows.contains(where: { $0 === controller }) else { return }
       controller.recent = nil
-      controller.navigate(to: capability, anchor: anchor)
+      controller.navigate(to: capability, target: target)
     }
   }
 
@@ -654,8 +656,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, 
     controller.onRecover = { [weak self] action, controller in
       self?.recover(action, controller)
     }
-    controller.onNavigate = { [weak self] controller, capability, anchor in
-      self?.navigate(to: capability, anchor: anchor, from: controller)
+    controller.onNavigate = { [weak self] controller, capability, target in
+      self?.navigate(to: capability, target: target, from: controller)
     }
     if restoresWindows { controller.enableRestoration() }
     windows.append(controller)
@@ -736,6 +738,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, 
     find.addItem(
       withTitle: "Use Selection for Find",
       action: #selector(ReaderWindowController.useSelectionForFind(_:)), keyEquivalent: "e")
+    find.addItem(.separator())
+    let findInFolder = find.addItem(
+      withTitle: "Find in Folder…", action: #selector(ReaderWindowController.showSearch(_:)),
+      keyEquivalent: "f")
+    findInFolder.keyEquivalentModifierMask = [.command, .shift]
     add(find, to: edit)
     add(edit, to: bar)
 
@@ -752,6 +759,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, 
       withTitle: "Outline", action: #selector(ReaderWindowController.showOutline(_:)),
       keyEquivalent: "2")
     showOutline.keyEquivalentModifierMask = [.command, .option]
+    let showSearch = view.addItem(
+      withTitle: "Search", action: #selector(ReaderWindowController.showSearch(_:)),
+      keyEquivalent: "3")
+    showSearch.keyEquivalentModifierMask = [.command, .option]
     view.addItem(.separator())
     let hidden = view.addItem(
       withTitle: "Show Hidden Files",

@@ -20,6 +20,8 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
   let outline = OutlineController()
   /// The folder's files beside the outline (MAC-002B).
   let files = WorkspaceBrowserController()
+  /// The folder search beside them (MAC-002C).
+  let search = WorkspaceSearchController()
   let sidebar: SidebarController
   let findBar = FindBar()
   let notice = NoticeBar()
@@ -93,14 +95,15 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
   private(set) var workspaceOptions = WorkspaceOptions()
   private var listTask: Task<Void, Never>?
   private var listRequest: UInt64 = 0
-  /// Open a document from the files sidebar or a link, at an optional
-  /// heading anchor: in this window, or in the window already showing it.
-  var onNavigate: ((ReaderWindowController, DocumentCapability, String?) -> Void)?
+  /// Open a document from the files sidebar, a link or a search result, at
+  /// an optional heading or match: in this window, or in the window already
+  /// showing it.
+  var onNavigate: ((ReaderWindowController, DocumentCapability, NavigationTarget?) -> Void)?
   /// The loaded file's device and inode, read off the main thread when it
   /// loads, so finding the window showing a file never stats this one.
   private var identity: (capability: DocumentCapability, identity: FileIdentity)?
-  /// A heading to show once this document loads.
-  private var pendingAnchor: (capability: DocumentCapability, anchor: String)?
+  /// A heading or search match to show once this document loads.
+  private var pendingTarget: (capability: DocumentCapability, target: NavigationTarget)?
   /// Tells the reader why a link or file can't be opened; the smoke records it.
   var presentProblem: (ReaderWindowController, String, String) -> Void = {
     controller, message, detail in
@@ -109,7 +112,7 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
 
   init(preferences: ReaderPreferences) {
     self.preferences = preferences
-    sidebar = SidebarController(files: files, outline: outline)
+    sidebar = SidebarController(files: files, outline: outline, search: search)
     let window = NSWindow(
       contentRect: NSRect(x: 0, y: 0, width: 900, height: 640),
       styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
@@ -187,6 +190,8 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
     surface.onNavigate = { [weak self] index in self?.outline.select(index) }
     surface.onOpenDocument = { [weak self] path, fragment in self?.followLink(path, fragment) }
     files.onOpen = { [weak self] item in self?.openItem(item) }
+    search.onOpen = { [weak self] item, match in self?.openItem(item, at: match.map { .match($0) })
+    }
     loader.onChange = { [weak self] state in self?.present(state) }
     findBar.onSearch = { [weak self] in self?.search(then: nil) }
     findBar.onNavigate = { [weak self] backwards in self?.step(backwards: backwards) }
@@ -229,8 +234,9 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
     case transfer
     /// A restored window's saved position.
     case restore(SavedPosition)
-    /// A document opened from a link: the top, then the linked heading.
-    case anchor(String)
+    /// A document opened from a link or a search result: the top, then the
+    /// linked heading or the match.
+    case target(NavigationTarget)
   }
 
   /// Whether `loaded` is the revision on screen (or being completed from its lead).
@@ -279,7 +285,7 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
     case .failed(let capability, let error):
       reloadRequested = false
       pendingRestore = nil
-      pendingAnchor = nil
+      pendingTarget = nil
       showStatus(
         error.message, error.recovery, title: capability.displayName, url: nil,
         recovery: Recovery(subject: .document(capability), actions: actions(error.recoveryActions)))
@@ -296,9 +302,9 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
       pendingRestore = nil
       return .restore(saved)
     }
-    if let pending = pendingAnchor, pending.capability == loaded.capability {
-      pendingAnchor = nil
-      return .anchor(pending.anchor)
+    if let pending = pendingTarget, pending.capability == loaded.capability {
+      pendingTarget = nil
+      return .target(pending.target)
     }
     return loaded.capability == shownCapability && surface.document != nil ? .transfer : .top
   }
@@ -322,7 +328,7 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
         Task { @MainActor in self?.installLead(partial, id: id, loaded) }
       }
     case .restore(let position): saved = position
-    case .restyle, .keep, .transfer, .anchor: break
+    case .restyle, .keep, .transfer, .target: break
     }
     let work = Task.detached(priority: .userInitiated) { [lead, saved] in
       // Resolving the folder touches the filesystem, so it stays off the main thread.
@@ -347,9 +353,9 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
         self.install(rendered, title: title, loaded, at: position)
       case (.success((let rendered, let restored)), .restore):
         self.install(rendered, title: title, loaded, at: restored)
-      case (.success((let rendered, _)), .anchor(let anchor)):
+      case (.success((let rendered, _)), .target(let target)):
         self.install(rendered, title: title, loaded)
-        if !self.surface.reveal(anchor: anchor) { NSSound.beep() }
+        self.show(target)
       case (.success((let rendered, _)), .transfer):
         // Anchor the reader's place as it is now; the core calls run off
         // the main thread, and a newer state still wins.
@@ -405,9 +411,9 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
     surface.complete(rendered)
     outline.show(rendered.headings)
     if row >= 0 { outline.select(row) }
-    if let pending = pendingAnchor, pending.capability == shownCapability {
-      pendingAnchor = nil
-      if !surface.reveal(anchor: pending.anchor) { NSSound.beep() }
+    if let pending = pendingTarget, pending.capability == shownCapability {
+      pendingTarget = nil
+      show(pending.target)
     }
     // A search started while the lead was shown runs now.
     if !findBar.isHidden { search(then: pendingStep) }
@@ -662,7 +668,10 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
     listTask?.cancel()
     let options = workspaceOptions
     sidebar.setHasFiles(true)
-    if files.listing == nil { files.clear(message: "Listing…") }
+    if files.listing == nil {
+      files.clear(message: "Listing…")
+      search.setListing(nil, unavailable: "Listing the folder…")
+    }
     let cancelled = ListCancellation()
     let work = Task.detached { () -> Result<WorkspaceListing, any Error> in
       Result { try WorkspaceListing.list(folder, options: options, isCancelled: cancelled.check) }
@@ -678,13 +687,16 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
       switch result {
       case .success(let listing) where listing.folder == self.folder:
         self.files.show(listing)
+        self.search.setListing(listing)
         if let shown = self.shownCapability { self.revealInFiles(shown) }
       case .success: break
       case .failure(let error as FolderError):
         self.files.clear(message: error.message)
+        self.search.setListing(nil, unavailable: error.message)
       case .failure(is CancellationError): break
       case .failure:
         self.files.clear(message: FolderError.unreadable.message)
+        self.search.setListing(nil, unavailable: FolderError.unreadable.message)
       }
     }
   }
@@ -695,6 +707,7 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
     listTask?.cancel()
     listTask = nil
     files.clear(message: message)
+    search.setListing(nil, unavailable: message)
     sidebar.setHasFiles(message != nil)
   }
 
@@ -709,9 +722,11 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
     }
   }
 
-  /// Open a document chosen in the files sidebar through the folder's grant.
-  private func openItem(_ item: WorkspaceItem) {
-    guard let listing = files.listing, let folder, listing.folder == folder else { return }
+  /// Open a document chosen in the files sidebar or the search results
+  /// through the folder's grant, at a search match if given.
+  private func openItem(_ item: WorkspaceItem, at target: NavigationTarget? = nil) {
+    guard let listing = files.listing ?? search.listing, let folder, listing.folder == folder
+    else { return }
     let url = listing.url(for: item)
     Task { [weak self] in
       let result = await Task.detached { () -> Result<DocumentCapability, FolderError> in
@@ -720,8 +735,11 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
       guard let self, self.folder == folder else { return }
       switch result {
       case .success(let capability):
-        if capability == self.loader.capability, case .loaded = self.loader.state { return }
-        self.onNavigate?(self, capability, nil)
+        if capability == self.loader.capability, case .loaded = self.loader.state {
+          if let target { self.reveal(target) }
+          return
+        }
+        self.onNavigate?(self, capability, target)
       case .failure(let error):
         self.presentProblem(self, error.message, error.recovery)
       }
@@ -743,28 +761,77 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
         // A link to this document itself: just its heading.
         if let fragment, !self.surface.reveal(anchor: fragment) { NSSound.beep() }
       case .success(let target):
-        self.onNavigate?(self, target, fragment)
+        self.onNavigate?(self, target, fragment.map { .heading($0) })
       case .failure(let error):
         self.presentProblem(self, error.message, error.recovery)
       }
     }
   }
 
-  /// Show `capability` in this window, replacing its document, then the
-  /// heading `anchor` if given. The window keeps its folder.
-  func navigate(to capability: DocumentCapability, anchor: String?) {
-    pendingAnchor = anchor.map { (capability, $0) }
+  /// Show `capability` in this window, replacing its document, then
+  /// `target` if given. The window keeps its folder.
+  func navigate(to capability: DocumentCapability, target: NavigationTarget?) {
+    pendingTarget = target.map { (capability, $0) }
     loader.open(capability)
   }
 
-  /// Show a heading of the shown document, or once it loads.
-  func reveal(anchor: String) {
-    if shownCapability != nil, surface.document?.isComplete == true, !isBusy {
-      if !surface.reveal(anchor: anchor) { NSSound.beep() }
+  /// Show a heading or match of the shown document, or once it loads.
+  func reveal(_ target: NavigationTarget) {
+    if shownCapability != nil, shownCapability == loader.capability,
+      surface.document?.isComplete == true, !isBusy
+    {
+      show(target)
     } else if let capability = loader.capability {
       // Shown when the load renders, or when a lead completes.
-      pendingAnchor = (capability, anchor)
+      pendingTarget = (capability, target)
     }
+  }
+
+  /// Whether a search match is being located in the shown document.
+  private(set) var isRevealingMatch = false
+
+  /// Show a heading, or select a search match, of the shown document. A
+  /// match is located off the main thread. In the searched revision its
+  /// span applies; in an edited one the query is found again and the match
+  /// nearest where the hit's anchor resolves is chosen (the anchor's own
+  /// position when the query is gone). A heading or match that isn't there
+  /// beeps.
+  private func show(_ target: NavigationTarget) {
+    switch target {
+    case .heading(let anchor):
+      if !surface.reveal(anchor: anchor) { NSSound.beep() }
+    case .match(let match):
+      guard let rendered = surface.document else { return }
+      isRevealingMatch = true
+      let loader = loader
+      Task { [weak self] in
+        let range = await Self.locate(match, in: rendered, loader: loader)
+        guard let self else { return }
+        self.isRevealingMatch = false
+        // A newer rendering (a reload, another document) wins.
+        guard self.surface.document?.snapshot === rendered.snapshot else { return }
+        if let range { self.surface.reveal(match: range) } else { NSSound.beep() }
+      }
+    }
+  }
+
+  private static func locate(
+    _ match: SearchMatch, in rendered: RenderedDocument, loader: DocumentLoader
+  ) async -> NSRange? {
+    let near = await Task.detached { rendered.range(of: match.target) }.value
+    let unchanged =
+      match.target.sourceLength == rendered.sourceLength
+      && match.target.sourceSHA256 == rendered.sourceSHA256
+    guard !unchanged, let near else { return near }
+    let options = CoreFindOptions(
+      caseSensitive: match.query.caseSensitive, wholeWord: match.query.wholeWord)
+    guard
+      let result = try? await loader.find(
+        match.query.text, options: options, generation: rendered.generation)
+    else { return near }
+    let ranges = await Task.detached { rendered.matches(for: result).ranges }.value
+    return ranges.min { abs($0.location - near.location) < abs($1.location - near.location) }
+      ?? near
   }
 
   private func showProblemSheet(_ message: String, _ detail: String) {
@@ -780,6 +847,13 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
     sidebar.show(.files)
     if isSidebarCollapsed { split.splitViewItems[0].isCollapsed = false }
     window?.makeFirstResponder(files.outlineView)
+  }
+
+  /// Show the folder search and put the cursor in its field (Find in Folder).
+  @objc func showSearch(_ sender: Any?) {
+    sidebar.show(.search)
+    if isSidebarCollapsed { split.splitViewItems[0].isCollapsed = false }
+    search.focus()
   }
 
   @objc func showOutline(_ sender: Any?) {
@@ -910,7 +984,7 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
     switch menuItem.action {
     case #selector(reloadDocument(_:)): loader.capability != nil
     case #selector(closeFolder(_:)): folder != nil
-    case #selector(showFiles(_:)), #selector(refreshFiles(_:)):
+    case #selector(showFiles(_:)), #selector(refreshFiles(_:)), #selector(showSearch(_:)):
       folder != nil && folderTask == nil
     case #selector(toggleHiddenFiles(_:)):
       validateToggle(menuItem, on: workspaceOptions.includeHidden)
@@ -1155,6 +1229,7 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
     listRequest &+= 1
     listTask?.cancel()
     listTask = nil
+    search.setListing(nil)
     findRequest &+= 1
     findTask?.cancel()
     findTask = nil

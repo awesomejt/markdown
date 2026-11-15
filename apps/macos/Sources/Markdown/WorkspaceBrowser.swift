@@ -1,25 +1,31 @@
 import AppKit
 import MarkdownDocument
 
-/// The window's sidebar: the folder's files and the document's outline,
-/// switched by a segmented control that only appears with a folder (MAC-002B).
+/// The window's sidebar: the folder's files, the document's outline and the
+/// folder search, switched by a segmented control that only appears with a
+/// folder (MAC-002B, MAC-002C).
 @MainActor
 final class SidebarController: NSViewController {
-  enum Mode: Int { case files, outline }
+  enum Mode: Int { case files, outline, search }
 
   let files: WorkspaceBrowserController
   let outline: OutlineController
+  let search: WorkspaceSearchController
   let picker = NSSegmentedControl(
-    labels: ["Files", "Outline"], trackingMode: .selectOne, target: nil, action: nil)
+    labels: ["Files", "Outline", "Search"], trackingMode: .selectOne, target: nil, action: nil)
   private(set) var mode: Mode = .outline
   /// Whether the window has a folder, so the files can be shown.
   private(set) var hasFiles = false
   private var contentTop: NSLayoutConstraint!
   private var contentBelowPicker: NSLayoutConstraint!
 
-  init(files: WorkspaceBrowserController, outline: OutlineController) {
+  init(
+    files: WorkspaceBrowserController, outline: OutlineController,
+    search: WorkspaceSearchController
+  ) {
     self.files = files
     self.outline = outline
+    self.search = search
     super.init(nibName: nil, bundle: nil)
   }
 
@@ -36,9 +42,10 @@ final class SidebarController: NSViewController {
     picker.setAccessibilityLabel("Sidebar")
     picker.setToolTip("Files in the folder (Option-Command-1)", forSegment: 0)
     picker.setToolTip("Document outline (Option-Command-2)", forSegment: 1)
+    picker.setToolTip("Search the folder (Option-Command-3)", forSegment: 2)
     picker.isHidden = true
     view.addSubview(picker)
-    for child in [files, outline] as [NSViewController] {
+    for child in [files, outline, search] as [NSViewController] {
       addChild(child)
       child.view.translatesAutoresizingMaskIntoConstraints = false
       view.addSubview(child.view)
@@ -55,6 +62,7 @@ final class SidebarController: NSViewController {
       picker.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 8),
       picker.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -8),
       outline.view.topAnchor.constraint(equalTo: files.view.topAnchor),
+      search.view.topAnchor.constraint(equalTo: files.view.topAnchor),
       contentTop,
     ])
     self.view = view
@@ -69,7 +77,7 @@ final class SidebarController: NSViewController {
     apply()
   }
 
-  /// Show the files or the outline; the files need a folder.
+  /// Show the files, the outline or the search; all but the outline need a folder.
   func show(_ mode: Mode) {
     guard mode == .outline || hasFiles else { return }
     self.mode = mode
@@ -78,7 +86,11 @@ final class SidebarController: NSViewController {
 
   @objc private func pick(_ sender: NSSegmentedControl) {
     show(Mode(rawValue: sender.selectedSegment) ?? .outline)
-    view.window?.makeFirstResponder(mode == .files ? files.outlineView : outline.table)
+    switch mode {
+    case .files: view.window?.makeFirstResponder(files.outlineView)
+    case .outline: view.window?.makeFirstResponder(outline.table)
+    case .search: search.focus()
+    }
   }
 
   private func apply() {
@@ -89,6 +101,7 @@ final class SidebarController: NSViewController {
     picker.selectedSegment = mode.rawValue
     files.view.isHidden = mode != .files
     outline.view.isHidden = mode != .outline
+    search.view.isHidden = mode != .search
   }
 }
 

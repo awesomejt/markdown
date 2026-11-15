@@ -466,7 +466,70 @@ Limits: a restored window reopens its document without the folder grant
 
 Limits: no file operations (rename, move, Trash) and no Back/Forward history.
 A folder’s listing changes only on Refresh Files or a new grant until
-watching (MAC-002E). Workspace search is MAC-002C.
+watching (MAC-002E). Workspace search is described in
+[Workspace search](#workspace-search-mac-002c).
+
+## Workspace search (MAC-002C)
+
+- **Opening it.** Edit → Find → Find in Folder… (Shift-Command-F) or
+  View → Search (Option-Command-3) shows the sidebar's **Search** pane, the
+  third segment beside Files and Outline, and puts the cursor in its search
+  field. It needs a folder, like the files.
+- **What is searched.** Exactly the documents the files sidebar lists, so
+  Show Hidden Files and Show All Files apply, symlinks never lead outside the
+  folder and an unreadable subfolder is skipped. File names are searched
+  first, over the whole listing (`md_workspace_find_names`, in NFC, so a
+  decomposed name on disk matches a typed one). Then each Markdown document
+  is read through the folder's grant and searched by the core
+  (`md_workspace_content_admit`/`_search`), in the sidebar's order. Document
+  text is matched as written, under the core's rules: literal, simple case
+  folding (Match Case turns it off), Whole Words for document text only, and
+  the visible text, not raw Markdown. `.mdx` documents, which the reader can't
+  open as text, are not searched. Nothing is indexed or kept between
+  searches.
+- **Running.** The search starts when typing pauses, on Return, or when Match
+  Case, Whole Words or the listing changes (Refresh Files, a listing option, a
+  new folder), and the new search supersedes the running one. It runs off
+  the main thread; results appear as documents are searched. Stop (or Escape
+  in the field while searching) ends it between documents. Close Folder and
+  closing the window stop it too. Revoking the folder mid-search stops it
+  with **access revoked**.
+- **Bounds.** The core's defaults (specs/workspace-search): documents over
+  2 MiB are skipped unread, at most 10,000 documents and 256 MiB are read,
+  100 matches are kept per document and 2,000 in all, and 200 file names are
+  shown. Each document is one bounded core call, and every window shares one
+  permit, so one parse runs at a time in the whole app (the CORE-005C memory
+  guard bounds one call). The scan reads without file coordination (the same
+  bounded, non-blocking read and descriptor checks as an open, about 0.6 ms
+  per file cheaper); opening a result is a normal coordinated read.
+- **Results.** An outline: **File Names** first, then one group per
+  document (its path and match count, `+` when more weren't kept), each match
+  a row with its line number and a one-line snippet of visible text, the
+  match in bold on the find highlight colour and `…` where the block goes on.
+  The line under the results counts what was found and states every reason
+  it may be incomplete: a document, reading or match limit, Stop, file names
+  not all shown, documents with more matches than kept, documents too large,
+  too complex (the core's parse allowance) or not UTF-8, documents that
+  couldn't be read, and a listing that was itself cut short. VoiceOver reads
+  each row (“Line 12 of docs/guide.md: …”) and hears the summary when the
+  search ends.
+- **Keyboard and opening.** Down arrow in the field moves to the first result;
+  the arrow keys move through them and Return, Enter or a click opens the
+  selected one, in this window (or the window already showing the document,
+  as for the files sidebar). A file name opens its document; a match opens
+  its document with the match selected and scrolled into view, with the find
+  indicator. If the document is unchanged since the search (same length and
+  SHA-256), the hit's source span applies directly. If it was edited, the
+  query is found again in the opened document and the match nearest where
+  the hit's anchor resolves is selected; when the query is gone, the cursor
+  goes to the anchor's position, and a hit whose anchor is lost beeps. The
+  results stay in the sidebar, so the next one is one key away.
+
+Limits: no replace, regular expressions or search history; results don't
+update while documents change (watching is MAC-002E), and an open document
+isn't re-searched until the search runs again. Workspace hits come from the
+core's v1 text index, so a reference-style link label can match differently
+than Find in the opened (v2) document (specs/workspace-search).
 
 ## Development artifact and licenses (MAC-001I)
 
@@ -632,7 +695,14 @@ expands, moves and opens with the arrow keys and Return, follows a relative
 link to its anchored heading through the grant, refuses links outside the
 folder and to an image, reports a missing target, finds the open window
 through a hard link and a case variant, toggles hidden and all files, and
-lists and expands a 5,000-document folder. Its
+lists and expands a 5,000-document folder. Its MAC-002C part checks the
+Find in Folder and View → Search menu items, focuses the search field,
+finds file names and grouped content matches over a 404-document folder
+with the status counts, moves to the results with Down arrow, opens a match
+deep in a long document (selected and in view) with Return and another by
+the click action, opens a match in a document edited since the search,
+supersedes a running query, stops one, reports a match budget, and clears
+the search with Close Folder. Its
 reading part opens a 202-heading document and checks the rendered text, the
 outline rows, outline and fragment-link navigation (heading revealed and
 selected, outline following), an external link routed to a stub instead of
@@ -1063,3 +1133,22 @@ hidden/all-file toggles, Close Folder, and a 5,000-document folder listed in
 development artifact and the relocated `CoreProbe` consumer. Not run by the
 agent: VoiceOver on the files sidebar, a folder on a network volume, and
 mouse clicks (the smoke drives the click action and key events directly).
+
+## MAC-002C local evidence
+
+2026-11-15, macOS 27.0.1 on Apple Silicon, Xcode 27.1, Swift 6.4:
+`.build/feas004-venv/bin/python apps/macos/tools/check.py` passed in debug
+and release: `swift format lint --strict`, 81 Swift tests per configuration
+(including 3 new core `WorkspaceSearchTests`: name ranks and UTF-16 ranges,
+content snippets, lines, spans and anchors, skips and stops; 6
+`WorkspaceSearchAdapterTests`: listing order and filters, symlink escape and
+`.mdx`, NFC names, budgets, invalid UTF-8 and unreadable files, cancellation,
+revocation, and 1,000 documents of about 9 KiB of dense markup searched in
+about 0.56 s with no match and 0.61 s with 1,000 matches; and a
+`ReadingPositionTests` case locating hits in searched and edited revisions),
+the bundle smoke with its MAC-002C part (404 documents searched in 44 ms in
+release), relaunch restoration, the release development artifact and the
+relocated `CoreProbe` consumer. Not run by the agent: VoiceOver on the search
+results and its summary announcement, typing in the field with real key
+events (the smoke sets the field and drives the action), and a folder on a
+network volume.

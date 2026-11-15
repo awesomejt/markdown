@@ -167,4 +167,46 @@ struct ReadingPositionTests {
       try await session.close()
     }
   }
+
+  /// A workspace search hit (MAC-002C) maps by its span into the searched
+  /// revision, and by its anchor into an edited one; a lost hit is nil.
+  @Test func searchHitsLocateInSearchedAndEditedRevisions() async throws {
+    let session = try CoreSession(documentID: "hits")
+    let markdown = Self.sections(30) + "\nThe *needle* sits in a café 😀 needle.\n"
+    let outcome = try await Task.detached {
+      try CoreContentSearch(query: "needle").search(path: "a.md", content: Data(markdown.utf8))
+    }.value
+    guard case .searched(let file) = outcome else {
+      Issue.record("expected hits")
+      return
+    }
+    #expect(file.hits.count == 2)
+    let old = try await Self.render(markdown, session: session)
+    #expect(old.sourceSHA256 == file.hits[0].target.sourceSHA256)
+    let string = old.text.string as NSString
+    for hit in file.hits {
+      let range = try #require(old.range(of: hit.target))
+      #expect(string.substring(with: range) == "needle")
+    }
+    // The second needle ends its paragraph: the range stops at its end.
+    let last = try #require(old.range(of: file.hits[1].target))
+    #expect(string.substring(with: NSRange(location: last.location - 3, length: 9)) == "😀 needle")
+
+    // Text inserted above: the anchor resolves exactly and keeps the match.
+    let edited = try await Self.render("# New\n\nInserted above.\n\n" + markdown, session: session)
+    let moved = try #require(edited.range(of: file.hits[0].target))
+    #expect((edited.text.string as NSString).substring(with: moved) == "needle")
+    #expect(moved.location > string.range(of: "needle").location)
+
+    // The paragraph rewritten: near its block, as an insertion point.
+    let rewritten = try await Self.render(
+      markdown.replacingOccurrences(of: "The *needle* sits", with: "Something else sits"),
+      session: session)
+    if let near = rewritten.range(of: file.hits[0].target) {
+      #expect(near.length == 0)
+    }
+    let empty = try await Self.render("", session: session)
+    #expect(empty.range(of: file.hits[0].target) == nil)
+    try await session.close()
+  }
 }

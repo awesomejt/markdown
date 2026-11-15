@@ -126,6 +126,7 @@ enum DocumentSmoke {
     }
     try await FolderSmoke.run(delegate: delegate, directory: directory, check: check)
     try await WorkspaceSmoke.run(delegate: delegate, directory: directory, check: check)
+    try await WorkspaceSearchSmoke.run(delegate: delegate, directory: directory, check: check)
     delegate.newWindow(nil)
   }
 

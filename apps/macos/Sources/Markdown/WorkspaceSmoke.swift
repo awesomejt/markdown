@@ -178,7 +178,8 @@ enum WorkspaceSmoke {
     }
     let other = delegate.windows[1]
     delegate.navigate(
-      to: try requireValue(reader.loader.capability, "guide"), anchor: "install", from: other)
+      to: try requireValue(reader.loader.capability, "guide"), target: .heading("install"),
+      from: other)
     await delegate.opensFinished()
     try check(
       delegate.windows.count == 2 && other.documentTitle == "away.md",
