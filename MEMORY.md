@@ -391,6 +391,17 @@ read.
   `WorkspaceTree::enumerate`. Grok review 1 at `af7e85d` reported 0 Blockers, 2 Concerns, 2 Nits
   (approved under D-029; all 4 findings fixed at `1a69223` with full Debug/Release
   `apps/linux/tools/check.py` passing). `LNX-002F` is next on Linux.
+- **LNX-002 (PR #80)**: closes the Linux basic MVP aggregate milestone on merged
+  `LNX-002A`–`LNX-002F` evidence (PRs #74–#79) in
+  [Linux-MVP-Acceptance.md](docs/Linux-MVP-Acceptance.md). Fresh Debug/Release
+  `apps/linux/tools/check.py` (26 unit, 20 render, 20 core consumer tests, GTK
+  smokes, isolated D-Bus association, two-phase relaunch, `core-probe single`,
+  74-package license inventory, relocated + prefix-installed `.tar.gz`),
+  `tools/check.py common` (621 local links, 83 Markdown files), and hosted
+  `linux-native` CI run `43674118292` passed at `ef97cd9`. Grok review 1 at
+  `223e28a` reported 0 Blockers, 0 Concerns, 2 Nits (approved under D-029; both
+  nits addressed in closeout). Next eligible tasks: `HARD-001` (shared release
+  hardening), `MAC-002A` (macOS), `WIN-002A` (Windows).
 - Workflow: task PRs target `develop` and merge on a Grok review with no
   serious finding (D-029). `main` takes only owner-approved milestone reviews
   from `review/<milestone>`, tagged `m-<milestone>` (D-030). The shared-core

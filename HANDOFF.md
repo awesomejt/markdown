@@ -1,15 +1,15 @@
 # Agent Session and Platform Handoff
 
-Updated: 2026-11-14 (America/Denver), LNX-002F completed under D-029 (PR #79 closed out and merged into `develop`).
-Active task: None. Eligible tasks: `LNX-002` (aggregate Linux MVP acceptance), `MAC-002A`, `WIN-002A`, and `HARD-001`. Phase 3 (Desktop Walking Skeletons) is complete, reaching the D-030 milestone review boundary (`review/<milestone>` into `main`; only the owner merges into `main`); desktop MVP deepening (`002A`+) is active on `develop`.
-Pass `d8e53d06-eb46-4fc2-b2dc-e7834a4fc6bc` completed, approved PR #79 merged into `develop`:
+Updated: 2026-11-14 (America/Denver), LNX-002 completed under D-029 (PR #80 approved and closed out into `develop`).
+Active task: None. Eligible tasks: `MAC-002A` (macOS), `WIN-002A` (Windows), and `HARD-001` (shared release hardening; runnable on Linux). Phase 3 (`m-desktop-skeletons`, PR #71) is merged into `main` and synced to `develop` (PR #73); on Linux, `LNX-002` (basic MVP) is complete, reaching a D-030 milestone review boundary for Linux MVP (`review/<milestone>` into `main`; only the owner merges into `main`) while `HARD-001`, `MAC-002A`, and `WIN-002A` are eligible on `develop`.
+Pass `938a9e77-49ca-43c9-a875-7fd1489b84b3` completed, approved PR #80 merged into `develop`:
 
-- Implemented `LNX-002F` (`apps/linux/core/src/ffi.rs`, `apps/linux/core/src/runtime.rs`, `apps/linux/core/src/lib.rs`, `apps/linux/src/syntax.rs`, `apps/linux/src/render.rs`, `apps/linux/src/reader.rs`, `apps/linux/src/files.rs`, `apps/linux/src/main.rs`, `apps/linux/src/smoke.rs`, `apps/linux/src/measure.rs`, `apps/linux/tests/render.rs`, `apps/linux/tools/artifact.py`, `apps/linux/tools/measure.py`, `apps/linux/README.md`, `TODO.md`): installable `.tar.gz` development packaging with `install.sh` / `uninstall.sh` (`PREFIX=${HOME}/.local` default, `.desktop` `Exec=` rewrite, `Licenses/`, `BuildInfo.json`), workspace-contained relative Markdown links (`Target::Relative`) and `#fragment` jumps, collapsible YAML/TOML `Properties (N)` front-matter expander, semantic `Alert` labels (`Note:`–`Caution:`), bounded lazy syntax highlighting (`16 KiB` / `2048` tokens cap), `--version` and core/contract `diagnostics_summary()` in About, and named-host `window-launch` / `jump-frame` benchmarks.
-- `python3 apps/linux/tools/check.py` passed in Debug and Release (`fmt`, `clippy`, `check_dependencies.py linux`, unit/render/consumer tests, GTK smokes, isolated D-Bus association, two-phase relaunch, `core-probe single`, relocated tarball + full `install.sh`/`uninstall.sh` verification); `python3 tools/check.py common` passed (82 Markdown files, 612 links); `window-launch` (5 runs, external `CLOCK_MONOTONIC`): `prose-1mib` median `357.83 ms` (max `368.30 ms`, `<= 400 ms` met), `long-lines-1mib` median `409.68 ms` (max `412.50 ms`), `prose-5mib` median `914.19 ms`.
+- Closed the `LNX-002` Linux basic MVP aggregate milestone in [docs/Linux-MVP-Acceptance.md](docs/Linux-MVP-Acceptance.md) on merged `LNX-002A` through `LNX-002F` evidence (PRs #74–#79).
+- Fresh native checks at `ef97cd9`: `python3 apps/linux/tools/check.py` passed in Debug and Release (26 unit, 20 render, 20 core consumer tests, GTK smokes, isolated D-Bus association, two-phase relaunch, release `core-probe single`, 74-package license inventory, relocated + prefix-installed `.tar.gz`); `python3 tools/check.py common` passed (621 local links, 83 Markdown files with 0 lint errors); hosted `linux-native` CI in run `43674118292` passed.
 
-PR #79 reviewed by Grok Bot (0 Blockers, 2 Concerns, 2 Nits; approved under D-029; all 4 findings fixed at `a0cf69f` and threads resolved).
+PR #80 reviewed by Grok Bot (0 Blockers, 0 Concerns, 2 Nits; approved under D-029; both nits addressed in closeout).
 
-Next task: `LNX-002` (Build Linux basic MVP aggregate acceptance) on Linux, `HARD-001` (shared), `MAC-002A` (macOS), `WIN-002A` (Windows), or D-030 milestone review into `main` (owner-merged).
+Next task: `HARD-001` (shared release hardening: fuzzing, sanitizers, advisories; runnable on Linux), `MAC-002A` (macOS), `WIN-002A` (Windows), or D-030 Linux MVP milestone review into `main` (owner-merged).
 
 Previous Linux task: `LNX-001` in [PR #69](https://github.com/awesomejt/markdown/pull/69). Previous Windows task: `WIN-001` in [PR #62](https://github.com/awesomejt/markdown/pull/62). Previous macOS task: `MAC-001` in [PR #48](https://github.com/awesomejt/markdown/pull/48).
 

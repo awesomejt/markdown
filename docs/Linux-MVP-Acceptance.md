@@ -80,8 +80,8 @@ unchanged; only docs and task state are edited), `python3 apps/linux/tools/check
 and `python3 tools/check.py common` passed on the host above:
 
 - `python3 tools/check.py common` passed (fixtures, capability matrix, semantic
-  model goldens, path/CI/check-tool unit tests, 8 conformance cases, 612 local
-  links, and 82 Markdown lint files with 0 errors);
+  model goldens, path/CI/check-tool unit tests, 8 conformance cases, 621 local
+  links, and 83 Markdown lint files with 0 errors);
 - staged debug and release model-v2 `libmarkdown_ffi.so` core packages with
   24 `md_` symbol audits and zero path leaks;
 - `cargo fmt --all --check`, `cargo clippy --workspace --all-targets -- -D warnings`,
