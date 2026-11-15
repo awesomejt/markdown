@@ -24,4 +24,9 @@ pub use session::{
     CoreSession, CoreTimings, CoreUnavailability, ParseRequest,
 };
 pub use snapshot::{AnchorQuality, CoreAnchorResolution, CoreSnapshot};
-pub use workspace::{WorkspacePathError, WorkspacePathInfo, classify_workspace_path};
+pub use workspace::{
+    ContentAdmitOutcome, ContentFileOutcome, ContentHit, ContentProgress, ContentSearchOptions,
+    ContentSkipReason, ContentStopReason, NameHit, NameRank, NameSearchOptions, NameSearchResult,
+    WorkspaceNameEntry, WorkspacePathError, WorkspacePathInfo, admit_workspace_content,
+    classify_workspace_path, find_workspace_names, search_workspace_content,
+};

@@ -810,3 +810,94 @@ fn workspace_path_classification() {
         Err(WorkspacePathError::InvalidUtf8)
     );
 }
+
+#[test]
+fn workspace_name_and_content_search() {
+    use markdown_linux_core::{
+        ContentAdmitOutcome, ContentFileOutcome, ContentProgress, ContentSearchOptions,
+        ContentSkipReason, ContentStopReason, NameRank, NameSearchOptions, WorkspaceNameEntry,
+        admit_workspace_content, find_workspace_names, search_workspace_content,
+    };
+    validate().unwrap();
+
+    let entries = [
+        WorkspaceNameEntry {
+            id: 1,
+            rel_path: "notes/my-guide.md",
+        },
+        WorkspaceNameEntry {
+            id: 2,
+            rel_path: "guide-intro.md",
+        },
+        WorkspaceNameEntry {
+            id: 3,
+            rel_path: "guide/sub.md",
+        },
+        WorkspaceNameEntry {
+            id: 4,
+            rel_path: ".hidden/guide.md",
+        },
+        WorkspaceNameEntry {
+            id: 5,
+            rel_path: "guide.txt",
+        },
+    ];
+
+    let res = find_workspace_names(&entries, "guide", &NameSearchOptions::default()).unwrap();
+    assert_eq!(res.hits.len(), 3);
+    assert_eq!(res.hits[0].id, 2);
+    assert_eq!(res.hits[0].rank, NameRank::Prefix);
+    assert_eq!(res.hits[1].id, 1);
+    assert_eq!(res.hits[1].rank, NameRank::Name);
+    assert_eq!(res.hits[2].id, 3);
+    assert_eq!(res.hits[2].rank, NameRank::Path);
+    assert_eq!(res.skipped_hidden, 1);
+    assert_eq!(res.skipped_not_markdown, 1);
+
+    let mut progress = ContentProgress::new();
+    let opts = ContentSearchOptions {
+        max_total_matches: 2,
+        ..Default::default()
+    };
+    assert_eq!(
+        admit_workspace_content("hello", &opts, ".hidden/a.md", 10, &mut progress).unwrap(),
+        ContentAdmitOutcome::Skipped(ContentSkipReason::Hidden)
+    );
+    assert_eq!(
+        admit_workspace_content("hello", &opts, "a.png", 10, &mut progress).unwrap(),
+        ContentAdmitOutcome::Skipped(ContentSkipReason::NotMarkdown)
+    );
+    assert_eq!(
+        admit_workspace_content("hello", &opts, "notes/a.md", 128, &mut progress).unwrap(),
+        ContentAdmitOutcome::Read
+    );
+
+    let out = search_workspace_content(
+        "hello",
+        &opts,
+        "notes/a.md",
+        b"# Title\n\nFirst hello world.\n\nSecond hello again.\n\nThird hello!\n",
+        &mut progress,
+    )
+    .unwrap();
+    match out {
+        ContentFileOutcome::Searched {
+            hits, truncated, ..
+        } => {
+            assert_eq!(hits.len(), 2);
+            assert!(truncated);
+            assert_eq!(hits[0].line, 3);
+            assert!(hits[0].anchor.is_some());
+            assert_eq!(
+                &hits[0].snippet[hits[0].match_start as usize..hits[0].match_end as usize],
+                "hello"
+            );
+        }
+        other => panic!("unexpected outcome: {other:?}"),
+    }
+    assert_eq!(progress.stopped(), Some(ContentStopReason::Matches));
+    assert_eq!(
+        admit_workspace_content("hello", &opts, "notes/b.md", 64, &mut progress).unwrap(),
+        ContentAdmitOutcome::Stopped(ContentStopReason::Matches)
+    );
+}

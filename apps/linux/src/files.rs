@@ -78,6 +78,41 @@ impl RecoveryBar {
     }
 }
 
+struct WorkspaceSearchJump {
+    path: std::path::PathBuf,
+    span_start: u32,
+    source_length: u64,
+    source_sha256: [u8; 64],
+    anchor: Option<Vec<u8>>,
+}
+
+fn jump_to_search_hit(
+    reader: &crate::reader::Reader,
+    document: &markdown_linux_core::CoreDocument,
+    jump: &WorkspaceSearchJump,
+) {
+    let Some(plan) = reader.plan() else {
+        return;
+    };
+    let same_bytes = document.source.len() as u64 == jump.source_length
+        && document.source_sha256.as_bytes() == jump.source_sha256.as_slice();
+    let target_offset = if same_bytes {
+        Some(jump.span_start as u64)
+    } else if let Some(anchor) = jump.anchor.as_deref() {
+        document
+            .resolve_anchor(anchor)
+            .ok()
+            .flatten()
+            .map(|res| res.source_offset)
+    } else {
+        None
+    };
+    if let Some(offset) = target_offset {
+        let pos = plan.position_at_source_offset(offset, document);
+        reader.scroll_to_fragment(pos.fragment_index);
+    }
+}
+
 struct WindowDocument {
     window: glib::WeakRef<gtk::ApplicationWindow>,
     label: glib::WeakRef<gtk::Label>,
@@ -96,6 +131,7 @@ struct WindowDocument {
     poll_source: Option<glib::SourceId>,
     watcher: Option<Rc<markdown_linux::document::DocumentWatcher>>,
     saved_position: Option<markdown_linux::restoration::SavedPosition>,
+    pending_search_jump: Option<WorkspaceSearchJump>,
     weak_self: Weak<RefCell<WindowDocument>>,
 }
 thread_local! { static WINDOWS: RefCell<HashMap<usize, Rc<RefCell<WindowDocument>>>> = RefCell::new(HashMap::new()); }
@@ -202,6 +238,14 @@ impl WindowDocument {
                                     .install_document(plan, Some(document.clone()));
                                 if let Some(saved) = state_ref.saved_position.take() {
                                     state_ref.reader.restore_position(&saved, &document);
+                                }
+                                if let Some(jump) = state_ref.pending_search_jump.take()
+                                    && state_ref
+                                        .loader
+                                        .capability()
+                                        .is_some_and(|cap| cap.path() == jump.path.as_path())
+                                {
+                                    jump_to_search_hit(&state_ref.reader, &document, &jump);
                                 }
                                 state_ref.arm_watcher();
                             }
@@ -526,6 +570,7 @@ impl WindowDocument {
         let serial = self.workspace_browser.next_load_serial();
         self.workspace_browser.set_loading(&name, reveal);
         let cap_clone = cap.clone();
+        let cap_for_search = cap.clone();
         let browser = self.workspace_browser.clone();
         let weak = self.weak_self.clone();
         glib::spawn_future_local(async move {
@@ -538,7 +583,7 @@ impl WindowDocument {
             }
             match result {
                 Ok(Ok(tree)) => {
-                    browser.set_tree(tree, preserve_state, reveal);
+                    browser.set_tree(Some(cap_for_search), tree, preserve_state, reveal);
                 }
                 Ok(Err(error)) => {
                     browser.clear();
@@ -967,6 +1012,7 @@ pub fn attach(window: &gtk::ApplicationWindow, label: &gtk::Label) {
             poll_source: None,
             watcher: None,
             saved_position: None,
+            pending_search_jump: None,
             weak_self: weak.clone(),
         })
     });
@@ -1010,6 +1056,63 @@ pub fn attach(window: &gtk::ApplicationWindow, label: &gtk::Label) {
         }
     });
     window.add_action(&toggle_ws);
+
+    let weak_target = Rc::downgrade(&state);
+    let weak_close_search = Rc::downgrade(&state);
+    workspace_browser.search_panel().set_callbacks(
+        move |target| {
+            let Some(state_rc) = weak_target.upgrade() else {
+                return;
+            };
+            let mut st = state_rc.borrow_mut();
+            match target {
+                crate::workspace_search_panel::WorkspaceSearchTarget::File(path) => {
+                    st.pending_search_jump = None;
+                    st.open_from_workspace(&path);
+                }
+                crate::workspace_search_panel::WorkspaceSearchTarget::ContentHit {
+                    path,
+                    span_start,
+                    source_length,
+                    source_sha256,
+                    anchor,
+                } => {
+                    let jump = WorkspaceSearchJump {
+                        path: path.clone(),
+                        span_start,
+                        source_length,
+                        source_sha256,
+                        anchor,
+                    };
+                    let already_open = st
+                        .loader
+                        .capability()
+                        .is_some_and(|cap| cap.path() == path.as_path());
+                    if already_open && let Some(doc) = st.reader.document() {
+                        st.pending_search_jump = None;
+                        jump_to_search_hit(&st.reader, &doc, &jump);
+                    } else {
+                        st.pending_search_jump = Some(jump);
+                        st.open_from_workspace(&path);
+                    }
+                }
+            }
+        },
+        move || {
+            if let Some(state_rc) = weak_close_search.upgrade() {
+                state_rc.borrow().workspace_browser.show_files();
+            }
+        },
+    );
+
+    let ws_search_act = gio::SimpleAction::new("workspace-search", None);
+    let weak = Rc::downgrade(&state);
+    ws_search_act.connect_activate(move |_, _| {
+        if let Some(state_rc) = weak.upgrade() {
+            state_rc.borrow().workspace_browser.show_search();
+        }
+    });
+    window.add_action(&ws_search_act);
 
     let weak = Rc::downgrade(&state);
     recovery_bar.action_button.connect_clicked(move |_| {
