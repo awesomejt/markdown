@@ -326,16 +326,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, 
   {
     let once = ResumeOnce()
     return await withCheckedContinuation { continuation in
-      Task.detached {
+      // The stat blocks and can't be interrupted, so it runs on GCD, not the
+      // cooperative pool; neither a stalled stat nor the timer starves the
+      // pool (Grok review 2, PR #83).
+      identityQueue.async {
         let found = capability.fileIdentity()
         if once.claim() { continuation.resume(returning: found) }
       }
-      Task.detached {
-        try? await Task.sleep(for: limit)
+      let seconds = Double(limit.components.seconds) + Double(limit.components.attoseconds) / 1e18
+      DispatchQueue.global(qos: .userInitiated).asyncAfter(deadline: .now() + seconds) {
         if once.claim() { continuation.resume(returning: nil) }
       }
     }
   }
+
+  /// A file's identity, read on `identityQueue` without a time limit.
+  nonisolated static func identity(of capability: DocumentCapability) async -> FileIdentity? {
+    await withCheckedContinuation { continuation in
+      identityQueue.async { continuation.resume(returning: capability.fileIdentity()) }
+    }
+  }
+
+  /// Blocking identity stats, kept off Swift's cooperative thread pool.
+  nonisolated static let identityQueue = DispatchQueue(
+    label: "io.github.awesomejt.markdown.identity", qos: .userInitiated, attributes: .concurrent)
 
   private func open(
     _ capability: DocumentCapability, folder: FolderCapability? = nil,

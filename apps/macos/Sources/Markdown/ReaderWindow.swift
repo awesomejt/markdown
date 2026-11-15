@@ -645,7 +645,7 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
   /// Read the loaded file's identity off the main thread, once per load.
   private func recordIdentity(_ capability: DocumentCapability) {
     Task { [weak self] in
-      let found = await Task.detached { capability.fileIdentity() }.value
+      let found = await AppDelegate.identity(of: capability)
       guard let self, let found, self.loader.capability == capability else { return }
       self.identity = (capability, found)
     }
