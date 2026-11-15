@@ -252,6 +252,29 @@ public final class ReaderSurface: NSObject, NSTextViewDelegate, NSTextLayoutMana
     return reveal(heading: index)
   }
 
+  /// Select a workspace search hit and scroll it into view with context
+  /// above it (MAC-002C), so keyboard and accessibility focus follow. A
+  /// range past the text is clamped to it.
+  public func reveal(match range: NSRange) {
+    let length = textView.textStorage?.length ?? 0
+    let end = min(range.upperBound, length)
+    let target = NSRange(min(range.location, end)..<end)
+    textView.setSelectedRange(target)
+    let margin = textView.visibleRect.height / 3
+    let lead = NSRange(location: target.location, length: 0)
+    // In a document just shown, the target's position comes from estimated
+    // layout and moves as the text above it is laid out: scroll until the
+    // viewport's layout leaves it in view, a few passes at most.
+    for _ in 0..<4 {
+      scroll(to: lead, margin: margin)
+      textView.layoutSubtreeIfNeeded()
+      textView.textLayoutManager?.textViewportLayoutController.layoutViewport()
+      if isVisible(target) { break }
+    }
+    if target.length > 0 { textView.showFindIndicator(for: target) }
+    NSAccessibility.post(element: textView, notification: .selectedTextChanged)
+  }
+
   /// The rect of `range` in text-view coordinates, laying out what it needs.
   public func frame(of range: NSRange) -> NSRect? {
     guard let layout = textView.textLayoutManager, let textRange = textRange(for: range) else {

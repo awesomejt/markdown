@@ -103,6 +103,10 @@ public struct RenderedDocument: @unchecked Sendable {
   let positions: [PositionMark]
   /// The snapshot this document was rendered from, for anchors.
   public let snapshot: CoreSnapshot
+  /// The rendered source's length and lowercase-hex SHA-256, to tell whether
+  /// a workspace search hit's source span still applies (MAC-002C).
+  public let sourceLength: UInt64
+  public let sourceSHA256: String
 
   /// The first heading with this anchor, as GitHub resolves duplicate slugs.
   public func heading(anchor: String) -> RenderedHeading? {
@@ -546,7 +550,8 @@ private struct Builder {
       generation: document.generation, text: output.copy() as! NSAttributedString,
       headings: headings, images: images, tables: tables, isComplete: complete, scale: scale,
       nodeText: nodeText, insertedBreaks: insertedBreaks, positions: positions,
-      snapshot: document.snapshot)
+      snapshot: document.snapshot, sourceLength: UInt64(document.source.count),
+      sourceSHA256: document.sourceSHA256)
   }
 
   /// Where a node's display text starts in its source span: after a code

@@ -95,13 +95,19 @@ extension RenderedDocument {
 
   /// The rendered location of a source byte offset: inside the node whose
   /// span holds it (the inverse of `sourceOffset(at:)`), else the start of
-  /// the first node after it, else the end of the text.
-  func location(atSource offset: Int) -> Int {
+  /// the first node after it, else the end of the text. An `end` offset
+  /// closes a range: it belongs to the node whose span it ends, and an
+  /// atomic node's is the end of its text.
+  func location(atSource offset: Int, end isEnd: Bool = false) -> Int {
     var after: PositionMark?
     for mark in positions {
       let source = Int(mark.source)
-      if source <= offset, offset < Int(mark.sourceEnd) {
-        guard !mark.atomic else { return Int(mark.unit) }
+      let inside =
+        isEnd
+        ? source < offset && offset <= Int(mark.sourceEnd)
+        : source <= offset && offset < Int(mark.sourceEnd)
+      if inside {
+        guard !mark.atomic else { return Int(mark.unit) + (isEnd ? Int(mark.length) : 0) }
         let string = text.string as NSString
         let start = Int(mark.unit)
         let end = start + Int(mark.length)
@@ -122,5 +128,30 @@ extension RenderedDocument {
       if source >= offset, after.map({ source < Int($0.source) }) ?? true { after = mark }
     }
     return after.map { Int($0.unit) } ?? text.length
+  }
+}
+
+extension RenderedDocument {
+  /// The rendered range of a workspace search hit (MAC-002C). When this is
+  /// the searched source (same length and SHA-256), its span maps directly.
+  /// Otherwise the hit's anchor is resolved: an exact resolution keeps the
+  /// span's length from the resolved offset, a relocated or nearest one is
+  /// an insertion point at its block. Nil when the hit is lost. Runs core
+  /// calls, so keep it off the main thread for long documents.
+  public func range(of target: CoreContentTarget) -> NSRange? {
+    let source: Range<Int>
+    if target.sourceLength == sourceLength, target.sourceSHA256 == sourceSHA256 {
+      source = Int(target.span.lowerBound)..<Int(target.span.upperBound)
+    } else {
+      guard let anchor = target.anchor, let resolved = try? snapshot.resolve(anchor) else {
+        return nil
+      }
+      let start = Int(clamping: resolved.sourceOffset)
+      let length = resolved.quality == .exact ? target.span.count : 0
+      source = start..<min(start + length, Int(clamping: sourceLength))
+    }
+    let start = location(atSource: source.lowerBound)
+    let end = source.isEmpty ? start : max(location(atSource: source.upperBound, end: true), start)
+    return NSRange(start..<end)
   }
 }

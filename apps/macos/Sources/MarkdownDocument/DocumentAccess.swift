@@ -180,17 +180,25 @@ enum DocumentReader {
   }
 
   /// Coordinated, bounded read off the main thread; checks cancellation between
-  /// chunks and rejects growth past `limit` without reading further.
-  static func read(_ capability: DocumentCapability, limit: UInt64, cancellation: ReadCancellation)
-    throws -> DocumentBytes
-  {
+  /// chunks and rejects growth past `limit` without reading further. A
+  /// workspace search scan reads `coordinated: false`: the same bounded,
+  /// non-blocking read and descriptor checks, without the file coordinator,
+  /// which cost about 0.6 ms per file (MAC-002C). Opening a result is a
+  /// normal coordinated read.
+  static func read(
+    _ capability: DocumentCapability, limit: UInt64, cancellation: ReadCancellation,
+    coordinated: Bool = true
+  ) throws -> DocumentBytes {
     dispatchPrecondition(condition: .notOnQueue(.main))
     if cancellation.isCancelled { throw CancellationError() }
     guard capability.isSupportedType else { throw DocumentError.unsupportedType }
     // A revoked folder grant withdraws its documents before any file access.
     guard !capability.isRevoked else { throw DocumentError.accessRevoked }
     return try capability.accessing { () throws -> DocumentBytes in
-      try readScoped(capability, limit: limit, cancellation: cancellation)
+      guard coordinated else {
+        return try readFile(at: capability.url, limit: limit, cancellation: cancellation)
+      }
+      return try readScoped(capability, limit: limit, cancellation: cancellation)
     }
   }
 
