@@ -166,13 +166,14 @@ impl WorkspaceTree {
             children.entry(parent_key).or_default().push(idx);
         }
 
+        let lower_names: Vec<String> = entries.iter().map(|e| e.name.to_lowercase()).collect();
         for list in children.values_mut() {
             list.sort_by(|&a, &b| {
                 let ea = &entries[a];
                 let eb = &entries[b];
                 eb.is_dir
                     .cmp(&ea.is_dir)
-                    .then_with(|| ea.name.to_lowercase().cmp(&eb.name.to_lowercase()))
+                    .then_with(|| lower_names[a].cmp(&lower_names[b]))
                     .then_with(|| ea.rel_path.cmp(&eb.rel_path))
             });
         }
@@ -194,6 +195,14 @@ impl WorkspaceTree {
 
     pub fn index_of(&self, rel_path: &str) -> Option<usize> {
         self.by_rel_path.get(rel_path).copied()
+    }
+
+    pub fn dir_paths(&self) -> Vec<PathBuf> {
+        self.entries
+            .iter()
+            .filter(|e| e.is_dir)
+            .map(|e| e.full_path.clone())
+            .collect()
     }
 }
 

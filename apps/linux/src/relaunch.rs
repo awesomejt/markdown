@@ -130,12 +130,37 @@ async fn run_prepare(
         DocumentPosition::new(found_frag, word_start + word_len),
     )));
 
+    let ws_dir = file_path
+        .parent()
+        .unwrap_or_else(|| Path::new("."))
+        .join("relaunch_ws");
+    let ws_sub = ws_dir.join("notes");
+    std::fs::create_dir_all(&ws_sub).map_err(|e| format!("create relaunch workspace: {e}"))?;
+    std::fs::write(ws_sub.join("inside.md"), "# Inside\n")
+        .map_err(|e| format!("write relaunch workspace file: {e}"))?;
+
+    crate::files::open_folder_for_smoke(window, &gio::File::for_path(&ws_dir));
+    let browser = crate::files::workspace_browser(window).ok_or("workspace browser missing")?;
+    wait_for("workspace loaded in prepare", || browser.has_workspace()).await?;
+    browser.activate_row_for_smoke(0);
+    wait_for("workspace subfolder expanded in prepare", || {
+        browser.visible_count() == 2
+    })
+    .await?;
+
     let saved_pos = reader.save_position(&doc).ok_or("save_position failed")?;
     let state = WindowRestorationState::from_saved_position(
         file_path.to_string_lossy().to_string(),
         Some(&saved_pos),
         reader.text_scale(),
         reader.is_outline_visible(),
+    )
+    .with_workspace(
+        Some(ws_dir.to_string_lossy().to_string()),
+        browser.widget.is_visible(),
+        browser.expanded_paths(),
+        browser.show_hidden(),
+        browser.markdown_only(),
     );
 
     restoration::save(&[state]);
@@ -242,6 +267,50 @@ async fn run_verify(
 
     if (reader.text_scale() - state.text_scale).abs() > 0.001 {
         return Err("restored text scale mismatch".into());
+    }
+
+    if state.workspace_path.is_some() {
+        let browser = crate::files::workspace_browser(window).ok_or("workspace browser missing")?;
+        wait_for("workspace restored in verify", || {
+            browser.has_workspace()
+                && crate::files::workspace_watcher_armed(window)
+                && browser.visible_count() == 2
+        })
+        .await?;
+        if browser.expanded_paths() != vec!["notes".to_string()] {
+            return Err(format!(
+                "restored workspace expanded paths mismatch: {:?}",
+                browser.expanded_paths()
+            ));
+        }
+
+        // Verify session recovery when a restored workspace folder is missing/unavailable
+        // even when a valid document is also restored in the same window.
+        let missing_ws = file_path
+            .parent()
+            .unwrap_or_else(|| Path::new("."))
+            .join("missing_relaunch_ws");
+        let missing_state = WindowRestorationState::from_saved_position(
+            file_path.to_string_lossy().to_string(),
+            None,
+            1.0,
+            true,
+        )
+        .with_workspace(
+            Some(missing_ws.to_string_lossy().to_string()),
+            true,
+            Vec::new(),
+            false,
+            true,
+        );
+        crate::files::open_restored_state(window, &missing_state);
+        wait_for("document loaded with missing workspace", || {
+            crate::files::reader(window).is_some_and(|r| r.document().is_some())
+        })
+        .await?;
+        if !crate::files::is_recovery_bar_visible(window) {
+            return Err("expected recovery bar to stay visible for missing restored workspace alongside document".into());
+        }
     }
 
     if std::env::var_os("MARKDOWN_PREFERENCES_PATH").is_some() {

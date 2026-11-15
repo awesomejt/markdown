@@ -1,15 +1,15 @@
 # Agent Session and Platform Handoff
 
-Updated: 2026-11-14 (America/Denver), LNX-002D completed under D-029 (PR #77 closed out and merged into `develop`).
-Active task: None. Eligible tasks: `LNX-002E`, `MAC-002A`, `WIN-002A`, and `HARD-001`. Phase 3 (Desktop Walking Skeletons) is complete, reaching the D-030 milestone review boundary (`review/<milestone>` into `main`; only the owner merges into `main`); desktop MVP deepening (`002A`+) is active on `develop`.
-Pass `78404f76-c4fe-4b62-b7c3-a13eabb58894` completed, approved PR #77 merged into `develop`:
+Updated: 2026-11-14 (America/Denver), LNX-002E completed under D-029 (PR #78 closed out and merged into `develop`).
+Active task: None. Eligible tasks: `LNX-002F`, `MAC-002A`, `WIN-002A`, and `HARD-001`. Phase 3 (Desktop Walking Skeletons) is complete, reaching the D-030 milestone review boundary (`review/<milestone>` into `main`; only the owner merges into `main`); desktop MVP deepening (`002A`+) is active on `develop`.
+Pass `73bd4ad3-4145-4309-b576-4b4ab7b5af33` completed, approved PR #78 merged into `develop`:
 
-- Implemented `LNX-002D` (`apps/linux/src/preferences.rs`, `apps/linux/src/preferences_dialog.rs`, `apps/linux/src/main.rs`, `apps/linux/src/files.rs`, `apps/linux/src/smoke.rs`, `apps/linux/src/relaunch.rs`, `apps/linux/tests/render.rs`, `apps/linux/tools/check.py`, `apps/linux/tools/artifact.py`, `apps/linux/README.md`): versioned preferences schema v2 (`show_outline_by_default`, `restore_session_on_launch`) with automatic v1→v2 migration on load and future-version preservation on save, native GTK 4 Preferences dialog (`Edit > Preferences…`, `Ctrl+,`) with live theme/scale/outline/session controls and `Reset to Defaults`, and extended smoke/relaunch checks.
-- `python3 apps/linux/tools/check.py` passed in Debug and Release (`fmt`, `clippy`, `check_dependencies.py linux`, unit/render/consumer tests, GTK smokes including Preferences dialog, isolated D-Bus association, two-phase relaunch with v1→v2 migration and Dark theme verification, `core-probe single`, and relocated tarball artifact verification); `python3 tools/check.py common` passed (82 Markdown files, 612 links).
+- Implemented `LNX-002E` (`apps/linux/src/document/watcher.rs`, `apps/linux/src/document/mod.rs`, `apps/linux/src/document/workspace.rs`, `apps/linux/src/restoration.rs`, `apps/linux/src/workspace_browser.rs`, `apps/linux/src/files.rs`, `apps/linux/src/smoke.rs`, `apps/linux/src/relaunch.rs`, `apps/linux/README.md`): bounded change-storm-coalescing `WorkspaceWatcher` (root, parent, up to 256 subdirs, 150 ms debounce / 1,000 ms max coalesce, in-flight refresh gating, automatic access-loss recovery), extended `WindowRestorationState` for workspace/expanded/filter restoration with v1 back-compat and missing-workspace recovery alongside documents, and precomputed lowercase sorting in `WorkspaceTree::enumerate`.
+- `python3 apps/linux/tools/check.py` passed in Debug and Release (`fmt`, `clippy`, `check_dependencies.py linux`, unit/render/consumer tests including `workspace_watcher_coalesces_change_storm_and_caps_dirs` and `restoration_json_roundtrip`, GTK smokes including 100-file change storm and automatic access-loss recovery, isolated D-Bus association, two-phase relaunch with workspace + expanded folder restoration and missing-workspace recovery alongside document, `core-probe single`, and relocated tarball artifact verification); `python3 tools/check.py common` passed (82 Markdown files, 612 links).
 
-PR #77 reviewed by Grok Bot (0 Blockers, 1 Concern, 1 Nit; approved under D-029; both findings fixed at `05765cf`).
+PR #78 reviewed by Grok Bot (0 Blockers, 2 Concerns, 2 Nits; approved under D-029; all 4 findings fixed at `1a69223`).
 
-Next task: `LNX-002E` (Workspace watching/restoration and performance) on Linux, `HARD-001` (shared), `MAC-002A` (macOS), `WIN-002A` (Windows), or D-030 milestone review into `main` (owner-merged).
+Next task: `LNX-002F` (Development packaging and complete R1 conformance) on Linux, `HARD-001` (shared), `MAC-002A` (macOS), `WIN-002A` (Windows), or D-030 milestone review into `main` (owner-merged).
 
 Previous Linux task: `LNX-001` in [PR #69](https://github.com/awesomejt/markdown/pull/69). Previous Windows task: `WIN-001` in [PR #62](https://github.com/awesomejt/markdown/pull/62). Previous macOS task: `MAC-001` in [PR #48](https://github.com/awesomejt/markdown/pull/48).
 

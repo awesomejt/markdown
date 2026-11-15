@@ -1119,8 +1119,38 @@ async fn folder_and_recents(window: &gtk::ApplicationWindow) -> Result<(), Strin
         "workspace recorded in recents",
     )?;
 
-    // 2. Remove folder (simulating moved/missing folder) and verify recovery bar appears.
+    check(
+        crate::files::workspace_watcher_armed(window),
+        "workspace watcher armed",
+    )?;
+
+    // 1b. Simulate a rapid change storm of 100 new files and verify coalesced live refresh.
+    for idx in 0..100 {
+        let storm_file = dir.join(format!("storm_{idx:03}.md"));
+        std::fs::write(&storm_file, format!("# Storm {idx}\n"))
+            .map_err(|e| format!("write storm file: {e}"))?;
+    }
+    wait_until("workspace watcher refreshed after change storm", || {
+        browser.visible_count() == 1101
+    })
+    .await?;
+
+    // 2. Remove folder while watched (access loss) and verify automatic recovery bar.
     std::fs::remove_dir_all(&dir).map_err(|e| format!("remove smoke workspace: {e}"))?;
+    wait_until("workspace watcher detected access loss", || {
+        crate::files::active_folder_name(window).is_none() && crate::files::recovery_visible(window)
+    })
+    .await?;
+    check(
+        !crate::files::workspace_watcher_armed(window),
+        "workspace watcher disarmed after access loss",
+    )?;
+    crate::files::dismiss_recovery_for_smoke(window);
+    check(
+        !crate::files::recovery_visible(window),
+        "recovery bar dismissed after watcher access loss",
+    )?;
+
     crate::files::open_folder_for_smoke(window, &gio::File::for_path(&dir));
     check(
         crate::files::recovery_visible(window),
