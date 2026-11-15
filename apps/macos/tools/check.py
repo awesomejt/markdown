@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 """Build and run the real AppKit bundle smoke in debug and release."""
 from pathlib import Path
+import plistlib
 import shutil
 import subprocess
 import sys
 import tempfile
+import uuid
 
 from artifact import package, run_smoke, smoke_environment, verify
 from build import APP_ROOT, REPO_ROOT, build
@@ -56,6 +58,46 @@ for configuration in ("debug", "release"):
                 print(result.stderr, end="", flush=True)
                 raise SystemExit(f"{configuration}: relaunch check {phase} failed")
     print(f"{configuration}: relaunch restoration passed", flush=True)
+
+    # Persistent settings: seed a throwaway defaults suite with MAC-001F
+    # (version 1) settings, then upgrade and change them in one launch and
+    # expect them back in the next. Saved window state is ignored at launch,
+    # so the user's own windows are never restored or rewritten.
+    suite = f"io.github.awesomejt.markdown.preferences-check.{uuid.uuid4().hex}"
+    plist = Path.home() / "Library/Preferences" / f"{suite}.plist"
+    try:
+        for key, kind, value in (("appearance", "-string", "dark"),
+                                 ("textScale", "-float", "1.2"),
+                                 ("showsSidebar", "-string", "maybe")):
+            subprocess.run(["defaults", "write", suite, key, kind, value], check=True)
+        with tempfile.TemporaryDirectory(prefix="markdown-preferences-") as directory:
+            document = Path(directory) / "saved.md"
+            document.write_text("# Saved\n\nA document with saved window state.\n",
+                                encoding="utf-8")
+            for phase, marker in (("prepare", "preferences-check: prepared"),
+                                  ("verify", "preferences-check: pass")):
+                if phase == "verify":
+                    # The settings reached the defaults system, as AppKit stores them.
+                    stored = subprocess.check_output(
+                        ["defaults", "export", suite, "-"])
+                    values = plistlib.loads(stored)
+                    expected = {"preferencesVersion": 2, "appearance": "light",
+                                "textScale": 1.5, "showsSidebar": False,
+                                "reopensWindows": False}
+                    if values != expected:
+                        raise SystemExit(f"{configuration}: stored settings {values!r}")
+                result = subprocess.run(
+                    [str(app / "Contents/MacOS/Markdown"), "--preferences-check", phase, suite,
+                     str(document), "-ApplePersistenceIgnoreState", "YES"],
+                    cwd=directory, env=env, text=True, capture_output=True, timeout=30)
+                print(result.stdout, end="", flush=True)
+                if result.returncode != 0 or marker not in result.stdout:
+                    print(result.stderr, end="", flush=True)
+                    raise SystemExit(f"{configuration}: preferences check {phase} failed")
+    finally:
+        subprocess.run(["defaults", "delete", suite], capture_output=True)
+        plist.unlink(missing_ok=True)
+    print(f"{configuration}: preferences persistence passed", flush=True)
 
     if configuration == "release":
         binary_dir = Path(subprocess.check_output(

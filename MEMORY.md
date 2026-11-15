@@ -453,6 +453,17 @@ read.
   nearest the resolved anchor (`NavigationTarget.match`). Grok review 1 at `902e428`
   reported 0 Blockers, 0 Concerns, 1 Nit (approved under D-029; nit fixed at `0ada12f`).
   `MAC-002D` is next on macOS.
+- **MAC-002D (PR #85)**: delivers versioned persistent settings on macOS
+  (`MarkdownRender/ReaderPreferences.swift`, moved from the app target for unit tests):
+  user defaults `preferencesVersion` 2 with `appearance`, `textScale`, `showsSidebar` and
+  `reopensWindows`; MAC-001F's unversioned settings upgrade in place (text size snapped,
+  malformed values dropped) and a newer version is never rewritten. Settings gains the
+  sidebar-in-new-windows and reopen-windows checkboxes and Restore Defaults; reopening off
+  makes windows non-restorable and declines saved state. `check.py` runs a two-launch
+  preferences check on a throwaway defaults suite (a test-made `UserDefaults` suite leaves
+  an empty plist that cfprefsd rewrites, so unit tests use memory). Grok review 1 at
+  `a0c6e21` reported 0 Blockers, 0 Concerns, 0 Nits (approved under D-029). `MAC-002E` is
+  next on macOS.
 - Workflow: task PRs target `develop` and merge on a Grok review with no
   serious finding (D-029). `main` takes only owner-approved milestone reviews
   from `review/<milestone>`, tagged `m-<milestone>` (D-030). The shared-core
