@@ -35,7 +35,7 @@ def main() -> None:
     if args.suite in ("common", "all"):
         for script in ("validate_fixtures.py", "validate_capabilities.py", "validate_model.py",
                        "test_path_fixtures.py", "test_validate_capabilities.py", "test_ci_paths.py",
-                       "test_check_tools.py"):
+                       "test_check_tools.py", "test_check_advisories.py"):
             run(sys.executable, "tools/" + script)
         run(sys.executable, "tools/generate_conformance.py", "--check")
         links()
@@ -56,6 +56,7 @@ def main() -> None:
         run("cargo", "test", "--workspace", "--all-features", "--locked")
         run(sys.executable, "tools/check_dependencies.py")
         run(sys.executable, "tools/test_check_dependencies.py")
+        run(sys.executable, "tools/check_advisories.py")
     if args.suite in ("core-extended", "all"):
         # Main/manual CI tier and every local `all` run: the model-v2-only feature
         # set and the release build, which enables the release-only time guards.

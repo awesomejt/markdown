@@ -279,6 +279,10 @@ fn catalog() -> Vec<(&'static str, String)> {
         ("nested link openers", rep("[a](", n)),
         ("image openers", rep("![", n)),
         (
+            "nested image wikilinks",
+            format!("{}x{}", rep("![[", n / 2), rep("]]", n / 2)),
+        ),
+        (
             "backtick runs",
             (1..400).map(|i| rep("`", i) + " ").collect(),
         ),
