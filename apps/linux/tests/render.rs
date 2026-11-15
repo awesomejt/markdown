@@ -861,13 +861,27 @@ fn preferences_memory_and_local_settings() {
     assert!(!p_v2.show_outline_by_default);
     assert!(!p_v2.restore_session_on_launch);
 
-    // Future schema_version preserves known clamped fields and reports FutureVersion
-    let (p_fut, s_fut) = parse_preferences_with_status(
-        r#"{"schema_version": 99, "theme": "light", "text_scale": 2.00}"#,
-    );
+    // Future schema_version preserves known clamped fields, keeps schema_version, and refuses downgrade on save
+    let future_json =
+        r#"{"schema_version": 99, "theme": "light", "text_scale": 2.00, "future_key": "keep"}"#;
+    let (mut p_fut, s_fut) = parse_preferences_with_status(future_json);
     assert_eq!(s_fut, MigrationStatus::FutureVersion { version: 99 });
+    assert_eq!(p_fut.schema_version, 99);
     assert_eq!(p_fut.theme, ThemePreference::Light);
     assert!((p_fut.text_scale - 2.00).abs() < 0.001);
+
+    let fut_dir = std::env::temp_dir().join(format!("md-pref-future-{}", std::process::id()));
+    let _ = std::fs::create_dir_all(&fut_dir);
+    let fut_path = fut_dir.join("preferences.json");
+    std::fs::write(&fut_path, future_json).unwrap();
+    p_fut.theme = ThemePreference::Dark;
+    markdown_linux::preferences::save_to_path(&fut_path, &p_fut);
+    assert_eq!(
+        std::fs::read_to_string(&fut_path).unwrap(),
+        future_json,
+        "future-version preferences file must not be overwritten on save"
+    );
+    let _ = std::fs::remove_dir_all(&fut_dir);
 
     let p_nan = parse_preferences(r#"{"theme": "dark", "text_scale": NaN}"#);
     assert_eq!(p_nan.theme, ThemePreference::Dark);

@@ -130,6 +130,11 @@ pub fn load_with_status() -> (Preferences, MigrationStatus) {
 }
 
 pub fn save(prefs: &Preferences) {
+    if prefs.schema_version > CURRENT_SCHEMA_VERSION {
+        // Never downgrade or clobber a preferences file written by a newer schema version.
+        return;
+    }
+
     let mut normalized = prefs.clone();
     normalized.schema_version = CURRENT_SCHEMA_VERSION;
     normalized.text_scale = clamped_scale(normalized.text_scale);
@@ -143,20 +148,27 @@ pub fn save(prefs: &Preferences) {
     let Some(path) = config_path() else {
         return;
     };
+    save_to_path(&path, &normalized);
+}
+
+pub fn save_to_path(path: &std::path::Path, prefs: &Preferences) {
+    if prefs.schema_version > CURRENT_SCHEMA_VERSION {
+        return;
+    }
     if let Some(parent) = path.parent() {
         let _ = std::fs::create_dir_all(parent);
     }
     let payload = format!(
         "{{\n  \"schema_version\": {},\n  \"theme\": \"{}\",\n  \"text_scale\": {:.2},\n  \"show_outline_by_default\": {},\n  \"restore_session_on_launch\": {}\n}}\n",
         CURRENT_SCHEMA_VERSION,
-        normalized.theme.as_str(),
-        normalized.text_scale,
-        normalized.show_outline_by_default,
-        normalized.restore_session_on_launch,
+        prefs.theme.as_str(),
+        clamped_scale(prefs.text_scale),
+        prefs.show_outline_by_default,
+        prefs.restore_session_on_launch,
     );
     let tmp = path.with_extension(format!("tmp.{}", std::process::id()));
     if std::fs::write(&tmp, payload).is_ok() {
-        let _ = std::fs::rename(&tmp, &path);
+        let _ = std::fs::rename(&tmp, path);
     }
 }
 
@@ -204,14 +216,22 @@ pub fn parse_preferences_with_status(json: &str) -> (Preferences, MigrationStatu
         }
     }
 
-    let status = match parsed_version {
-        Some(v) if v == CURRENT_SCHEMA_VERSION => MigrationStatus::Current,
-        Some(v) if v < CURRENT_SCHEMA_VERSION => MigrationStatus::Migrated { from_version: v },
-        Some(v) => MigrationStatus::FutureVersion { version: v },
-        None if saw_legacy_field => MigrationStatus::Migrated { from_version: 1 },
-        None => MigrationStatus::Current,
+    let (status, effective_version) = match parsed_version {
+        Some(v) if v == CURRENT_SCHEMA_VERSION => {
+            (MigrationStatus::Current, CURRENT_SCHEMA_VERSION)
+        }
+        Some(v) if v < CURRENT_SCHEMA_VERSION => (
+            MigrationStatus::Migrated { from_version: v },
+            CURRENT_SCHEMA_VERSION,
+        ),
+        Some(v) => (MigrationStatus::FutureVersion { version: v }, v),
+        None if saw_legacy_field => (
+            MigrationStatus::Migrated { from_version: 1 },
+            CURRENT_SCHEMA_VERSION,
+        ),
+        None => (MigrationStatus::Current, CURRENT_SCHEMA_VERSION),
     };
-    prefs.schema_version = CURRENT_SCHEMA_VERSION;
+    prefs.schema_version = effective_version;
     (prefs, status)
 }
 
