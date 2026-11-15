@@ -970,6 +970,7 @@ pub fn attach(window: &gtk::ApplicationWindow, label: &gtk::Label) {
     let reader = crate::reader::Reader::new(window);
     let prefs = markdown_linux::preferences::load();
     reader.set_text_scale(prefs.text_scale);
+    reader.set_outline_visible(prefs.show_outline_by_default);
 
     let find_bar = crate::find_bar::FindBar::new();
     let recovery_bar = RecoveryBar::new();
@@ -1622,6 +1623,16 @@ pub fn find_bar(window: &gtk::ApplicationWindow) -> Option<crate::find_bar::Find
 
 pub fn text_scale(window: &gtk::ApplicationWindow) -> Option<f64> {
     state(window).map(|s| s.borrow().reader.text_scale())
+}
+
+pub fn apply_text_scale_to_all_windows(app: &gtk::Application, scale: f64) {
+    for win in app.windows() {
+        if let Some(app_win) = win.downcast_ref::<gtk::ApplicationWindow>()
+            && let Some(st) = state(app_win)
+        {
+            st.borrow().reader.set_text_scale(scale);
+        }
+    }
 }
 
 pub fn open_folder_for_smoke(window: &gtk::ApplicationWindow, folder: &gio::File) {

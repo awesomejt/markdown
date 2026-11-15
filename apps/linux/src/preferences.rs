@@ -1,10 +1,18 @@
-//! Persistent preferences for theme and text scale (LNX-001F).
+//! Persistent preferences for theme, text scale, and reader/startup settings (LNX-001F, LNX-002D).
 
 use std::path::PathBuf;
 use std::sync::Mutex;
 
+pub const CURRENT_SCHEMA_VERSION: u32 = 2;
 pub const SCALE_STEPS: [f64; 9] = [0.75, 0.85, 1.0, 1.15, 1.30, 1.50, 1.75, 2.0, 2.5];
 pub const DEFAULT_SCALE_INDEX: usize = 2; // 1.0 (100%)
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum MigrationStatus {
+    Current,
+    Migrated { from_version: u32 },
+    FutureVersion { version: u32 },
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ThemePreference {
@@ -19,6 +27,14 @@ impl ThemePreference {
             ThemePreference::System => "system",
             ThemePreference::Light => "light",
             ThemePreference::Dark => "dark",
+        }
+    }
+
+    pub fn label(&self) -> &'static str {
+        match self {
+            ThemePreference::System => "System",
+            ThemePreference::Light => "Light",
+            ThemePreference::Dark => "Dark",
         }
     }
 
@@ -42,15 +58,21 @@ impl std::str::FromStr for ThemePreference {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Preferences {
+    pub schema_version: u32,
     pub theme: ThemePreference,
     pub text_scale: f64,
+    pub show_outline_by_default: bool,
+    pub restore_session_on_launch: bool,
 }
 
 impl Default for Preferences {
     fn default() -> Self {
         Self {
+            schema_version: CURRENT_SCHEMA_VERSION,
             theme: ThemePreference::System,
             text_scale: SCALE_STEPS[DEFAULT_SCALE_INDEX],
+            show_outline_by_default: true,
+            restore_session_on_launch: true,
         }
     }
 }
@@ -61,6 +83,9 @@ fn config_path() -> Option<PathBuf> {
     if is_memory_mode() {
         return None;
     }
+    if let Some(p) = std::env::var_os("MARKDOWN_PREFERENCES_PATH") {
+        return Some(PathBuf::from(p));
+    }
     let base = std::env::var_os("XDG_CONFIG_HOME")
         .map(PathBuf::from)
         .or_else(|| std::env::var_os("HOME").map(|h| PathBuf::from(h).join(".config")))?;
@@ -68,70 +93,146 @@ fn config_path() -> Option<PathBuf> {
 }
 
 pub fn is_memory_mode() -> bool {
-    std::env::var_os("MARKDOWN_PREFERENCES_IN_MEMORY").is_some()
-        || std::env::var("GSETTINGS_BACKEND").as_deref() == Ok("memory")
+    if std::env::var_os("MARKDOWN_PREFERENCES_IN_MEMORY").is_some() {
+        return true;
+    }
+    if std::env::var_os("MARKDOWN_PREFERENCES_PATH").is_some() {
+        return false;
+    }
+    std::env::var("GSETTINGS_BACKEND").as_deref() == Ok("memory")
 }
 
 pub fn load() -> Preferences {
+    load_with_status().0
+}
+
+pub fn load_with_status() -> (Preferences, MigrationStatus) {
     if is_memory_mode() {
         let mem = IN_MEMORY.lock().unwrap();
         if let Some(prefs) = mem.as_ref() {
-            return prefs.clone();
+            return (prefs.clone(), MigrationStatus::Current);
         }
-        return Preferences::default();
+        return (Preferences::default(), MigrationStatus::Current);
     }
 
     let Some(path) = config_path() else {
-        return Preferences::default();
+        return (Preferences::default(), MigrationStatus::Current);
     };
     let Ok(data) = std::fs::read_to_string(&path) else {
-        return Preferences::default();
+        return (Preferences::default(), MigrationStatus::Current);
     };
 
-    parse_preferences(&data)
+    let (prefs, status) = parse_preferences_with_status(&data);
+    if matches!(status, MigrationStatus::Migrated { .. }) {
+        save(&prefs);
+    }
+    (prefs, status)
 }
 
 pub fn save(prefs: &Preferences) {
+    if prefs.schema_version > CURRENT_SCHEMA_VERSION {
+        // Never downgrade or clobber a preferences file written by a newer schema version.
+        return;
+    }
+
+    let mut normalized = prefs.clone();
+    normalized.schema_version = CURRENT_SCHEMA_VERSION;
+    normalized.text_scale = clamped_scale(normalized.text_scale);
+
     if is_memory_mode() {
         let mut mem = IN_MEMORY.lock().unwrap();
-        *mem = Some(prefs.clone());
+        *mem = Some(normalized);
         return;
     }
 
     let Some(path) = config_path() else {
         return;
     };
+    save_to_path(&path, &normalized);
+}
+
+pub fn save_to_path(path: &std::path::Path, prefs: &Preferences) {
+    if prefs.schema_version > CURRENT_SCHEMA_VERSION {
+        return;
+    }
     if let Some(parent) = path.parent() {
         let _ = std::fs::create_dir_all(parent);
     }
     let payload = format!(
-        "{{\n  \"theme\": \"{}\",\n  \"text_scale\": {:.2}\n}}\n",
+        "{{\n  \"schema_version\": {},\n  \"theme\": \"{}\",\n  \"text_scale\": {:.2},\n  \"show_outline_by_default\": {},\n  \"restore_session_on_launch\": {}\n}}\n",
+        CURRENT_SCHEMA_VERSION,
         prefs.theme.as_str(),
-        prefs.text_scale
+        clamped_scale(prefs.text_scale),
+        prefs.show_outline_by_default,
+        prefs.restore_session_on_launch,
     );
     let tmp = path.with_extension(format!("tmp.{}", std::process::id()));
     if std::fs::write(&tmp, payload).is_ok() {
-        let _ = std::fs::rename(&tmp, &path);
+        let _ = std::fs::rename(&tmp, path);
     }
 }
 
 pub fn parse_preferences(json: &str) -> Preferences {
+    parse_preferences_with_status(json).0
+}
+
+pub fn parse_preferences_with_status(json: &str) -> (Preferences, MigrationStatus) {
     let mut prefs = Preferences::default();
+    let mut parsed_version: Option<u32> = None;
+    let mut saw_legacy_field = false;
+
     for part in json.split([',', '{', '}', '\n']) {
         let part = part.trim();
-        if let Some(idx) = part.find("\"theme\":") {
+        if let Some(idx) = part.find("\"schema_version\":") {
+            let rest = &part[idx + "\"schema_version\":".len()..];
+            let val = rest.trim().trim_matches(|c| c == '"' || c == ' ');
+            if let Ok(ver) = val.parse::<u32>() {
+                parsed_version = Some(ver);
+            }
+        } else if let Some(idx) = part.find("\"theme\":") {
             let rest = &part[idx + "\"theme\":".len()..];
             let val = rest.trim().trim_matches(|c| c == '"' || c == ' ');
             prefs.theme = ThemePreference::from_str(val);
+            saw_legacy_field = true;
         } else if let Some(idx) = part.find("\"text_scale\":") {
             let rest = &part[idx + "\"text_scale\":".len()..];
             let val = rest.trim().trim_matches(|c| c == '"' || c == ' ');
             if let Ok(scale) = val.parse::<f64>() {
                 prefs.text_scale = clamped_scale(scale);
             }
+            saw_legacy_field = true;
+        } else if let Some(idx) = part.find("\"show_outline_by_default\":") {
+            let rest = &part[idx + "\"show_outline_by_default\":".len()..];
+            let val = rest.trim().trim_matches(|c| c == '"' || c == ' ');
+            if let Ok(b) = val.parse::<bool>() {
+                prefs.show_outline_by_default = b;
+            }
+        } else if let Some(idx) = part.find("\"restore_session_on_launch\":") {
+            let rest = &part[idx + "\"restore_session_on_launch\":".len()..];
+            let val = rest.trim().trim_matches(|c| c == '"' || c == ' ');
+            if let Ok(b) = val.parse::<bool>() {
+                prefs.restore_session_on_launch = b;
+            }
         }
     }
-    prefs
+
+    let (status, effective_version) = match parsed_version {
+        Some(v) if v == CURRENT_SCHEMA_VERSION => {
+            (MigrationStatus::Current, CURRENT_SCHEMA_VERSION)
+        }
+        Some(v) if v < CURRENT_SCHEMA_VERSION => (
+            MigrationStatus::Migrated { from_version: v },
+            CURRENT_SCHEMA_VERSION,
+        ),
+        Some(v) => (MigrationStatus::FutureVersion { version: v }, v),
+        None if saw_legacy_field => (
+            MigrationStatus::Migrated { from_version: 1 },
+            CURRENT_SCHEMA_VERSION,
+        ),
+        None => (MigrationStatus::Current, CURRENT_SCHEMA_VERSION),
+    };
+    prefs.schema_version = effective_version;
+    (prefs, status)
 }
 
 pub fn clamped_scale(scale: f64) -> f64 {

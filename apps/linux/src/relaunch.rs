@@ -139,6 +139,34 @@ async fn run_prepare(
     );
 
     restoration::save(&[state]);
+
+    if let Some(pref_path) = std::env::var_os("MARKDOWN_PREFERENCES_PATH") {
+        let migrated = markdown_linux::preferences::load();
+        if migrated.schema_version != markdown_linux::preferences::CURRENT_SCHEMA_VERSION
+            || migrated.theme != markdown_linux::preferences::ThemePreference::Dark
+            || (migrated.text_scale - 1.30).abs() > 0.001
+        {
+            return Err(format!(
+                "expected migrated v1->v2 preferences (Dark, 1.30), got {migrated:?}"
+            ));
+        }
+        let disk_contents = std::fs::read_to_string(&pref_path)
+            .map_err(|e| format!("read migrated preferences failed: {e}"))?;
+        if !disk_contents.contains("\"schema_version\": 2") {
+            return Err(format!(
+                "migrated preferences file missing schema_version 2: {disk_contents}"
+            ));
+        }
+        let updated = markdown_linux::preferences::Preferences {
+            theme: markdown_linux::preferences::ThemePreference::Dark,
+            text_scale: 1.50,
+            show_outline_by_default: false,
+            restore_session_on_launch: true,
+            ..markdown_linux::preferences::Preferences::default()
+        };
+        markdown_linux::preferences::save(&updated);
+    }
+
     println!("relaunch-check: prepared");
     app.quit();
     Ok(())
@@ -214,6 +242,23 @@ async fn run_verify(
 
     if (reader.text_scale() - state.text_scale).abs() > 0.001 {
         return Err("restored text scale mismatch".into());
+    }
+
+    if std::env::var_os("MARKDOWN_PREFERENCES_PATH").is_some() {
+        let prefs = markdown_linux::preferences::load();
+        if prefs.schema_version != markdown_linux::preferences::CURRENT_SCHEMA_VERSION
+            || prefs.theme != markdown_linux::preferences::ThemePreference::Dark
+            || (prefs.text_scale - 1.50).abs() > 0.001
+            || prefs.show_outline_by_default
+            || !prefs.restore_session_on_launch
+        {
+            return Err(format!("relaunch preferences mismatch: {prefs:?}"));
+        }
+        if let Some(s) = gtk::Settings::default()
+            && !s.is_gtk_application_prefer_dark_theme()
+        {
+            return Err("expected Dark theme applied on relaunch".into());
+        }
     }
 
     restoration::clear();

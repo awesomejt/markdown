@@ -830,13 +830,58 @@ fn text_scale_clamped_and_steps() {
 #[test]
 fn preferences_memory_and_local_settings() {
     use markdown_linux::preferences::{
-        Preferences, ThemePreference, load, parse_preferences, save,
+        CURRENT_SCHEMA_VERSION, MigrationStatus, Preferences, ThemePreference, load,
+        parse_preferences, parse_preferences_with_status, save,
     };
 
-    // Single-line JSON and NaN safety
-    let p1 = parse_preferences(r#"{"theme": "light", "text_scale": 1.30}"#);
+    // Legacy v1 JSON (no schema_version) migrates cleanly to v2 with defaults for new fields
+    let (p1, s1) = parse_preferences_with_status(r#"{"theme": "light", "text_scale": 1.30}"#);
+    assert_eq!(s1, MigrationStatus::Migrated { from_version: 1 });
+    assert_eq!(p1.schema_version, CURRENT_SCHEMA_VERSION);
     assert_eq!(p1.theme, ThemePreference::Light);
     assert!((p1.text_scale - 1.30).abs() < 0.001);
+    assert!(p1.show_outline_by_default);
+    assert!(p1.restore_session_on_launch);
+
+    // Explicit v1 schema_version migrates to v2
+    let (p_v1, s_v1) = parse_preferences_with_status(
+        r#"{"schema_version": 1, "theme": "dark", "text_scale": 1.50}"#,
+    );
+    assert_eq!(s_v1, MigrationStatus::Migrated { from_version: 1 });
+    assert_eq!(p_v1.schema_version, CURRENT_SCHEMA_VERSION);
+    assert_eq!(p_v1.theme, ThemePreference::Dark);
+
+    // Current v2 JSON reports Current
+    let (p_v2, s_v2) = parse_preferences_with_status(
+        r#"{"schema_version": 2, "theme": "dark", "text_scale": 1.15, "show_outline_by_default": false, "restore_session_on_launch": false}"#,
+    );
+    assert_eq!(s_v2, MigrationStatus::Current);
+    assert_eq!(p_v2.theme, ThemePreference::Dark);
+    assert!((p_v2.text_scale - 1.15).abs() < 0.001);
+    assert!(!p_v2.show_outline_by_default);
+    assert!(!p_v2.restore_session_on_launch);
+
+    // Future schema_version preserves known clamped fields, keeps schema_version, and refuses downgrade on save
+    let future_json =
+        r#"{"schema_version": 99, "theme": "light", "text_scale": 2.00, "future_key": "keep"}"#;
+    let (mut p_fut, s_fut) = parse_preferences_with_status(future_json);
+    assert_eq!(s_fut, MigrationStatus::FutureVersion { version: 99 });
+    assert_eq!(p_fut.schema_version, 99);
+    assert_eq!(p_fut.theme, ThemePreference::Light);
+    assert!((p_fut.text_scale - 2.00).abs() < 0.001);
+
+    let fut_dir = std::env::temp_dir().join(format!("md-pref-future-{}", std::process::id()));
+    let _ = std::fs::create_dir_all(&fut_dir);
+    let fut_path = fut_dir.join("preferences.json");
+    std::fs::write(&fut_path, future_json).unwrap();
+    p_fut.theme = ThemePreference::Dark;
+    markdown_linux::preferences::save_to_path(&fut_path, &p_fut);
+    assert_eq!(
+        std::fs::read_to_string(&fut_path).unwrap(),
+        future_json,
+        "future-version preferences file must not be overwritten on save"
+    );
+    let _ = std::fs::remove_dir_all(&fut_dir);
 
     let p_nan = parse_preferences(r#"{"theme": "dark", "text_scale": NaN}"#);
     assert_eq!(p_nan.theme, ThemePreference::Dark);
@@ -859,10 +904,15 @@ fn preferences_memory_and_local_settings() {
         (prefs.text_scale - 1.0).abs() < 0.001,
         "default text scale 1.0"
     );
+    assert!(prefs.show_outline_by_default);
+    assert!(prefs.restore_session_on_launch);
 
     let updated = Preferences {
         theme: ThemePreference::Dark,
         text_scale: 1.5,
+        show_outline_by_default: false,
+        restore_session_on_launch: false,
+        ..Preferences::default()
     };
     save(&updated);
 
@@ -872,6 +922,8 @@ fn preferences_memory_and_local_settings() {
         (reloaded.text_scale - 1.5).abs() < 0.001,
         "reloaded text scale 1.5"
     );
+    assert!(!reloaded.show_outline_by_default);
+    assert!(!reloaded.restore_session_on_launch);
 }
 
 #[test]
