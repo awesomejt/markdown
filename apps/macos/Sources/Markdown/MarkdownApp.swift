@@ -17,7 +17,8 @@ enum MarkdownApp {
     let delegate = AppDelegate(
       smokeTest: CommandLine.arguments.contains("--smoke-test"),
       measurement: Measurement.Mode(arguments: CommandLine.arguments),
-      relaunchCheck: RelaunchCheck.arguments(CommandLine.arguments))
+      relaunchCheck: RelaunchCheck.arguments(CommandLine.arguments),
+      preferencesCheck: PreferencesCheck.arguments(CommandLine.arguments))
     app.setActivationPolicy(.regular)
     app.delegate = delegate
     app.run()
@@ -37,6 +38,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, 
   let restoresWindows: Bool
 
   private let relaunchCheck: (RelaunchCheck.Phase, URL)?
+  private let preferencesCheck: PreferencesCheck.Request?
   /// Recent documents and folders (MAC-002A). The development checks keep
   /// them in memory, so they never read or change the user's list.
   let recents: Recents
@@ -51,18 +53,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, 
 
   init(
     smokeTest: Bool, measurement: Measurement.Mode? = nil,
-    relaunchCheck: (RelaunchCheck.Phase, URL)? = nil
+    relaunchCheck: (RelaunchCheck.Phase, URL)? = nil,
+    preferencesCheck: PreferencesCheck.Request? = nil
   ) {
     self.smokeTest = smokeTest
     self.measurement = measurement
     self.relaunchCheck = relaunchCheck
+    self.preferencesCheck = preferencesCheck
     restoresWindows = !smokeTest && measurement == nil
-    // The development checks never read or write the user's settings.
-    preferences = ReaderPreferences(
-      store: smokeTest || measurement != nil || relaunchCheck != nil
-        ? MemoryPreferenceStore() : UserDefaults.standard)
+    // The development checks never read or write the user's settings; the
+    // preferences check uses its own throwaway user defaults suite.
+    let isolated =
+      smokeTest || measurement != nil || relaunchCheck != nil || preferencesCheck != nil
+    let store: any PreferenceStore
+    if let preferencesCheck, let suite = UserDefaults(suiteName: preferencesCheck.suite) {
+      store = suite
+    } else {
+      store = isolated ? MemoryPreferenceStore() : UserDefaults.standard
+    }
+    preferences = ReaderPreferences(store: store)
     appliedScale = preferences.textScale
-    let isolated = smokeTest || measurement != nil || relaunchCheck != nil
+    appliedReopen = preferences.reopensWindows
     let storage: any RecentsStorage =
       (isolated ? nil : FileRecentsStorage.standard()) ?? MemoryRecentsStorage()
     recents = Recents(storage: storage)
@@ -79,10 +90,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, 
 
   /// The text size the windows were last rendered at.
   private var appliedScale: CGFloat
+  /// Whether the windows were last made restorable.
+  private var appliedReopen: Bool
 
   private func preferencesChanged() {
     NSApp.appearance = preferences.appearance.appearance
     settings?.refresh()
+    if preferences.reopensWindows != appliedReopen {
+      appliedReopen = preferences.reopensWindows
+      // Turned off, open windows stop being saved, so their saved state
+      // (and its document bookmarks) is dropped at the next save.
+      if restoresWindows { for window in windows { window.setRestorable(appliedReopen) } }
+    }
     let scale = preferences.textScale
     guard scale != appliedScale else { return }
     appliedScale = scale
@@ -143,6 +162,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, 
     if let (phase, url) = relaunchCheck {
       Task { await RelaunchCheck.run(phase, document: url, delegate: self) }
     }
+    if let preferencesCheck {
+      Task { await PreferencesCheck.run(preferencesCheck, delegate: self) }
+    }
     if smokeTest {
       // Exercise the running AppKit application, not just its constructors.
       DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [self] in
@@ -157,9 +179,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, 
 
   func applicationSupportsSecureRestorableState(_ app: NSApplication) -> Bool { true }
 
-  /// Recreate a reader window from its saved state (ReaderWindowRestoration).
+  /// Recreate a reader window from its saved state
+  /// (ReaderWindowRestoration), unless Settings turned reopening off.
   func restoreWindow(from coder: NSCoder) -> ReaderWindowController? {
-    guard restoresWindows, let state = RestorationState(from: coder) else { return nil }
+    guard restoresWindows, preferences.reopensWindows, let state = RestorationState(from: coder)
+    else { return nil }
     return restoreWindow(state)
   }
 
@@ -659,7 +683,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, 
     controller.onNavigate = { [weak self] controller, capability, target in
       self?.navigate(to: capability, target: target, from: controller)
     }
-    if restoresWindows { controller.enableRestoration() }
+    if restoresWindows { controller.setRestorable(preferences.reopensWindows) }
     windows.append(controller)
     if show {
       controller.showWindow(sender)

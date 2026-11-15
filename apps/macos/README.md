@@ -231,6 +231,8 @@ Reading-position restoration is described in
   are stored in user defaults under the bundle ID (`appearance`,
   `textScale`). Missing or invalid values fall back to System and 100%. The
   app smoke keeps settings in memory and never writes user defaults.
+  MAC-002D adds versioning and two more settings; see
+  [Settings and preferences](#settings-and-preferences-mac-002d).
 
 Limits: find is literal (no regular expressions) and not
 normalization-insensitive; that needs the open core proposal in
@@ -531,6 +533,46 @@ isn't re-searched until the search runs again. Workspace hits come from the
 core's v1 text index, so a reference-style link label can match differently
 than Find in the opened (v2) document (specs/workspace-search).
 
+## Settings and preferences (MAC-002D)
+
+- **Settings window.** Markdown → Settings… (Command-comma) holds every
+  setting: Appearance (System, Light, Dark), Text size (75%–250%, the View
+  menu's steps), **Show the sidebar in new windows** and **Reopen windows
+  from last time**, with **Restore Defaults** (enabled when any setting
+  differs from its default). Each change applies at once and is stored at
+  once; there is no Apply or OK. The View menu's text size and appearance
+  commands change the same settings, and the window follows them.
+- **Sidebar.** A new window shows or hides its sidebar as the setting says.
+  Open windows keep theirs, and a restored window keeps the sidebar state it
+  was saved with.
+- **Reopening windows.** On (the default), windows are saved at quit and
+  reopened at launch as in MAC-001H, still subject to macOS's own
+  “Close windows when quitting an application” (System Settings → Desktop &
+  Dock), which the window notes. Off, open windows stop being restorable,
+  so AppKit drops their saved state (and its document bookmarks) at its next
+  save, and any state saved earlier is declined at launch.
+- **Storage and versions.** Settings live in user defaults under the bundle
+  ID: `preferencesVersion` (2), `appearance`, `textScale`, `showsSidebar` and
+  `reopensWindows`. A missing setting means its default, so Restore Defaults
+  removes the four setting keys and keeps the version. MAC-001F's
+  unversioned settings are version 1: the first launch upgrades them in
+  place, keeping a valid appearance, snapping a text size to its nearest
+  step and removing malformed values (a non-Boolean sidebar or reopen value,
+  an unknown appearance, a text size that isn't a finite number). A
+  malformed `preferencesVersion` counts as version 1. A newer version,
+  written by a later build, is never rewritten or downgraded: its known
+  settings are read and can be changed, and its other keys are left alone.
+  Every read validates the stored value, so a hand-edited setting falls back
+  to its default.
+- **Isolation.** The smoke, measurements and relaunch check keep settings in
+  memory. The preferences check below uses its own throwaway defaults
+  suite, deleted afterwards; none of them reads or writes the user's
+  settings.
+
+Limits: settings are app-wide, not per document or folder; there is no
+font choice, reading width or default sidebar pane yet (ADV-001 reading
+refinement).
+
 ## Development artifact and licenses (MAC-001I)
 
 ```sh
@@ -719,6 +761,15 @@ and the current match becoming the selection. It then checks Make Text
 Bigger/Smaller and Actual Size (the text re-renders and keeps the
 selection), each appearance reaching the window, and the Settings window
 following and changing both settings, which a new preferences reader sees.
+MAC-002D extends it: the Settings sidebar checkbox hides the sidebar of a new
+window but not of the open one, and Restore Defaults resets every setting,
+re-renders at 100%, follows the system appearance and disables itself.
+`MarkdownRenderTests`' `PreferencesTests` cover the schema: a new store,
+the upgrade of version 1 settings (kept, snapped and malformed values), a
+malformed version, a newer version left untouched while its known settings
+are read and changed, validation of hand-edited values, change
+notifications and Restore Defaults. Real user defaults are left to the
+two-launch preferences check below.
 `MarkdownRenderTests` render every semantic corpus case and compare its
 outline levels, titles and anchors with the frozen expectations, check each
 heading's rendered range, link policy on the GFM tour, inert unsafe content,
@@ -788,6 +839,24 @@ expects AppKit to restore that window at that place and selection. The
 verify run closes its windows, so the app's saved state is left empty. The
 smoke and measurements never restore or save windows.
 
+MAC-002D adds a second two-launch check of settings. `check.py` seeds a
+throwaway user defaults suite (`io.github.awesomejt.markdown.preferences-check.<uuid>`)
+with `defaults write`, as MAC-001F would have stored it plus a malformed
+value, and launches the bundle with `--preferences-check prepare <suite>
+<document>` and `-ApplePersistenceIgnoreState YES`, so the user's own saved
+windows are neither restored nor rewritten. `prepare` expects the upgrade
+(version 2, the text size snapped, the bad value dropped, Dark kept),
+changes every setting through the Settings window's controls, checks that
+the open window stops being restorable and a new window hides its sidebar,
+and quits. `check.py` then reads the suite back with `defaults export`
+and requires exactly the five stored values. `verify` expects the settings
+at launch (Light applied, the Settings controls, the launch window's
+sidebar hidden and not restorable), declines saved window state for a real
+document while reopening is off, restores it once the checkbox turns it on
+(with its saved sidebar), presses Restore Defaults and checks the stored
+keys are gone and the version kept, then deletes the suite.
+`check.py` deletes it again, with its property list, even on failure.
+
 Menu actions routed directly to a window do not
 prove physical keyboard/responder-chain interaction; perform the manual check
 below as well. This is shell and basic-reading acceptance, not heading-role,
@@ -839,6 +908,11 @@ be cancelled and its runner configuration fixed.
    → Appearance → Dark, Light and System, and open Settings with
    Command-comma. Quit and relaunch to confirm the settings persist. With
    VoiceOver already on, confirm that a search announces its result.
+   In Settings, move through the controls with Tab and Space (with Keyboard
+   navigation on) and with VoiceOver; turn off Show the sidebar in new
+   windows and press Command-N; turn off Reopen windows from last time, quit
+   with a document open and relaunch (no window returns); then press Restore
+   Defaults.
 9. With VoiceOver already on, open `build/fixtures/performance/prose-5mib.md`
    (generated by the checks). Confirm the text appears within about half a
    second and stays scrollable while the rest loads. In the rotor (VO-U),
@@ -1152,3 +1226,18 @@ relocated `CoreProbe` consumer. Not run by the agent: VoiceOver on the search
 results and its summary announcement, typing in the field with real key
 events (the smoke sets the field and drives the action), and a folder on a
 network volume.
+
+## MAC-002D local evidence
+
+2026-11-15, macOS 27.0.1 on Apple Silicon, Xcode 27.1, Swift 6.4:
+`.build/feas004-venv/bin/python apps/macos/tools/check.py` passed in debug
+and release: `swift format lint --strict`, 88 Swift tests per configuration
+(including 7 new `PreferencesTests`), the bundle smoke with its extended
+Settings part, relaunch restoration, the new two-launch preferences check
+(upgrade, persistence read back with `defaults export`, restoration
+declined and allowed by the reopen setting, Restore Defaults, suite
+deleted), the release development artifact and the relocated `CoreProbe`
+consumer. Not run by the agent: keyboard and VoiceOver use of the Settings
+window, and a real quit and relaunch with Reopen windows from last time
+off (the check covers the declining path directly, with saved state ignored
+at launch).

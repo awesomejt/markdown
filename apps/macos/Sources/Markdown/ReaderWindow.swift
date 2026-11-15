@@ -172,6 +172,8 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
     sidebarItem.minimumThickness = 160
     sidebarItem.maximumThickness = 360
     split.addSplitViewItem(sidebarItem)
+    // A new window follows Settings; a restored one, its saved state.
+    sidebarItem.isCollapsed = !preferences.showsSidebar
     split.addSplitViewItem(NSSplitViewItem(viewController: documentController))
     split.splitView.autosaveName = nil
     surfaceTop = surface.scrollView.topAnchor.constraint(
@@ -950,13 +952,18 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
     savedPosition = saved
   }
 
-  /// Make the window restorable: AppKit saves its frame, and this
-  /// controller its document and reading position.
-  func enableRestoration() {
+  /// Make the window restorable, or stop it being saved: AppKit saves a
+  /// restorable window's frame, and this controller its document and
+  /// reading position.
+  func setRestorable(_ restorable: Bool) {
     guard let window else { return }
-    window.identifier = ReaderWindowRestoration.identifier
-    window.restorationClass = ReaderWindowRestoration.self
-    window.isRestorable = true
+    if restorable {
+      window.identifier = ReaderWindowRestoration.identifier
+      window.restorationClass = ReaderWindowRestoration.self
+    }
+    guard window.isRestorable != restorable else { return }
+    window.isRestorable = restorable
+    if restorable { invalidateRestorableState() }
   }
 
   /// Open the document a relaunch restores, at its saved position.

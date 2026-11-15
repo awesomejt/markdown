@@ -198,10 +198,23 @@ enum ReadingControlsSmoke {
     // A relaunch reads the same stored settings.
     let reread = ReaderPreferences(store: preferences.store)
     try check(reread.appearance == .dark && reread.textScale == 1.75, "settings persist")
-    preferences.appearance = .system
-    preferences.textScale = 1
+    // New windows follow the sidebar setting (MAC-002D); open ones keep theirs.
+    let shown = reader.isSidebarCollapsed
+    settings.showsSidebar.performClick(nil)
+    try check(!preferences.showsSidebar, "Settings hides the sidebar in new windows")
+    let hidden = delegate.makeWindow(nil, show: false)
+    try check(
+      hidden.isSidebarCollapsed && reader.isSidebarCollapsed == shown,
+      "only new windows follow the sidebar setting")
+    hidden.window?.close()
+    try check(settings.restoreDefaults.isEnabled, "Restore Defaults is enabled")
+    settings.restoreDefaults.performClick(nil)
+    try check(preferences.isDefault, "Restore Defaults restores every setting")
     try await waitUntil("settings reset") { !reader.isBusy && reader.surface.document?.scale == 1 }
-    try check(settings.appearance.titleOfSelectedItem == "System", "Settings follows resets")
+    try check(
+      settings.appearance.titleOfSelectedItem == "System" && NSApp.appearance == nil
+        && settings.showsSidebar.state == .on && !settings.restoreDefaults.isEnabled,
+      "Settings follows resets")
     window.performClose(nil)
     note("appearance/settings checked")
   }
