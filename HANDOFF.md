@@ -1,5 +1,18 @@
 # Agent Session and Platform Handoff
 
+Updated: 2026-11-15 (America/Denver), MAC-002B completed under D-029 (PR #83 approved and closed out into `develop`).
+Active task: None. Eligible tasks: `MAC-002C` and `MAC-002D` (macOS), `WIN-002A` (Windows). The D-030 milestone review for `LNX-002` + `HARD-001` (`review/<milestone>` into `main`, owner-merged) is still open to cut.
+Pass `a2190392-e926-4fb4-ab9f-485b15b79f37` completed, approved PR #83 merged into `develop`:
+
+- Implemented `MAC-002B` (macOS workspace browser, document links and file-identity window lookup); see [apps/macos/README.md](apps/macos/README.md#workspace-browser-and-links-mac-002b).
+- Checks at `76904e2`: `.build/feas004-venv/bin/python apps/macos/tools/check.py` passed in debug and release (needs `~/.cargo/bin` on `PATH`); `tools/check.py common` passed with a canonical `TMPDIR`.
+- Grok review 1 at `94df56f`: 0 Blockers, 1 Concern, 2 Nits, all fixed at `0434f11`. Review 2 at `0434f11`: 0/0/1 Nit (approval), nit fixed at `76904e2`.
+- Owner manual checks not run by the agent: VoiceOver on the files sidebar, a folder on a network volume, real mouse clicks in the sidebar.
+
+Next task: `MAC-002C` (workspace search UI) or `MAC-002D` (preferences) on macOS, `WIN-002A` on Windows, or the D-030 milestone review.
+
+## Previous handoff
+
 Updated: 2026-11-14 (America/Denver), MAC-002A completed under D-029 (PR #82 approved and closed out into `develop`).
 Active task: None. Eligible tasks: `MAC-002B` and `MAC-002D` (macOS), `WIN-002A` (Windows). The D-030 milestone review for `LNX-002` + `HARD-001` (`review/<milestone>` into `main`, owner-merged) is still open to cut.
 Pass `338b078f-e980-40ef-b269-b0f4eb3e7f34` completed, approved PR #82 merged into `develop`:
@@ -11,7 +24,7 @@ Pass `338b078f-e980-40ef-b269-b0f4eb3e7f34` completed, approved PR #82 merged in
 
 Next task: `MAC-002B` (workspace browser and navigation; also owns relative document links and the window file-identity lookup) or `MAC-002D` (preferences) on macOS, `WIN-002A` on Windows, or the D-030 milestone review.
 
-## Previous handoff
+## Older handoff
 
 Updated: 2026-11-14 (America/Denver), HARD-001 completed under D-029 (PR #81 approved and closed out into `develop`).
 Active task: None. Eligible tasks: `MAC-002A` (macOS) and `WIN-002A` (Windows). No Linux tasks remain eligible until `DESK-002` (which requires `MAC-002` and `WIN-002`). On `develop`, both `LNX-002` (Linux MVP) and `HARD-001` are complete, reaching a D-030 milestone review boundary (`review/<milestone>` into `main`; only the owner merges into `main`).

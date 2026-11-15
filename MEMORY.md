@@ -431,6 +431,18 @@ read.
   0 Concerns, 1 Nit (approved under D-029; nit fixed at `a954f79`). Debug/Release
   `apps/macos/tools/check.py` passed. Relative document links and the window
   file-identity lookup move to MAC-002B; `MAC-002B` and `MAC-002D` are next on macOS.
+- **MAC-002B (PR #83)**: delivers the macOS Files sidebar (`WorkspaceBrowser.swift`:
+  Files | Outline switch, ⌥⌘1/⌥⌘2, an `NSOutlineView` over an immutable bounded
+  `WorkspaceListing` enumerated off main under the folder grant and filtered by the
+  core's `md_workspace_classify_path`; Show Hidden Files ⇧⌘., Show All Files, Refresh
+  Files), live relative document links (`LinkDestination.document`, resolved by
+  `DocumentCapability.linkedDocument` against the folder grant or the document's own
+  folder, never re-decoded), and window lookup by URL or device/inode (cached per
+  window at load; the target's stat runs on a GCD queue bounded to 2 s; opens are
+  serialized, and checks await `AppDelegate.opensFinished()`). This resolves the MAC-001C
+  identity nit. Grok review 1 at `94df56f` reported 0 Blockers, 1 Concern, 2 Nits
+  (fixed at `0434f11`); review 2 at `0434f11` reported 0 Blockers, 0 Concerns, 1 Nit
+  (approved under D-029; nit fixed at `76904e2`). `MAC-002C` and `MAC-002D` are next on macOS.
 - Workflow: task PRs target `develop` and merge on a Grok review with no
   serious finding (D-029). `main` takes only owner-approved milestone reviews
   from `review/<milestone>`, tagged `m-<milestone>` (D-030). The shared-core

@@ -82,6 +82,7 @@ enum FolderSmoke {
 
     // A second document through the folder gets its own window and the same grant.
     delegate.open([beta], folder: folder, preferring: first)
+    await delegate.opensFinished()
     try await waitUntil("second folder document opens") {
       delegate.windows.count == 3 && delegate.windows[2].documentTitle == "Beta"
         && !delegate.windows[2].isBusy
@@ -123,6 +124,7 @@ enum FolderSmoke {
     // when the same file is opened again by itself (Grok review 1, PR #82).
     let regranted = try requireValue(second.folder, "re-granted folder")
     delegate.open([alpha], folder: regranted, preferring: nil)
+    await delegate.opensFinished()
     try await waitUntil("alpha opens through the new grant") {
       first.documentTitle == "Alpha" && !first.isBusy && !first.isOpeningFolder
     }
@@ -135,6 +137,7 @@ enum FolderSmoke {
       !first.isBusy && first.statusText == DocumentError.accessRevoked.message
     }
     delegate.open([alpha])
+    await delegate.opensFinished()
     try await waitUntil("reopening the file recovers the revoked window") {
       first.documentTitle == "Alpha" && !first.isBusy
     }

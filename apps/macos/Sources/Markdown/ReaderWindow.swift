@@ -18,6 +18,9 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
   let loader = DocumentLoader()
   let surface = ReaderSurface()
   let outline = OutlineController()
+  /// The folder's files beside the outline (MAC-002B).
+  let files = WorkspaceBrowserController()
+  let sidebar: SidebarController
   let findBar = FindBar()
   let notice = NoticeBar()
   let preferences: ReaderPreferences
@@ -84,8 +87,29 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
   private var folderTask: Task<Void, Never>?
   private var folderRequest: UInt64 = 0
 
+  // MARK: Workspace browsing (MAC-002B)
+
+  /// What the files sidebar lists for this window's folder.
+  private(set) var workspaceOptions = WorkspaceOptions()
+  private var listTask: Task<Void, Never>?
+  private var listRequest: UInt64 = 0
+  /// Open a document from the files sidebar or a link, at an optional
+  /// heading anchor: in this window, or in the window already showing it.
+  var onNavigate: ((ReaderWindowController, DocumentCapability, String?) -> Void)?
+  /// The loaded file's device and inode, read off the main thread when it
+  /// loads, so finding the window showing a file never stats this one.
+  private var identity: (capability: DocumentCapability, identity: FileIdentity)?
+  /// A heading to show once this document loads.
+  private var pendingAnchor: (capability: DocumentCapability, anchor: String)?
+  /// Tells the reader why a link or file can't be opened; the smoke records it.
+  var presentProblem: (ReaderWindowController, String, String) -> Void = {
+    controller, message, detail in
+    controller.showProblemSheet(message, detail)
+  }
+
   init(preferences: ReaderPreferences) {
     self.preferences = preferences
+    sidebar = SidebarController(files: files, outline: outline)
     let window = NSWindow(
       contentRect: NSRect(x: 0, y: 0, width: 900, height: 640),
       styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
@@ -141,10 +165,10 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
     ])
     let documentController = NSViewController()
     documentController.view = content
-    let sidebar = NSSplitViewItem(sidebarWithViewController: outline)
-    sidebar.minimumThickness = 160
-    sidebar.maximumThickness = 360
-    split.addSplitViewItem(sidebar)
+    let sidebarItem = NSSplitViewItem(sidebarWithViewController: sidebar)
+    sidebarItem.minimumThickness = 160
+    sidebarItem.maximumThickness = 360
+    split.addSplitViewItem(sidebarItem)
     split.addSplitViewItem(NSSplitViewItem(viewController: documentController))
     split.splitView.autosaveName = nil
     surfaceTop = surface.scrollView.topAnchor.constraint(
@@ -161,6 +185,8 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
     window.delegate = self
     outline.onSelect = { [weak self] index in self?.surface.reveal(heading: index) }
     surface.onNavigate = { [weak self] index in self?.outline.select(index) }
+    surface.onOpenDocument = { [weak self] path, fragment in self?.followLink(path, fragment) }
+    files.onOpen = { [weak self] item in self?.openItem(item) }
     loader.onChange = { [weak self] state in self?.present(state) }
     findBar.onSearch = { [weak self] in self?.search(then: nil) }
     findBar.onNavigate = { [weak self] backwards in self?.step(backwards: backwards) }
@@ -203,6 +229,8 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
     case transfer
     /// A restored window's saved position.
     case restore(SavedPosition)
+    /// A document opened from a link: the top, then the linked heading.
+    case anchor(String)
   }
 
   /// Whether `loaded` is the revision on screen (or being completed from its lead).
@@ -238,6 +266,7 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
         showStatus("Loading…", nil, title: capability.displayName, url: capability.url)
       }
     case .loaded(let loaded):
+      recordIdentity(loaded.capability)
       reloadRequested = false
       setNotice(nil)
       if loaded.capability != shownCapability { onLoaded?(self, loaded.capability) }
@@ -250,6 +279,7 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
     case .failed(let capability, let error):
       reloadRequested = false
       pendingRestore = nil
+      pendingAnchor = nil
       showStatus(
         error.message, error.recovery, title: capability.displayName, url: nil,
         recovery: Recovery(subject: .document(capability), actions: actions(error.recoveryActions)))
@@ -265,6 +295,10 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
     if let saved = pendingRestore {
       pendingRestore = nil
       return .restore(saved)
+    }
+    if let pending = pendingAnchor, pending.capability == loaded.capability {
+      pendingAnchor = nil
+      return .anchor(pending.anchor)
     }
     return loaded.capability == shownCapability && surface.document != nil ? .transfer : .top
   }
@@ -288,7 +322,7 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
         Task { @MainActor in self?.installLead(partial, id: id, loaded) }
       }
     case .restore(let position): saved = position
-    case .restyle, .keep, .transfer: break
+    case .restyle, .keep, .transfer, .anchor: break
     }
     let work = Task.detached(priority: .userInitiated) { [lead, saved] in
       // Resolving the folder touches the filesystem, so it stays off the main thread.
@@ -313,6 +347,9 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
         self.install(rendered, title: title, loaded, at: position)
       case (.success((let rendered, let restored)), .restore):
         self.install(rendered, title: title, loaded, at: restored)
+      case (.success((let rendered, _)), .anchor(let anchor)):
+        self.install(rendered, title: title, loaded)
+        if !self.surface.reveal(anchor: anchor) { NSSound.beep() }
       case (.success((let rendered, _)), .transfer):
         // Anchor the reader's place as it is now; the core calls run off
         // the main thread, and a newer state still wins.
@@ -368,6 +405,10 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
     surface.complete(rendered)
     outline.show(rendered.headings)
     if row >= 0 { outline.select(row) }
+    if let pending = pendingAnchor, pending.capability == shownCapability {
+      pendingAnchor = nil
+      if !surface.reveal(anchor: pending.anchor) { NSSound.beep() }
+    }
     // A search started while the lead was shown runs now.
     if !findBar.isHidden { search(then: pendingStep) }
     onMilestone?(.completed)
@@ -388,6 +429,7 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
     window?.representedURL = loaded.capability.url
     window?.subtitle = folder?.displayName ?? ""
     setRecovery(nil)
+    revealInFiles(loaded.capability)
     // A reloaded document gets a new snapshot: search it again.
     findMatches = nil
     findKey = nil
@@ -478,6 +520,7 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
     let id = folderRequest
     folderTask?.cancel()
     self.folder = folder
+    clearFiles(message: "Opening folder…")
     if loader.capability != nil { loader.clear() }
     showStatus("Opening folder…", nil, title: folder.displayName, url: nil)
     folderTask = Task { [weak self] in
@@ -494,6 +537,7 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
       switch outcome {
       case .success(let capability):
         self.onFolderReady?(self, folder)
+        self.listFolder()
         if let capability {
           self.loader.open(capability)
         } else {
@@ -501,6 +545,7 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
         }
       case .failure(let error):
         self.folder = nil
+        self.clearFiles()
         self.showStatus(
           error.message, error.recovery, title: folder.displayName, url: nil,
           recovery: Recovery(subject: .folder(folder), actions: self.actions(error.recoveryActions))
@@ -512,7 +557,7 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
   private func showFolderReady() {
     guard let folder else { return }
     showStatus(
-      "“\(folder.displayName)”", "Choose File ▸ Open… to read a document in this folder.",
+      "“\(folder.displayName)”", "Choose a document in the sidebar, or File ▸ Open…",
       title: folder.displayName, url: folder.url)
   }
 
@@ -534,6 +579,7 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
       guard let error = FolderError(status), let folder = try? FolderCapability(granted: item.url)
       else { return }
       self.folder = nil
+      clearFiles()
       showStatus(
         error.message, error.recovery, title: item.name, url: nil,
         recovery: Recovery(subject: .folder(folder), actions: actions(error.recoveryActions)))
@@ -561,6 +607,7 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
     folderTask = nil
     folder.revoke()
     self.folder = nil
+    clearFiles()
     if recent?.kind == .folder { recent = nil }
     if loader.capability?.folder === folder.grant {
       loader.clear()
@@ -576,6 +623,7 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
     let shared = folder?.grant === grant
     if shared {
       folder = nil
+      clearFiles()
       if recent?.kind == .folder { recent = nil }
       window?.subtitle = ""
     }
@@ -585,6 +633,172 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
       showStatus("No document open", nil, title: "Markdown", url: nil)
     }
   }
+
+  // MARK: Files sidebar and links (MAC-002B)
+
+  /// The identity of the document this window holds, once known.
+  var knownIdentity: FileIdentity? {
+    guard let identity, identity.capability == loader.capability else { return nil }
+    return identity.identity
+  }
+
+  /// Read the loaded file's identity off the main thread, once per load.
+  private func recordIdentity(_ capability: DocumentCapability) {
+    Task { [weak self] in
+      let found = await AppDelegate.identity(of: capability)
+      guard let self, let found, self.loader.capability == capability else { return }
+      self.identity = (capability, found)
+    }
+  }
+
+  /// Whether the folder is being listed.
+  var isListing: Bool { listTask != nil }
+
+  /// List the folder off the main thread; only the newest listing shows.
+  func listFolder() {
+    guard let folder else { return }
+    listRequest &+= 1
+    let id = listRequest
+    listTask?.cancel()
+    let options = workspaceOptions
+    sidebar.setHasFiles(true)
+    if files.listing == nil { files.clear(message: "Listing…") }
+    let cancelled = ListCancellation()
+    let work = Task.detached { () -> Result<WorkspaceListing, any Error> in
+      Result { try WorkspaceListing.list(folder, options: options, isCancelled: cancelled.check) }
+    }
+    listTask = Task { [weak self] in
+      let result = await withTaskCancellationHandler {
+        await work.value
+      } onCancel: {
+        cancelled.cancel()
+      }
+      guard let self, id == self.listRequest else { return }
+      self.listTask = nil
+      switch result {
+      case .success(let listing) where listing.folder == self.folder:
+        self.files.show(listing)
+        if let shown = self.shownCapability { self.revealInFiles(shown) }
+      case .success: break
+      case .failure(let error as FolderError):
+        self.files.clear(message: error.message)
+      case .failure(is CancellationError): break
+      case .failure:
+        self.files.clear(message: FolderError.unreadable.message)
+      }
+    }
+  }
+
+  /// The window has no folder (any more): drop its listing.
+  private func clearFiles(message: String? = nil) {
+    listRequest &+= 1
+    listTask?.cancel()
+    listTask = nil
+    files.clear(message: message)
+    sidebar.setHasFiles(message != nil)
+  }
+
+  /// Select the shown document in the files sidebar, if it is listed.
+  private func revealInFiles(_ capability: DocumentCapability) {
+    guard let listing = files.listing, folder != nil else { return }
+    let id = listRequest
+    Task { [weak self] in
+      let path = await Task.detached { listing.path(of: capability.url) }.value
+      guard let self, id == self.listRequest, self.shownCapability == capability else { return }
+      self.files.reveal(path)
+    }
+  }
+
+  /// Open a document chosen in the files sidebar through the folder's grant.
+  private func openItem(_ item: WorkspaceItem) {
+    guard let listing = files.listing, let folder, listing.folder == folder else { return }
+    let url = listing.url(for: item)
+    Task { [weak self] in
+      let result = await Task.detached { () -> Result<DocumentCapability, FolderError> in
+        Result { () throws(FolderError) in try folder.document(url) }
+      }.value
+      guard let self, self.folder == folder else { return }
+      switch result {
+      case .success(let capability):
+        if capability == self.loader.capability, case .loaded = self.loader.state { return }
+        self.onNavigate?(self, capability, nil)
+      case .failure(let error):
+        self.presentProblem(self, error.message, error.recovery)
+      }
+    }
+  }
+
+  /// Follow a link to another document, resolved off the main thread
+  /// against the shown document and the folder it was opened through.
+  private func followLink(_ path: String, _ fragment: String?) {
+    guard let source = shownCapability else { return }
+    let folder = folder
+    Task { [weak self] in
+      let result = await Task.detached { () -> Result<DocumentCapability, LinkError> in
+        Result { () throws(LinkError) in try source.linkedDocument(path, through: folder) }
+      }.value
+      guard let self, self.shownCapability == source else { return }
+      switch result {
+      case .success(let target) where target == source:
+        // A link to this document itself: just its heading.
+        if let fragment, !self.surface.reveal(anchor: fragment) { NSSound.beep() }
+      case .success(let target):
+        self.onNavigate?(self, target, fragment)
+      case .failure(let error):
+        self.presentProblem(self, error.message, error.recovery)
+      }
+    }
+  }
+
+  /// Show `capability` in this window, replacing its document, then the
+  /// heading `anchor` if given. The window keeps its folder.
+  func navigate(to capability: DocumentCapability, anchor: String?) {
+    pendingAnchor = anchor.map { (capability, $0) }
+    loader.open(capability)
+  }
+
+  /// Show a heading of the shown document, or once it loads.
+  func reveal(anchor: String) {
+    if shownCapability != nil, surface.document?.isComplete == true, !isBusy {
+      if !surface.reveal(anchor: anchor) { NSSound.beep() }
+    } else if let capability = loader.capability {
+      // Shown when the load renders, or when a lead completes.
+      pendingAnchor = (capability, anchor)
+    }
+  }
+
+  private func showProblemSheet(_ message: String, _ detail: String) {
+    guard let window else { return }
+    let alert = NSAlert()
+    alert.messageText = message
+    alert.informativeText = detail
+    alert.alertStyle = .informational
+    alert.beginSheetModal(for: window)
+  }
+
+  @objc func showFiles(_ sender: Any?) {
+    sidebar.show(.files)
+    if isSidebarCollapsed { split.splitViewItems[0].isCollapsed = false }
+    window?.makeFirstResponder(files.outlineView)
+  }
+
+  @objc func showOutline(_ sender: Any?) {
+    sidebar.show(.outline)
+    if isSidebarCollapsed { split.splitViewItems[0].isCollapsed = false }
+    window?.makeFirstResponder(outline.table)
+  }
+
+  @objc func toggleHiddenFiles(_ sender: Any?) {
+    workspaceOptions.includeHidden.toggle()
+    listFolder()
+  }
+
+  @objc func toggleAllFiles(_ sender: Any?) {
+    workspaceOptions.allFiles.toggle()
+    listFolder()
+  }
+
+  @objc func refreshFiles(_ sender: Any?) { listFolder() }
 
   @objc func reloadDocument(_ sender: Any?) {
     reloadRequested = true
@@ -696,6 +910,12 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
     switch menuItem.action {
     case #selector(reloadDocument(_:)): loader.capability != nil
     case #selector(closeFolder(_:)): folder != nil
+    case #selector(showFiles(_:)), #selector(refreshFiles(_:)):
+      folder != nil && folderTask == nil
+    case #selector(toggleHiddenFiles(_:)):
+      validateToggle(menuItem, on: workspaceOptions.includeHidden)
+    case #selector(toggleAllFiles(_:)):
+      validateToggle(menuItem, on: workspaceOptions.allFiles)
     case #selector(showFindBar(_:)), #selector(findNextMatch(_:)),
       #selector(findPreviousMatch(_:)):
       surface.document != nil && !surface.scrollView.isHidden
@@ -703,6 +923,12 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
       surface.document != nil && surface.textView.selectedRange().length > 0
     default: true
     }
+  }
+
+  /// A listing option's check mark; it can change only with a listed folder.
+  private func validateToggle(_ menuItem: NSMenuItem, on: Bool) -> Bool {
+    menuItem.state = on ? .on : .off
+    return folder != nil && folderTask == nil
   }
 
   // MARK: Find
@@ -926,6 +1152,9 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
     folderRequest &+= 1
     folderTask?.cancel()
     folderTask = nil
+    listRequest &+= 1
+    listTask?.cancel()
+    listTask = nil
     findRequest &+= 1
     findTask?.cancel()
     findTask = nil
@@ -1037,4 +1266,12 @@ private final class OutlineCell: NSTableCellView {
     leading.constant = 4 + CGFloat(min(heading.level, 6) - 1) * 12
     setAccessibilityLabel("Heading level \(heading.level), \(heading.title)")
   }
+}
+
+/// Cancels a running listing between folders.
+private final class ListCancellation: @unchecked Sendable {
+  private let lock = NSLock()
+  private var cancelled = false
+  func cancel() { lock.withLock { cancelled = true } }
+  @Sendable func check() -> Bool { lock.withLock { cancelled } }
 }

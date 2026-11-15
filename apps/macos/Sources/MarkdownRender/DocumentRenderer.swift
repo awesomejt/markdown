@@ -11,14 +11,19 @@ public struct RenderedHeading: Sendable, Equatable {
   public let range: NSRange
 }
 
-/// Where a rendered link leads. Only these two kinds carry a `.link` attribute.
+/// Where a rendered link leads. Only these kinds carry a `.link` attribute.
 public enum LinkDestination: Sendable, Equatable {
   /// A heading anchor in this document.
   case fragment(String)
   /// An http, https or mailto URI the core classified as external.
   case external(URL)
+  /// Another document, by the relative path the core decoded exactly once,
+  /// and an optional heading anchor in it (MAC-002B). The window resolves it
+  /// against the document's folder grant; the path is never decoded again.
+  case document(path: String, fragment: String?)
 
-  /// The `.link` attribute value: a fragment-only URL or the external URI.
+  /// The `.link` attribute value: a fragment-only URL, the external URI, or
+  /// a private-scheme URL whose components round-trip the decoded path.
   public var url: URL? {
     switch self {
     case .fragment(let anchor):
@@ -26,6 +31,13 @@ public enum LinkDestination: Sendable, Equatable {
       components.fragment = anchor
       return components.url
     case .external(let url): return url
+    case .document(let path, let fragment):
+      var components = URLComponents()
+      components.scheme = Self.documentScheme
+      // The setters percent-encode, so a literal `%` in the name survives.
+      components.percentEncodedPath = Self.encode(path)
+      components.percentEncodedFragment = fragment.map(Self.encode)
+      return components.url
     }
   }
 
@@ -35,6 +47,11 @@ public enum LinkDestination: Sendable, Equatable {
       let fragment = url.fragment(percentEncoded: false)
     {
       self = .fragment(fragment)
+    } else if url.scheme == Self.documentScheme,
+      let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
+      !components.path.isEmpty
+    {
+      self = .document(path: components.path, fragment: components.fragment)
     } else if let scheme = url.scheme?.lowercased(), Self.externalSchemes.contains(scheme) {
       self = .external(url)
     } else {
@@ -43,6 +60,18 @@ public enum LinkDestination: Sendable, Equatable {
   }
 
   static let externalSchemes: Set<String> = ["http", "https", "mailto"]
+  /// Never opened through Launch Services: only the reader window handles it.
+  static let documentScheme = "x-markdown-document"
+
+  /// Percent-encode everything but unreserved characters and `/`, so
+  /// decoding the URL's components gives back exactly `text`.
+  private static func encode(_ text: String) -> String {
+    var allowed = CharacterSet(charactersIn: "/-._~")
+    allowed.formUnion(CharacterSet(charactersIn: "a"..."z"))
+    allowed.formUnion(CharacterSet(charactersIn: "A"..."Z"))
+    allowed.formUnion(CharacterSet(charactersIn: "0"..."9"))
+    return text.addingPercentEncoding(withAllowedCharacters: allowed) ?? ""
+  }
 }
 
 /// Immutable rendered text and heading map, built off the main thread from an
@@ -622,18 +651,25 @@ private struct Builder {
       if let url = URL(string: target), LinkDestination(link: url) != nil {
         destination = .external(url)
       }
+    case MD_TARGET_REQUIRES_CAPABILITY where !target.isEmpty:
+      // The window decides whether the folder grant reaches it (MAC-002B).
+      let fragment =
+        intent.flags & UInt32(MD_INTENT_HAS_FRAGMENT) != 0
+        ? try document.string(intent.fragment) : nil
+      destination = .document(path: target, fragment: fragment)
     default: break
     }
     if let destination, let url = destination.url {
       output.addAttribute(.link, value: url, range: range)
       if node.flags & UInt32(MD_NODE_HAS_TITLE) != 0 {
         output.addAttribute(.toolTip, value: try document.string(node.extra), range: range)
+      } else if case .document(let path, let fragment) = destination {
+        output.addAttribute(
+          .toolTip, value: fragment.map { "\(path)#\($0)" } ?? path, range: range)
       }
     } else {
-      // Links to other files wait for workspace navigation (MAC-002B); denied links stay inert.
-      let reason =
-        Int(intent.target_kind) == MD_TARGET_REQUIRES_CAPABILITY
-        ? "Links to other files are not available yet" : "This link was blocked"
+      // Denied links stay inert, with an explanation.
+      let reason = "This link was blocked"
       output.addAttribute(.toolTip, value: reason, range: range)
       output.addAttribute(
         .underlineStyle,

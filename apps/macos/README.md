@@ -20,7 +20,9 @@ document type at `Alternate` rank, and imports `net.daringfireball.markdown`
 (conforming to `public.plain-text`; `.md`/`.markdown`, `text/markdown`).
 Finder, Launch Services and `open -a` deliver URLs to
 `application(_:open:)`. A document already shown is focused, and retried if
-its load failed; otherwise the first empty window is reused, or a new window
+its load failed (the same file is found by resolved URL or, off the main
+thread, by device and inode, so a hard link or a case variant of the name
+focuses it too: MAC-002B); otherwise the first empty window is reused, or a new window
 opens. Documents delivered at launch do not add a stray empty window. File → Reload (Command-R) rereads the
 current document. A failed load shows the typed error and its recovery
 suggestion in the window; a loaded document is rendered as described in
@@ -96,7 +98,8 @@ accessibility element continuous across the whole document. The
 - Links follow the core's v2 classification. A fragment link to a heading
   anchor (including non-ASCII anchors such as `#café`) scrolls to that heading; a missing anchor beeps. An `http`, `https`
   or `mailto` link the core marks external opens with the system handler.
-  Links to other files stay inert until workspace navigation (MAC-002B);
+  A relative link to another Markdown or text document opens it
+  ([Workspace browser and links](#workspace-browser-and-links-mac-002b));
   denied links
   (unsafe schemes, invalid URIs) carry no link at all: they are dotted and
   explain themselves in a tooltip.
@@ -405,10 +408,65 @@ revisions; see the evidence below.
   anyway. A sandboxed process makes and resolves security-scoped bookmarks
   instead; that path is not exercised until a sandboxed build exists.
 
-Limits: relative links to other documents stay inert until MAC-002B. A
-restored window reopens its document without the folder grant (MAC-002E).
-The window already showing a file is still found by resolved URL, not file
-identity (deferred finding in [TODO.md](../../TODO.md#deferred-review-findings)).
+Limits: a restored window reopens its document without the folder grant
+(MAC-002E).
+
+## Workspace browser and links (MAC-002B)
+
+- **Files sidebar.** A window with a folder shows a **Files | Outline**
+  switch above its sidebar (View → Files, Option-Command-1; View → Outline,
+  Option-Command-2); without a folder the sidebar is the outline alone.
+  The files are an `NSOutlineView` source list over an immutable listing,
+  so only visible rows are made and a folder costs nothing until expanded.
+  Folders come first, then documents, each sorted as Finder sorts names.
+- **Listing.** `WorkspaceListing` enumerates the folder off the main thread,
+  under its `FolderGrant` (a Close Folder during the listing stops it as
+  access revoked), and asks the core to classify each display path through
+  `md_workspace_classify_path`: names the core rejects (invalid UTF-8,
+  controls, bidi formatting, too long) are skipped and counted in the
+  sidebar's footer; hidden names (a component starting with `.`) are left
+  out, with their folders not even read, unless View → Show Hidden Files
+  (Shift-Command-.) is on; only Markdown (`md`, `markdown`, `mdx`) is listed,
+  and folders without any are left out, unless View → Show All Files is on.
+  A name with invisible characters is kept, with a warning symbol and
+  “The name contains invisible characters” in its tooltip and VoiceOver
+  label. A folder that can’t be read is shown, marked, with no contents.
+  Symlinked folders and packages (an app, a bundle) are not descended; a
+  symlinked file is listed only when it resolves inside the folder. The
+  listing stops after 100,000 directory entries or 255 levels and says so.
+  View → Refresh Files lists again (watching is MAC-002E); a new listing
+  keeps the expanded folders and the selection.
+- **Keyboard and opening.** The arrow keys move through the rows, Right and
+  Left expand and collapse (Left on a document moves to its folder), typing
+  selects by name, and Return or Enter opens the selected document or
+  toggles the selected folder. A click on a document opens it. A document
+  opens through the folder’s grant, in the same window, replacing the
+  document shown; if another window already shows it, that window comes
+  forward instead. The shown document stays selected in the sidebar.
+- **Links between documents.** A link the core classifies as needing a
+  capability (a relative path, decoded by the core exactly once, and an
+  optional heading anchor) is a real link. Clicking it resolves the path
+  against the shown document’s folder, off the main thread, without
+  decoding it again: a document opened through a folder may link anywhere
+  inside that folder, and the target shares the grant; one opened by itself
+  may link inside its own folder, as its images may. The target opens as the
+  sidebar opens documents, then shows the anchored heading (a missing anchor
+  beeps). A link that resolves outside, through `..` or a symlink, or to a
+  file that isn’t Markdown or plain text, is refused with a sheet that says
+  why; a missing target (even in missing folders) opens and reports “can’t be
+  found” with Locate….
+- **Finding the open window.** Every open (Finder, Open…, Open Recent, the
+  sidebar, links) looks for a window already showing the file: by resolved
+  URL, else by device and inode, so a hard link or a case variant of the
+  name finds it. Each window records its file's identity off the main thread
+  when the file loads; an open reads only its target's, off the main thread
+  and for at most 2 seconds, so a stalled volume can't hold up later opens
+  (it then falls back to the URL match). Opens are placed one at a time, in
+  the order asked.
+
+Limits: no file operations (rename, move, Trash) and no Back/Forward history.
+A folder’s listing changes only on Refresh Files or a new grant until
+watching (MAC-002E). Workspace search is MAC-002C.
 
 ## Development artifact and licenses (MAC-001I)
 
@@ -568,7 +626,13 @@ through a new grant, the Open Recent menu order, a moved folder opening
 where it is now with its entry following, a deleted document offering
 Locate… (the located file replaces the entry) and Remove from Recents, a
 denied folder marked in the menu and recovered with Grant Access…, and
-Clear Menu. Its
+Clear Menu. Its MAC-002B part lists a folder in the files sidebar (Markdown
+only, folders first, an invisible-character name marked for VoiceOver),
+expands, moves and opens with the arrow keys and Return, follows a relative
+link to its anchored heading through the grant, refuses links outside the
+folder and to an image, reports a missing target, finds the open window
+through a hard link and a case variant, toggles hidden and all files, and
+lists and expands a 5,000-document folder. Its
 reading part opens a 202-heading document and checks the rendered text, the
 outline rows, outline and fragment-link navigation (heading revealed and
 selected, outline following), an external link routed to a stub instead of
@@ -979,3 +1043,23 @@ part, relaunch restoration, the release development artifact and the
 relocated `CoreProbe` consumer. Not run by the agent: the interactive open
 panel for Open Folder…, Locate… and Grant Access… (the smoke scripts the
 choices), a real disconnected volume, and VoiceOver on the recovery buttons.
+
+## MAC-002B local evidence
+
+2026-11-15, macOS 27.0.1 on Apple Silicon, Xcode 27.1, Swift 6.4:
+`.build/feas004-venv/bin/python apps/macos/tools/check.py` passed in debug
+and release: `swift format lint --strict`, 71 Swift tests per configuration
+(including 8 new `WorkspaceTests`: core classification, Markdown-only and
+all-file listings and their order, symlinks, packages and invisible names,
+an unreadable subfolder and root errors, entry/depth limits and
+cancellation, a 20,000-document folder listed in about 1.8 s with its
+creation, links kept inside their folder with literal `%` names, and file
+identity through a hard link; and a document-link URL round trip in
+`RenderTests`), the bundle smoke with its MAC-002B part (listing, keyboard
+navigation with arrow keys and Return, sidebar opening, links with anchors,
+refused and missing links, hard-link and case-variant window lookup,
+hidden/all-file toggles, Close Folder, and a 5,000-document folder listed in
+46–56 ms and expanded to 5,050 rows), relaunch restoration, the release
+development artifact and the relocated `CoreProbe` consumer. Not run by the
+agent: VoiceOver on the files sidebar, a folder on a network volume, and
+mouse clicks (the smoke drives the click action and key events directly).

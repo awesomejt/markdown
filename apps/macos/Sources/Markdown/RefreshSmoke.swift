@@ -19,6 +19,7 @@ enum RefreshSmoke {
     let original = "# Live\n\n" + sections(0..<120)
     let url = try file("live.md", Data(original.utf8))
     delegate.application(NSApp, open: [url])
+    await delegate.opensFinished()
     guard let reader = delegate.windows.last else { throw SmokeFailure(description: "no window") }
     try await waitUntil("document settles") { !reader.isBusy }
     let surface = reader.surface

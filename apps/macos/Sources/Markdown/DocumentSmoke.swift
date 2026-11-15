@@ -29,6 +29,7 @@ enum DocumentSmoke {
     try check(delegate.windows.count == 1, "one empty window before opening")
     let valid = try file("valid.md", Data("---\ntitle: Smoke\n---\n# One\n\nText\n".utf8))
     delegate.application(NSApp, open: [valid])
+    await delegate.opensFinished()
     let reader = try requireWindow(delegate.windows.first)
     try check(delegate.windows.count == 1, "opening reuses the empty window")
     try await settle(reader)
@@ -37,6 +38,7 @@ enum DocumentSmoke {
     try check(reader.window?.title == "valid.md", "window names the document")
     try check(reader.window?.representedURL != nil, "window represents the opened file")
     delegate.application(NSApp, open: [valid])
+    await delegate.opensFinished()
     try check(delegate.windows.count == 1, "reopening a shown document focuses its window")
 
     // Each failure is typed and presented in its own window.
@@ -55,6 +57,7 @@ enum DocumentSmoke {
     ]
     for (url, expected) in failures {
       delegate.application(NSApp, open: [url])
+      await delegate.opensFinished()
       let window = try requireWindow(delegate.windows.last)
       try await settle(window)
       try check(
@@ -66,6 +69,7 @@ enum DocumentSmoke {
     let missing = failures[0].0
     try Data("---\ntitle: Found\n---\n".utf8).write(to: missing)
     delegate.application(NSApp, open: [missing])
+    await delegate.opensFinished()
     let retried = try requireWindow(delegate.windows[1])
     try check(delegate.windows.count == 1 + failures.count, "reopening a failed file reuses it")
     try await settle(retried)
@@ -121,6 +125,7 @@ enum DocumentSmoke {
       return live.sessions == 0 && live.jobs == 0 && live.snapshots == 0
     }
     try await FolderSmoke.run(delegate: delegate, directory: directory, check: check)
+    try await WorkspaceSmoke.run(delegate: delegate, directory: directory, check: check)
     delegate.newWindow(nil)
   }
 
@@ -137,6 +142,7 @@ enum DocumentSmoke {
     }
     text += "## The End\n\nDone.\n"
     delegate.application(NSApp, open: [try file("guide.md", Data(text.utf8))])
+    await delegate.opensFinished()
     let reader = try requireWindow(delegate.windows.last)
     try await settle(reader)
     let surface = reader.surface
@@ -234,6 +240,7 @@ enum DocumentSmoke {
     let document = folder.appendingPathComponent("rich.md")
     try Data(markdown.utf8).write(to: document)
     delegate.application(NSApp, open: [document])
+    await delegate.opensFinished()
     let reader = try requireWindow(delegate.windows.last)
     try await settle(reader)
     let surface = reader.surface

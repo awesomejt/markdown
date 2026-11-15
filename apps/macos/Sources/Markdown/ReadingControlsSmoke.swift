@@ -18,6 +18,7 @@ enum ReadingControlsSmoke {
       "# Unicode find\n\nCafé, café and cafe\u{301}. 👨\u{200D}👩\u{200D}👧 family; 中文; עברית.\n\n"
     for index in 0..<120 { text += "Paragraph \(index) mentions the CAFÉ again.\n\n" }
     delegate.application(NSApp, open: [try file("find.md", Data(text.utf8))])
+    await delegate.opensFinished()
     guard let reader = delegate.windows.last else { throw SmokeFailure(description: "no window") }
     try await waitUntil("document settles") { !reader.isBusy }
     let surface = reader.surface
