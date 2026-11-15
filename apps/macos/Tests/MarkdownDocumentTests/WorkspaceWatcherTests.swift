@@ -61,6 +61,9 @@ struct WorkspaceWatcherTests {
     try await Task.sleep(for: .milliseconds(600))
     let before = changes.count
     try Data("x".utf8).write(to: root.appendingPathComponent(".hidden/secret.md"))
+    // An editor's swap file beside a visible document is hidden too.
+    try Data("swap".utf8).write(to: root.appendingPathComponent(".a.md.swp"))
+    try Data("swap 2".utf8).write(to: root.appendingPathComponent(".a.md.swp"))
     try await Task.sleep(for: .milliseconds(600))
     #expect(changes.count == before, "a hidden change is ignored")
     watcher.setIncludeHidden(true)

@@ -48,8 +48,10 @@ public enum WorkspaceChange: Sendable, Equatable {
 
 /// Watches a granted folder's tree for changes with an FSEvents stream
 /// (MAC-002E). Events are coalesced (`ChangeCoalescer`) and reported on the
-/// main actor without paths; the window lists the folder again. Changes
-/// only inside hidden items are ignored unless hidden items are shown.
+/// main actor without paths; the window lists the folder again. Events name
+/// each changed item (file events), so changes only to hidden items, such as
+/// a `.git` folder or an editor's `.swp` file beside a visible document, are
+/// ignored unless hidden items are shown.
 /// Dropped or overflowed event batches still report, since the window
 /// always lists the whole folder again.
 ///
@@ -95,7 +97,8 @@ public final class WorkspaceWatcher: @unchecked Sendable {
       },
       copyDescription: nil)
     let flags = FSEventStreamCreateFlags(
-      kFSEventStreamCreateFlagUseCFTypes | kFSEventStreamCreateFlagWatchRoot)
+      kFSEventStreamCreateFlagUseCFTypes | kFSEventStreamCreateFlagWatchRoot
+        | kFSEventStreamCreateFlagFileEvents)
     guard
       let stream = folder.grant.accessing({
         FSEventStreamCreate(

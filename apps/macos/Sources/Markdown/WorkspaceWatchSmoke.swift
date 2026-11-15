@@ -84,10 +84,12 @@ enum WorkspaceWatchSmoke {
       "storm checked (1,500 files written in \(milliseconds(writing)) ms, listed in"
         + " \(milliseconds(settled)) ms with \(listings) listings)")
 
-    // Churn inside hidden items (a version-control folder) lists nothing.
+    // Churn in hidden items (a version-control folder, an editor's swap
+    // file beside a visible document) lists nothing.
     try await settle(reader)
     let quiet = reader.listingsShown
     for index in 0..<200 { try write(".git/objects/\(index)", "x") }
+    for index in 0..<20 { try write("docs/.a.md.swp", "swap \(index)") }
     try await Task.sleep(for: .milliseconds(800))
     try check(reader.listingsShown == quiet, "hidden churn doesn't list the folder")
 

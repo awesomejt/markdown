@@ -582,9 +582,9 @@ refinement).
   refresh keeps the expanded folders, the selection and the scroll
   position, and a running search is run again over the new listing.
   FSEvents watches by path and holds no file descriptor, so it never keeps
-  a disk from being ejected. Changes only inside hidden items (a `.git`
-  folder, an editor's `.swp` files) are ignored unless View → Show Hidden
-  Files is on. A dropped or overflowed batch of events still lists the
+  a disk from being ejected. Events name each changed item, so changes
+  only to hidden items (a `.git` folder, an editor's `.swp` file beside a
+  visible document) are ignored unless View → Show Hidden Files is on. A dropped or overflowed batch of events still lists the
   folder again, since every refresh is a full bounded listing (MAC-002B).
 - **Change storms.** Events are coalesced: a refresh runs once changes have
   been quiet for 150 ms, or 1 s after the first change of a burst if they
@@ -593,7 +593,8 @@ refinement).
   finishes, never a queue. Reload Files and the View toggles still restart
   the listing at once. In the smoke, 1,500 documents written in about
   150 ms cost one listing, shown about 370 ms after the first write, and
-  200 writes inside `.git` cost none.
+  200 writes inside `.git` and 20 to a `.swp` file in a visible folder
+  cost none.
 - **Access loss and recovery.** The stream watches the folder's own path,
   so moving, renaming or deleting the folder, or its disk being unmounted,
   lists it again; the listing fails, and the files sidebar and the search
@@ -809,7 +810,8 @@ supersedes a running query, stops one, reports a match budget, and clears
 the search with Close Folder. Its MAC-002E part watches a folder: an added
 and a removed document appear without losing the expanded folders or the
 selection, a storm of 1,500 new documents costs a bounded number of
-listings (one in practice), 200 writes inside `.git` cost none, and the
+listings (one in practice), 200 writes inside `.git` and 20 to a swap file
+beside a visible document cost none, and the
 folder moved away is reported in the sidebar and recovers with its
 expansion and document when moved back. It then saves a folder window
 showing the search pane, hidden files and a document scrolled to a heading
@@ -1336,7 +1338,7 @@ at launch).
 and release: `swift format lint --strict`, 90 Swift tests per configuration
 (including 2 new `WorkspaceWatcherTests`: the coalescer's quiet and maximum
 delays, and a real FSEvents stream reporting a new file, ignoring then
-reporting a hidden change, reporting the folder moved away and back,
+reporting changes in a hidden folder and to a swap file beside a document, reporting the folder moved away and back,
 coalescing 2,000 writes and stopping when cancelled), the bundle smoke with
 its MAC-002E part (1,500 documents written in 133–151 ms, listed once,
 about 372 ms after the first write, in both configurations), the existing
