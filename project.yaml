@@ -1,11 +1,11 @@
 contract_version: project-state/v1
-revision: 847
+revision: 848
 project: &id003
   concurrency_limit: 1
   created_at: '2026-10-24T23:34:09.871478+00:00'
   project_ref: markdown-native
-  status: working
-  updated_at: '2026-11-15T23:15:59.659032+00:00'
+  status: active
+  updated_at: '2026-11-15T23:56:18.305319+00:00'
   workflow_id: native-app-development
   workflow_version: '2'
 phases: &id005
@@ -328,7 +328,7 @@ tasks:
     updated_at: '2026-10-30T08:33:58.968877+00:00'
     validation_expectations: Release-mode Rust/FFI lifecycle, error, cancellation and version tests pass
       in hosted CI on macOS, Linux and Windows; compiled C smoke on macOS/Linux (the MSVC smoke is WIN-001B).
-  - &id007
+  - &id006
     active_pass_ref: null
     blockers: []
     completed_at: '2026-11-03T03:31:07.292387+00:00'
@@ -1486,7 +1486,7 @@ tasks:
     created_at: '2026-10-26T20:27:38.850099+00:00'
     updated_at: '2026-11-03T02:56:26.939639+00:00'
     completed_at: '2026-11-03T02:56:26.939639+00:00'
-  - &id006
+  - &id007
     id: a8f5c6e5-6b96-4df0-8cef-92aa70977a80
     task_key: LNX-001D1
     title: 'LNX native early accessibility gate: Prove native document/heading semantics, off-screen heading
@@ -2041,12 +2041,12 @@ tasks:
     model_tier: null
     validation_expectations: Change-storm, access-loss, session recovery checks, and platform native CI
       pass.
-    status: working
-    active_pass_ref: f5767b8a-9fdb-4631-b1af-7810d01639aa
+    status: completed
+    active_pass_ref: null
     blockers: []
     created_at: '2026-11-14T08:04:30.774393+00:00'
-    updated_at: '2026-11-15T23:15:59.659032+00:00'
-    completed_at: null
+    updated_at: '2026-11-15T23:56:18.305319+00:00'
+    completed_at: '2026-11-15T23:56:18.305319+00:00'
   - &id032
     id: 94b2d120-f5bf-4391-b144-b14b8babe3c2
     task_key: MAC-002F
@@ -9148,63 +9148,54 @@ passes:
     task_ref: d0e2238f-aefd-42c7-b7a0-cb4da4ee6cfb
     phase_ref: 1c2f7cf2-feeb-4b8d-b741-2aaaa890bbaa
     actor: claude-macos
-    status: active
-    outcome: null
+    status: completed
+    outcome: completed
     objective: macOS workspace change watching (coalesced FSEvents over the granted folder, refresh of
       the browser and search without losing selection/expansion, access-loss detection and recovery),
       workspace/session restoration across relaunch (folder, sidebar mode, expansion, open documents),
       and performance under change storms; tests, smoke checks and docs.
-    summary: null
-    handoff: null
-    validation_result: null
-    evidence: {}
+    summary: 'MAC-002E delivered in PR 86: WorkspaceWatcher (FSEvents stream with file events and WatchRoot
+      over the granted folder; ChangeCoalescer 150 ms quiet / 1 s max; hidden-only changes ignored unless
+      shown; dropped batches still refresh); one listing in flight plus one follow-up, keeping expansion,
+      selection and scroll and re-running an active search; access loss reported in the files sidebar
+      and search with the folder and expansion kept, recovering by itself on the next event, on becoming
+      key or with Reload Files, re-checking the open document; window saved state v2 (folder bookmark,
+      sidebar pane, bounded expanded paths, listing options; v1 still read; folder-only windows; unresolvable
+      folder leaves the document alone). Grok review 1 had 1 Concern (hidden dot-files beside visible
+      documents), fixed in c78f17d. Hosted CI then showed a watcher refresh re-running a stopped search;
+      fixed in 0798056 (refresh keeps a stopped search stopped, pinned in the watch smoke).'
+    handoff: 'Merge PR 86 into develop after the closeout commit''s CI. Next on macOS: MAC-002F (development
+      packaging and complete R1 conformance).'
+    validation_result:
+      checks:
+        - 'apps/macos/tools/check.py passed in debug and release at b69746f again at c78f17d and at 0798056
+          on macOS 27.0.1 arm64, Xcode 27.1, Swift 6.4 (90 Swift tests per configuration incl. 2 WorkspaceWatcherTests;
+          bundle smoke incl. WorkspaceWatchSmoke: 1,500-file storm in one listing ~370 ms, hidden churn
+          zero listings, loss/recovery, archive restoration incl. forged and folder-only state; document
+          and folder two-launch relaunch checks; preferences check; release artifact; relocated CoreProbe)'
+        - WorkspaceWatcherTests passed 3x locally before and after the fix
+        - tools/check.py common passed (canonical TMPDIR for test_ci_paths on this Mac, pre-existing)
+        - Grok review PRR_kwDOVWSkys8AAAABYHkcBA dispositioned
+        - Hosted macos-native at d6bf95d (closeout on c78f17d) failed the MAC-002C smoke Stop check; root-caused
+          to the refresh re-running a stopped search and fixed in 0798056
+      pending:
+        - Disk eject/reconnect or network folder, permission removed in Finder, VoiceOver on the loss
+          message and a real quit/relaunch with a folder are owner manual checks (README manual step 11)
+    evidence:
+      pr: https://github.com/awesomejt/markdown/pull/86
+      reviewed_head: b69746fddcda953b8091a78ff13013e4f3054569
+      review: 'Grok review 1 PRR_kwDOVWSkys8AAAABYHkcBA at b69746f: 0 Blocker, 1 Concern, 0 Nit (concern
+        fixed in c78f17d)'
+      approval: 'D-029: Grok review 1 with no high or critical finding approves the merge into develop'
     participants: []
     blocker: null
     execution_record: {}
     started_at: '2026-11-15T23:15:59.659032+00:00'
     last_heartbeat_at: null
-    completed_at: null
-    lease_expires_at: '2026-11-16T01:15:59.659032+00:00'
+    completed_at: '2026-11-15T23:56:18.305319+00:00'
+    lease_expires_at: null
     lease_version: 1
 idempotency:
-  win001i-start-20261102:
-    fingerprint: 8cb007d0887dae93e288c791bee4dfb5818cc08fc8a11f7c4d2cf25c37b2c269
-    response:
-      contract_version: project-state/v1
-      operation: start_pass
-      revision: 748
-      data:
-        pass: *id001
-        task: *id002
-      snapshot:
-        contract_version: project-state/v1
-        snapshot_at: '2026-11-03T02:15:48.521142+00:00'
-        revision: 748
-        project: *id003
-        current_phase: *id004
-        phases: *id005
-        active_tasks:
-          - *id002
-        working_tasks_without_active_lease: []
-        active_passes:
-          - *id001
-        stale_passes: []
-        blocked_tasks: []
-        eligible_tasks:
-          - *id006
-        latest_pass: *id001
-        queue_counts:
-          by_status:
-            completed: 68
-            pending: 22
-            working: 1
-          total: 91
-          active_passes: 1
-          stale_passes: 0
-          eligible: 1
-          blocked: 0
-        warnings: []
-        recommended_action: resume_active
   win001i-complete-approved-20261102:
     fingerprint: 4289a61e81a2d44613a32f6fa3460612db7a0f91a43e673f6fb426fe123a1593
     response:
@@ -9227,8 +9218,8 @@ idempotency:
         stale_passes: []
         blocked_tasks: []
         eligible_tasks:
-          - *id007
           - *id006
+          - *id007
         latest_pass: *id001
         queue_counts:
           by_status:
@@ -9249,7 +9240,7 @@ idempotency:
       revision: 750
       data:
         pass: *id008
-        task: *id007
+        task: *id006
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-11-03T03:17:59.452856+00:00'
@@ -9258,14 +9249,14 @@ idempotency:
         current_phase: *id004
         phases: *id005
         active_tasks:
-          - *id007
+          - *id006
         working_tasks_without_active_lease: []
         active_passes:
           - *id008
         stale_passes: []
         blocked_tasks: []
         eligible_tasks:
-          - *id006
+          - *id007
         latest_pass: *id008
         queue_counts:
           by_status:
@@ -9287,7 +9278,7 @@ idempotency:
       revision: 751
       data:
         pass: *id008
-        task: *id007
+        task: *id006
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-11-03T03:31:07.292413+00:00'
@@ -9301,7 +9292,7 @@ idempotency:
         stale_passes: []
         blocked_tasks: []
         eligible_tasks:
-          - *id006
+          - *id007
         latest_pass: *id008
         queue_counts:
           by_status:
@@ -9322,7 +9313,7 @@ idempotency:
       revision: 752
       data:
         pass: *id009
-        task: *id006
+        task: *id007
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-11-03T05:07:58.305111+00:00'
@@ -9331,7 +9322,7 @@ idempotency:
         current_phase: *id004
         phases: *id005
         active_tasks:
-          - *id006
+          - *id007
         working_tasks_without_active_lease: []
         active_passes:
           - *id009
@@ -9359,7 +9350,7 @@ idempotency:
       revision: 753
       data:
         pass: *id009
-        task: *id006
+        task: *id007
       snapshot:
         contract_version: project-state/v1
         snapshot_at: '2026-11-03T05:33:17.868507+00:00'
@@ -13006,3 +12997,39 @@ idempotency:
           blocked: 0
         warnings: []
         recommended_action: resume_active
+  mac-002e-finish-20261116:
+    fingerprint: f77e89ab10c36c8d0b046f117d5d5d2f02e2a17f0eb2ac68774fd02e9bb4368c
+    response:
+      contract_version: project-state/v1
+      operation: finish_pass
+      revision: 848
+      data:
+        pass: *id085
+        task: *id031
+      snapshot:
+        contract_version: project-state/v1
+        snapshot_at: '2026-11-15T23:56:18.305334+00:00'
+        revision: 848
+        project: *id003
+        current_phase: *id004
+        phases: *id005
+        active_tasks: []
+        working_tasks_without_active_lease: []
+        active_passes: []
+        stale_passes: []
+        blocked_tasks: []
+        eligible_tasks:
+          - *id032
+          - *id042
+        latest_pass: *id085
+        queue_counts:
+          by_status:
+            completed: 91
+            pending: 18
+          total: 109
+          active_passes: 0
+          stale_passes: 0
+          eligible: 2
+          blocked: 0
+        warnings: []
+        recommended_action: select_new_task
