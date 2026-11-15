@@ -47,4 +47,13 @@ impl CountModel {
         model.imp().count.set(count);
         model
     }
+
+    pub fn set_count(&self, new_count: u32) {
+        let old = self.imp().count.replace(new_count);
+        if new_count > old {
+            self.items_changed(old, 0, new_count - old);
+        } else if new_count < old {
+            self.items_changed(0, old, new_count);
+        }
+    }
 }

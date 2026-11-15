@@ -60,6 +60,8 @@ struct SearchPanelState {
     active_handle: Option<WorkspaceSearchHandle>,
     poll_source: Option<glib::SourceId>,
     search_id: u64,
+    include_hidden: bool,
+    all_files_for_names: bool,
     folder: Option<FolderCapability>,
     tree: Option<Arc<WorkspaceTree>>,
     on_open_target: Option<Rc<dyn Fn(WorkspaceSearchTarget)>>,
@@ -155,6 +157,8 @@ impl WorkspaceSearchPanel {
             active_handle: None,
             poll_source: None,
             search_id: 0,
+            include_hidden: false,
+            all_files_for_names: false,
             folder: None,
             tree: None,
             on_open_target: None,
@@ -395,6 +399,20 @@ impl WorkspaceSearchPanel {
         }
     }
 
+    pub fn set_workspace_filters(&self, include_hidden: bool, all_files_for_names: bool) {
+        let changed = {
+            let mut state = self.state.borrow_mut();
+            let diff = state.include_hidden != include_hidden
+                || state.all_files_for_names != all_files_for_names;
+            state.include_hidden = include_hidden;
+            state.all_files_for_names = all_files_for_names;
+            diff
+        };
+        if changed && !self.entry.text().trim().is_empty() && self.state.borrow().tree.is_some() {
+            self.trigger_search();
+        }
+    }
+
     pub fn set_query(&self, query: &str) {
         self.suppress_search_changed.set(true);
         self.entry.set_text(query);
@@ -446,7 +464,7 @@ impl WorkspaceSearchPanel {
         let case_sensitive = self.case_button.is_active();
         let whole_word = self.word_button.is_active();
 
-        let (folder, tree, search_id) = {
+        let (folder, tree, search_id, include_hidden, all_files_for_names) = {
             let mut state = self.state.borrow_mut();
             if let Some(handle) = state.active_handle.take() {
                 handle.cancel();
@@ -460,7 +478,13 @@ impl WorkspaceSearchPanel {
             state.content_files.clear();
             state.names_truncated = false;
             state.selection.set_model(None::<&gio::ListModel>);
-            (state.folder.clone(), state.tree.clone(), state.search_id)
+            (
+                state.folder.clone(),
+                state.tree.clone(),
+                state.search_id,
+                state.include_hidden,
+                state.all_files_for_names,
+            )
         };
 
         if query.trim().is_empty() {
@@ -488,6 +512,8 @@ impl WorkspaceSearchPanel {
         let mut request = WorkspaceSearchRequest::new(query);
         request.case_sensitive = case_sensitive;
         request.whole_word = whole_word;
+        request.include_hidden = include_hidden;
+        request.all_files_for_names = all_files_for_names;
 
         let (tx, rx) = mpsc::channel();
         let handle = start_workspace_search(folder, tree, request, search_id, tx);
@@ -572,6 +598,9 @@ impl WorkspaceSearchPanel {
                         state.active_handle = None;
                         state.poll_source = None;
                         state.cancel_button.set_sensitive(false);
+                        if final_status.is_none() {
+                            final_status = Some("Search worker exited unexpectedly".to_string());
+                        }
                         finished = true;
                         break;
                     }
@@ -638,8 +667,16 @@ impl WorkspaceSearchPanel {
             count
         };
         let state = state_rc.borrow();
-        let model = CountModel::new(count);
-        state.selection.set_model(Some(&model));
+        if let Some(existing) = state
+            .selection
+            .model()
+            .and_then(|m| m.downcast::<CountModel>().ok())
+        {
+            existing.set_count(count);
+        } else {
+            let model = CountModel::new(count);
+            state.selection.set_model(Some(&model));
+        }
     }
 
     fn activate_index(weak_state: &std::rc::Weak<RefCell<SearchPanelState>>, pos: u32) {

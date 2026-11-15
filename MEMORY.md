@@ -362,6 +362,15 @@ read.
   and inline `RecoveryBar`. Grok review 1 at `74249a2` reported 0 Blockers, 2 Concerns, 2 Nits
   (approved under D-029); all 4 findings fixed at `ce11c2d` with full Debug/Release
   `apps/linux/tools/check.py` passing. `LNX-002B` and `LNX-002D` are next on Linux.
+- **LNX-002C (PR #76)**: delivers Linux native workspace search UI over CORE-005B/B2/C
+  primitives (`md_workspace_find_names`, `md_workspace_content_admit`,
+  `md_workspace_content_search` C ABI bindings/wrappers in `apps/linux/core`, bounded
+  cancellable background `workspace-search` worker with canonical root containment, and
+  virtualized GTK 4 `WorkspaceSearchPanel` with `🔍` sidebar toggle, `Ctrl+Shift+F`
+  `Edit > Find in Workspace…`, `Match Case`/`Whole Words`/`Stop` controls, Pango snippet
+  highlights, and source-offset/anchor result navigation). Grok review 1 at `45c3cbb`
+  reported 0 Blockers, 1 Concern, 3 Nits (approved under D-029); all 4 findings fixed
+  with full Debug/Release `apps/linux/tools/check.py` passing. `LNX-002D` is next on Linux.
 - Workflow: task PRs target `develop` and merge on a Grok review with no
   serious finding (D-029). `main` takes only owner-approved milestone reviews
   from `review/<milestone>`, tagged `m-<milestone>` (D-030). The shared-core

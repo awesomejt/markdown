@@ -207,6 +207,8 @@ impl WorkspaceBrowser {
         list_view.add_controller(key_ctrl);
 
         let weak_state = Rc::downgrade(&state);
+        let search_clone = search_panel.clone();
+        let hidden_clone = hidden_btn.clone();
         all_files_btn.connect_toggled(move |btn| {
             if let Some(state_rc) = weak_state.upgrade() {
                 let mut state = state_rc.borrow_mut();
@@ -217,9 +219,12 @@ impl WorkspaceBrowser {
                 drop(state);
                 Self::sync_list_model(&state_rc, None);
             }
+            search_clone.set_workspace_filters(hidden_clone.is_active(), btn.is_active());
         });
 
         let weak_state = Rc::downgrade(&state);
+        let search_clone = search_panel.clone();
+        let all_clone = all_files_btn.clone();
         hidden_btn.connect_toggled(move |btn| {
             if let Some(state_rc) = weak_state.upgrade() {
                 let mut state = state_rc.borrow_mut();
@@ -230,6 +235,7 @@ impl WorkspaceBrowser {
                 drop(state);
                 Self::sync_list_model(&state_rc, None);
             }
+            search_clone.set_workspace_filters(btn.is_active(), all_clone.is_active());
         });
 
         let weak_state = Rc::downgrade(&state);
@@ -340,6 +346,8 @@ impl WorkspaceBrowser {
             idx
         };
         Self::sync_list_model(&self.state, restored_sel);
+        self.search_panel
+            .set_workspace_filters(self.hidden_btn.is_active(), self.all_files_btn.is_active());
         self.search_panel.set_workspace(folder, Some(tree_arc));
         if reveal {
             self.widget.set_visible(true);

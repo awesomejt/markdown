@@ -266,6 +266,7 @@ impl WindowDocument {
                             !unchanged
                         }
                         LoadEvent::Failed(error) => {
+                            state_ref.pending_search_jump = None;
                             if state_ref.loader.document.is_some() {
                                 state_ref.status(&format!("{error} · Retaining last version"));
                             } else {
@@ -487,10 +488,12 @@ impl WindowDocument {
         }
     }
     fn open(&mut self, file: &gio::File) {
+        self.pending_search_jump = None;
         self.open_internal(file, None);
     }
     fn open_from_workspace(&mut self, path: &std::path::Path) {
         let Some(folder) = &self.active_folder else {
+            self.pending_search_jump = None;
             self.workspace_browser.clear();
             self.status(&FolderError::AccessRevoked.to_string());
             return;
@@ -498,6 +501,7 @@ impl WindowDocument {
         let cap = match folder.open_document(path) {
             Ok(cap) => cap,
             Err(FolderError::OutsideFolder) => {
+                self.pending_search_jump = None;
                 self.status(&FolderError::OutsideFolder.to_string());
                 return;
             }
@@ -506,6 +510,7 @@ impl WindowDocument {
                 self.active_folder = None;
                 self.workspace_browser.clear();
                 self.saved_position = None;
+                self.pending_search_jump = None;
                 self.reader.clear();
                 self.stop_polling();
                 self.reload.set_enabled(false);
@@ -527,6 +532,7 @@ impl WindowDocument {
             }
             Err(error) => {
                 self.saved_position = None;
+                self.pending_search_jump = None;
                 self.reload.set_enabled(self.loader.has_file());
                 self.status(&error.to_string());
             }
