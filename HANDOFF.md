@@ -1,13 +1,13 @@
 # Agent Session and Platform Handoff
 
-Updated: 2026-11-15 (America/Denver), MAC-002B completed under D-029 (PR #83 approved and closed out into `develop`).
-Active task: None. Eligible tasks: `MAC-002C` and `MAC-002D` (macOS), `WIN-002A` (Windows). The D-030 milestone review for `LNX-002` + `HARD-001` (`review/<milestone>` into `main`, owner-merged) is still open to cut.
-Pass `a2190392-e926-4fb4-ab9f-485b15b79f37` completed, approved PR #83 merged into `develop`:
+Updated: 2026-11-15 (America/Denver), MAC-002C completed under D-029 (PR #84 approved and closed out into `develop`).
+Active task: None. Eligible tasks: `MAC-002D` (macOS), `WIN-002A` (Windows). The D-030 milestone review for `LNX-002` + `HARD-001` (`review/<milestone>` into `main`, owner-merged) is still open to cut.
+Pass `cc417f7d-18d9-42ca-a81d-b5dbd4a906cd` completed, approved PR #84 merged into `develop`:
 
-- Implemented `MAC-002B` (macOS workspace browser, document links and file-identity window lookup); see [apps/macos/README.md](apps/macos/README.md#workspace-browser-and-links-mac-002b).
-- Checks at `76904e2`: `.build/feas004-venv/bin/python apps/macos/tools/check.py` passed in debug and release (needs `~/.cargo/bin` on `PATH`); `tools/check.py common` passed with a canonical `TMPDIR`.
-- Grok review 1 at `94df56f`: 0 Blockers, 1 Concern, 2 Nits, all fixed at `0434f11`. Review 2 at `0434f11`: 0/0/1 Nit (approval), nit fixed at `76904e2`.
-- Owner manual checks not run by the agent: VoiceOver on the files sidebar, a folder on a network volume, real mouse clicks in the sidebar.
+- Implemented `MAC-002C` (macOS workspace search: Search sidebar pane, core wrappers, bounded cancellable adapter, hit navigation by span or re-find near the anchor); see [apps/macos/README.md](apps/macos/README.md#workspace-search-mac-002c).
+- Checks at `0ada12f`: `.build/feas004-venv/bin/python apps/macos/tools/check.py` passed in debug and release (needs `~/.cargo/bin` on `PATH`); `tools/check.py common` passed with a canonical `TMPDIR`.
+- Grok review 1 at `902e428`: 0 Blockers, 0 Concerns, 1 Nit (approval); nit fixed at `0ada12f`.
+- Owner manual checks not run by the agent: VoiceOver on the search results and summary announcement, real typing in the search field, a folder on a network volume.
 
 Next task: `MAC-002C` (workspace search UI) or `MAC-002D` (preferences) on macOS, `WIN-002A` on Windows, or the D-030 milestone review.
 

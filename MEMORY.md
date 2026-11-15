@@ -443,6 +443,16 @@ read.
   identity nit. Grok review 1 at `94df56f` reported 0 Blockers, 1 Concern, 2 Nits
   (fixed at `0434f11`); review 2 at `0434f11` reported 0 Blockers, 0 Concerns, 1 Nit
   (approved under D-029; nit fixed at `76904e2`). `MAC-002C` and `MAC-002D` are next on macOS.
+- **MAC-002C (PR #84)**: delivers macOS workspace search (`WorkspaceSearchPanel.swift`:
+  a Search sidebar pane, Find in Folder ⇧⌘F and View → Search ⌥⌘3) over Swift wrappers
+  for `md_workspace_find_names`/`content_admit`/`content_search` (`CoreWorkspace.swift`,
+  one process-wide permit for the bounded parse) and the `WorkspaceSearch` adapter, which
+  searches exactly the files sidebar's listing through the folder grant (NFC names, then
+  contents; bounded uncoordinated scan read, about 0.6 ms per file cheaper than
+  `NSFileCoordinator`). A hit opens by its source span when unchanged, else by re-find
+  nearest the resolved anchor (`NavigationTarget.match`). Grok review 1 at `902e428`
+  reported 0 Blockers, 0 Concerns, 1 Nit (approved under D-029; nit fixed at `0ada12f`).
+  `MAC-002D` is next on macOS.
 - Workflow: task PRs target `develop` and merge on a Grok review with no
   serious finding (D-029). `main` takes only owner-approved milestone reviews
   from `review/<milestone>`, tagged `m-<milestone>` (D-030). The shared-core
