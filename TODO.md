@@ -611,10 +611,11 @@ They stay open until fixed or explicitly accepted; none is waived.
   578.36 ms (refresh 582.07 ms). On `prose-1mib`, the in-process pipeline is
   170.19 ms on Windows and 89.86 ms on Linux, while macOS Launch Services warm
   launch had one of five runs at 404 ms (median 355 ms first text).
-- **Windows and Linux warm launch to presented frame (D-012/D-016, 400 ms):**
+- **Windows warm launch to presented frame (D-012/D-016, 400 ms):**
   unmeasured end-to-end (`measure.py` currently measures the in-process
-  `read/parse/plan` pipeline on Windows and Linux, not process launch to first
-  presented frame).
+  `read/parse/plan` pipeline on Windows, not process launch to first
+  presented frame). Linux `window-launch` is now measured (LNX-002F:
+  `prose-1mib` median 319.57 ms, `long-lines-1mib` median 377.54 ms; both <= 400 ms).
 - **Cold launches across all three hosts (D-012/D-016, 700 ms):** unmeasured on
   macOS (`measure.py launch --cold`), Windows, and Linux.
 - **Mixed-scale displays and display pacing (CAP-14):** unmeasured on macOS,
@@ -633,9 +634,10 @@ They stay open until fixed or explicitly accepted; none is waived.
   before rendering the new one would lower the peak, at the cost of
   anchoring the reader's place earlier than the moment the new text
   appears ([evidence](apps/macos/README.md#mac-001h-local-evidence)).
-- **Linux end-to-end GTK frame-clock jump timing (LNX-001G):** target
-  resolution is 0.01 ms; end-to-end presented-frame jump latency remains
-  unmeasured.
+- **Linux end-to-end GTK frame-clock jump timing (LNX-002F):** `prose-1mib`
+  median 30.26 ms and `prose-5mib` median 30.74 ms (both <= 150 ms);
+  `long-lines-1mib` median 181.63 ms (exceeds 150 ms on first jump due to
+  Pango wrapping a 1 MiB single-line paragraph).
 
 ## Process options under consideration
 

@@ -80,6 +80,18 @@ fn main() -> glib::ExitCode {
         return glib::ExitCode::FAILURE;
     }
     if let Some(arg) = std::env::args_os().nth(1)
+        && arg == "--version"
+    {
+        let diag = markdown_linux_core::diagnostics_summary()
+            .unwrap_or_else(|e| format!("Core diagnostics unavailable: {e}"));
+        println!(
+            "markdown-linux {} ({})",
+            env!("CARGO_PKG_VERSION"),
+            diag.replace('\n', "; ")
+        );
+        return glib::ExitCode::SUCCESS;
+    }
+    if let Some(arg) = std::env::args_os().nth(1)
         && arg == "--measure"
     {
         let args: Vec<String> = std::env::args().skip(2).collect();
@@ -314,10 +326,13 @@ pub fn new_window(app: &gtk::Application) -> gtk::ApplicationWindow {
 }
 
 fn show_about(app: &gtk::Application) {
+    let diag = markdown_linux_core::diagnostics_summary()
+        .unwrap_or_else(|e| format!("Core diagnostics unavailable: {e}"));
     let dialog = gtk::AboutDialog::builder()
         .program_name("Markdown")
         .version(env!("CARGO_PKG_VERSION"))
         .comments("A local-first, read-only native Markdown reader.")
+        .system_information(diag)
         .license_type(gtk::License::Apache20)
         .logo_icon_name("text-x-generic")
         .modal(true)

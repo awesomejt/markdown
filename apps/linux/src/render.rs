@@ -16,6 +16,10 @@ pub enum RenderError {
 pub enum Target {
     Fragment(u32),
     External(String),
+    Relative {
+        path: String,
+        fragment: Option<String>,
+    },
     Inert,
 }
 
@@ -92,6 +96,7 @@ pub struct Fragment {
     /// retain the heading level for visual styling.
     pub heading_start: bool,
     pub code: bool,
+    pub code_language: Option<String>,
     pub is_table_row: bool,
     pub is_table_header: bool,
     pub table_row_ordinal: usize,
@@ -148,18 +153,37 @@ impl Fragment {
                 out.push_str("<span foreground=\"gray\">");
             }
 
+            let syntax_tokens: Vec<(usize, usize, crate::syntax::TokenKind)> = if self.code {
+                self.code_language
+                    .as_deref()
+                    .filter(|_| (run.style & 8) != 0 && run.link.is_none())
+                    .map(|lang| crate::syntax::highlight_char_spans(lang, &run.text))
+                    .unwrap_or_default()
+            } else {
+                Vec::new()
+            };
+            let mut tok_idx = 0usize;
+
             #[derive(PartialEq, Eq, Clone, Copy)]
             enum HighlightKind {
                 Selection,
                 FindActive,
                 FindPassive,
+                Syntax(crate::syntax::TokenKind),
             }
 
             let mut active_hl: Option<HighlightKind> = None;
 
-            for ch in run.text.chars() {
+            for (run_char_idx, ch) in run.text.chars().enumerate() {
                 let is_selected =
                     selection.is_some_and(|(s, e)| frag_char_idx >= s && frag_char_idx < e);
+                while tok_idx < syntax_tokens.len() && syntax_tokens[tok_idx].1 <= run_char_idx {
+                    tok_idx += 1;
+                }
+                let syntax_hl = syntax_tokens
+                    .get(tok_idx)
+                    .filter(|&&(s, e, _)| run_char_idx >= s && run_char_idx < e)
+                    .map(|&(_, _, kind)| HighlightKind::Syntax(kind));
                 let cur_hl = if is_selected {
                     Some(HighlightKind::Selection)
                 } else {
@@ -173,11 +197,14 @@ impl Fragment {
                                 HighlightKind::FindPassive
                             }
                         })
+                        .or(syntax_hl)
                 };
 
                 if cur_hl != active_hl {
-                    if active_hl.is_some() {
-                        out.push_str("</span>");
+                    match active_hl {
+                        Some(HighlightKind::Syntax(kind)) => out.push_str(kind.pango_close()),
+                        Some(_) => out.push_str("</span>"),
+                        None => {}
                     }
                     if let Some(hl) = cur_hl {
                         match hl {
@@ -196,6 +223,9 @@ impl Fragment {
                                     "<span background=\"#f6d32d\" foreground=\"#000000\">",
                                 );
                             }
+                            HighlightKind::Syntax(kind) => {
+                                out.push_str(kind.pango_open());
+                            }
                         }
                     }
                     active_hl = cur_hl;
@@ -212,8 +242,10 @@ impl Fragment {
                 frag_char_idx += 1;
             }
 
-            if active_hl.is_some() {
-                out.push_str("</span>");
+            match active_hl {
+                Some(HighlightKind::Syntax(kind)) => out.push_str(kind.pango_close()),
+                Some(_) => out.push_str("</span>"),
+                None => {}
             }
 
             if run.style & 32 != 0 {
@@ -358,6 +390,8 @@ pub struct RenderPlan {
     pub outline: Vec<Outline>,
     pub targets: Vec<Target>,
     pub images: Vec<RenderedImage>,
+    pub properties: Vec<(String, String)>,
+    pub has_front_matter: bool,
     pub accounted_bytes: usize,
 }
 
@@ -471,16 +505,63 @@ impl RenderPlan {
                 {
                     Target::External(target)
                 }
+                MD_TARGET_REQUIRES_CAPABILITY if !target.is_empty() => {
+                    let fragment = if intent.fragment.length > 0 {
+                        Some(b.text(intent.fragment)?)
+                    } else {
+                        None
+                    };
+                    Target::Relative {
+                        path: target,
+                        fragment,
+                    }
+                }
                 _ => Target::Inert,
             };
             b.charge(
                 size_of::<Target>()
                     + match &resolved {
                         Target::External(s) => s.len(),
+                        Target::Relative { path, fragment } => {
+                            path.len() + fragment.as_ref().map_or(0, String::len)
+                        }
                         _ => 0,
                     },
             )?;
             b.plan.targets.push(resolved);
+        }
+        b.plan.has_front_matter = doc.front_matter.is_some();
+        for prop in &doc.properties {
+            b.check()?;
+            let key = b.text(prop.key)?;
+            let value = match prop.kind {
+                MD_VALUE_NULL => "null".to_string(),
+                MD_VALUE_BOOLEAN => {
+                    if prop.boolean != 0 {
+                        "true".to_string()
+                    } else {
+                        "false".to_string()
+                    }
+                }
+                MD_VALUE_INTEGER => prop.integer.to_string(),
+                MD_VALUE_STRING => b.text(prop.string)?,
+                MD_VALUE_STRINGS => {
+                    let start = prop.first_string as usize;
+                    let end = start + prop.string_count as usize;
+                    let items = doc
+                        .string_list
+                        .get(start..end)
+                        .ok_or(RenderError::InvalidModel)?;
+                    let mut parts = Vec::with_capacity(items.len());
+                    for &s in items {
+                        parts.push(b.text(s)?);
+                    }
+                    parts.join(", ")
+                }
+                _ => String::new(),
+            };
+            b.charge(size_of::<(String, String)>() + key.len() + value.len())?;
+            b.plan.properties.push((key, value));
         }
         Ok(b.plan)
     }
@@ -846,6 +927,7 @@ impl<F: Fn() -> bool> Builder<'_, F> {
                 heading: 0,
                 heading_start: false,
                 code: false,
+                code_language: None,
                 is_table_row: true,
                 is_table_header: is_header,
                 table_row_ordinal: r,
@@ -871,7 +953,37 @@ impl<F: Fn() -> bool> Builder<'_, F> {
             let (m, s) = marker.clone().unwrap();
             let mut runs = Vec::new();
             self.run(&mut runs, m, 16 | s, None, None, true)?;
-            self.fragments(runs, 0, false)?;
+            self.fragments(runs, 0, None)?;
+        }
+        if n.kind == MD_NODE_ALERT {
+            let label = match n.value {
+                1 => "Note: ",
+                2 => "Tip: ",
+                3 => "Important: ",
+                4 => "Warning: ",
+                5 => "Caution: ",
+                _ => "Alert: ",
+            };
+            let prefix = format!(
+                "{}{label}",
+                marker.as_ref().map(|(m, _)| m.as_str()).unwrap_or("")
+            );
+            let alert_marker = Some((prefix.clone(), 32));
+            let children = self.children(n)?;
+            if children.is_empty() {
+                let mut runs = Vec::new();
+                self.run(&mut runs, prefix, 16 | 32, None, Some(id), true)?;
+                self.fragments(runs, 0, None)?;
+            } else {
+                for (i, child) in children.into_iter().enumerate() {
+                    self.block(
+                        child,
+                        depth + 1,
+                        if i == 0 { alert_marker.clone() } else { None },
+                    )?;
+                }
+            }
+            return Ok(());
         }
         if n.kind == MD_NODE_TABLE {
             return self.table(id, depth);
@@ -935,6 +1047,12 @@ impl<F: Fn() -> bool> Builder<'_, F> {
                     self.inline(child, depth + 1, 0, None, &mut runs)?;
                 }
             }
+            let code_language = if n.kind == MD_NODE_CODE_BLOCK {
+                let lang = self.text(n.extra)?;
+                Some((!lang.is_empty()).then_some(lang))
+            } else {
+                None
+            };
             self.fragments(
                 runs,
                 if n.kind == MD_NODE_HEADING {
@@ -942,7 +1060,7 @@ impl<F: Fn() -> bool> Builder<'_, F> {
                 } else {
                     0
                 },
-                n.kind == MD_NODE_CODE_BLOCK,
+                code_language,
             )?;
         } else {
             for (i, child) in self.children(n)?.into_iter().enumerate() {
@@ -952,7 +1070,14 @@ impl<F: Fn() -> bool> Builder<'_, F> {
         Ok(())
     }
 
-    fn fragments(&mut self, runs: Vec<Run>, heading: u32, code: bool) -> Result<(), RenderError> {
+    fn fragments(
+        &mut self,
+        runs: Vec<Run>,
+        heading: u32,
+        code_language: Option<Option<String>>,
+    ) -> Result<(), RenderError> {
+        let code = code_language.is_some();
+        let code_language = code_language.flatten();
         let initial = self.plan.fragments.len();
         let separator_before = if initial == 0 { "" } else { "\n\n" };
         let mut fragment = Fragment {
@@ -960,6 +1085,7 @@ impl<F: Fn() -> bool> Builder<'_, F> {
             heading,
             heading_start: heading > 0,
             code,
+            code_language: code_language.clone(),
             is_table_row: false,
             is_table_header: false,
             table_row_ordinal: 0,
@@ -994,6 +1120,7 @@ impl<F: Fn() -> bool> Builder<'_, F> {
                         heading,
                         heading_start: false,
                         code,
+                        code_language: code_language.clone(),
                         is_table_row: false,
                         is_table_header: false,
                         table_row_ordinal: 0,
@@ -1024,6 +1151,7 @@ impl<F: Fn() -> bool> Builder<'_, F> {
                         heading,
                         heading_start: false,
                         code,
+                        code_language: code_language.clone(),
                         is_table_row: false,
                         is_table_header: false,
                         table_row_ordinal: 0,

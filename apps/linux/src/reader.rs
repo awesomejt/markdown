@@ -14,6 +14,7 @@ use std::{
 };
 
 type Binding = Rc<Cell<Option<(u64, u32)>>>;
+type OpenRelativeCallback = Rc<dyn Fn(&str, Option<&str>)>;
 
 struct Row {
     binding: Binding,
@@ -43,6 +44,9 @@ struct State {
     scale_provider: gtk::CssProvider,
     class_name: String,
     last_scrolled_fragment: Option<(u32, Instant)>,
+    on_open_relative: Option<OpenRelativeCallback>,
+    properties_expander: gtk::Expander,
+    properties_list: gtk::Box,
 }
 
 impl Drop for State {
@@ -112,6 +116,20 @@ impl Reader {
         let view = gtk::ListView::new(None::<gtk::NoSelection>, Some(factory.clone()));
         view.set_widget_name("native-document");
         view.add_css_class(&class_name);
+        let properties_list = gtk::Box::new(gtk::Orientation::Vertical, 4);
+        properties_list.set_margin_start(16);
+        properties_list.set_margin_end(16);
+        properties_list.set_margin_bottom(8);
+        let properties_expander = gtk::Expander::builder()
+            .label("Properties")
+            .child(&properties_list)
+            .visible(false)
+            .margin_start(12)
+            .margin_end(12)
+            .margin_top(6)
+            .build();
+        properties_expander.set_widget_name("document-properties");
+
         let state = Rc::new(RefCell::new(State {
             rows: HashMap::new(),
             plan: None,
@@ -134,6 +152,9 @@ impl Reader {
             scale_provider,
             class_name,
             last_scrolled_fragment: None,
+            on_open_relative: None,
+            properties_expander: properties_expander.clone(),
+            properties_list,
         }));
         let weak = Rc::downgrade(&state);
         factory.connect_setup(move |_, item| {
@@ -193,6 +214,12 @@ impl Reader {
                                         None::<&gio::Cancellable>,
                                         |_| {},
                                     );
+                                }
+                            }
+                            Some(Target::Relative { path, fragment }) => {
+                                let cb = state.borrow().on_open_relative.clone();
+                                if let Some(cb) = cb {
+                                    cb(&path, fragment.as_deref());
                                 }
                             }
                             _ => {}
@@ -473,7 +500,12 @@ impl Reader {
             .vexpand(true)
             .child(&view)
             .build();
-        widget.set_end_child(Some(&scrolled));
+        let content_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
+        content_box.set_hexpand(true);
+        content_box.set_vexpand(true);
+        content_box.append(&properties_expander);
+        content_box.append(&scrolled);
+        widget.set_end_child(Some(&content_box));
         widget.set_position(210);
         let this = Self {
             widget,
@@ -928,6 +960,28 @@ impl Reader {
         }
     }
 
+    pub fn set_on_open_relative(&self, cb: impl Fn(&str, Option<&str>) + 'static) {
+        self.state.borrow_mut().on_open_relative = Some(Rc::new(cb));
+    }
+
+    pub fn scroll_to_anchor(&self, anchor: &str) -> bool {
+        let target = {
+            let state = self.state.borrow();
+            state.plan.as_ref().and_then(|plan| {
+                plan.outline
+                    .iter()
+                    .find(|entry| entry.anchor == anchor)
+                    .map(|entry| (state.view.clone(), entry.fragment))
+            })
+        };
+        if let Some((view, frag)) = target {
+            view.scroll_to(frag, gtk::ListScrollFlags::FOCUS, None);
+            true
+        } else {
+            false
+        }
+    }
+
     pub fn install(&self, plan: Arc<RenderPlan>) {
         self.install_document(plan, None);
     }
@@ -940,10 +994,40 @@ impl Reader {
         self.clear();
         let fragments = plan.fragments.len() as u32;
         let entries = plan.outline.len() as u32;
-        {
+        let (expander, list) = {
             let mut state = self.state.borrow_mut();
-            state.plan = Some(plan);
+            let expander = state.properties_expander.clone();
+            let list = state.properties_list.clone();
+            state.plan = Some(plan.clone());
             state.document = document;
+            (expander, list)
+        };
+        while let Some(child) = list.first_child() {
+            list.remove(&child);
+        }
+        if !plan.properties.is_empty() {
+            for (key, value) in &plan.properties {
+                let row = gtk::Box::new(gtk::Orientation::Horizontal, 8);
+                let k = gtk::Label::builder()
+                    .label(format!("{key}:"))
+                    .xalign(0.0)
+                    .css_classes(["dim-label"])
+                    .build();
+                let v = gtk::Label::builder()
+                    .label(value)
+                    .xalign(0.0)
+                    .selectable(true)
+                    .wrap(true)
+                    .build();
+                row.append(&k);
+                row.append(&v);
+                list.append(&row);
+            }
+            expander.set_label(Some(&format!("Properties ({})", plan.properties.len())));
+            expander.set_expanded(false);
+            expander.set_visible(true);
+        } else {
+            expander.set_visible(false);
         }
         let view = self.state.borrow().view.clone();
         view.set_model(Some(&gtk::NoSelection::new(Some(CountModel::new(
@@ -973,6 +1057,10 @@ impl Reader {
                 t.remove();
             }
             state.drag_active = false;
+            state.properties_expander.set_visible(false);
+            while let Some(child) = state.properties_list.first_child() {
+                state.properties_list.remove(&child);
+            }
             state.plan.take()
         };
         if let Some(old) = old {

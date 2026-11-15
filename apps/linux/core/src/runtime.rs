@@ -118,6 +118,23 @@ impl HandleCounts {
 
 /// Negotiate ABI v1 and require model v2 and identical record layouts.
 pub fn validate() -> Result<(), CoreError> {
+    validate_info().map(|_| ())
+}
+
+/// Diagnostic identity for the negotiated semantic contract and linked core package.
+pub fn diagnostics_summary() -> Result<String, CoreError> {
+    let info = validate_info()?;
+    Ok(format!(
+        "Semantic contract: model-v{} (ABI v{}, anchor v{})\nCore package: {} ({})",
+        ffi::MD_MODEL_V2,
+        info.abi_version,
+        info.anchor_version,
+        PACKAGE_CONFIGURATION,
+        &PACKAGE_FINGERPRINT[..PACKAGE_FINGERPRINT.len().min(12)],
+    ))
+}
+
+fn validate_info() -> Result<ffi::md_abi_info, CoreError> {
     use ffi::size_of;
     let mut info = ffi::md_abi_info {
         struct_size: size_of::<ffi::md_abi_info>(),
@@ -166,7 +183,7 @@ pub fn validate() -> Result<(), CoreError> {
         && size_of::<ffi::md_content_result>() == ffi::MD_CONTENT_RESULT_SIZE
         && size_of::<ffi::md_content_hit>() == ffi::MD_CONTENT_HIT_SIZE;
     if compatible {
-        Ok(())
+        Ok(info)
     } else {
         Err(CoreError::IncompatibleAbi)
     }

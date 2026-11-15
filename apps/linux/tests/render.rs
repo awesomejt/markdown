@@ -57,7 +57,11 @@ fn inline_lists_code_html_and_links() {
             .iter()
             .any(|t| matches!(t,Target::External(s) if s.starts_with("mailto:")))
     );
-    assert_eq!(p.targets.iter().filter(|t| **t == Target::Inert).count(), 3);
+    assert_eq!(p.targets.iter().filter(|t| **t == Target::Inert).count(), 2);
+    assert!(p.targets.iter().any(|t| matches!(
+        t,
+        Target::Relative { path, fragment } if path == "other.md" && fragment.is_none()
+    )));
     let (index, fragment) = p
         .fragments
         .iter()
@@ -1271,4 +1275,63 @@ fn anchors_source_offset_and_restoration() {
     let back_pos = plan1.position_at_source_offset(src_off, &doc1);
     assert_eq!(back_pos.fragment_index, emphasis_frag);
     assert_eq!(back_pos.char_offset, char_offset);
+}
+
+#[test]
+fn r1_conformance_relative_links_front_matter_alerts_and_syntax() {
+    let source = b"---\ntitle: Conformance\nauthor: Alice\ntags:\n  - rust\n  - gtk\n---\n\n# Intro\n\nSee [next](sub/next.md#details) and [ext](https://example.com).\n\n> [!WARNING]\n> Watch out.\n\n```rust\nlet x: u32 = 42; // comment\n```\n";
+    let session = CoreSession::new("r1-test").unwrap();
+    let res = session.parse_blocking(source.to_vec(), None, true).unwrap();
+    session.close().unwrap();
+    let doc = res.document.unwrap();
+    let plan = RenderPlan::build(&doc, || false).unwrap();
+
+    // Front matter separated and exposed as properties
+    assert!(plan.has_front_matter);
+    assert!(
+        plan.properties
+            .iter()
+            .any(|(k, v)| k == "title" && v == "Conformance")
+    );
+    assert!(
+        plan.properties
+            .iter()
+            .any(|(k, v)| k == "author" && v == "Alice")
+    );
+    assert!(
+        plan.properties
+            .iter()
+            .any(|(k, v)| k == "tags" && v == "rust, gtk")
+    );
+    assert!(!plan.fragments[0].text().contains("Conformance"));
+
+    // Relative link target preserved with fragment
+    assert!(plan.targets.iter().any(|t| matches!(
+        t,
+        Target::Relative { path, fragment }
+            if path == "sub/next.md" && fragment.as_deref() == Some("details")
+    )));
+    assert!(
+        plan.targets
+            .iter()
+            .any(|t| matches!(t, Target::External(u) if u.starts_with("https://example.com")))
+    );
+
+    // Alert rendered with label
+    assert!(
+        plan.fragments
+            .iter()
+            .any(|f| f.text().contains("Warning: Watch out."))
+    );
+
+    // Code block carries language and lazy syntax highlighting in markup
+    let code_frag = plan
+        .fragments
+        .iter()
+        .find(|f| f.code)
+        .expect("code fragment");
+    assert_eq!(code_frag.code_language.as_deref(), Some("rust"));
+    let markup = code_frag.markup(1, 0);
+    assert!(markup.contains("<span foreground=\"#9141ac\"><b>let</b></span>"));
+    assert!(markup.contains("<span foreground=\"#77767b\"><i>// comment</i></span>"));
 }

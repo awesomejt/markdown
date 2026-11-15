@@ -58,7 +58,10 @@ def spread(values: list[float]) -> dict:
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("mode", choices=["launch", "repeated", "interaction", "refresh"])
+    parser.add_argument(
+        "mode",
+        choices=["launch", "window-launch", "jump-frame", "repeated", "interaction", "refresh"],
+    )
     parser.add_argument("--configuration", choices=["debug", "release", "Debug", "Release"], default="release")
     parser.add_argument("--profile", action="append", choices=PROFILES)
     parser.add_argument("--runs", type=int, default=5, help="launches per profile")
@@ -95,6 +98,33 @@ def main():
                 "meets_target": meets_target,
                 "target_note": target_note,
                 "peak_rss_kib": spread([float(r["peak_rss_kib"]) for r in rows]),
+            }
+            print(json.dumps(out, indent=2))
+        elif args.mode == "window-launch":
+            _ = run_measure(binary, "window-launch", doc)
+            rows = [run_measure(binary, "window-launch", doc) for _ in range(args.runs)]
+            presented = [r["presented_ms"] for r in rows]
+            target = WARM_LAUNCH if name != "prose-5mib" else None
+            out = {
+                "profile": name,
+                "configuration": args.configuration,
+                "runs": args.runs,
+                "presented_ms": spread(presented),
+                "target_ms": target,
+                "meets_target": (max(presented) <= WARM_LAUNCH) if target is not None else None,
+                "peak_rss_kib": spread([float(r["peak_rss_kib"]) for r in rows]),
+            }
+            print(json.dumps(out, indent=2))
+        elif args.mode == "jump-frame":
+            rows = [run_measure(binary, "jump-frame", doc) for _ in range(args.runs)]
+            jumps = [r["jump_frame_ms"] for r in rows]
+            out = {
+                "profile": name,
+                "configuration": args.configuration,
+                "runs": args.runs,
+                "jump_frame_ms": spread(jumps),
+                "target_ms": JUMP,
+                "meets_target": max(jumps) <= JUMP,
             }
             print(json.dumps(out, indent=2))
         elif args.mode == "repeated":

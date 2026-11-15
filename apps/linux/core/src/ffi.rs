@@ -175,6 +175,12 @@ pub const MD_DENIAL_REMOTE_RESOURCE: u32 = 4;
 pub const MD_DENIAL_LIMIT: u32 = 5;
 pub const MD_DENIAL_LEGACY_POLICY: u32 = 6;
 
+pub const MD_VALUE_NULL: u32 = 1;
+pub const MD_VALUE_BOOLEAN: u32 = 2;
+pub const MD_VALUE_INTEGER: u32 = 3;
+pub const MD_VALUE_STRING: u32 = 4;
+pub const MD_VALUE_STRINGS: u32 = 5;
+
 /// A UTF-8 byte range in the snapshot string table; not NUL-terminated.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
