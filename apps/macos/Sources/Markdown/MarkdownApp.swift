@@ -269,52 +269,137 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, 
         open([url])
         continue
       }
-      if let target = preferred, target.folder == folder, target.loader.capability == nil {
-        preferred = nil
-        target.recent = nil
-        target.loader.open(capability)
-        target.showWindow(nil)
-      } else {
-        open(capability, folder: folder)
-      }
+      open(capability, folder: folder, preferring: preferred)
+      preferred = nil
     }
+  }
+
+  // MARK: Placing documents in windows (MAC-002B)
+
+  /// The opens not yet placed, run one at a time in the order requested.
+  private var openChain: Task<Void, Never>?
+
+  /// Run `body` after every earlier open has placed its document, since
+  /// finding the window already showing a file is asynchronous.
+  private func enqueueOpen(_ body: @escaping @MainActor () async -> Void) {
+    let previous = openChain
+    let task = Task { @MainActor in
+      await previous?.value
+      await body()
+    }
+    openChain = task
+    Task { @MainActor [weak self] in
+      await task.value
+      if self?.openChain == task { self?.openChain = nil }
+    }
+  }
+
+  /// Wait until every requested open has been placed in a window.
+  func opensFinished() async {
+    while let chain = openChain {
+      await chain.value
+      if openChain == chain { break }
+    }
+  }
+
+  /// The window showing the same file as `capability`: the same resolved
+  /// URL, or else the same device and inode, so a hard link or a case
+  /// variant of the name finds it too. The identities are read off the
+  /// main thread, since a disconnected server can stall a stat.
+  func existingWindow(for capability: DocumentCapability) async -> ReaderWindowController? {
+    if let match = windows.first(where: { $0.loader.capability == capability }) { return match }
+    let candidates = windows.compactMap { window in window.loader.capability.map { (window, $0) } }
+    guard !candidates.isEmpty else { return nil }
+    let shown = candidates.map(\.1)
+    let index = await Task.detached { () -> Int? in
+      guard let target = capability.fileIdentity() else { return nil }
+      return shown.firstIndex { $0.fileIdentity() == target }
+    }.value
+    guard let index else { return nil }
+    let (window, held) = candidates[index]
+    // The window may have closed or moved on during the lookup.
+    guard windows.contains(where: { $0 === window }), window.loader.capability == held else {
+      return nil
+    }
+    return window
   }
 
   private func open(
     _ capability: DocumentCapability, folder: FolderCapability? = nil,
-    recent: RecentReference? = nil
+    recent: RecentReference? = nil, preferring preferred: ReaderWindowController? = nil
   ) {
-    if let existing = windows.first(where: { $0.loader.capability == capability }) {
-      let shown = existing.loader.capability
-      let failed: Bool
-      switch existing.loader.state {
-      case .failed, .stale: failed = true
-      case .empty, .loading, .loaded: failed = false
+    enqueueOpen { [weak self] in
+      guard let self else { return }
+      if let existing = await self.existingWindow(for: capability) {
+        self.reuse(existing, for: capability, folder: folder, recent: recent)
+        return
       }
-      if shown?.isRevoked == true || (failed && shown?.folder !== capability.folder) {
-        // The window holds the file through a revoked (or other) grant:
-        // open the new capability there instead of retrying the old one.
-        existing.recent = recent ?? existing.recent
-        if let folder {
-          existing.showFolder(folder, then: capability.url)
-        } else {
-          existing.loader.open(capability)
+      if let target = preferred, let folder, target.folder == folder,
+        target.loader.capability == nil, self.windows.contains(where: { $0 === target })
+      {
+        target.recent = nil
+        target.loader.open(capability)
+        target.showWindow(nil)
+        return
+      }
+      let target = self.emptyWindow() ?? self.makeWindow(nil)
+      target.recent = recent
+      if let folder {
+        target.showFolder(folder, then: capability.url)
+      } else {
+        target.loader.open(capability)
+      }
+      target.showWindow(nil)
+    }
+  }
+
+  /// Bring forward the window already showing the file, recovering it when
+  /// it failed or holds the file through a revoked (or other) grant.
+  private func reuse(
+    _ existing: ReaderWindowController, for capability: DocumentCapability,
+    folder: FolderCapability?, recent: RecentReference?
+  ) {
+    let shown = existing.loader.capability
+    let failed: Bool
+    switch existing.loader.state {
+    case .failed, .stale: failed = true
+    case .empty, .loading, .loaded: failed = false
+    }
+    if shown?.isRevoked == true || (failed && shown?.folder !== capability.folder) {
+      // Open the new capability there instead of retrying the old one.
+      existing.recent = recent ?? existing.recent
+      if let folder {
+        existing.showFolder(folder, then: capability.url)
+      } else {
+        existing.loader.open(capability)
+      }
+    } else if failed {
+      // Choosing a file again retries a failed load, e.g. after reconnecting.
+      existing.loader.reload()
+    }
+    existing.showWindow(nil)
+  }
+
+  /// Open a document from a window's files sidebar or a link in it: bring
+  /// forward the window already showing it, else show it in `controller`,
+  /// which keeps its folder. `anchor` is a heading to show.
+  func navigate(
+    to capability: DocumentCapability, anchor: String?, from controller: ReaderWindowController
+  ) {
+    enqueueOpen { [weak self] in
+      guard let self else { return }
+      if let existing = await self.existingWindow(for: capability) {
+        if existing !== controller {
+          self.reuse(existing, for: capability, folder: nil, recent: nil)
         }
-      } else if failed {
-        // Choosing a file again retries a failed load, e.g. after reconnecting.
-        existing.loader.reload()
+        if let anchor { existing.reveal(anchor: anchor) }
+        existing.window?.makeKeyAndOrderFront(nil)
+        return
       }
-      existing.showWindow(nil)
-      return
+      guard self.windows.contains(where: { $0 === controller }) else { return }
+      controller.recent = nil
+      controller.navigate(to: capability, anchor: anchor)
     }
-    let target = emptyWindow() ?? makeWindow(nil)
-    target.recent = recent
-    if let folder {
-      target.showFolder(folder, then: capability.url)
-    } else {
-      target.loader.open(capability)
-    }
-    target.showWindow(nil)
   }
 
   // MARK: Recents (MAC-002A)
@@ -404,6 +489,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, 
     case .document:
       guard let capability = try? DocumentCapability(granted: url) else { return }
       open(capability, recent: reference)
+      await opensFinished()
     case .folder:
       openFolder(url, recent: reference)
     }
@@ -541,6 +627,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, 
     controller.onRecover = { [weak self] action, controller in
       self?.recover(action, controller)
     }
+    controller.onNavigate = { [weak self] controller, capability, anchor in
+      self?.navigate(to: capability, anchor: anchor, from: controller)
+    }
     if restoresWindows { controller.enableRestoration() }
     windows.append(controller)
     if show {
@@ -628,6 +717,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, 
       withTitle: "Show Sidebar", action: #selector(NSSplitViewController.toggleSidebar(_:)),
       keyEquivalent: "s")
     sidebar.keyEquivalentModifierMask = [.command, .control]
+    let showFiles = view.addItem(
+      withTitle: "Files", action: #selector(ReaderWindowController.showFiles(_:)),
+      keyEquivalent: "1")
+    showFiles.keyEquivalentModifierMask = [.command, .option]
+    let showOutline = view.addItem(
+      withTitle: "Outline", action: #selector(ReaderWindowController.showOutline(_:)),
+      keyEquivalent: "2")
+    showOutline.keyEquivalentModifierMask = [.command, .option]
+    view.addItem(.separator())
+    let hidden = view.addItem(
+      withTitle: "Show Hidden Files",
+      action: #selector(ReaderWindowController.toggleHiddenFiles(_:)), keyEquivalent: ".")
+    hidden.keyEquivalentModifierMask = [.command, .shift]
+    view.addItem(
+      withTitle: "Show All Files", action: #selector(ReaderWindowController.toggleAllFiles(_:)),
+      keyEquivalent: "")
+    view.addItem(
+      withTitle: "Refresh Files", action: #selector(ReaderWindowController.refreshFiles(_:)),
+      keyEquivalent: "")
     view.addItem(.separator())
     for (title, action, key) in [
       ("Actual Size", #selector(makeTextActualSize(_:)), "0"),

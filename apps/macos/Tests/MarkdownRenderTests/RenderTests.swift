@@ -111,11 +111,14 @@ struct RenderTests {
     let rendered = try DocumentRenderer.render(try await Self.parse(source))
     var fragments: [String] = []
     var external: [URL] = []
+    var documents: [LinkDestination] = []
     rendered.text.enumerateAttribute(.link, in: NSRange(0..<rendered.text.length)) { value, _, _ in
       guard let url = value as? URL else { return }
       switch LinkDestination(link: url) {
       case .fragment(let anchor): fragments.append(anchor)
       case .external(let url): external.append(url)
+      case .document(let path, let fragment):
+        documents.append(.document(path: path, fragment: fragment))
       case nil: Issue.record("unexpected link \(url)")
       }
     }
@@ -123,12 +126,27 @@ struct RenderTests {
     #expect(fragments.allSatisfy { rendered.heading(anchor: $0) != nil })
     // The core's canonical URI form.
     #expect(external.map(\.absoluteString) == ["https://example.com/"])
-    // Relative links need a folder grant: inert, with an explanation.
-    for text in ["examples index", "Mermaid page"] {
-      let tip: String? = Self.attribute(.toolTip, of: text, in: rendered)
-      #expect(tip == "Links to other files are not available yet")
-      let link: URL? = Self.attribute(.link, of: text, in: rendered)
-      #expect(link == nil)
+    // Relative links lead to other documents; the window checks the grant.
+    #expect(
+      documents == [
+        .document(path: "README.md", fragment: nil),
+        .document(path: "mermaid.md", fragment: "sequence-diagram"),
+      ])
+    let tip: String? = Self.attribute(.toolTip, of: "Mermaid page", in: rendered)
+    #expect(tip == "mermaid.md#sequence-diagram")
+  }
+
+  /// A document link's URL gives back exactly the path the core decoded:
+  /// a literal percent, spaces, Unicode and parent segments.
+  @Test func documentLinksRoundTrip() throws {
+    for (path, fragment) in [
+      ("a.md", nil), ("sub dir/b c.md", "x y"), ("literal%2e.md", "%41"),
+      ("../ünï/cödé.md", "héading"), ("a#b?.md", nil), ("./x.md", "a#b"),
+    ] as [(String, String?)] {
+      let destination = LinkDestination.document(path: path, fragment: fragment)
+      let url = try #require(destination.url)
+      #expect(LinkDestination(link: url) == destination, "\(path)")
+      #expect(url.scheme == "x-markdown-document")
     }
   }
 

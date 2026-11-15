@@ -10,6 +10,9 @@ public final class ReaderSurface: NSObject, NSTextViewDelegate, NSTextLayoutMana
   public private(set) var document: RenderedDocument?
   /// Opens an external link; replaced by checks so nothing leaves the app.
   public var openExternal: (URL) -> Void = { NSWorkspace.shared.open($0) }
+  /// Follows a link to another document: its decoded relative path and
+  /// optional anchor (MAC-002B). Without a handler the link does nothing.
+  public var onOpenDocument: ((String, String?) -> Void)?
   /// Called after navigation to a heading, with its outline index.
   public var onNavigate: ((Int) -> Void)?
   /// Highlighted find matches, in reading order, and the current one.
@@ -314,6 +317,8 @@ public final class ReaderSurface: NSObject, NSTextViewDelegate, NSTextLayoutMana
       if !reveal(anchor: anchor) { NSSound.beep() }
     case .external(let url):
       openExternal(url)
+    case .document(let path, let fragment):
+      if let onOpenDocument { onOpenDocument(path, fragment) } else { NSSound.beep() }
     }
     return true
   }

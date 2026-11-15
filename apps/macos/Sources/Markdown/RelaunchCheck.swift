@@ -28,7 +28,10 @@ enum RelaunchCheck {
   static func run(_ phase: Phase, document url: URL, delegate: AppDelegate) async {
     do {
       let capability = try DocumentCapability(granted: url)
-      if phase == .prepare { delegate.open([url]) }
+      if phase == .prepare {
+        delegate.open([url])
+        await delegate.opensFinished()
+      }
       let reader = try await settled(capability, delegate)
       let headings = reader.outline.headings
       guard let index = headings.firstIndex(where: { $0.title == "Part 80" }) else {
