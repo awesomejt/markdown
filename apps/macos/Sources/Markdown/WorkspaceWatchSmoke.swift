@@ -84,6 +84,21 @@ enum WorkspaceWatchSmoke {
       "storm checked (1,500 files written in \(milliseconds(writing)) ms, listed in"
         + " \(milliseconds(settled)) ms with \(listings) listings)")
 
+    // A refresh doesn't restart a search the reader stopped.
+    let search = reader.search
+    search.field.stringValue = "Doc"
+    search.search()
+    search.stop(nil)
+    try await waitUntil("the stopped search ends") { !search.isSearching }
+    try check(search.summary?.cancelled == true, "Stop ends the folder search")
+    try write("docs/after-stop.md")
+    try await waitUntil("a change after Stop is listed") { listed("docs/after-stop.md") }
+    try check(
+      search.summary?.cancelled == true && !search.isSearching,
+      "a refresh keeps a stopped search stopped")
+    search.field.stringValue = ""
+    search.search()
+
     // Churn in hidden items (a version-control folder, an editor's swap
     // file beside a visible document) lists nothing.
     try await settle(reader)

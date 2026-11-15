@@ -580,7 +580,8 @@ refinement).
   lists it again when something changes: a document added, removed or
   renamed, or a folder created, appears in the files sidebar by itself. The
   refresh keeps the expanded folders, the selection and the scroll
-  position, and a running search is run again over the new listing.
+  position, and the search is run again over the new listing, unless the
+  reader stopped it.
   FSEvents watches by path and holds no file descriptor, so it never keeps
   a disk from being ejected. Events name each changed item, so changes
   only to hidden items (a `.git` folder, an editor's `.swp` file beside a

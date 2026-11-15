@@ -213,7 +213,9 @@ final class WorkspaceSearchController: NSViewController, NSOutlineViewDataSource
       failure = unavailable
       if isViewLoaded { results.reloadData() }
       show(nil)
-    } else if !query.isEmpty {
+    } else if !query.isEmpty, summary?.cancelled != true {
+      // A new listing (a folder change, MAC-002E) runs the query again,
+      // unless the reader stopped it: Stop holds until they search again.
       search()
     }
   }
