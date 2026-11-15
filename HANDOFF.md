@@ -1,15 +1,15 @@
 # Agent Session and Platform Handoff
 
-Updated: 2026-11-14 (America/Denver), LNX-002 completed under D-029 (PR #80 approved and closed out into `develop`).
-Active task: None. Eligible tasks: `MAC-002A` (macOS), `WIN-002A` (Windows), and `HARD-001` (shared release hardening; runnable on Linux). Phase 3 (`m-desktop-skeletons`, PR #71) is merged into `main` and synced to `develop` (PR #73); on Linux, `LNX-002` (basic MVP) is complete, reaching a D-030 milestone review boundary for Linux MVP (`review/<milestone>` into `main`; only the owner merges into `main`) while `HARD-001`, `MAC-002A`, and `WIN-002A` are eligible on `develop`.
-Pass `938a9e77-49ca-43c9-a875-7fd1489b84b3` completed, approved PR #80 merged into `develop`:
+Updated: 2026-11-14 (America/Denver), HARD-001 completed under D-029 (PR #81 approved and closed out into `develop`).
+Active task: None. Eligible tasks: `MAC-002A` (macOS) and `WIN-002A` (Windows). No Linux tasks remain eligible until `DESK-002` (which requires `MAC-002` and `WIN-002`). On `develop`, both `LNX-002` (Linux MVP) and `HARD-001` are complete, reaching a D-030 milestone review boundary (`review/<milestone>` into `main`; only the owner merges into `main`).
+Pass `8b234a37-3981-44b6-8ae7-671931a406de` completed, approved PR #81 merged into `develop`:
 
-- Closed the `LNX-002` Linux basic MVP aggregate milestone in [docs/Linux-MVP-Acceptance.md](docs/Linux-MVP-Acceptance.md) on merged `LNX-002A` through `LNX-002F` evidence (PRs #74–#79).
-- Fresh native checks at `ef97cd9`: `python3 apps/linux/tools/check.py` passed in Debug and Release (26 unit, 20 render, 20 core consumer tests, GTK smokes, isolated D-Bus association, two-phase relaunch, release `core-probe single`, 74-package license inventory, relocated + prefix-installed `.tar.gz`); `python3 tools/check.py common` passed (621 local links, 83 Markdown files with 0 lint errors); hosted `linux-native` CI in run `43674118292` passed.
+- Implemented `HARD-001` (shared release hardening) in [docs/Hardening-Report.md](docs/Hardening-Report.md): 4 coverage-guided libFuzzer targets in `core/fuzz/` (`fuzz_parser`, `fuzz_model_decoder`, `fuzz_ffi_session`, `fuzz_ffi_workspace`) via `tools/fuzz.py` (16 s/target, 0 crashes/leaks), 243 core/FFI tests under AddressSanitizer (`-Z sanitizer=address`), `nested image wikilinks` regression in `hostile.rs`, and OSV.dev dependency advisory scan (`tools/check_advisories.py` + `tools/test_check_advisories.py`) wired into `tools/check.py` (120 unique crates.io packages across 3 lockfiles; `RUSTSEC-2026-0433` dispositioned).
+- Checks at `1c34d94`: `python3 tools/check.py common && python3 tools/check.py core` passed; `python3 tools/check.py all` passed at `ee01f9a`; hosted all-host CI run `43676632520` passed (`changes`, `common`, `core` on all 3 OSes, `linux-native`, `macos-native`, `windows-native`).
 
-PR #80 reviewed by Grok Bot (0 Blockers, 0 Concerns, 2 Nits; approved under D-029; both nits addressed in closeout).
+PR #81 reviewed by Grok Bot (0 Blockers, 1 Concern, 3 Nits; approved under D-029; all findings fixed in `1c34d94`).
 
-Next task: `HARD-001` (shared release hardening: fuzzing, sanitizers, advisories; runnable on Linux), `MAC-002A` (macOS), `WIN-002A` (Windows), or D-030 Linux MVP milestone review into `main` (owner-merged).
+Next task: `MAC-002A` (macOS) or `WIN-002A` (Windows), or D-030 milestone review (`LNX-002` + `HARD-001`) into `main` (owner-merged).
 
 Previous Linux task: `LNX-001` in [PR #69](https://github.com/awesomejt/markdown/pull/69). Previous Windows task: `WIN-001` in [PR #62](https://github.com/awesomejt/markdown/pull/62). Previous macOS task: `MAC-001` in [PR #48](https://github.com/awesomejt/markdown/pull/48).
 

@@ -202,3 +202,6 @@ evidence.
   forbids.
 - C ABI flat-view encode/copy cost and the macOS repeated-session RSS growth
   remain platform B-phase measurements.
+- Coverage-guided fuzzing, AddressSanitizer/UBSan verification, and
+  dependency advisory scanning are recorded in
+  [Hardening-Report.md](Hardening-Report.md) (HARD-001).

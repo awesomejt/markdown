@@ -1,0 +1,17 @@
+[workspace]
+
+[package]
+name = "markdown-fuzz"
+version = "0.1.0"
+edition = "2024"
+license = "Apache-2.0"
+publish = false
+
+[lib]
+name = "markdown_fuzz"
+crate-type = ["staticlib"]
+
+[dependencies]
+markdown-core = { path = "../crates/markdown-core", features = ["model-v2"] }
+markdown-ffi = { path = "../crates/markdown-ffi", features = ["model-v2"] }
+serde_json = "=1.0.145"

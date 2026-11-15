@@ -400,8 +400,22 @@ read.
   `tools/check.py common` (621 local links, 83 Markdown files), and hosted
   `linux-native` CI run `43674118292` passed at `ef97cd9`. Grok review 1 at
   `223e28a` reported 0 Blockers, 0 Concerns, 2 Nits (approved under D-029; both
-  nits addressed in closeout). Next eligible tasks: `HARD-001` (shared release
-  hardening), `MAC-002A` (macOS), `WIN-002A` (Windows).
+  nits addressed in closeout).
+- **HARD-001 (PR #81)**: delivers shared release hardening ahead of `DESK-002`:
+  4 coverage-guided libFuzzer targets in `core/fuzz/` (`fuzz_parser`,
+  `fuzz_model_decoder`, `fuzz_ffi_session`, `fuzz_ffi_workspace`) built with
+  Rust `sancov-module` coverage instrumentation and `clang -fsanitize=fuzzer,address,undefined`
+  via `tools/fuzz.py` (16 s/target on Linux `x86_64`, 0 crashes/leaks), 243
+  `markdown-core`/`markdown-ffi` tests passing under `-Z sanitizer=address`,
+  `hostile.rs` `"nested image wikilinks"` regression guard, and
+  `tools/check_advisories.py` (OSV.dev RustSec scan across `Cargo.lock`,
+  `apps/linux/Cargo.lock`, and `core/fuzz/Cargo.lock` — 120 unique crates.io
+  packages; `RUSTSEC-2026-0433` on `pulldown-cmark 0.13.5` dispositioned because
+  `ENABLE_WIKILINKS` is off in `PARSER_OPTIONS`), wired into `tools/check.py`.
+  Recorded in [Hardening-Report.md](docs/Hardening-Report.md). Grok review 1 at
+  `ee01f9a` reported 0 Blockers, 1 Concern, 3 Nits (approved under D-029; all
+  findings fixed at `1c34d94` with green all-host CI run `43676632520`). Next
+  eligible tasks: `MAC-002A` (macOS) and `WIN-002A` (Windows).
 - Workflow: task PRs target `develop` and merge on a Grok review with no
   serious finding (D-029). `main` takes only owner-approved milestone reviews
   from `review/<milestone>`, tagged `m-<milestone>` (D-030). The shared-core
