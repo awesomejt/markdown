@@ -120,6 +120,7 @@ enum DocumentSmoke {
       guard let live = try? CoreRuntime.liveHandles() else { return false }
       return live.sessions == 0 && live.jobs == 0 && live.snapshots == 0
     }
+    try await FolderSmoke.run(delegate: delegate, directory: directory, check: check)
     delegate.newWindow(nil)
   }
 

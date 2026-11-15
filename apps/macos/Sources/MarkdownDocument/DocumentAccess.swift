@@ -10,12 +10,31 @@ public struct DocumentCapability: Sendable, Hashable, CustomStringConvertible {
   public let url: URL
   /// Present only for a URL that may carry a sandbox extension.
   let securityScoped: Bool
+  /// The folder grant this document was opened through (MAC-002A), if any.
+  /// Revoking it withdraws access to the document too.
+  public let folder: FolderGrant?
 
   public init(granted url: URL, securityScoped: Bool = true) throws(DocumentError) {
+    try self.init(granted: url, securityScoped: securityScoped, folder: nil)
+  }
+
+  init(granted url: URL, securityScoped: Bool, folder: FolderGrant?) throws(DocumentError) {
     guard url.isFileURL else { throw .unsupportedType }
     // The user chose this item; following its symlinks/aliases is the grant.
     self.url = url.standardizedFileURL.resolvingSymlinksInPath()
     self.securityScoped = securityScoped
+    self.folder = folder
+  }
+
+  /// Whether the folder grant this document came through was revoked.
+  public var isRevoked: Bool { folder?.isRevoked == true }
+
+  /// Bracket a read with the document's and its folder's security scopes.
+  func accessing<T, E: Error>(_ body: () throws(E) -> T) throws(E) -> T {
+    let scoped = securityScoped && url.startAccessingSecurityScopedResource()
+    defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+    guard let folder else { return try body() }
+    return try folder.accessing(body)
   }
 
   public var displayName: String { FileManager.default.displayName(atPath: url.path) }
@@ -168,8 +187,16 @@ enum DocumentReader {
     dispatchPrecondition(condition: .notOnQueue(.main))
     if cancellation.isCancelled { throw CancellationError() }
     guard capability.isSupportedType else { throw DocumentError.unsupportedType }
-    let scoped = capability.securityScoped && capability.url.startAccessingSecurityScopedResource()
-    defer { if scoped { capability.url.stopAccessingSecurityScopedResource() } }
+    // A revoked folder grant withdraws its documents before any file access.
+    guard !capability.isRevoked else { throw DocumentError.accessRevoked }
+    return try capability.accessing { () throws -> DocumentBytes in
+      try readScoped(capability, limit: limit, cancellation: cancellation)
+    }
+  }
+
+  private static func readScoped(
+    _ capability: DocumentCapability, limit: UInt64, cancellation: ReadCancellation
+  ) throws -> DocumentBytes {
     // The coordinator opens the item itself and would block on a FIFO; reject
     // non-regular items first. fstat after our own open still guards a swap.
     var info = stat()
@@ -233,14 +260,16 @@ enum DocumentReader {
   /// when it can't be examined. A stat only: no coordination and no read.
   static func revisionToken(_ capability: DocumentCapability) -> String? {
     dispatchPrecondition(condition: .notOnQueue(.main))
-    let scoped = capability.securityScoped && capability.url.startAccessingSecurityScopedResource()
-    defer { if scoped { capability.url.stopAccessingSecurityScopedResource() } }
-    var info = stat()
-    let found = capability.url.withUnsafeFileSystemRepresentation { path in
-      path.map { stat($0, &info) == 0 } ?? false
+    // A revoked grant has no current revision: the loader reads to report it.
+    guard !capability.isRevoked else { return nil }
+    return capability.accessing { () -> String? in
+      var info = stat()
+      let found = capability.url.withUnsafeFileSystemRepresentation { path in
+        path.map { stat($0, &info) == 0 } ?? false
+      }
+      guard found, info.st_mode & S_IFMT == S_IFREG else { return nil }
+      return token(info, size: Int(info.st_size))
     }
-    guard found, info.st_mode & S_IFMT == S_IFREG else { return nil }
-    return token(info, size: Int(info.st_size))
   }
 
   /// Opaque device/inode/size/mtime identity; holds no path.

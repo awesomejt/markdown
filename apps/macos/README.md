@@ -63,7 +63,8 @@ document flow:
   (one running, one queued); a load waits up to 30 seconds for a slot.
   Reload after a failed session creation retries the whole open.
 
-Folder grants, recents and security-scoped bookmarks remain MAC-002A work.
+Folder grants, recents and access recovery are described in
+[Folders, recents and access recovery](#folders-recents-and-access-recovery-mac-002a).
 External changes and relaunch restoration are described in
 [External refresh and restoration](#external-refresh-and-restoration-mac-001h).
 Images beside the document are read under the
@@ -95,7 +96,8 @@ accessibility element continuous across the whole document. The
 - Links follow the core's v2 classification. A fragment link to a heading
   anchor (including non-ASCII anchors such as `#café`) scrolls to that heading; a missing anchor beeps. An `http`, `https`
   or `mailto` link the core marks external opens with the system handler.
-  Links to other files need a folder grant (MAC-002A) and denied links
+  Links to other files stay inert until workspace navigation (MAC-002B);
+  denied links
   (unsafe schemes, invalid URIs) carry no link at all: they are dotted and
   explain themselves in a tooltip.
 - The sidebar outline lists every heading from the core's outline, indented
@@ -164,7 +166,8 @@ Reading-position restoration is described in
 
   This build is not sandboxed. A sandboxed build's single-file grant does not
   cover sibling images (capability matrix CAP-04), so it would need the
-  folder grant from MAC-002A. Images are read again whenever the document
+  folder grant ([MAC-002A](#folders-recents-and-access-recovery-mac-002a)).
+  Images are read again whenever the document
   is rendered again: on Reload, or when an external change alters its
   text. A change to an image file alone is not detected.
 
@@ -338,8 +341,9 @@ measurements need an administrator for `purge` and were not run.
   system setting “Close windows when quitting an application”: with it on
   (the default), windows come back after a restart or a crash, not after
   Quit. Saved state is private document-derived data; it is never logged.
-  This build is not sandboxed, so its bookmarks are not security-scoped
-  (MAC-002A).
+  This build is not sandboxed, so its bookmarks are not security-scoped;
+  restoration reopens the document by itself, without its folder grant
+  (workspace restoration is MAC-002E).
 - **Text size during a lead.** A text size change while a long document is
   still showing its lead now keeps the line at the top and the selection
   (the MAC-001G deferred finding); the new size waits for the whole text.
@@ -349,6 +353,60 @@ being found, as before; its window does not follow the file (a relaunch
 does, through the bookmark). Change detection on network volumes is
 unverified (capability matrix CAP-06). A refresh briefly holds both
 revisions; see the evidence below.
+
+## Folders, recents and access recovery (MAC-002A)
+
+- **Folder grants.** File → Open Folder… (Shift-Command-O) grants a folder
+  to a window: the key empty window, another empty one, or a new one. A
+  window already showing that folder is focused instead. The folder is
+  validated off the main thread (it must exist, be a folder and be
+  listable). The window then names the folder, and its subtitle keeps
+  naming it while a document is shown. File → Open… then starts in the key window's folder.
+  A chosen document that resolves, through symlinks, inside the folder
+  opens through the folder's grant, in that window while it is empty and in
+  a new window of the same folder otherwise; a document outside it (`..`
+  or a symlink escape) opens by itself, without the grant.
+- **Revocation.** `FolderCapability` holds one shared, revocable
+  `FolderGrant`; every document opened through the folder carries it.
+  File → Close Folder revokes it: that window's document closes, and every
+  other window reading through the folder loses access at once (its read
+  fails as **access revoked**, which the core session records). A revoked
+  grant has no current revision, so watchers and Reload report it rather
+  than serving stale bytes. Permission lost after the folder was read is
+  also reported as revoked; a folder on a volume no longer mounted where it
+  was read is **disk unavailable**. Errors name no path.
+- **Recents.** File → Open Recent lists up to 10 documents, then up to 10
+  folders, newest first, and Clear Menu. Each entry keeps a bookmark (the
+  persistent grant), its name, last path and device/inode, so a hard link
+  or case variant of a recent file is the same entry. Entries are checked
+  off the main thread when the list changes and when the app becomes
+  active; one that can't be opened is shown with a warning symbol and a
+  short reason (“Can’t be found”, “Disk not available”, “Permission
+  denied”). The list is stored as JSON at
+  `~/Library/Application Support/io.github.awesomejt.markdown/recents.json`
+  (mode 0600; `MARKDOWN_RECENTS_PATH` overrides it). It is untrusted input:
+  files over 1 MiB are ignored before they are read, and entries with a
+  wrong kind, a relative path, oversized fields or duplicates are dropped.
+  A list written by a newer version is used but never overwritten. The
+  smoke, measurements and relaunch check keep recents in memory.
+- **Moved, missing and denied items.** Opening a recent item resolves its
+  bookmark without UI or mounting. A moved or renamed item opens from its
+  new location, and its entry follows it. An item moved to the Trash counts
+  as deleted. One that can't be opened gets a window with its typed error
+  and recovery buttons: **Locate…** (missing; the chosen item replaces the
+  entry), **Grant Access…** (denied or revoked; a document opened through a
+  folder asks for the folder again and reopens the document through the new
+  grant), **Try Again** (disk unavailable) and **Remove from Recents**. The
+  same buttons follow a failed open or Reload of a document or folder.
+- **Sandboxing.** This build is not sandboxed: a plain bookmark is the
+  persistent grant, and security-scoped access is bracketed around reads
+  anyway. A sandboxed process makes and resolves security-scoped bookmarks
+  instead; that path is not exercised until a sandboxed build exists.
+
+Limits: relative links to other documents stay inert until MAC-002B. A
+restored window reopens its document without the folder grant (MAC-002E).
+The window already showing a file is still found by resolved URL, not file
+identity (deferred finding in [TODO.md](../../TODO.md#deferred-review-findings)).
 
 ## Development artifact and licenses (MAC-001I)
 
@@ -500,6 +558,15 @@ unsupported/oversized/invalid-UTF-8 errors in their own windows, Reload after
 withdrawn and restored permission (with the core session's recorded
 revocation), a slow document replaced before it finishes never being
 presented, and zero native handles after all document windows close. Its
+MAC-002A part replaces the open panel with scripted choices and keeps
+recents in memory: Open Folder, Open… starting in the folder (inside through
+the grant, outside by itself), a second window sharing the grant, Close
+Folder revoking access in the other window and Grant Access… reopening it
+through a new grant, the Open Recent menu order, a moved folder opening
+where it is now with its entry following, a deleted document offering
+Locate… (the located file replaces the entry) and Remove from Recents, a
+denied folder marked in the menu and recovered with Grant Access…, and
+Clear Menu. Its
 reading part opens a 202-heading document and checks the rendered text, the
 outline rows, outline and fragment-link navigation (heading revealed and
 selected, outline following), an external link routed to a stub instead of
@@ -896,3 +963,17 @@ the release executable named the build user's home folder 23 times in
 Rust panic locations and 66 times in the debug map; the artifact names
 it nowhere. Stripping took the executable from 3.15 MB to 2.88 MB.
 A clean second Mac and a quarantined download were not available.
+
+## MAC-002A local evidence
+
+2026-11-14, macOS 27.0.1 on Apple Silicon, Xcode 27.1, Swift 6.4:
+`.build/feas004-venv/bin/python apps/macos/tools/check.py` passed in debug
+and release: `swift format lint --strict`, 62 Swift tests per configuration
+(including 8 new `FolderTests`: containment and symlink escape, revocation
+across documents, the loader's revoked reload, folder validation errors,
+moved/missing/denied recents, bounded and de-duplicated persistence,
+untrusted stored lists and file storage), the bundle smoke with its MAC-002A
+part, relaunch restoration, the release development artifact and the
+relocated `CoreProbe` consumer. Not run by the agent: the interactive open
+panel for Open Folder…, Locate… and Grant Access… (the smoke scripts the
+choices), a real disconnected volume, and VoiceOver on the recovery buttons.

@@ -64,6 +64,26 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
   var onMilestone: ((Milestone) -> Void)?
   enum Milestone { case loaded, installed, completed }
 
+  // MARK: Folder grants and recovery (MAC-002A)
+
+  /// The folder granted to this window, if any. Open… starts in it, and the
+  /// documents opened through it share its revocable grant.
+  private(set) var folder: FolderCapability?
+  /// The recent item this window is showing or recovering.
+  var recent: RecentReference?
+  /// What the current error offers, if anything.
+  private(set) var recovery: Recovery?
+  /// A newly presented document finished loading.
+  var onLoaded: ((ReaderWindowController, DocumentCapability) -> Void)?
+  /// A folder was validated and granted to this window.
+  var onFolderReady: ((ReaderWindowController, FolderCapability) -> Void)?
+  /// The reader withdrew this window's folder grant.
+  var onFolderClosed: ((ReaderWindowController, FolderGrant) -> Void)?
+  var onRecover: ((RecoveryAction, ReaderWindowController) -> Void)?
+  private let recoveryRow = NSStackView()
+  private var folderTask: Task<Void, Never>?
+  private var folderRequest: UInt64 = 0
+
   init(preferences: ReaderPreferences) {
     self.preferences = preferences
     let window = NSWindow(
@@ -85,7 +105,11 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
     detail.alignment = .center
     detail.isHidden = true
     detail.setAccessibilityIdentifier("document-detail-label")
-    statusStack = NSStackView(views: [status, detail])
+    recoveryRow.orientation = .horizontal
+    recoveryRow.spacing = 8
+    recoveryRow.isHidden = true
+    recoveryRow.setAccessibilityIdentifier("recovery-actions")
+    statusStack = NSStackView(views: [status, detail, recoveryRow])
     statusStack.orientation = .vertical
     statusStack.spacing = 8
     statusStack.translatesAutoresizingMaskIntoConstraints = false
@@ -157,6 +181,10 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
   }
 
   var statusText: String { status.stringValue }
+  /// The titles of the recovery buttons shown, in order.
+  var recoveryTitles: [String] { recovery?.actions.map(\.title) ?? [] }
+  /// Whether a folder is being validated.
+  var isOpeningFolder: Bool { folderTask != nil }
   var detailText: String { detail.stringValue }
   /// Whether a load or the off-main rendering of its result is still running.
   var isBusy: Bool { loader.isLoading || loader.isRefreshing || renderTask != nil }
@@ -199,7 +227,11 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
     renderTask = nil
     switch state {
     case .empty:
-      showStatus("No document open", nil, title: "Markdown", url: nil)
+      if folder != nil, folderTask == nil {
+        showFolderReady()
+      } else if folderTask == nil {
+        showStatus("No document open", nil, title: "Markdown", url: nil)
+      }
     case .loading(let capability):
       // Keep the previous text visible only while reloading the same document.
       if capability != shownCapability {
@@ -208,6 +240,7 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
     case .loaded(let loaded):
       reloadRequested = false
       setNotice(nil)
+      if loaded.capability != shownCapability { onLoaded?(self, loaded.capability) }
       onMilestone?(.loaded)
       render(loaded, placement: placement(for: loaded))
     case .stale(let loaded, let error):
@@ -217,8 +250,15 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
     case .failed(let capability, let error):
       reloadRequested = false
       pendingRestore = nil
-      showStatus(error.message, error.recovery, title: capability.displayName, url: nil)
+      showStatus(
+        error.message, error.recovery, title: capability.displayName, url: nil,
+        recovery: Recovery(subject: .document(capability), actions: actions(error.recoveryActions)))
     }
+  }
+
+  /// The error's own actions, and removal when it came from Open Recent.
+  private func actions(_ base: [RecoveryAction]) -> [RecoveryAction] {
+    recent == nil ? base : base + [.removeRecent]
   }
 
   private func placement(for loaded: LoadedDocument) -> Placement {
@@ -346,6 +386,8 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
     statusStack.isHidden = true
     window?.title = loaded.capability.displayName
     window?.representedURL = loaded.capability.url
+    window?.subtitle = folder?.displayName ?? ""
+    setRecovery(nil)
     // A reloaded document gets a new snapshot: search it again.
     findMatches = nil
     findKey = nil
@@ -379,7 +421,11 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
     render(loaded, placement: placement)
   }
 
-  private func showStatus(_ primary: String, _ secondary: String?, title: String, url: URL?) {
+  private func showStatus(
+    _ primary: String, _ secondary: String?, title: String, url: URL?,
+    recovery: Recovery? = nil
+  ) {
+    setRecovery(recovery)
     closeFindBar()
     setNotice(nil)
     documentTitle = nil
@@ -393,6 +439,151 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
     detail.isHidden = secondary == nil
     window?.title = title
     window?.representedURL = url
+    window?.subtitle = folder.map { title == $0.displayName ? "" : $0.displayName } ?? ""
+  }
+
+  private func setRecovery(_ recovery: Recovery?) {
+    self.recovery = recovery
+    for view in recoveryRow.arrangedSubviews {
+      recoveryRow.removeArrangedSubview(view)
+      view.removeFromSuperview()
+    }
+    for action in recovery?.actions ?? [] {
+      let button = NSButton(title: action.title, target: self, action: #selector(recover(_:)))
+      button.tag = action.rawValue
+      button.bezelStyle = .push
+      button.setAccessibilityIdentifier(action.identifier)
+      recoveryRow.addArrangedSubview(button)
+    }
+    recoveryRow.isHidden = recovery?.actions.isEmpty ?? true
+  }
+
+  @objc private func recover(_ sender: NSButton) {
+    guard let action = RecoveryAction(rawValue: sender.tag) else { return }
+    perform(action)
+  }
+
+  /// Run a recovery the window offers (its buttons, or a check).
+  func perform(_ action: RecoveryAction) {
+    guard recovery?.actions.contains(action) == true else { return }
+    onRecover?(action, self)
+  }
+
+  // MARK: Folders
+
+  /// Grant `folder` to this window: validate it off the main thread, then
+  /// show it, or open `document` through it. Any document shown is closed.
+  func showFolder(_ folder: FolderCapability, then document: URL? = nil) {
+    folderRequest &+= 1
+    let id = folderRequest
+    folderTask?.cancel()
+    self.folder = folder
+    if loader.capability != nil { loader.clear() }
+    showStatus("Opening folder…", nil, title: folder.displayName, url: nil)
+    folderTask = Task { [weak self] in
+      let outcome = await Task.detached { () -> Result<DocumentCapability?, FolderError> in
+        do throws(FolderError) {
+          try folder.validate()
+          return .success(try document.map { url throws(FolderError) in try folder.document(url) })
+        } catch {
+          return .failure(error)
+        }
+      }.value
+      guard let self, id == self.folderRequest else { return }
+      self.folderTask = nil
+      switch outcome {
+      case .success(let capability):
+        self.onFolderReady?(self, folder)
+        if let capability {
+          self.loader.open(capability)
+        } else {
+          self.showFolderReady()
+        }
+      case .failure(let error):
+        self.folder = nil
+        self.showStatus(
+          error.message, error.recovery, title: folder.displayName, url: nil,
+          recovery: Recovery(subject: .folder(folder), actions: self.actions(error.recoveryActions))
+        )
+      }
+    }
+  }
+
+  private func showFolderReady() {
+    guard let folder else { return }
+    showStatus(
+      "“\(folder.displayName)”", "Choose File ▸ Open… to read a document in this folder.",
+      title: folder.displayName, url: folder.url)
+  }
+
+  /// Show a recent item that can't be opened, with its recovery.
+  func showUnavailable(_ item: RecentItem, status: RecentStatus) {
+    recent = RecentReference(id: item.id, kind: item.kind)
+    folderRequest &+= 1
+    folderTask?.cancel()
+    folderTask = nil
+    switch item.kind {
+    case .document:
+      guard let error = DocumentError(status),
+        let capability = try? DocumentCapability(granted: item.url)
+      else { return }
+      showStatus(
+        error.message, error.recovery, title: item.name, url: nil,
+        recovery: Recovery(subject: .document(capability), actions: actions(error.recoveryActions)))
+    case .folder:
+      guard let error = FolderError(status), let folder = try? FolderCapability(granted: item.url)
+      else { return }
+      self.folder = nil
+      showStatus(
+        error.message, error.recovery, title: item.name, url: nil,
+        recovery: Recovery(subject: .folder(folder), actions: actions(error.recoveryActions)))
+    }
+  }
+
+  /// Back to the empty window, keeping its folder.
+  func clearRecovery() {
+    recent = nil
+    if loader.capability != nil {
+      loader.clear()
+    } else if folder != nil {
+      showFolderReady()
+    } else {
+      showStatus("No document open", nil, title: "Markdown", url: nil)
+    }
+  }
+
+  /// Withdraw this window's folder grant. Its document closes; documents
+  /// other windows opened through the folder lose access too.
+  @objc func closeFolder(_ sender: Any?) {
+    guard let folder else { return }
+    folderRequest &+= 1
+    folderTask?.cancel()
+    folderTask = nil
+    folder.revoke()
+    self.folder = nil
+    if recent?.kind == .folder { recent = nil }
+    if loader.capability?.folder === folder.grant {
+      loader.clear()
+    } else if loader.capability == nil {
+      showStatus("No document open", nil, title: "Markdown", url: nil)
+    }
+    onFolderClosed?(self, folder.grant)
+  }
+
+  /// Another window closed a folder this window shares: drop the grant, and
+  /// read the document again so the loss of access is reported.
+  func folderRevoked(_ grant: FolderGrant) {
+    let shared = folder?.grant === grant
+    if shared {
+      folder = nil
+      if recent?.kind == .folder { recent = nil }
+      window?.subtitle = ""
+    }
+    if loader.capability?.folder === grant {
+      reloadDocument(nil)
+    } else if shared, loader.capability == nil, recovery == nil, folderTask == nil {
+      showStatus("No document open", nil, title: "Markdown", url: nil)
+    }
   }
 
   @objc func reloadDocument(_ sender: Any?) {
@@ -504,6 +695,7 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
   func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
     switch menuItem.action {
     case #selector(reloadDocument(_:)): loader.capability != nil
+    case #selector(closeFolder(_:)): folder != nil
     case #selector(showFindBar(_:)), #selector(findNextMatch(_:)),
       #selector(findPreviousMatch(_:)):
       surface.document != nil && !surface.scrollView.isHidden
@@ -731,6 +923,9 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
     NotificationCenter.default.removeObserver(self)
     positionTask?.cancel()
     positionTask = nil
+    folderRequest &+= 1
+    folderTask?.cancel()
+    folderTask = nil
     findRequest &+= 1
     findTask?.cancel()
     findTask = nil

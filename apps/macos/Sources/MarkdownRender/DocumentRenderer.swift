@@ -630,7 +630,7 @@ private struct Builder {
         output.addAttribute(.toolTip, value: try document.string(node.extra), range: range)
       }
     } else {
-      // Links to other files need a folder grant (MAC-002A); denied links stay inert.
+      // Links to other files wait for workspace navigation (MAC-002B); denied links stay inert.
       let reason =
         Int(intent.target_kind) == MD_TARGET_REQUIRES_CAPABILITY
         ? "Links to other files are not available yet" : "This link was blocked"

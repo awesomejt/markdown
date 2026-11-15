@@ -170,6 +170,15 @@ public final class DocumentLoader {
     try? await old?.close()
   }
 
+  /// Close the document now, back to `empty`; the core session closes in
+  /// the background. Unlike `close()`, a later `open` can follow at once.
+  public func clear() {
+    request &+= 1
+    retireSession()
+    keptOnFailure = nil
+    state = .empty
+  }
+
   private func retireSession() {
     task?.cancel()
     task = nil
