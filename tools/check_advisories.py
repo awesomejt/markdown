@@ -13,9 +13,11 @@ import urllib.request
 
 ROOT = Path(__file__).resolve().parents[1]
 OSV_BATCH_URL = "https://api.osv.dev/v1/querybatch"
+OSV_VULN_URL = "https://api.osv.dev/v1/vulns/{}"
 LOCKFILES = (
     ROOT / "Cargo.lock",
     ROOT / "apps" / "linux" / "Cargo.lock",
+    ROOT / "core" / "fuzz" / "Cargo.lock",
 )
 
 # Explicitly dispositioned advisories: (advisory_id, package, version) -> rationale.
@@ -67,10 +69,18 @@ def query_osv_batch(
     return results
 
 
+def fetch_vuln_aliases(adv_id: str, timeout: float = 15.0) -> list[str]:
+    req = urllib.request.Request(OSV_VULN_URL.format(adv_id))
+    with urllib.request.urlopen(req, timeout=timeout) as resp:
+        body = json.loads(resp.read().decode("utf-8"))
+    return list(body.get("aliases", []))
+
+
 def evaluate_advisories(
     packages: list[tuple[str, str]],
     vulns_per_pkg: list[list[dict]],
     dispositioned: dict[tuple[str, str, str], str] = DISPOSITIONED,
+    alias_lookup=fetch_vuln_aliases,
 ) -> tuple[list[str], list[str]]:
     errors: list[str] = []
     notes: list[str] = []
@@ -80,6 +90,22 @@ def evaluate_advisories(
             key = (adv_id, name, version)
             if key in dispositioned:
                 notes.append(f"DISPOSITIONED {adv_id} ({name} {version}): {dispositioned[key]}")
+                continue
+            aliases = vuln.get("aliases")
+            if aliases is None and alias_lookup is not None:
+                try:
+                    aliases = alias_lookup(adv_id)
+                except (urllib.error.URLError, TimeoutError, OSError):
+                    aliases = []
+            matched_alias = next(
+                (alias for alias in (aliases or []) if (alias, name, version) in dispositioned),
+                None,
+            )
+            if matched_alias is not None:
+                notes.append(
+                    f"DISPOSITIONED {adv_id} (alias of {matched_alias}, {name} {version}): "
+                    f"{dispositioned[(matched_alias, name, version)]}"
+                )
             else:
                 errors.append(
                     f"UNRESOLVED ADVISORY {adv_id} on {name} {version} "
@@ -90,13 +116,20 @@ def evaluate_advisories(
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
+    in_ci = bool(os.environ.get("CI") or os.environ.get("GITHUB_ACTIONS"))
     parser.add_argument(
         "--allow-offline",
         action="store_true",
-        default=os.environ.get("MD_ADVISORY_ALLOW_OFFLINE") == "1",
-        help="Warn instead of failing if api.osv.dev is unreachable.",
+        default=os.environ.get("MD_ADVISORY_ALLOW_OFFLINE") == "1" or not in_ci,
+        help="Warn instead of failing if api.osv.dev is unreachable (default outside CI).",
+    )
+    parser.add_argument(
+        "--strict",
+        action="store_true",
+        help="Fail if api.osv.dev is unreachable even outside CI.",
     )
     args = parser.parse_args()
+    allow_offline = args.allow_offline and not args.strict
 
     all_packages: list[tuple[str, str]] = []
     seen: set[tuple[str, str]] = set()
@@ -113,7 +146,7 @@ def main() -> int:
     try:
         vulns = query_osv_batch(all_packages)
     except (urllib.error.URLError, TimeoutError, OSError) as exc:
-        if args.allow_offline:
+        if allow_offline:
             print(f"WARNING: Advisory scan skipped (offline/network error: {exc})", file=sys.stderr)
             return 0
         print(f"ERROR: Advisory scan failed to reach OSV API: {exc}", file=sys.stderr)

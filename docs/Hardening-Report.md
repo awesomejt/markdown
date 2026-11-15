@@ -31,8 +31,8 @@ plus a nested image wikilink input (`![[` × 128).
 ## 2. Sanitizer Verification
 
 - **Fuzzers (ASan + UBSan):** All four fuzz targets ran with AddressSanitizer
-  and UndefinedBehaviorSanitizer enabled across both the Rust staticlib and the
-  C `LLVMFuzzerTestOneInput` harness with zero sanitizer findings.
+  across the Rust staticlib and C harness and UndefinedBehaviorSanitizer on the
+  C `LLVMFuzzerTestOneInput` harness, with zero sanitizer findings.
 - **Workspace Test Suite (ASan):** Executed
   `RUSTC_BOOTSTRAP=1 RUSTFLAGS="-Z sanitizer=address" cargo test --workspace --all-features --locked --target x86_64-unknown-linux-gnu --target-dir build/asan-target`:
   - All 14 `markdown-core` integration/unit test binaries (206 tests) and all 36
@@ -47,10 +47,11 @@ plus a nested image wikilink input (`![[` × 128).
 
 ## 3. Dependency Advisory Scan
 
-[`tools/check_advisories.py`](../tools/check_advisories.py) scans both
-`Cargo.lock` (59 crates.io packages) and `apps/linux/Cargo.lock` (64 crates.io
-packages; 115 unique packages) against the OSV.dev RustSec batch API and is
-wired into `tools/check.py core` (with unit tests in
+[`tools/check_advisories.py`](../tools/check_advisories.py) scans
+`Cargo.lock` (59 crates.io packages), `apps/linux/Cargo.lock` (64 crates.io
+packages), and `core/fuzz/Cargo.lock` (54 crates.io packages; 120 unique
+packages total) against the OSV.dev RustSec batch API and is wired into
+`tools/check.py core` (with unit tests in
 [`tools/test_check_advisories.py`](../tools/test_check_advisories.py) wired
 into `tools/check.py common`).
 
@@ -63,8 +64,7 @@ into `tools/check.py common`).
 - Fuzzing and ASan runs were executed on Linux `x86_64`; macOS and Windows
   sanitizer runs (e.g. ASan/TSan on Apple Silicon or MSVC ASan) were not run in
   this pass.
-- `tools/check_advisories.py` queries `https://api.osv.dev/v1/querybatch` by
-  default; airgapped local runs require `--allow-offline` or
-  `MD_ADVISORY_ALLOW_OFFLINE=1`.
+- `tools/check_advisories.py` queries `https://api.osv.dev/v1/querybatch`
+  (strict in CI; warns on network errors locally unless `--strict` is passed).
 - Short-duration (16 s/target) fuzzing does not exhaustively explore deep state
   spaces; longer scheduled fuzz runs remain beneficial before public releases.

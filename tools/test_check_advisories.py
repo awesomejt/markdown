@@ -38,6 +38,7 @@ class AdvisoryCheckTests(unittest.TestCase):
             [("pulldown-cmark", "0.13.4")],
             [[{"id": "RUSTSEC-2026-0433"}]],
             dispositioned=DISPOSITIONED,
+            alias_lookup=lambda _: [],
         )
         self.assertEqual(len(errors), 1)
 
@@ -46,8 +47,21 @@ class AdvisoryCheckTests(unittest.TestCase):
             [("pulldown-cmark", "0.13.5")],
             [[{"id": "RUSTSEC-2099-9999"}]],
             dispositioned=DISPOSITIONED,
+            alias_lookup=lambda _: [],
         )
         self.assertEqual(len(errors), 1)
+
+    def test_ghsa_alias_of_dispositioned_advisory_passes(self):
+        errors, notes = evaluate_advisories(
+            [("pulldown-cmark", "0.13.5")],
+            [[{"id": "GHSA-xxxx-yyyy-zzzz"}]],
+            dispositioned=DISPOSITIONED,
+            alias_lookup=lambda adv_id: ["RUSTSEC-2026-0433"] if adv_id == "GHSA-xxxx-yyyy-zzzz" else [],
+        )
+        self.assertEqual(errors, [])
+        self.assertEqual(len(notes), 1)
+        self.assertIn("GHSA-xxxx-yyyy-zzzz", notes[0])
+        self.assertIn("RUSTSEC-2026-0433", notes[0])
 
 
 if __name__ == "__main__":
