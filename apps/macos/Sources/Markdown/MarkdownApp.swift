@@ -26,7 +26,7 @@ enum MarkdownApp {
 }
 
 @MainActor
-final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
+final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSMenuDelegate {
   private(set) var windows: [ReaderWindowController] = []
   private let smokeTest: Bool
   private let measurement: Measurement.Mode?
@@ -37,6 +37,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
   let restoresWindows: Bool
 
   private let relaunchCheck: (RelaunchCheck.Phase, URL)?
+  /// Recent documents and folders (MAC-002A). The development checks keep
+  /// them in memory, so they never read or change the user's list.
+  let recents: Recents
+  /// Each recent item's status when last checked, for the Open Recent menu.
+  private(set) var recentStatus: [UUID: RecentStatus] = [:]
+  private var statusRequest: UInt64 = 0
+  private(set) var statusTask: Task<Void, Never>?
+  let openRecentMenu = NSMenu(title: "Open Recent")
+  /// Chooses a document or folder for Open, Open Folder and recovery; the
+  /// smoke replaces the open panel with synthetic choices.
+  var choose: (Choice, NSWindow?) async -> [URL] = { await AppDelegate.runPanel($0, window: $1) }
 
   init(
     smokeTest: Bool, measurement: Measurement.Mode? = nil,
@@ -51,7 +62,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
       store: smokeTest || measurement != nil || relaunchCheck != nil
         ? MemoryPreferenceStore() : UserDefaults.standard)
     appliedScale = preferences.textScale
+    let isolated = smokeTest || measurement != nil || relaunchCheck != nil
+    let storage: any RecentsStorage =
+      (isolated ? nil : FileRecentsStorage.standard()) ?? MemoryRecentsStorage()
+    recents = Recents(storage: storage)
     super.init()
+    recents.onChange = { [weak self] in self?.refreshRecentStatus() }
+    openRecentMenu.delegate = self
     preferences.onChange = { [weak self] in self?.preferencesChanged() }
   }
 
@@ -134,6 +151,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
     }
   }
 
+  func applicationDidBecomeActive(_ notification: Notification) {
+    refreshRecentStatus()
+  }
+
   func applicationSupportsSecureRestorableState(_ app: NSApplication) -> Bool { true }
 
   /// Recreate a reader window from its saved state (ReaderWindowRestoration).
@@ -170,14 +191,64 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
     open(urls)
   }
 
+  /// What an open panel asks for.
+  struct Choice: Equatable {
+    enum Kind { case documents, document, folder }
+    let kind: Kind
+    /// Where the panel starts.
+    let directory: URL?
+    let message: String?
+  }
+
+  /// The key reader window, else the main one, else the only one.
+  var keyReader: ReaderWindowController? {
+    windows.first { $0.window?.isKeyWindow == true }
+      ?? windows.first { $0.window?.isMainWindow == true }
+      ?? (windows.count == 1 ? windows.first : nil)
+  }
+
   @objc func openDocument(_ sender: Any?) {
-    let panel = NSOpenPanel()
-    panel.allowedContentTypes = [UTType("net.daringfireball.markdown") ?? .plainText, .plainText]
-    panel.allowsMultipleSelection = true
-    panel.canChooseDirectories = false
-    panel.begin { [weak self, panel] response in
-      if response == .OK { self?.open(panel.urls) }
+    // Open… starts in the key window's folder and opens through its grant.
+    let folderWindow = keyReader.flatMap { $0.folder == nil ? nil : $0 }
+    let choice = Choice(kind: .documents, directory: folderWindow?.folder?.url, message: nil)
+    Task {
+      let urls = await choose(choice, folderWindow?.window)
+      if let folderWindow, let folder = folderWindow.folder {
+        open(urls, folder: folder, preferring: folderWindow)
+      } else {
+        open(urls)
+      }
     }
+  }
+
+  @objc func openFolder(_ sender: Any?) {
+    Task {
+      let urls = await choose(Choice(kind: .folder, directory: nil, message: nil), nil)
+      if let url = urls.first { openFolder(url) }
+    }
+  }
+
+  /// Grant a folder to a window: the key empty window, another empty one,
+  /// or a new one. A window already showing the folder is focused.
+  func openFolder(_ url: URL, recent: RecentReference? = nil) {
+    guard let folder = try? FolderCapability(granted: url) else { return }
+    if let existing = windows.first(where: { $0.folder == folder }) {
+      existing.showWindow(nil)
+      return
+    }
+    let target = emptyWindow() ?? makeWindow(nil)
+    target.recent = recent
+    target.showFolder(folder)
+    target.showWindow(nil)
+  }
+
+  /// An empty window with no folder, preferring the key window.
+  private func emptyWindow() -> ReaderWindowController? {
+    let empty = windows.filter {
+      $0.loader.capability == nil && $0.folder == nil && $0.recovery == nil
+        && !$0.isOpeningFolder
+    }
+    return empty.first { $0.window?.isKeyWindow == true } ?? empty.first
   }
 
   /// Focus a window already showing the file, else reuse an empty window, else
@@ -185,21 +256,263 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
   func open(_ urls: [URL]) {
     for url in urls {
       guard let capability = try? DocumentCapability(granted: url) else { continue }
-      if let existing = windows.first(where: { $0.loader.capability == capability }) {
-        // Choosing a file again retries a failed load, e.g. after reconnecting.
-        switch existing.loader.state {
-        case .failed, .stale: existing.loader.reload()
-        case .empty, .loading, .loaded: break
-        }
-        existing.showWindow(nil)
+      open(capability)
+    }
+  }
+
+  /// Open documents through `folder`. One outside it opens by itself; the
+  /// first inside it uses `preferring` when that window is still empty.
+  func open(_ urls: [URL], folder: FolderCapability, preferring window: ReaderWindowController?) {
+    var preferred = window
+    for url in urls {
+      guard let capability = try? folder.document(url) else {
+        open([url])
         continue
       }
-      let target =
-        windows.first(where: { $0.window?.isKeyWindow == true && $0.loader.capability == nil })
-        ?? windows.first(where: { $0.loader.capability == nil }) ?? makeWindow(nil)
-      target.loader.open(capability)
-      target.showWindow(nil)
+      if let target = preferred, target.folder == folder, target.loader.capability == nil {
+        preferred = nil
+        target.recent = nil
+        target.loader.open(capability)
+        target.showWindow(nil)
+      } else {
+        open(capability, folder: folder)
+      }
     }
+  }
+
+  private func open(
+    _ capability: DocumentCapability, folder: FolderCapability? = nil,
+    recent: RecentReference? = nil
+  ) {
+    if let existing = windows.first(where: { $0.loader.capability == capability }) {
+      let shown = existing.loader.capability
+      let failed: Bool
+      switch existing.loader.state {
+      case .failed, .stale: failed = true
+      case .empty, .loading, .loaded: failed = false
+      }
+      if shown?.isRevoked == true || (failed && shown?.folder !== capability.folder) {
+        // The window holds the file through a revoked (or other) grant:
+        // open the new capability there instead of retrying the old one.
+        existing.recent = recent ?? existing.recent
+        if let folder {
+          existing.showFolder(folder, then: capability.url)
+        } else {
+          existing.loader.open(capability)
+        }
+      } else if failed {
+        // Choosing a file again retries a failed load, e.g. after reconnecting.
+        existing.loader.reload()
+      }
+      existing.showWindow(nil)
+      return
+    }
+    let target = emptyWindow() ?? makeWindow(nil)
+    target.recent = recent
+    if let folder {
+      target.showFolder(folder, then: capability.url)
+    } else {
+      target.loader.open(capability)
+    }
+    target.showWindow(nil)
+  }
+
+  // MARK: Recents (MAC-002A)
+
+  /// Record a document or folder a window opened; a recovered recent item
+  /// keeps its identity, so its window can still remove it.
+  private func remember(_ url: URL, kind: RecentItem.Kind, for controller: ReaderWindowController) {
+    let reference = controller.recent?.kind == kind ? controller.recent : nil
+    let id = reference?.id ?? UUID()
+    Task {
+      guard
+        let item = await Task.detached(operation: { RecentItem.capture(url, kind: kind, id: id) })
+          .value
+      else { return }
+      recents.note(item)
+      if controller.recent == nil || controller.recent == reference {
+        controller.recent = RecentReference(id: item.id, kind: kind)
+      }
+    }
+  }
+
+  /// Check every recent item off the main thread; only the newest check
+  /// publishes. The menu shows the statuses last found.
+  func refreshRecentStatus() {
+    statusRequest &+= 1
+    let id = statusRequest
+    let items = recents.documents + recents.folders
+    statusTask?.cancel()
+    statusTask = Task {
+      let found = await Task.detached {
+        Dictionary(uniqueKeysWithValues: items.map { ($0.id, $0.resolve().status) })
+      }.value
+      guard id == statusRequest else { return }
+      recentStatus = found
+      statusTask = nil
+    }
+  }
+
+  func menuNeedsUpdate(_ menu: NSMenu) {
+    guard menu === openRecentMenu else { return }
+    menu.removeAllItems()
+    for item in recents.documents { menu.addItem(recentMenuItem(item)) }
+    if !recents.documents.isEmpty, !recents.folders.isEmpty { menu.addItem(.separator()) }
+    for item in recents.folders { menu.addItem(recentMenuItem(item)) }
+    if !menu.items.isEmpty { menu.addItem(.separator()) }
+    let clear = menu.addItem(
+      withTitle: "Clear Menu", action: #selector(clearRecents(_:)), keyEquivalent: "")
+    clear.target = self
+  }
+
+  private func recentMenuItem(_ item: RecentItem) -> NSMenuItem {
+    let summary = recentStatus[item.id]?.summary
+    let title = summary.map { "\(item.name) — \($0)" } ?? item.name
+    let menuItem = NSMenuItem(title: title, action: #selector(openRecent(_:)), keyEquivalent: "")
+    menuItem.target = self
+    menuItem.representedObject = item.id
+    let symbol =
+      summary != nil ? "exclamationmark.triangle" : item.kind == .folder ? "folder" : "doc.text"
+    menuItem.image = NSImage(systemSymbolName: symbol, accessibilityDescription: nil)
+    return menuItem
+  }
+
+  @objc func clearRecents(_ sender: Any?) {
+    recents.clear()
+  }
+
+  @objc func openRecent(_ sender: NSMenuItem) {
+    guard let id = sender.representedObject as? UUID else { return }
+    Task { await openRecent(id) }
+  }
+
+  /// Open a recent item where it is now. A moved item opens from its new
+  /// location and its entry follows it; one that can't be opened shows its
+  /// error and recovery in a window.
+  func openRecent(_ id: UUID) async {
+    guard let item = recents.item(id) else { return }
+    let resolution = await Task.detached { item.resolve() }.value
+    recentStatus[id] = resolution.status
+    let reference = RecentReference(id: item.id, kind: item.kind)
+    guard let url = resolution.url else {
+      let target = emptyWindow() ?? makeWindow(nil)
+      target.showUnavailable(item, status: resolution.status)
+      target.showWindow(nil)
+      return
+    }
+    switch item.kind {
+    case .document:
+      guard let capability = try? DocumentCapability(granted: url) else { return }
+      open(capability, recent: reference)
+    case .folder:
+      openFolder(url, recent: reference)
+    }
+  }
+
+  // MARK: Recovery (MAC-002A)
+
+  /// Run a window's recovery: retry, locate or re-grant the item, or remove
+  /// its recent entry. A located item replaces its recent entry.
+  func recover(_ action: RecoveryAction, _ controller: ReaderWindowController) {
+    guard let recovery = controller.recovery else { return }
+    switch (action, recovery.subject) {
+    case (.removeRecent, _):
+      if let id = controller.recent?.id { recents.remove(id) }
+      controller.clearRecovery()
+    case (.tryAgain, .document(let capability)):
+      if controller.loader.capability == capability {
+        controller.reloadDocument(nil)
+      } else {
+        controller.loader.open(capability)
+      }
+    case (.tryAgain, .folder(let folder)):
+      guard let fresh = try? FolderCapability(granted: folder.url) else { return }
+      controller.showFolder(fresh)
+    case (.grantAccess, .document(let capability)) where capability.folder != nil:
+      // A document opened through a folder gets its access back with the folder.
+      let folderURL = capability.folder!.url
+      Task {
+        let choice = Choice(
+          kind: .folder, directory: folderURL,
+          message: "Choose the folder again to grant access to it.")
+        guard let url = await choose(choice, controller.window).first,
+          let folder = try? FolderCapability(granted: url)
+        else { return }
+        controller.showFolder(folder, then: folder.contains(capability.url) ? capability.url : nil)
+      }
+    case (.locate, .document(let capability)), (.grantAccess, .document(let capability)):
+      let folder = controller.folder
+      Task {
+        let choice = Choice(
+          kind: .document, directory: Self.nearestFolder(capability.url),
+          message: action == .locate
+            ? "Locate the document." : "Choose the document again to grant access to it.")
+        guard let url = await choose(choice, controller.window).first else { return }
+        if let folder, let inside = try? folder.document(url) {
+          controller.loader.open(inside)
+        } else if let chosen = try? DocumentCapability(granted: url) {
+          controller.loader.open(chosen)
+        }
+      }
+    case (.locate, .folder(let folder)), (.grantAccess, .folder(let folder)):
+      Task {
+        let choice = Choice(
+          kind: .folder,
+          directory: Self.nearestFolder(
+            action == .locate ? folder.url.deletingLastPathComponent() : folder.url),
+          message: action == .locate
+            ? "Locate the folder." : "Choose the folder again to grant access to it.")
+        guard let url = await choose(choice, controller.window).first,
+          let chosen = try? FolderCapability(granted: url)
+        else { return }
+        controller.showFolder(chosen)
+      }
+    }
+  }
+
+  /// The closest existing folder at or above `url`, to start a panel in.
+  nonisolated static func nearestFolder(_ url: URL) -> URL? {
+    var candidate = url
+    var isDirectory: ObjCBool = false
+    while candidate.path != "/" {
+      if FileManager.default.fileExists(atPath: candidate.path, isDirectory: &isDirectory),
+        isDirectory.boolValue
+      {
+        return candidate
+      }
+      candidate.deleteLastPathComponent()
+    }
+    return nil
+  }
+
+  /// The system open panel, as a sheet on `window` when there is one.
+  static func runPanel(_ choice: Choice, window: NSWindow?) async -> [URL] {
+    let panel = NSOpenPanel()
+    switch choice.kind {
+    case .documents, .document:
+      panel.allowedContentTypes = [
+        UTType("net.daringfireball.markdown") ?? .plainText, .plainText,
+      ]
+      panel.allowsMultipleSelection = choice.kind == .documents
+      panel.canChooseDirectories = false
+      panel.canChooseFiles = true
+    case .folder:
+      panel.canChooseDirectories = true
+      panel.canChooseFiles = false
+      panel.allowsMultipleSelection = false
+      panel.prompt = "Open"
+    }
+    panel.directoryURL = choice.directory
+    if let message = choice.message { panel.message = message }
+    let response: NSApplication.ModalResponse
+    if let window {
+      response = await panel.beginSheetModal(for: window)
+    } else {
+      response = await withCheckedContinuation { continuation in
+        panel.begin { continuation.resume(returning: $0) }
+      }
+    }
+    return response == .OK ? panel.urls : []
   }
 
   @objc func newWindow(_ sender: Any?) {
@@ -212,6 +525,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
     let controller = ReaderWindowController(preferences: preferences)
     controller.onClose = { [weak self] closed in
       self?.windows.removeAll { $0 === closed }
+    }
+    controller.onLoaded = { [weak self] controller, capability in
+      self?.remember(capability.url, kind: .document, for: controller)
+    }
+    controller.onFolderReady = { [weak self] controller, folder in
+      self?.remember(folder.url, kind: .folder, for: controller)
+    }
+    controller.onFolderClosed = { [weak self] closing, grant in
+      // Documents other windows opened through the folder lose access now.
+      for window in self?.windows ?? [] where window !== closing {
+        window.folderRevoked(grant)
+      }
+    }
+    controller.onRecover = { [weak self] action, controller in
+      self?.recover(action, controller)
     }
     if restoresWindows { controller.enableRestoration() }
     windows.append(controller)
@@ -255,10 +583,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
     let open = file.addItem(
       withTitle: "Open…", action: #selector(openDocument(_:)), keyEquivalent: "o")
     open.target = self
+    let openFolder = file.addItem(
+      withTitle: "Open Folder…", action: #selector(openFolder(_:)), keyEquivalent: "o")
+    openFolder.keyEquivalentModifierMask = [.command, .shift]
+    openFolder.target = self
+    let recent = file.addItem(withTitle: "Open Recent", action: nil, keyEquivalent: "")
+    recent.submenu = openRecentMenu
+    file.addItem(.separator())
     file.addItem(
       withTitle: "Reload", action: #selector(ReaderWindowController.reloadDocument(_:)),
       keyEquivalent: "r")
     file.addItem(.separator())
+    file.addItem(
+      withTitle: "Close Folder", action: #selector(ReaderWindowController.closeFolder(_:)),
+      keyEquivalent: "")
     file.addItem(
       withTitle: "Close Window", action: #selector(NSWindow.performClose(_:)), keyEquivalent: "w")
     add(file, to: bar)

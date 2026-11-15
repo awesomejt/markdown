@@ -568,9 +568,11 @@ when it is resolved.
 - **MAC-001C (PR #41, Grok review 5717458097), nit:** the window that is
   already showing a file is found by resolved URL. A case variant on a
   case-insensitive volume, or a hard link, opens a second window. Compare the
-  file identity (`st_dev`/`st_ino` or `fileResourceIdentifier`) along with the
-  persistent identity work for recents in MAC-002A, which avoids adding a stat
-  on the main thread for every open now.
+  file identity (`st_dev`/`st_ino` or `fileResourceIdentifier`). MAC-002A
+  added that identity to recents (resolved off the main thread), but the
+  window lookup in `AppDelegate.open` is still synchronous and URL-based;
+  do it in MAC-002B, where workspace navigation opens documents, with the
+  identity resolved off the main thread.
 
 - **Hosted `macos-native` flakiness (found 2026-10-30 during PR #42), not a
   review finding:** on the `xcode-27-arm64` image 20261026.0314.1, some

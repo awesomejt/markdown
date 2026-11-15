@@ -110,6 +110,10 @@ public final class DocumentLoader {
         state = .failed(capability, .parseFailed)
         return
       }
+    } else {
+      // The same file through a new grant (or none): later reloads use it,
+      // not a capability whose folder grant was revoked.
+      sessionCapability = capability
     }
     start(capability)
   }
@@ -168,6 +172,15 @@ public final class DocumentLoader {
     lastRead = nil
     state = .empty
     try? await old?.close()
+  }
+
+  /// Close the document now, back to `empty`; the core session closes in
+  /// the background. Unlike `close()`, a later `open` can follow at once.
+  public func clear() {
+    request &+= 1
+    retireSession()
+    keptOnFailure = nil
+    state = .empty
   }
 
   private func retireSession() {

@@ -416,6 +416,21 @@ read.
   `ee01f9a` reported 0 Blockers, 1 Concern, 3 Nits (approved under D-029; all
   findings fixed at `1c34d94` with green all-host CI run `43676632520`). Next
   eligible tasks: `MAC-002A` (macOS) and `WIN-002A` (Windows).
+- **MAC-002A (PR #82)**: delivers macOS per-window folder grants
+  (`FolderCapability`/`FolderGrant`/`FolderError` in
+  `apps/macos/Sources/MarkdownDocument/FolderAccess.swift`: realpath containment,
+  one shared revocable grant per folder carried by its documents, File > Close Folder
+  revoking access in every sharing window), bookmark-based recents
+  (`Recents.swift`: 10 documents + 10 folders, deduped by path or device/inode,
+  per-entry decoding of an untrusted JSON store under Application Support written via a
+  0600 temp file, newer versions never overwritten, `MARKDOWN_RECENTS_PATH`), File >
+  Open Folder… (⇧⌘O) / Open Recent / Close Folder, and in-window Locate… / Grant
+  Access… / Try Again / Remove from Recents recovery for missing, denied, revoked, moved
+  and disconnected items. Grok review 1 at `ef007f9` reported 0 Blockers, 2 Concerns,
+  2 Nits (all fixed at `f78cc0c`); review 2 at `f78cc0c` reported 0 Blockers,
+  0 Concerns, 1 Nit (approved under D-029; nit fixed at `a954f79`). Debug/Release
+  `apps/macos/tools/check.py` passed. Relative document links and the window
+  file-identity lookup move to MAC-002B; `MAC-002B` and `MAC-002D` are next on macOS.
 - Workflow: task PRs target `develop` and merge on a Grok review with no
   serious finding (D-029). `main` takes only owner-approved milestone reviews
   from `review/<milestone>`, tagged `m-<milestone>` (D-030). The shared-core

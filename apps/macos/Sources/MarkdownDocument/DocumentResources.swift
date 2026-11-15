@@ -23,7 +23,7 @@ public enum ResourceError: Error, Sendable, Equatable {
 /// folder or one of its subfolders, and it is opened with `O_NOFOLLOW_ANY`, so
 /// a symlink swapped in after the check fails instead of escaping the folder.
 /// This build is not sandboxed; a sandboxed build needs a folder grant
-/// (MAC-002A, capability matrix CAP-04).
+/// (capability matrix CAP-04), such as a MAC-002A `FolderCapability`.
 public struct DocumentResources: Sendable {
   /// The document's folder, with symlinks resolved; nil if it cannot be resolved.
   let root: String?
