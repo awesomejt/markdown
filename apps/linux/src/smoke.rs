@@ -27,6 +27,12 @@ const EXPECTED: &[(&str, &str, &str, &[&str])] = &[
     ("Edit", "Find Next", "win.find-next", &["F3"]),
     ("Edit", "Find Previous", "win.find-prev", &["<Shift>F3"]),
     (
+        "Edit",
+        "Find in Workspace…",
+        "win.workspace-search",
+        &["<Shift><Control>f"],
+    ),
+    (
         "View",
         "Make Text Bigger",
         "win.zoom-in",
@@ -951,6 +957,47 @@ async fn folder_and_recents(window: &gtk::ApplicationWindow) -> Result<(), Strin
         crate::files::source(window).as_deref() == Some(b"# File 0\n".as_slice())
     })
     .await?;
+
+    // Open Workspace Search via win.workspace-search, search for "child", and navigate to content hit.
+    WidgetExt::activate_action(window, "win.workspace-search", None)
+        .map_err(|e| format!("activate win.workspace-search: {e}"))?;
+    check(
+        browser.is_search_visible(),
+        "workspace search panel visible after win.workspace-search",
+    )?;
+    let search_panel = browser.search_panel().clone();
+    search_panel.set_query("child");
+    wait_until(
+        "workspace search finished with name and content hits",
+        || {
+            !search_panel.is_searching()
+                && search_panel.first_name_hit_index().is_some()
+                && search_panel.first_content_hit_index().is_some()
+        },
+    )
+    .await?;
+    let hit_idx = search_panel
+        .first_content_hit_index()
+        .ok_or_else(|| "missing content hit index".to_string())?;
+    check(
+        search_panel.activate_row(hit_idx),
+        "activate workspace content hit row",
+    )?;
+    wait_until("workspace search opened child.md in reader", || {
+        crate::files::source(window).as_deref() == Some(b"# Child\n".as_slice())
+    })
+    .await?;
+    search_panel.set_query("file");
+    search_panel.cancel_search();
+    check(
+        !search_panel.is_searching(),
+        "workspace search cancelled cleanly",
+    )?;
+    browser.show_files();
+    check(
+        !browser.is_search_visible(),
+        "workspace browser returned to files view",
+    )?;
 
     // Toggle sidebar visibility via win.toggle-workspace.
     WidgetExt::activate_action(window, "win.toggle-workspace", None)

@@ -156,7 +156,15 @@ pub fn validate() -> Result<(), CoreError> {
         && size_of::<ffi::md_find_result>() == ffi::MD_FIND_RESULT_SIZE
         && size_of::<ffi::md_find_match>() == ffi::MD_FIND_MATCH_SIZE
         && size_of::<ffi::md_match_segment>() == ffi::MD_MATCH_SEGMENT_SIZE
-        && size_of::<ffi::md_workspace_path_info>() == ffi::MD_WORKSPACE_PATH_INFO_SIZE;
+        && size_of::<ffi::md_workspace_path_info>() == ffi::MD_WORKSPACE_PATH_INFO_SIZE
+        && size_of::<ffi::md_workspace_entry>() == ffi::MD_WORKSPACE_ENTRY_SIZE
+        && size_of::<ffi::md_name_options>() == ffi::MD_NAME_OPTIONS_SIZE
+        && size_of::<ffi::md_name_result>() == ffi::MD_NAME_RESULT_SIZE
+        && size_of::<ffi::md_name_hit>() == ffi::MD_NAME_HIT_SIZE
+        && size_of::<ffi::md_content_options>() == ffi::MD_CONTENT_OPTIONS_SIZE
+        && size_of::<ffi::md_content_progress>() == ffi::MD_CONTENT_PROGRESS_SIZE
+        && size_of::<ffi::md_content_result>() == ffi::MD_CONTENT_RESULT_SIZE
+        && size_of::<ffi::md_content_hit>() == ffi::MD_CONTENT_HIT_SIZE;
     if compatible {
         Ok(())
     } else {

@@ -629,3 +629,24 @@ debug` for debug, or `--prepare-only` for a persistent public owner-test fixture
     (toggle folder or open file through `FolderCapability`), and `View > Workspace Sidebar`
     (`Ctrl+B`) to toggle visibility, alongside `All` (Markdown-only vs all files), `.*` (hidden
     entries), `↻` (refresh), and `×` (close workspace) controls.
+
+## Native workspace search UI (LNX-002C)
+
+- **Core C ABI bindings and wrappers (`apps/linux/core/src/ffi.rs`, `apps/linux/core/src/workspace.rs`, `apps/linux/core/src/runtime.rs`)**:
+  - Declares and validates `md_workspace_find_names`, `md_workspace_content_admit`, and
+    `md_workspace_content_search` alongside all workspace struct sizes in `runtime::validate()`.
+  - Exposes safe Rust wrappers (`find_workspace_names`, `admit_workspace_content`,
+    `search_workspace_content`, `ContentProgress`, `ContentSearchOptions`, `NameSearchOptions`)
+    with `MD_ERR_BUFFER_TOO_SMALL` retry handling and bounds-checked snippet/anchor extraction.
+- **Bounded, cancellable background search (`apps/linux/src/document/workspace_search.rs`)**:
+  - Runs file-name and content search on a background worker (`workspace-search` thread),
+    enforcing canonical folder containment on every file read, core admission/budget caps
+    (`max_file_bytes`, `max_files`, `max_total_bytes`, `max_total_matches`), and cooperative
+    cancellation via `AtomicBool` between files and on superseded queries.
+- **Virtualized GTK 4 search panel and result navigation (`apps/linux/src/workspace_search_panel.rs`, `apps/linux/src/workspace_browser.rs`, `apps/linux/src/files.rs`)**:
+  - Integrates a `🔍` mode toggle in the workspace sidebar and `Edit > Find in Workspace…`
+    (`Ctrl+Shift+F`, `win.workspace-search`), with `Match Case`, `Whole Words`, and `Stop`
+    controls.
+  - Displays file-name hits and grouped content-snippet hits with Pango match highlights in a
+    virtualized `gtk::ListView`; activating a hit opens the file through `FolderCapability` and
+    jumps to the matched source offset (or resolves its core anchor if the file changed).

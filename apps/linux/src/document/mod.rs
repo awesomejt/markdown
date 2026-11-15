@@ -4,6 +4,7 @@ mod loader;
 pub mod resources;
 pub mod watcher;
 pub mod workspace;
+pub mod workspace_search;
 
 pub use access::{
     DocumentCapability, DocumentError, FolderCapability, FolderError, revision_token_status,
@@ -14,4 +15,8 @@ pub use resources::{DocumentResources, ImageBudget, ImageFormatInspector, Resour
 pub use watcher::DocumentWatcher;
 pub use workspace::{
     MAX_WORKSPACE_ENTRIES, VisibleRow, WorkspaceBrowserModel, WorkspaceEntry, WorkspaceTree,
+};
+pub use workspace_search::{
+    WorkspaceContentFileMatch, WorkspaceNameMatch, WorkspaceSearchHandle, WorkspaceSearchRequest,
+    WorkspaceSearchUpdate, start_workspace_search,
 };

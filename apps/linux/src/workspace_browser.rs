@@ -3,11 +3,13 @@
 use std::cell::{Cell, RefCell};
 use std::path::PathBuf;
 use std::rc::Rc;
+use std::sync::Arc;
 
 use gtk::{gdk, gio, glib, pango, prelude::*};
 
 use crate::count_model::CountModel;
-use markdown_linux::document::{WorkspaceBrowserModel, WorkspaceTree};
+use crate::workspace_search_panel::WorkspaceSearchPanel;
+use markdown_linux::document::{FolderCapability, WorkspaceBrowserModel, WorkspaceTree};
 
 struct BrowserState {
     model: Option<WorkspaceBrowserModel>,
@@ -26,6 +28,9 @@ pub struct WorkspaceBrowser {
     state: Rc<RefCell<BrowserState>>,
     all_files_btn: gtk::ToggleButton,
     hidden_btn: gtk::ToggleButton,
+    search_btn: gtk::ToggleButton,
+    stack: gtk::Stack,
+    search_panel: WorkspaceSearchPanel,
     loading_serial: Rc<Cell<u64>>,
 }
 
@@ -47,6 +52,9 @@ impl WorkspaceBrowser {
         folder_label.set_ellipsize(pango::EllipsizeMode::End);
         folder_label.add_css_class("heading");
 
+        let search_btn = gtk::ToggleButton::with_label("🔍");
+        search_btn.set_tooltip_text(Some("Search workspace (Ctrl+Shift+F)"));
+
         let all_files_btn = gtk::ToggleButton::with_label("All");
         all_files_btn.set_tooltip_text(Some("Show all files instead of Markdown only"));
 
@@ -60,6 +68,7 @@ impl WorkspaceBrowser {
         close_btn.set_tooltip_text(Some("Close workspace folder"));
 
         header.append(&folder_label);
+        header.append(&search_btn);
         header.append(&all_files_btn);
         header.append(&hidden_btn);
         header.append(&refresh_btn);
@@ -88,9 +97,21 @@ impl WorkspaceBrowser {
             .child(&list_view)
             .build();
 
+        let files_box = gtk::Box::new(gtk::Orientation::Vertical, 4);
+        files_box.append(&status_label);
+        files_box.append(&scrolled);
+
+        let search_panel = WorkspaceSearchPanel::new();
+
+        let stack = gtk::Stack::new();
+        stack.set_hexpand(true);
+        stack.set_vexpand(true);
+        stack.add_named(&files_box, Some("files"));
+        stack.add_named(&search_panel.widget, Some("search"));
+        stack.set_visible_child_name("files");
+
         widget.append(&header);
-        widget.append(&status_label);
-        widget.append(&scrolled);
+        widget.append(&stack);
 
         let state = Rc::new(RefCell::new(BrowserState {
             model: None,
@@ -186,6 +207,8 @@ impl WorkspaceBrowser {
         list_view.add_controller(key_ctrl);
 
         let weak_state = Rc::downgrade(&state);
+        let search_clone = search_panel.clone();
+        let hidden_clone = hidden_btn.clone();
         all_files_btn.connect_toggled(move |btn| {
             if let Some(state_rc) = weak_state.upgrade() {
                 let mut state = state_rc.borrow_mut();
@@ -196,9 +219,12 @@ impl WorkspaceBrowser {
                 drop(state);
                 Self::sync_list_model(&state_rc, None);
             }
+            search_clone.set_workspace_filters(hidden_clone.is_active(), btn.is_active());
         });
 
         let weak_state = Rc::downgrade(&state);
+        let search_clone = search_panel.clone();
+        let all_clone = all_files_btn.clone();
         hidden_btn.connect_toggled(move |btn| {
             if let Some(state_rc) = weak_state.upgrade() {
                 let mut state = state_rc.borrow_mut();
@@ -209,6 +235,7 @@ impl WorkspaceBrowser {
                 drop(state);
                 Self::sync_list_model(&state_rc, None);
             }
+            search_clone.set_workspace_filters(btn.is_active(), all_clone.is_active());
         });
 
         let weak_state = Rc::downgrade(&state);
@@ -231,11 +258,25 @@ impl WorkspaceBrowser {
             }
         });
 
+        let stack_clone = stack.clone();
+        let search_clone = search_panel.clone();
+        search_btn.connect_toggled(move |btn| {
+            if btn.is_active() {
+                stack_clone.set_visible_child_name("search");
+                search_clone.focus_entry();
+            } else {
+                stack_clone.set_visible_child_name("files");
+            }
+        });
+
         Self {
             widget,
             state,
             all_files_btn,
             hidden_btn,
+            search_btn,
+            stack,
+            search_panel,
             loading_serial: Rc::new(Cell::new(0)),
         }
     }
@@ -271,7 +312,14 @@ impl WorkspaceBrowser {
         }
     }
 
-    pub fn set_tree(&self, tree: WorkspaceTree, preserve_state: bool, reveal: bool) {
+    pub fn set_tree(
+        &self,
+        folder: Option<FolderCapability>,
+        tree: WorkspaceTree,
+        preserve_state: bool,
+        reveal: bool,
+    ) {
+        let tree_arc = Arc::new(tree.clone());
         let mut model = WorkspaceBrowserModel::new(tree);
         model.set_markdown_only(!self.all_files_btn.is_active());
         model.set_show_hidden(self.hidden_btn.is_active());
@@ -298,6 +346,9 @@ impl WorkspaceBrowser {
             idx
         };
         Self::sync_list_model(&self.state, restored_sel);
+        self.search_panel
+            .set_workspace_filters(self.hidden_btn.is_active(), self.all_files_btn.is_active());
+        self.search_panel.set_workspace(folder, Some(tree_arc));
         if reveal {
             self.widget.set_visible(true);
         }
@@ -305,6 +356,9 @@ impl WorkspaceBrowser {
 
     pub fn clear(&self) {
         self.next_load_serial();
+        self.search_panel.clear();
+        self.search_btn.set_active(false);
+        self.stack.set_visible_child_name("files");
         {
             let mut state = self.state.borrow_mut();
             state.model = None;
@@ -313,6 +367,26 @@ impl WorkspaceBrowser {
             state.status_label.set_text("");
         }
         self.widget.set_visible(false);
+    }
+
+    pub fn search_panel(&self) -> &WorkspaceSearchPanel {
+        &self.search_panel
+    }
+
+    pub fn show_search(&self) {
+        self.widget.set_visible(true);
+        self.search_btn.set_active(true);
+        self.stack.set_visible_child_name("search");
+        self.search_panel.focus_entry();
+    }
+
+    pub fn show_files(&self) {
+        self.search_btn.set_active(false);
+        self.stack.set_visible_child_name("files");
+    }
+
+    pub fn is_search_visible(&self) -> bool {
+        self.stack.visible_child_name().as_deref() == Some("search")
     }
 
     pub fn has_workspace(&self) -> bool {

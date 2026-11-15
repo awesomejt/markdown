@@ -8,6 +8,7 @@ pub mod reader;
 mod relaunch;
 mod smoke;
 mod workspace_browser;
+mod workspace_search_panel;
 
 use gtk::prelude::*;
 use gtk::{gio, glib, pango};
@@ -34,6 +35,12 @@ pub const COMMANDS: &[(&str, &str, &str, Option<&str>)] = &[
     ("Edit", "Find…", "win.find", Some("<Control>f")),
     ("Edit", "Find Next", "win.find-next", Some("F3")),
     ("Edit", "Find Previous", "win.find-prev", Some("<Shift>F3")),
+    (
+        "Edit",
+        "Find in Workspace…",
+        "win.workspace-search",
+        Some("<Shift><Control>f"),
+    ),
     (
         "View",
         "Make Text Bigger",
