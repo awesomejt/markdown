@@ -724,9 +724,10 @@ debug` for debug, or `--prepare-only` for a persistent public owner-test fixture
 - **Named-host performance budgets (`apps/linux/src/measure.rs`, `apps/linux/tools/measure.py`)**:
   - Added end-to-end GTK `window-launch` and `jump-frame` (`frame_clock` `after-paint`) modes.
   - Measured on AMD Ryzen 9 5950X, CachyOS KDE Plasma Wayland, GTK 4.24.1 (Release, 5 runs each):
-    - `window-launch`: `prose-1mib` median `319.57 ms` (max `330.95 ms`, D-016 `<= 400 ms` met);
-      `long-lines-1mib` median `377.54 ms` (max `384.99 ms`, D-016 `<= 400 ms` met);
-      `prose-5mib` (stress) median `876.71 ms`.
+    - `window-launch` (external `CLOCK_MONOTONIC` from `measure.py` spawn to GTK `after-paint`):
+      `prose-1mib` median `357.83 ms` (max `368.30 ms`, D-016 `<= 400 ms` met);
+      `long-lines-1mib` median `409.68 ms` (max `412.50 ms`, slightly above `400 ms` due to
+      1 MiB single-line Pango wrapping); `prose-5mib` (stress) median `914.19 ms`.
     - `jump-frame`: `prose-1mib` median `30.26 ms` (max `33.45 ms`, D-016 `<= 150 ms` met);
       `prose-5mib` median `30.74 ms` (max `30.83 ms`, D-016 `<= 150 ms` met);
       `long-lines-1mib` median `181.63 ms` (max `183.16 ms`, exceeds `150 ms` due to Pango

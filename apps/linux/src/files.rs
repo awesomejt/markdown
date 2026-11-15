@@ -550,11 +550,13 @@ impl WindowDocument {
     }
     fn open(&mut self, file: &gio::File) {
         self.pending_search_jump = None;
+        self.pending_anchor_jump = None;
         self.open_internal(file, None);
     }
     fn open_from_workspace(&mut self, path: &std::path::Path) {
         let Some(folder) = &self.active_folder else {
             self.pending_search_jump = None;
+            self.pending_anchor_jump = None;
             self.workspace_browser.clear();
             self.status(&FolderError::AccessRevoked.to_string());
             return;
@@ -563,7 +565,20 @@ impl WindowDocument {
             Ok(cap) => cap,
             Err(FolderError::OutsideFolder) => {
                 self.pending_search_jump = None;
+                self.pending_anchor_jump = None;
                 self.status(&FolderError::OutsideFolder.to_string());
+                return;
+            }
+            Err(error @ (FolderError::NotFound | FolderError::NotDirectory))
+                if folder.validate().is_ok() =>
+            {
+                self.pending_search_jump = None;
+                self.pending_anchor_jump = None;
+                let name = path
+                    .file_name()
+                    .map(|n| n.to_string_lossy().into_owned())
+                    .unwrap_or_else(|| "target".to_string());
+                self.status(&format!("{error}: {name}"));
                 return;
             }
             Err(error) => {
@@ -573,6 +588,7 @@ impl WindowDocument {
                 self.workspace_browser.clear();
                 self.saved_position = None;
                 self.pending_search_jump = None;
+                self.pending_anchor_jump = None;
                 self.reader.clear();
                 self.stop_polling();
                 self.reload.set_enabled(false);
@@ -597,6 +613,7 @@ impl WindowDocument {
             Err(error) => {
                 self.saved_position = None;
                 self.pending_search_jump = None;
+                self.pending_anchor_jump = None;
                 self.reload.set_enabled(self.loader.has_file());
                 self.status(&error.to_string());
             }
@@ -1279,6 +1296,22 @@ pub fn attach(window: &gtk::ApplicationWindow, label: &gtk::Label) {
                     st.reader.scroll_to_anchor(anchor);
                 }
                 return;
+            }
+            match folder.contains_file(&candidate) {
+                Ok(_) => {}
+                Err(FolderError::NotFound | FolderError::NotDirectory)
+                    if folder.validate().is_ok() =>
+                {
+                    st.pending_anchor_jump = None;
+                    st.status(&format!("Linked file \"{rel_path}\" was not found."));
+                    return;
+                }
+                Err(FolderError::OutsideFolder) => {
+                    st.pending_anchor_jump = None;
+                    st.status(&FolderError::OutsideFolder.to_string());
+                    return;
+                }
+                Err(_) => {}
             }
             st.pending_search_jump = None;
             st.pending_anchor_jump = fragment.map(str::to_string);

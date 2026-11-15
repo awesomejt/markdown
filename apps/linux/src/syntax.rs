@@ -416,7 +416,8 @@ pub fn highlight_char_spans(language_info: &str, text: &str) -> Vec<(usize, usiz
 
         // Line comments: //, #, --
         let is_line_comment = match lang {
-            Language::Python | Language::Shell | Language::YamlToml => ch == '#',
+            Language::Python | Language::YamlToml => ch == '#',
+            Language::Shell => ch == '#' && (i == 0 || matches!(chars[i - 1].1, '\n' | ' ' | '\t')),
             Language::Sql => ch == '-' && next == Some('-'),
             Language::Rust | Language::JsTs | Language::CFamily | Language::Go => {
                 ch == '/' && next == Some('/')
@@ -467,10 +468,14 @@ pub fn highlight_char_spans(language_info: &str, text: &str) -> Vec<(usize, usiz
         }
 
         // String literals: "...", '...', `...`
-        if ch == '"'
-            || (ch == '\'' && lang != Language::Rust)
-            || (ch == '`' && lang == Language::JsTs)
-        {
+        let can_open_single_quote = ch == '\''
+            && lang != Language::Rust
+            && (i == 0 || (!chars[i - 1].1.is_alphanumeric() && chars[i - 1].1 != '_'))
+            && chars[i + 1..]
+                .iter()
+                .take_while(|&&(_, c)| c != '\n')
+                .any(|&(_, c)| c == '\'');
+        if ch == '"' || can_open_single_quote || (ch == '`' && lang == Language::JsTs) {
             let quote = ch;
             let start = i;
             i += 1;
@@ -573,5 +578,22 @@ mod tests {
     #[test]
     fn ignores_unknown_language() {
         assert!(highlight_char_spans("brainfuck", "+++").is_empty());
+    }
+
+    #[test]
+    fn shell_hash_and_apostrophes_do_not_miscolor() {
+        let sh = "echo ${#arr[@]} a#b # real comment";
+        let spans = highlight_char_spans("bash", sh);
+        assert_eq!(spans.len(), 1);
+        assert_eq!(spans[0].2, TokenKind::Comment);
+        let comment_slice: String = sh
+            .chars()
+            .skip(spans[0].0)
+            .take(spans[0].1 - spans[0].0)
+            .collect();
+        assert_eq!(comment_slice, "# real comment");
+
+        let yaml = "note: don't break";
+        assert!(highlight_char_spans("yaml", yaml).is_empty());
     }
 }

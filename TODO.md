@@ -614,8 +614,10 @@ They stay open until fixed or explicitly accepted; none is waived.
 - **Windows warm launch to presented frame (D-012/D-016, 400 ms):**
   unmeasured end-to-end (`measure.py` currently measures the in-process
   `read/parse/plan` pipeline on Windows, not process launch to first
-  presented frame). Linux `window-launch` is now measured (LNX-002F:
-  `prose-1mib` median 319.57 ms, `long-lines-1mib` median 377.54 ms; both <= 400 ms).
+  presented frame). Linux `window-launch` is now measured end-to-end
+  from process spawn to GTK `after-paint` (LNX-002F: `prose-1mib` median
+  357.83 ms / max 368.30 ms <= 400 ms; `long-lines-1mib` median
+  409.68 ms / max 412.50 ms, 1 MiB single-line Pango wrapping).
 - **Cold launches across all three hosts (D-012/D-016, 700 ms):** unmeasured on
   macOS (`measure.py launch --cold`), Windows, and Linux.
 - **Mixed-scale displays and display pacing (CAP-14):** unmeasured on macOS,

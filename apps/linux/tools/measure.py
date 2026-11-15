@@ -14,6 +14,7 @@ import statistics
 import subprocess
 import sys
 import tempfile
+import time
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 PROFILES = ["prose-1mib", "prose-5mib", "long-lines-1mib"]
@@ -102,8 +103,13 @@ def main():
             print(json.dumps(out, indent=2))
         elif args.mode == "window-launch":
             _ = run_measure(binary, "window-launch", doc)
-            rows = [run_measure(binary, "window-launch", doc) for _ in range(args.runs)]
-            presented = [r["presented_ms"] for r in rows]
+            rows = []
+            for _ in range(args.runs):
+                t0 = time.clock_gettime(time.CLOCK_MONOTONIC)
+                r = run_measure(binary, "window-launch", doc)
+                r["external_presented_ms"] = (r["after_paint_monotonic_s"] - t0) * 1000.0
+                rows.append(r)
+            presented = [r["external_presented_ms"] for r in rows]
             target = WARM_LAUNCH if name != "prose-5mib" else None
             out = {
                 "profile": name,

@@ -8,6 +8,26 @@ const D016_TARGET_BYTES: usize = 1024 * 1024;
 
 unsafe extern "C" {
     fn malloc_trim(pad: usize) -> i32;
+    fn clock_gettime(clk_id: i32, tp: *mut Timespec) -> i32;
+}
+
+#[repr(C)]
+struct Timespec {
+    tv_sec: i64,
+    tv_nsec: i64,
+}
+
+fn monotonic_seconds() -> f64 {
+    let mut ts = Timespec {
+        tv_sec: 0,
+        tv_nsec: 0,
+    };
+    // CLOCK_MONOTONIC = 1 on Linux
+    if unsafe { clock_gettime(1, &mut ts) } == 0 {
+        ts.tv_sec as f64 + (ts.tv_nsec as f64) / 1_000_000_000.0
+    } else {
+        0.0
+    }
 }
 
 fn escape_json(s: &str) -> String {
@@ -436,7 +456,7 @@ fn run_window_launch(doc_path: Option<&Path>) -> Result<(), String> {
                 let handler_ref = handler.clone();
                 let id = clock.connect_after_paint(move |c| {
                     if p.get().is_none() {
-                        p.set(Some(start.elapsed().as_secs_f64() * 1000.0));
+                        p.set(Some(monotonic_seconds()));
                         if let Some(id) = handler_ref.borrow_mut().take() {
                             c.disconnect(id);
                         }
@@ -460,13 +480,14 @@ fn run_window_launch(doc_path: Option<&Path>) -> Result<(), String> {
     });
     let args: [&str; 1] = ["markdown-linux"];
     app.run_with_args(&args);
-    let ms = presented_out
+    let after_paint_s = presented_out
         .get()
         .ok_or_else(|| "window-launch timed out waiting for frame paint".to_string())?;
     let (_, peak_rss_kib) = get_rss_kib();
     println!(
-        "{{\n  \"mode\": \"window-launch\",\n  \"document\": \"{file_name}\",\n  \"presented_ms\": {:.2},\n  \"peak_rss_kib\": {peak_rss_kib}\n}}",
-        ms
+        "{{\n  \"mode\": \"window-launch\",\n  \"document\": \"{file_name}\",\n  \"after_paint_monotonic_s\": {:.6},\n  \"in_process_ms\": {:.2},\n  \"peak_rss_kib\": {peak_rss_kib}\n}}",
+        after_paint_s,
+        start.elapsed().as_secs_f64() * 1000.0,
     );
     Ok(())
 }
