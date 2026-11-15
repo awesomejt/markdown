@@ -284,23 +284,32 @@ async fn run_verify(
             ));
         }
 
-        // Verify session recovery when a restored workspace folder is missing/unavailable.
+        // Verify session recovery when a restored workspace folder is missing/unavailable
+        // even when a valid document is also restored in the same window.
         let missing_ws = file_path
             .parent()
             .unwrap_or_else(|| Path::new("."))
             .join("missing_relaunch_ws");
-        let missing_state =
-            WindowRestorationState::from_saved_position(String::new(), None, 1.0, true)
-                .with_workspace(
-                    Some(missing_ws.to_string_lossy().to_string()),
-                    true,
-                    Vec::new(),
-                    false,
-                    true,
-                );
+        let missing_state = WindowRestorationState::from_saved_position(
+            file_path.to_string_lossy().to_string(),
+            None,
+            1.0,
+            true,
+        )
+        .with_workspace(
+            Some(missing_ws.to_string_lossy().to_string()),
+            true,
+            Vec::new(),
+            false,
+            true,
+        );
         crate::files::open_restored_state(window, &missing_state);
+        wait_for("document loaded with missing workspace", || {
+            crate::files::reader(window).is_some_and(|r| r.document().is_some())
+        })
+        .await?;
         if !crate::files::is_recovery_bar_visible(window) {
-            return Err("expected recovery bar for missing restored workspace".into());
+            return Err("expected recovery bar to stay visible for missing restored workspace alongside document".into());
         }
     }
 

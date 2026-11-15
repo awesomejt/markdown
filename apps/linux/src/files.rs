@@ -133,6 +133,7 @@ struct WindowDocument {
     workspace_watcher: Option<Rc<markdown_linux::document::WorkspaceWatcher>>,
     workspace_refresh_in_flight: bool,
     workspace_refresh_pending: bool,
+    pending_folder_recovery: Option<(String, &'static str, PathBuf)>,
     saved_position: Option<markdown_linux::restoration::SavedPosition>,
     pending_search_jump: Option<WorkspaceSearchJump>,
     weak_self: Weak<RefCell<WindowDocument>>,
@@ -224,10 +225,17 @@ impl WindowDocument {
         };
         let weak = self.weak_self.clone();
         let watcher = markdown_linux::document::WorkspaceWatcher::new(cap.path(), move || {
-            if let Some(state) = weak.upgrade()
-                && let Ok(mut st) = state.try_borrow_mut()
-            {
-                st.refresh_workspace_from_watcher();
+            if let Some(state) = weak.upgrade() {
+                if let Ok(mut st) = state.try_borrow_mut() {
+                    st.refresh_workspace_from_watcher();
+                } else {
+                    let retry_weak = weak.clone();
+                    glib::idle_add_local_once(move || {
+                        if let Some(state) = retry_weak.upgrade() {
+                            state.borrow_mut().refresh_workspace_from_watcher();
+                        }
+                    });
+                }
             }
         });
         self.workspace_watcher = Some(watcher);
@@ -263,7 +271,17 @@ impl WindowDocument {
                             unchanged,
                             ..
                         } => {
-                            state_ref.recovery_bar.hide();
+                            if let Some((msg, btn_label, folder_path)) =
+                                &state_ref.pending_folder_recovery
+                            {
+                                state_ref.recovery_bar.show(
+                                    msg,
+                                    btn_label,
+                                    RecoveryTarget::Folder(Some(folder_path.clone())),
+                                );
+                            } else {
+                                state_ref.recovery_bar.hide();
+                            }
                             if !unchanged {
                                 if let Some(cap) = state_ref.loader.capability() {
                                     recents::record_file(cap.path(), &cap.display_name());
@@ -513,7 +531,9 @@ impl WindowDocument {
         };
         match self.loader.open(cap) {
             Ok(()) => {
-                self.recovery_bar.hide();
+                if self.pending_folder_recovery.is_none() {
+                    self.recovery_bar.hide();
+                }
                 self.loading();
             }
             Err(error) => {
@@ -564,7 +584,9 @@ impl WindowDocument {
         };
         match self.loader.open(cap) {
             Ok(()) => {
-                self.recovery_bar.hide();
+                if self.pending_folder_recovery.is_none() {
+                    self.recovery_bar.hide();
+                }
                 self.loading();
             }
             Err(error) => {
@@ -585,6 +607,7 @@ impl WindowDocument {
                 let name = cap.display_name();
                 recents::record_workspace(cap.path(), &name);
                 self.active_folder = Some(cap.clone());
+                self.pending_folder_recovery = None;
                 self.recovery_bar.hide();
                 if !self.loader.has_file() {
                     self.status(&format!("Workspace folder ready: {name}"));
@@ -634,56 +657,80 @@ impl WindowDocument {
             })
             .await;
             if browser.current_load_serial() != serial {
-                if let Some(state_rc) = weak.upgrade()
-                    && let Ok(mut state) = state_rc.try_borrow_mut()
-                {
-                    state.workspace_refresh_in_flight = false;
-                }
                 return;
             }
             match result {
                 Ok(Ok(tree)) => {
                     let dirs = tree.dir_paths();
                     browser.set_tree(Some(cap_for_search), tree, preserve_state, reveal);
-                    if let Some(state_rc) = weak.upgrade()
-                        && let Ok(mut state) = state_rc.try_borrow_mut()
-                    {
-                        state.workspace_refresh_in_flight = false;
-                        if let Some(watcher) = &state.workspace_watcher {
-                            watcher.sync_dirs(&dirs);
-                        }
-                        if state.workspace_refresh_pending {
-                            state.workspace_refresh_pending = false;
-                            state.refresh_workspace_from_watcher();
+                    if let Some(state_rc) = weak.upgrade() {
+                        let apply_done = move |state: &mut WindowDocument| {
+                            state.workspace_refresh_in_flight = false;
+                            if let Some(watcher) = &state.workspace_watcher {
+                                watcher.sync_dirs(&dirs);
+                            }
+                            if state.workspace_refresh_pending {
+                                state.workspace_refresh_pending = false;
+                                state.refresh_workspace_from_watcher();
+                            }
+                        };
+                        if let Ok(mut state) = state_rc.try_borrow_mut() {
+                            apply_done(&mut state);
+                        } else {
+                            let retry_weak = weak.clone();
+                            glib::idle_add_local_once(move || {
+                                if let Some(state_rc) = retry_weak.upgrade() {
+                                    apply_done(&mut state_rc.borrow_mut());
+                                }
+                            });
                         }
                     }
                 }
                 Ok(Err(error)) => {
                     browser.clear();
-                    if let Some(state_rc) = weak.upgrade()
-                        && let Ok(mut state) = state_rc.try_borrow_mut()
-                    {
-                        let folder_path =
-                            state.active_folder.as_ref().map(|f| f.path().to_path_buf());
-                        state.active_folder = None;
-                        state.cancel_workspace_watcher();
-                        state.status(&error.to_string());
-                        if let Some(btn_label) = recoverable_folder_error(error) {
-                            state.recovery_bar.show(
-                                &error.to_string(),
-                                btn_label,
-                                RecoveryTarget::Folder(folder_path),
-                            );
+                    if let Some(state_rc) = weak.upgrade() {
+                        let apply_err = move |state: &mut WindowDocument| {
+                            let folder_path =
+                                state.active_folder.as_ref().map(|f| f.path().to_path_buf());
+                            state.active_folder = None;
+                            state.cancel_workspace_watcher();
+                            state.status(&error.to_string());
+                            if let Some(btn_label) = recoverable_folder_error(error) {
+                                state.recovery_bar.show(
+                                    &error.to_string(),
+                                    btn_label,
+                                    RecoveryTarget::Folder(folder_path),
+                                );
+                            }
+                        };
+                        if let Ok(mut state) = state_rc.try_borrow_mut() {
+                            apply_err(&mut state);
+                        } else {
+                            let retry_weak = weak.clone();
+                            glib::idle_add_local_once(move || {
+                                if let Some(state_rc) = retry_weak.upgrade() {
+                                    apply_err(&mut state_rc.borrow_mut());
+                                }
+                            });
                         }
                     }
                 }
                 Err(_) => {
                     browser.clear();
-                    if let Some(state_rc) = weak.upgrade()
-                        && let Ok(mut state) = state_rc.try_borrow_mut()
-                    {
-                        state.workspace_refresh_in_flight = false;
-                        state.workspace_refresh_pending = false;
+                    if let Some(state_rc) = weak.upgrade() {
+                        if let Ok(mut state) = state_rc.try_borrow_mut() {
+                            state.workspace_refresh_in_flight = false;
+                            state.workspace_refresh_pending = false;
+                        } else {
+                            let retry_weak = weak.clone();
+                            glib::idle_add_local_once(move || {
+                                if let Some(state_rc) = retry_weak.upgrade() {
+                                    let mut state = state_rc.borrow_mut();
+                                    state.workspace_refresh_in_flight = false;
+                                    state.workspace_refresh_pending = false;
+                                }
+                            });
+                        }
                     }
                 }
             }
@@ -1096,6 +1143,7 @@ pub fn attach(window: &gtk::ApplicationWindow, label: &gtk::Label) {
             workspace_watcher: None,
             workspace_refresh_in_flight: false,
             workspace_refresh_pending: false,
+            pending_folder_recovery: None,
             saved_position: None,
             pending_search_jump: None,
             weak_self: weak.clone(),
@@ -1544,6 +1592,7 @@ pub fn open_restored_state(
                     let name = cap.display_name();
                     recents::record_workspace(cap.path(), &name);
                     st.active_folder = Some(cap.clone());
+                    st.pending_folder_recovery = None;
                     st.arm_workspace_watcher();
                     if rest.file_path.is_empty() {
                         st.status(&format!("Workspace folder ready: {name}"));
@@ -1557,11 +1606,10 @@ pub fn open_restored_state(
                     st.workspace_browser.clear();
                     st.status(&error.to_string());
                     if let Some(btn_label) = recoverable_folder_error(error) {
-                        st.recovery_bar.show(
-                            &error.to_string(),
-                            btn_label,
-                            RecoveryTarget::Folder(Some(ws_buf)),
-                        );
+                        let msg = error.to_string();
+                        st.pending_folder_recovery = Some((msg.clone(), btn_label, ws_buf.clone()));
+                        st.recovery_bar
+                            .show(&msg, btn_label, RecoveryTarget::Folder(Some(ws_buf)));
                     }
                 }
             }
