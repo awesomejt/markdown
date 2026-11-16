@@ -5,8 +5,8 @@ Active task: None. Eligible tasks: `MAC-002F` (macOS), `WIN-002A` (Windows). The
 Pass `f5767b8a-9fdb-4631-b1af-7810d01639aa` completed, approved PR #86 merged into `develop`:
 
 - Implemented `MAC-002E` (folder watching, access-loss recovery, v2 workspace restoration, storm tuning); see [apps/macos/README.md](apps/macos/README.md#workspace-watching-and-restoration-mac-002e).
-- Checks at `0798056`: `.build/feas004-venv/bin/python apps/macos/tools/check.py` passed in debug and release (90 tests, smoke with the storm, document and folder two-launch relaunch, preferences, artifact); `tools/check.py common` passed with a canonical `TMPDIR`.
-- Grok review 1 at `b69746f`: 0 Blockers, 1 Concern, 0 Nits. The concern (hidden dot-files beside visible documents still relisted) was fixed at `c78f17d` with FSEvents file events, with no re-review because it was not high or critical (approval). Hosted `macos-native` then failed the search smoke's Stop check, because a watcher refresh re-ran a stopped search. Fixed at `0798056` (a refresh keeps a stopped search stopped), a minor follow-up with no re-review.
+- Checks at `06b45f2`: `.build/feas004-venv/bin/python apps/macos/tools/check.py` passed in debug and release (90 tests, smoke with the storm, document and folder two-launch relaunch, preferences, artifact); `tools/check.py common` passed with a canonical `TMPDIR`.
+- Grok review 1 at `b69746f`: 0 Blockers, 1 Concern, 0 Nits. The concern (hidden dot-files beside visible documents still relisted) was fixed at `c78f17d` with FSEvents file events, with no re-review because it was not high or critical (approval). Hosted `macos-native` then failed the search smoke's Stop check, because a watcher refresh re-ran a stopped search. Fixed at `06b45f2` (a refresh keeps a stopped search stopped), a minor follow-up with no re-review.
 - Owner manual checks not run by the agent: eject/reconnect a disk or a network folder, removing permission in Finder, VoiceOver on the loss message, a real quit/relaunch with the folder (README manual step 11).
 
 Next task: `MAC-002F` (development packaging and complete R1 conformance) on macOS, `WIN-002A` on Windows, or the D-030 milestone review.
@@ -19,7 +19,7 @@ Pass `0816b887-d302-4363-862a-096bdd4ba691` completed, approved PR #85 merged in
 
 - Implemented `MAC-002D` (versioned persistent settings, Settings window sidebar/reopen options and Restore Defaults); see [apps/macos/README.md](apps/macos/README.md#settings-and-preferences-mac-002d).
 - Checks at `a0c6e21`: `.build/feas004-venv/bin/python apps/macos/tools/check.py` passed in debug and release, including the new two-launch preferences check (needs `~/.cargo/bin` on `PATH`); `tools/check.py common` passed with a canonical `TMPDIR`.
-- Grok review 1 at `a0c6e21`: 0 Blockers, 0 Concerns, 0 Nits (approval). Hosted `macos-native` then failed the search smoke's Stop check, because a watcher refresh re-ran a stopped search. Fixed at `0798056` (a refresh keeps a stopped search stopped), a minor follow-up with no re-review.
+- Grok review 1 at `a0c6e21`: 0 Blockers, 0 Concerns, 0 Nits (approval). Hosted `macos-native` then failed the search smoke's Stop check, because a watcher refresh re-ran a stopped search. Fixed at `06b45f2` (a refresh keeps a stopped search stopped), a minor follow-up with no re-review.
 - Owner manual checks not run by the agent: keyboard and VoiceOver use of the Settings window, a real quit and relaunch with Reopen windows from last time off.
 
 Next task: `MAC-002E` (workspace watching/restoration and performance) on macOS, `WIN-002A` on Windows, or the D-030 milestone review.
