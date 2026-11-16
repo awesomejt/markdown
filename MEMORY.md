@@ -127,6 +127,17 @@ read.
   smoke, association, relaunch, and probe (`0` leaked handles). Hosted CI run `43816370744`
   passed all checks. Grok review 1 at `87d874a` had 0 Blockers, 2 Concerns, 1 Nit (approved
   under D-029; all 3 fixed in `39d2ad5..082b693`).
+- WIN-002C (PR #91) delivers the Windows native workspace search UI over CORE-005B/B2/C
+  primitives (`CoreWorkspace.FindNames`/`ContentAdmit`/`ContentSearch` with UTF-8→UTF-16
+  snippet match mapping and anchor extraction, bounded cancellable `WorkspaceSearch`/
+  `WorkspaceSearchRunner` over `FolderCapability` and `WorkspaceTree`, virtualized
+  `WorkspaceSearchPanel` with `Files`/`Search` mode toggle, `Match Case`/`Whole Words`/
+  `Include Hidden`/`Stop` controls, 180 ms debounced query input, highlighted snippets,
+  `⚠` invisible-character flag, `Edit > Find in Workspace…` `Ctrl+Shift+F`, and source-hash/
+  anchor result navigation). Debug/Release/relocated Release pass 22 core, 20 document,
+  20 render tests, Native AOT smoke, association, relaunch, and probe (`0` leaked handles).
+  Grok review 1 at `a671189` had 0 Blockers, 2 Concerns, 1 Nit (approved under D-029; all 3
+  fixed in `d78cd3e`).
 - Phase: `desktop-apps`; the portable-core shared track is complete through
   CORE-006 (GATE-001 approved, D-018). Native chains are now eligible (D-027).
 - Product: local-first, read-only native Markdown reader. Windows, macOS and
