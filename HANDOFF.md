@@ -1,7 +1,18 @@
 # Agent Session and Platform Handoff
 
+Updated: 2026-11-16 (America/Denver), WIN-002D completed under D-029 (PR #92 approved and closed out into `develop`).
+Active task: None. Eligible tasks: `WIN-002E` (Windows workspace watching, restoration, and performance) and `MAC-002` (macOS aggregate). The D-030 milestone review for `LNX-002` + `HARD-001` (`review/<milestone>` into `main`, owner-merged) is still open to cut.
+Pass `4c23d0b9-0331-4be1-b0c1-c4761cae0969` completed, approved PR #92 merged into `develop`:
+
+- Implemented `WIN-002D`: versioned `preferences.json` schema v2 (`apps/windows/ReaderPreferences.cs`: `showOutlineByDefault`, `restoreSessionOnLaunch`, automatic v1-to-v2 migration on load with text-scale snapping and malformed-field fallback, lossless future-version and unknown-field preservation via `WriteRawValue`, `MARKDOWN_PREFERENCES_PATH` isolation), expanded `SettingsWindow` (`apps/windows/SettingsWindow.cs`: outline default, session restoration, `Reset to Defaults`, `_isRefreshing` guard), outline-default and session-restoration gating in `ReaderApp`/`ReaderWindow`/`ReaderControl`, and unit/smoke/two-phase `--relaunch-check` v1-to-v2 migration verification.
+- Checks at `48cd581`: `.build/feasibility-venv/Scripts/python.exe apps/windows/tools/check.py` passed in Debug, Release, and relocated Release Native AOT (22 core consumer tests, 20 document tests, 21 render tests, Native AOT WinUI `--smoke`, `check_association.py`, two-phase `--relaunch-check`, and relocated `--core-probe single` with 0 leaked handles).
+- Grok review 1 at `2330d92`: 0 Blockers, 0 Concerns, 2 Nits (approved under D-029). Both nits were fixed in `48cd581` with no re-review needed.
+
+Next task: `WIN-002E` (workspace watching, restoration, and performance) on Windows, `MAC-002` on macOS, or the D-030 milestone review.
+
+## Previous handoff (WIN-002C)
+
 Updated: 2026-11-16 (America/Denver), WIN-002C completed under D-029 (PR #91 approved and closed out into `develop`).
-Active task: None. Eligible tasks: `WIN-002D` (Windows persistent preferences/settings) and `MAC-002` (macOS aggregate). The D-030 milestone review for `LNX-002` + `HARD-001` (`review/<milestone>` into `main`, owner-merged) is still open to cut.
 Pass `871ce47c-b8f1-46b5-875e-eb2ae4ada5b7` completed, approved PR #91 merged into `develop`:
 
 - Implemented `WIN-002C`: `md_workspace_find_names`, `md_workspace_content_admit`, and `md_workspace_content_search` C ABI bindings/wrappers in `CoreWorkspace` (`apps/windows/Core/CoreWorkspace.cs`), bounded cancellable background `WorkspaceSearch`/`WorkspaceSearchRunner` (`apps/windows/Document/WorkspaceSearch.cs`), virtualized `WorkspaceSearchPanel` (`apps/windows/Render/WorkspaceSearchPanel.cs`: `Files`/`Search` mode toggle, `Aa`/`ab`/`. *`/`Stop`, 180 ms debounced input, highlighted snippets, `⚠` invisible-character warning, `Edit > Find in Workspace…` `Ctrl+Shift+F`, source-hash/anchor result navigation), and unit/smoke coverage.
