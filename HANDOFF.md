@@ -1,5 +1,17 @@
 # Agent Session and Platform Handoff
 
+Updated: 2026-11-15 (America/Denver), WIN-002A completed under D-029 (PR #89 approved and closed out into `develop`).
+Active task: None. Eligible tasks: `WIN-002B` (Windows workspace browser/navigation), `WIN-002D` (Windows persistent preferences/settings), and `MAC-002` (macOS aggregate). The D-030 milestone review for `LNX-002` + `HARD-001` (`review/<milestone>` into `main`, owner-merged) is still open to cut.
+Pass `b34c4594-9f12-4358-88c9-4e259e0fbacf` completed, approved PR #89 merged into `develop`:
+
+- Implemented `WIN-002A`: `FolderCapability`/`FolderGrant`/`FolderError` with Win32 canonical root validation, symlink/junction containment, and revocation propagation; persistent JSON `RecentsStore` (10 files + 10 folders, dedup, untrusted JSON filtering, off-main availability checks); native `IFileOpenDialog` (`FOS_PICKFOLDERS`) folder picker; `File > Open Folder…` (`Ctrl+Shift+O`), `Open Recent`, `Close Folder`, `RecentItemsWindow`, and inline `ErrorBanner` recovery (`Locate…`, `Grant Access…`, `Try Again`, `Remove from Recents`).
+- Checks at `ce29c41`: `python apps/windows/tools/check.py` passed in Debug, Release, and relocated Release Native AOT (20 core consumer tests, 18 document tests, 20 render tests, extended `--smoke`, `check_association.py`, two-phase `--relaunch-check`, and relocated `--core-probe single` with 0 leaked handles).
+- Grok review 1 at `7498bd4`: 0 Blockers, 2 Concerns, 3 Nits (approved under D-029). All 5 findings were fixed at `ce29c41` with no re-review needed.
+
+Next task: `WIN-002B` (workspace browser/navigation) or `WIN-002D` (persistent preferences/settings) on Windows, `MAC-002` on macOS, or the D-030 milestone review.
+
+## Previous handoff
+
 Updated: 2026-11-15 (America/Denver), MAC-002F completed under D-029 (PR #88 approved and closed out into `develop`).
 Active task: None. Eligible tasks: `MAC-002` (macOS aggregate), `WIN-002A` (Windows). The D-030 milestone review for `LNX-002` + `HARD-001` (`review/<milestone>` into `main`, owner-merged) is still open to cut.
 Pass `66ab082f-b3d7-4a7c-9beb-964b33da9900` completed, approved PR #88 merged into `develop`:
