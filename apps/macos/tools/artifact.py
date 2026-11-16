@@ -26,11 +26,16 @@ def smoke_environment() -> dict:
     return {k: v for k, v in os.environ.items() if not k.startswith("DYLD_")}
 
 
+# The full debug smoke takes about 30 s on a hosted macOS runner, so its limit
+# leaves room for a slower runner, like the Launch Services launch.
+SMOKE_TIMEOUT = 60
+
+
 def run_smoke(executable: Path, cwd: Path, env: dict) -> None:
     """Launch a bundle executable with --smoke-test and require its success marker."""
     try:
         result = subprocess.run([str(executable), "--smoke-test"], cwd=cwd, env=env, text=True,
-                                capture_output=True, timeout=30)
+                                capture_output=True, timeout=SMOKE_TIMEOUT)
     except subprocess.TimeoutExpired as error:
         # TimeoutExpired can carry bytes even when text=True was requested.
         for output in (error.stdout, error.stderr):
@@ -256,7 +261,7 @@ def launch(app: Path, root: Path, env: dict) -> None:
     try:
         subprocess.run(["open", "-n", "-W", "--stdout", str(output), "--stderr",
                         str(root / "launch-services.err"), "-a", str(app),
-                        "--args", "--smoke-test"], check=True, timeout=60)
+                        "--args", "--smoke-test"], check=True, timeout=SMOKE_TIMEOUT)
     except subprocess.TimeoutExpired:
         # launchd started the app, not open: stop it before its folder goes.
         subprocess.run(["pkill", "-f", str(executable)], check=False)

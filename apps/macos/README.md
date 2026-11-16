@@ -837,7 +837,8 @@ the staged artifact, and verifies its actual fingerprint and configuration.
 It runs `swift format lint --strict`, builds debug/release with warnings as
 errors and Swift 6 concurrency checking, validates Info.plist, then launches
 each **assembled bundle executable** with `--smoke-test`. Each child has a
-30-second timeout and must emit its success marker and exit zero through the
+60-second timeout (the debug smoke takes about 30 s on a hosted runner) and
+must emit its success marker and exit zero through the
 native Quit action. No success marker or a timeout fails the check. The relocated
 app is launched with loader overrides removed, and a relocated standalone release
 consumer parses synthetic input without repository/runtime library dependencies.
