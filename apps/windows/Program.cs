@@ -210,15 +210,28 @@ public sealed partial class ReaderApp : Application
     private Microsoft.UI.Dispatching.DispatcherQueue? _dispatcher;
     private int _externalDeliveries;
     private bool _shuttingDown;
+    private readonly string? _smokeRecentsPath;
     internal bool IsShuttingDown => Volatile.Read(ref _shuttingDown);
 
     internal IReadOnlyList<ReaderWindow> Windows => windows;
     internal ReaderPreferences Preferences { get; } = new(
         Program.Smoke ? new MemoryPreferenceStore() : new LocalSettingsPreferenceStore());
+    internal RecentsStore Recents { get; }
     internal SettingsWindow? SettingsWindow { get; private set; }
+    internal RecentItemsWindow? RecentItemsWindow { get; private set; }
 
     public ReaderApp()
     {
+        if (Program.Smoke || Program.AssociationSmoke)
+        {
+            _smokeRecentsPath = Path.Combine(Path.GetTempPath(), $"markdown-smoke-recents-{Environment.ProcessId}.json");
+            Recents = new RecentsStore(_smokeRecentsPath);
+        }
+        else
+        {
+            Recents = new RecentsStore();
+        }
+
         UnhandledException += (sender, e) =>
         {
             Console.Error.WriteLine($"WinUI UnhandledException: {e.Message}\n{e.Exception}");
@@ -232,6 +245,127 @@ public sealed partial class ReaderApp : Application
             }
             SettingsWindow?.Refresh();
         };
+        Recents.Changed += () =>
+        {
+            _ = _dispatcher?.TryEnqueue(() =>
+            {
+                foreach (var w in windows.ToArray())
+                {
+                    w.RebuildRecentMenu();
+                }
+            });
+        };
+    }
+
+    internal void ShowRecentItems(ReaderWindow owner)
+    {
+        if (RecentItemsWindow is not null)
+        {
+            RecentItemsWindow.Activate();
+            RecentItemsWindow.Refresh();
+            return;
+        }
+        RecentItemsWindow = new RecentItemsWindow(
+            Recents,
+            entry => OpenRecentEntry(owner, entry),
+            (entry, newPath) => RelocateRecentEntry(owner, entry, newPath),
+            RevokeRecentEntry);
+        RecentItemsWindow.Closed += (_, _) => RecentItemsWindow = null;
+        if (RecentItemsWindow.Content is FrameworkElement fe)
+        {
+            fe.RequestedTheme = Preferences.ToElementTheme();
+        }
+        RecentItemsWindow.Activate();
+    }
+
+    internal void OpenRecentEntry(ReaderWindow preferredWindow, RecentEntry entry)
+    {
+        var target = preferredWindow;
+        if (!windows.Contains(target))
+        {
+            target = windows.FirstOrDefault() ?? NewWindow();
+        }
+        if (entry.Kind == RecentKind.Folder)
+        {
+            if (FolderCapability.TryFromUserInput(entry.Path, out var folderCap, out var folderErr) && folderCap is not null)
+            {
+                target.OpenFolderCapability(folderCap, isFromRecents: true);
+            }
+            else
+            {
+                target.ShowFolderError(folderErr, entry.Path, isFromRecents: true);
+            }
+        }
+        else
+        {
+            if (DocumentCapability.TryFromUserInput(entry.Path, out var docCap, out var docErr) && docCap is not null)
+            {
+                target.OpenCapability(docCap, recentSourcePath: entry.Path);
+            }
+            else
+            {
+                target.RejectSelection(docErr);
+            }
+        }
+        target.Activate();
+    }
+
+    internal void RelocateRecentEntry(ReaderWindow preferredWindow, RecentEntry entry, string newPath)
+    {
+        if (!Recents.Relocate(entry.Kind, entry.Path, newPath))
+        {
+            return;
+        }
+        var relocated = new RecentEntry(entry.Kind, newPath, entry.DisplayName, DateTimeOffset.UtcNow);
+        OpenRecentEntry(preferredWindow, relocated);
+    }
+
+    internal void RevokeRecentEntry(RecentEntry entry)
+    {
+        if (entry.Kind == RecentKind.Folder)
+        {
+            foreach (var w in windows.ToArray())
+            {
+                if (w.ActiveFolder is not null &&
+                    string.Equals(
+                        FolderCapability.NormalizeDirectoryRoot(w.ActiveFolder.FullPath).TrimEnd('\\'),
+                        FolderCapability.NormalizeDirectoryRoot(entry.Path).TrimEnd('\\'),
+                        StringComparison.OrdinalIgnoreCase))
+                {
+                    w.CloseFolder(revoked: true);
+                }
+            }
+        }
+        else
+        {
+            foreach (var w in windows.ToArray())
+            {
+                if (w.Loader.Capability is not null &&
+                    string.Equals(w.Loader.Capability.FullPath, DocumentCapability.NormalizeLocalPath(entry.Path), StringComparison.OrdinalIgnoreCase))
+                {
+                    w.Loader.Capability.Revoke();
+                    w.ReloadCommand();
+                }
+            }
+        }
+        Recents.Remove(entry.Kind, entry.Path);
+    }
+
+    internal void CleanupSmokeRecents()
+    {
+        if (_smokeRecentsPath is not null)
+        {
+            try
+            {
+                if (File.Exists(_smokeRecentsPath))
+                {
+                    File.Delete(_smokeRecentsPath);
+                }
+            }
+            catch
+            {
+            }
+        }
     }
 
     internal void ShowSettings()
@@ -331,6 +465,8 @@ public sealed partial class ReaderApp : Application
             if (windows.Count == 0)
             {
                 SettingsWindow?.Close();
+                RecentItemsWindow?.Close();
+                CleanupSmokeRecents();
                 Volatile.Write(ref _shuttingDown, true);
             }
         };
@@ -375,6 +511,8 @@ public sealed partial class ReaderApp : Application
         SaveRestorationState();
         Volatile.Write(ref _shuttingDown, true);
         SettingsWindow?.Close();
+        RecentItemsWindow?.Close();
+        CleanupSmokeRecents();
         foreach (var window in windows.ToArray())
         {
             window.Close();
@@ -557,8 +695,10 @@ public sealed partial class ReaderApp : Application
             }
 
             var shortcuts = ((Grid)first.Content).KeyboardAccelerators;
-            if (shortcuts.Count != 15 ||
+            if (shortcuts.Count != 16 ||
                 !shortcuts.Any(k => k.Key == VirtualKey.O && k.Modifiers == VirtualKeyModifiers.Control) ||
+                !shortcuts.Any(k => k.Key == VirtualKey.O &&
+                    k.Modifiers == (VirtualKeyModifiers.Control | VirtualKeyModifiers.Shift)) ||
                 !shortcuts.Any(k => k.Key == VirtualKey.R && k.Modifiers == VirtualKeyModifiers.Control) ||
                 !shortcuts.Any(k => k.Key == VirtualKey.N && k.Modifiers == VirtualKeyModifiers.Control) ||
                 !shortcuts.Any(k => k.Key == VirtualKey.W && k.Modifiers == VirtualKeyModifiers.Control) ||
@@ -1181,6 +1321,89 @@ public sealed partial class ReaderApp : Application
             garbageWin.CloseCommand();
             await Task.Delay(50);
 
+            // 12b. WIN-002A: Folder capability grants, recents, Close Folder revocation, moved-folder recovery, and Recent Items window.
+            var wsDir = Path.Combine(tempDir, "win002a-ws");
+            var wsMovedDir = Path.Combine(tempDir, "win002a-ws-moved");
+            Directory.CreateDirectory(wsDir);
+            var wsDocPath = Path.Combine(wsDir, "inside.md");
+            File.WriteAllText(wsDocPath, "# Workspace Doc\n\nInside approved folder.\n", new UTF8Encoding(false));
+
+            var win002a = NewWindow();
+            DocumentPicker.EnqueueFolderAutomationCancel();
+            win002a.OpenFolderCommand();
+            if (win002a.ActiveFolder is not null || win002a.CloseFolderItem.IsEnabled)
+            {
+                throw new InvalidOperationException("Cancelled Open Folder should not activate a folder.");
+            }
+
+            DocumentPicker.EnqueueFolderAutomationSelect(wsDir);
+            win002a.OpenFolderCommand();
+            if (win002a.ActiveFolder is null || !win002a.CloseFolderItem.IsEnabled)
+            {
+                throw new InvalidOperationException("Selected Open Folder did not activate folder grant.");
+            }
+            if (Recents.Folders.Count == 0 || win002a.OpenRecentMenu.Items.Count < 3)
+            {
+                throw new InvalidOperationException("Recents store or Open Recent menu was not updated for folder.");
+            }
+
+            // Open inside.md via File > Open while ActiveFolder is set -> binds to folder grant.
+            DocumentPicker.EnqueueAutomationSelect(wsDocPath);
+            win002a.OpenCommand();
+            await WaitWindowIdleAsync(win002a);
+            if (win002a.Loader.Document is null ||
+                win002a.Loader.Error is not null ||
+                win002a.Loader.Capability?.ParentGrant != win002a.ActiveFolder.Grant)
+            {
+                throw new InvalidOperationException("File > Open inside active folder did not bind to folder grant.");
+            }
+
+            // Close Folder revokes the folder grant and its bound document.
+            win002a.CloseFolderCommand();
+            await WaitWindowIdleAsync(win002a);
+            if (win002a.ActiveFolder is not null || win002a.CloseFolderItem.IsEnabled)
+            {
+                throw new InvalidOperationException("Close Folder did not clear active folder.");
+            }
+            if (win002a.Loader.Error != DocumentError.AccessRevoked)
+            {
+                throw new InvalidOperationException($"Close Folder should revoke bound document (got {win002a.Loader.Error}).");
+            }
+
+            // Moved folder triggers ErrorBanner recovery, then Locate... relocates and opens it.
+            Directory.Move(wsDir, wsMovedDir);
+            var staleFolderEntry = Recents.Folders[0];
+            OpenRecentEntry(win002a, staleFolderEntry);
+            if (!win002a.ErrorBanner.IsOpen || win002a.RecoveryPrimaryButton.Visibility != Visibility.Visible)
+            {
+                throw new InvalidOperationException("Moved recent folder did not open inline recovery banner.");
+            }
+            RelocateRecentEntry(win002a, staleFolderEntry, wsMovedDir);
+            if (win002a.ActiveFolder is null || win002a.ErrorBanner.Title == "Folder access issue")
+            {
+                throw new InvalidOperationException("Moved recent folder recovery failed.");
+            }
+            if (!win002a.ActiveFolder.ResolveDocument("inside.md", out var movedDocCap, out _) || movedDocCap is null)
+            {
+                throw new InvalidOperationException("Failed to resolve inside.md from relocated folder.");
+            }
+            win002a.OpenCapability(movedDocCap);
+            await WaitWindowIdleAsync(win002a);
+            if (win002a.Loader.Document is null || win002a.Loader.Error is not null || win002a.ErrorBanner.IsOpen)
+            {
+                throw new InvalidOperationException("Document open after moved-folder recovery failed.");
+            }
+
+            win002a.RecentItemsCommand();
+            if (RecentItemsWindow is null)
+            {
+                throw new InvalidOperationException("RecentItemsWindow did not open.");
+            }
+            await Task.Delay(50);
+            RecentItemsWindow.Close();
+            win002a.CloseCommand();
+            await Task.Delay(50);
+
             // 13. Verify New Window, Close Window, and Exit commands close all windows cleanly.
             first.NewCommand();
             if (windows.Count != 2)
@@ -1245,13 +1468,23 @@ public sealed partial class ReaderApp : Application
 
 internal sealed class ReaderWindow : Window
 {
+    private readonly ReaderApp _app;
     internal DocumentLoader Loader { get; } = new();
     internal ReaderPreferences Preferences { get; }
+    internal FolderCapability? ActiveFolder { get; private set; }
     private DocumentWatcher? _watcher;
     private bool _isClosing;
     private CoreDocument? _displayedDoc;
+    private DocumentCapability? _recordedRecentCap;
+    private string? _pendingRecentFilePath;
+    private string? _lastFailedFolderPath;
+    private bool _lastFailedFolderFromRecents;
+    private FolderError? _activeFolderError;
     internal SavedPosition? PendingRestorePosition { get; set; }
     internal Action OpenCommand { get; }
+    internal Action OpenFolderCommand { get; }
+    internal Action CloseFolderCommand { get; }
+    internal Action RecentItemsCommand { get; }
     internal Action ReloadCommand { get; }
     internal Action NewCommand { get; }
     internal Action CloseCommand { get; }
@@ -1268,6 +1501,9 @@ internal sealed class ReaderWindow : Window
     internal Action SettingsCommand { get; }
 
     internal MenuFlyoutItem ReloadItem { get; }
+    internal MenuFlyoutItem OpenFolderItem { get; }
+    internal MenuFlyoutItem CloseFolderItem { get; }
+    internal MenuFlyoutSubItem OpenRecentMenu { get; }
     internal TextBlock Welcome { get; }
     internal ReaderControl Reader { get; } = new();
     internal FindBar FindBar { get; } = new();
@@ -1277,6 +1513,16 @@ internal sealed class ReaderWindow : Window
         Severity = InfoBarSeverity.Error,
         IsClosable = true,
     };
+    private readonly StackPanel _recoveryActionsPanel = new()
+    {
+        Orientation = Orientation.Horizontal,
+        Spacing = 8,
+        Margin = new Thickness(0, 0, 0, 8),
+        Visibility = Visibility.Collapsed,
+    };
+    internal Button RecoveryPrimaryButton { get; } = new() { Content = "Locate…" };
+    internal Button RecoveryRetryButton { get; } = new() { Content = "Try Again" };
+    internal Button RecoveryRemoveButton { get; } = new() { Content = "Remove from Recents" };
 
     public bool IsFindBarVisible => FindBar.Visibility == Visibility.Visible;
     private uint _findRequestId;
@@ -1284,12 +1530,16 @@ internal sealed class ReaderWindow : Window
 
     internal ReaderWindow(ReaderApp app, ReaderPreferences preferences)
     {
+        _app = app;
         Preferences = preferences;
         Title = "Markdown";
         AppWindow.Resize(new global::Windows.Graphics.SizeInt32(960, 700));
         Reader.WindowHandle = WinRT.Interop.WindowNative.GetWindowHandle(this);
 
         OpenCommand = PickAndOpenFile;
+        OpenFolderCommand = PickAndOpenFolder;
+        CloseFolderCommand = () => CloseFolder(revoked: false);
+        RecentItemsCommand = () => app.ShowRecentItems(this);
         ReloadCommand = ReloadDocument;
         NewCommand = () => app.NewWindow();
         CloseCommand = () =>
@@ -1331,6 +1581,8 @@ internal sealed class ReaderWindow : Window
         Closed += (_, _) =>
         {
             _isClosing = true;
+            ActiveFolder?.Revoke();
+            ActiveFolder = null;
             _watcher?.Dispose();
             _watcher = null;
             _findCts?.Cancel();
@@ -1352,8 +1604,23 @@ internal sealed class ReaderWindow : Window
         var root = new Grid();
         var menu = new MenuBar();
 
+        _recoveryActionsPanel.Children.Add(RecoveryPrimaryButton);
+        _recoveryActionsPanel.Children.Add(RecoveryRetryButton);
+        _recoveryActionsPanel.Children.Add(RecoveryRemoveButton);
+        ErrorBanner.Content = _recoveryActionsPanel;
+        ErrorBanner.CloseButtonClick += (_, _) => _activeFolderError = null;
+
         var file = new MenuBarItem { Title = "File", AccessKey = "F" };
         file.Items.Add(Command(root, "Open…", "Ctrl+O", VirtualKey.O, VirtualKeyModifiers.Control, OpenCommand));
+        OpenFolderItem = Command(root, "Open Folder…", "Ctrl+Shift+O", VirtualKey.O,
+            VirtualKeyModifiers.Control | VirtualKeyModifiers.Shift, OpenFolderCommand);
+        file.Items.Add(OpenFolderItem);
+        OpenRecentMenu = new MenuFlyoutSubItem { Text = "Open Recent" };
+        file.Items.Add(OpenRecentMenu);
+        CloseFolderItem = new MenuFlyoutItem { Text = "Close Folder", IsEnabled = false };
+        CloseFolderItem.Click += (_, _) => CloseFolderCommand();
+        file.Items.Add(CloseFolderItem);
+        file.Items.Add(new MenuFlyoutSeparator());
         ReloadItem = Command(root, "Reload", "Ctrl+R", VirtualKey.R, VirtualKeyModifiers.Control, ReloadCommand);
         ReloadItem.IsEnabled = false;
         file.Items.Add(ReloadItem);
@@ -1364,6 +1631,7 @@ internal sealed class ReaderWindow : Window
         file.Items.Add(Command(root, "Exit", "Ctrl+Shift+W", VirtualKey.W,
             VirtualKeyModifiers.Control | VirtualKeyModifiers.Shift, ExitCommand));
         menu.Items.Add(file);
+        RebuildRecentMenu();
 
         var edit = new MenuBarItem { Title = "Edit", AccessKey = "E" };
         edit.Items.Add(Command(root, "Copy", "Ctrl+C", VirtualKey.C, VirtualKeyModifiers.Control, CopyCommand, bypassWhenTextFocused: true));
@@ -1574,8 +1842,10 @@ internal sealed class ReaderWindow : Window
         OpenCapability(cap);
     }
 
-    internal void OpenCapability(DocumentCapability capability)
+    internal void OpenCapability(DocumentCapability capability, string? recentSourcePath = null)
     {
+        _activeFolderError = null;
+        _pendingRecentFilePath = recentSourcePath;
         _watcher?.Dispose();
         _watcher = null;
         if (!string.IsNullOrEmpty(capability.FullPath))
@@ -1593,6 +1863,124 @@ internal sealed class ReaderWindow : Window
         SyncFromLoader();
     }
 
+    internal void OpenFolderCapability(FolderCapability folder, bool isFromRecents = false)
+    {
+        if (!folder.ValidateAccess(out var folderError))
+        {
+            ShowFolderError(folderError, folder.FullPath, isFromRecents);
+            return;
+        }
+
+        _activeFolderError = null;
+        _lastFailedFolderPath = null;
+        _lastFailedFolderFromRecents = false;
+        if (ActiveFolder is not null)
+        {
+            if (ActiveFolder.SameFolderAs(folder))
+            {
+                _app.Recents.RecordFolder(folder);
+                SyncFromLoader();
+                return;
+            }
+            CloseFolder(revoked: false);
+        }
+        ActiveFolder = folder;
+        CloseFolderItem.IsEnabled = true;
+        _app.Recents.RecordFolder(folder);
+        SyncFromLoader();
+    }
+
+    internal void CloseFolder(bool revoked = false)
+    {
+        if (ActiveFolder is null)
+        {
+            return;
+        }
+
+        var hadFolderBoundDoc = Loader.Capability?.ParentGrant == ActiveFolder.Grant;
+        ActiveFolder.Revoke();
+        ActiveFolder = null;
+        CloseFolderItem.IsEnabled = false;
+
+        if (hadFolderBoundDoc)
+        {
+            Loader.Reload();
+        }
+
+        if (revoked && !hadFolderBoundDoc)
+        {
+            ShowFolderError(FolderError.AccessRevoked, null, isFromRecents: false);
+            return;
+        }
+
+        SyncFromLoader();
+    }
+
+    internal void ShowFolderError(FolderError error, string? folderPath, bool isFromRecents)
+    {
+        _activeFolderError = error;
+        _lastFailedFolderPath = folderPath;
+        _lastFailedFolderFromRecents = isFromRecents;
+        ErrorBanner.Title = "Folder access issue";
+        ErrorBanner.Message = error.ToDisplayString();
+        ConfigureFolderRecoveryActions(error);
+        ErrorBanner.IsOpen = true;
+    }
+
+    internal void RebuildRecentMenu()
+    {
+        OpenRecentMenu.Items.Clear();
+
+        var folders = _app.Recents.Folders;
+        var files = _app.Recents.Files;
+
+        if (folders.Count > 0)
+        {
+            var foldersHeader = new MenuFlyoutItem { Text = "Folders", IsEnabled = false };
+            OpenRecentMenu.Items.Add(foldersHeader);
+            foreach (var entry in folders)
+            {
+                var captured = entry;
+                var item = new MenuFlyoutItem { Text = entry.DisplayName };
+                item.Click += (_, _) => _app.OpenRecentEntry(this, captured);
+                OpenRecentMenu.Items.Add(item);
+            }
+            OpenRecentMenu.Items.Add(new MenuFlyoutSeparator());
+        }
+
+        if (files.Count > 0)
+        {
+            var filesHeader = new MenuFlyoutItem { Text = "Files", IsEnabled = false };
+            OpenRecentMenu.Items.Add(filesHeader);
+            foreach (var entry in files)
+            {
+                var captured = entry;
+                var item = new MenuFlyoutItem { Text = entry.DisplayName };
+                item.Click += (_, _) => _app.OpenRecentEntry(this, captured);
+                OpenRecentMenu.Items.Add(item);
+            }
+            OpenRecentMenu.Items.Add(new MenuFlyoutSeparator());
+        }
+
+        if (folders.Count == 0 && files.Count == 0)
+        {
+            OpenRecentMenu.Items.Add(new MenuFlyoutItem { Text = "(No Recent Items)", IsEnabled = false });
+            OpenRecentMenu.Items.Add(new MenuFlyoutSeparator());
+        }
+
+        var manageItem = new MenuFlyoutItem { Text = "Recent Items…" };
+        manageItem.Click += (_, _) => RecentItemsCommand();
+        OpenRecentMenu.Items.Add(manageItem);
+
+        var clearItem = new MenuFlyoutItem
+        {
+            Text = "Clear Recent",
+            IsEnabled = folders.Count > 0 || files.Count > 0,
+        };
+        clearItem.Click += (_, _) => _app.Recents.Clear();
+        OpenRecentMenu.Items.Add(clearItem);
+    }
+
     internal void RejectSelection(DocumentError error)
     {
         Loader.RejectSelection(error);
@@ -1606,6 +1994,13 @@ internal sealed class ReaderWindow : Window
         {
             return;
         }
+        if (ActiveFolder is not null &&
+            ActiveFolder.ResolveDocument(pickedPath, out var boundCap, out _) &&
+            boundCap is not null)
+        {
+            OpenCapability(boundCap);
+            return;
+        }
         if (!DocumentCapability.TryFromUserInput(pickedPath, out var capability, out var error) ||
             capability is null)
         {
@@ -1613,6 +2008,22 @@ internal sealed class ReaderWindow : Window
             return;
         }
         OpenCapability(capability);
+    }
+
+    private void PickAndOpenFolder()
+    {
+        var pickedPath = DocumentPicker.PickFolder(this);
+        if (pickedPath is null)
+        {
+            return;
+        }
+        if (!FolderCapability.TryFromUserInput(pickedPath, out var folder, out var error) ||
+            folder is null)
+        {
+            ShowFolderError(error, pickedPath, isFromRecents: false);
+            return;
+        }
+        OpenFolderCapability(folder);
     }
 
     private void ReloadDocument()
@@ -1639,22 +2050,31 @@ internal sealed class ReaderWindow : Window
         }
 
         _ = Loader.Poll();
-        Title = Loader.WindowTitle;
+        Title = ActiveFolder is not null && !Loader.HasFile
+            ? $"Markdown — {ActiveFolder.DisplayName}"
+            : Loader.WindowTitle;
         ReloadItem.IsEnabled = Loader.HasFile;
+        CloseFolderItem.IsEnabled = ActiveFolder is not null;
 
         if (!Loader.HasFile && Loader.Error is null)
         {
-            ErrorBanner.IsOpen = false;
+            if (_activeFolderError is null)
+            {
+                ErrorBanner.IsOpen = false;
+                _recoveryActionsPanel.Visibility = Visibility.Collapsed;
+            }
             Reader.Clear();
             Welcome.Visibility = Visibility.Visible;
-            Welcome.Text =
-                "Markdown\n\nA native Markdown reader.\nChoose File > Open (Ctrl+O) to open a Markdown document.";
+            Welcome.Text = ActiveFolder is not null
+                ? $"Folder workspace: {ActiveFolder.DisplayName}\n\nChoose File > Open (Ctrl+O) to open a document, or File > Close Folder to revoke folder access."
+                : "Markdown\n\nA native Markdown reader.\nChoose File > Open (Ctrl+O) to open a Markdown document, or File > Open Folder (Ctrl+Shift+O) to open a folder workspace.";
             return;
         }
 
         if (Loader.IsLoading && Loader.Document is null)
         {
             ErrorBanner.IsOpen = false;
+            _recoveryActionsPanel.Visibility = Visibility.Collapsed;
             Reader.Clear();
             Welcome.Visibility = Visibility.Visible;
             Welcome.Text = $"Loading {Loader.Capability?.DisplayName ?? "document"}…";
@@ -1663,6 +2083,15 @@ internal sealed class ReaderWindow : Window
 
         if (Loader.Document is { } doc)
         {
+            if (Loader.Error is null &&
+                Loader.Capability is { IsRevoked: false } loadedCap &&
+                !ReferenceEquals(loadedCap, _recordedRecentCap))
+            {
+                _recordedRecentCap = loadedCap;
+                _pendingRecentFilePath = null;
+                _app.Recents.RecordFile(loadedCap);
+            }
+
             var heading = doc.Title
                 ?? (doc.OutlineCount > 0 ? doc.OutlineTitle(0) : null)
                 ?? Loader.Capability?.DisplayName
@@ -1679,11 +2108,13 @@ internal sealed class ReaderWindow : Window
                 summary += $"\n\n{label}:\n{activeError.ToDisplayString()}";
                 ErrorBanner.Title = label;
                 ErrorBanner.Message = activeError.ToDisplayString();
+                ConfigureDocumentRecoveryActions(activeError);
                 ErrorBanner.IsOpen = true;
             }
-            else
+            else if (_activeFolderError is null)
             {
                 ErrorBanner.IsOpen = false;
+                _recoveryActionsPanel.Visibility = Visibility.Collapsed;
             }
 
             Welcome.Text = summary;
@@ -1711,14 +2142,186 @@ internal sealed class ReaderWindow : Window
 
         if (Loader.Error is { } error)
         {
-            ErrorBanner.IsOpen = false;
             var oldDoc = _displayedDoc;
             _displayedDoc = null;
             oldDoc?.Dispose();
             Reader.Clear();
             Welcome.Visibility = Visibility.Visible;
             Welcome.Text = error.ToDisplayString();
+            if (IsRecoverableDocumentError(error))
+            {
+                ErrorBanner.Title = "Open issue";
+                ErrorBanner.Message = error.ToDisplayString();
+                ConfigureDocumentRecoveryActions(error);
+                ErrorBanner.IsOpen = true;
+            }
+            else
+            {
+                ErrorBanner.IsOpen = false;
+                _recoveryActionsPanel.Visibility = Visibility.Collapsed;
+            }
         }
+    }
+
+    private static bool IsRecoverableDocumentError(DocumentError error) => error switch
+    {
+        DocumentError.NotFound or
+        DocumentError.PermissionDenied or
+        DocumentError.AccessRevoked or
+        DocumentError.VolumeUnavailable => true,
+        _ => false,
+    };
+
+    private RoutedEventHandler? _primaryRecoveryHandler;
+    private RoutedEventHandler? _retryRecoveryHandler;
+    private RoutedEventHandler? _removeRecoveryHandler;
+
+    private void ClearRecoveryHandlers()
+    {
+        if (_primaryRecoveryHandler is not null)
+        {
+            RecoveryPrimaryButton.Click -= _primaryRecoveryHandler;
+            _primaryRecoveryHandler = null;
+        }
+        if (_retryRecoveryHandler is not null)
+        {
+            RecoveryRetryButton.Click -= _retryRecoveryHandler;
+            _retryRecoveryHandler = null;
+        }
+        if (_removeRecoveryHandler is not null)
+        {
+            RecoveryRemoveButton.Click -= _removeRecoveryHandler;
+            _removeRecoveryHandler = null;
+        }
+    }
+
+    private void ConfigureDocumentRecoveryActions(DocumentError error)
+    {
+        ClearRecoveryHandlers();
+        if (!IsRecoverableDocumentError(error))
+        {
+            _recoveryActionsPanel.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        RecoveryPrimaryButton.Content = error is DocumentError.PermissionDenied or DocumentError.AccessRevoked
+            ? "Grant Access…"
+            : "Locate…";
+        RecoveryPrimaryButton.Visibility = Visibility.Visible;
+        _primaryRecoveryHandler = (_, _) =>
+        {
+            var picked = DocumentPicker.PickFile(this);
+            if (string.IsNullOrWhiteSpace(picked))
+            {
+                return;
+            }
+            var oldPath = _pendingRecentFilePath ?? Loader.Capability?.FullPath;
+            if (oldPath is not null)
+            {
+                _ = _app.Recents.Relocate(RecentKind.File, oldPath, picked);
+            }
+            if (DocumentCapability.TryFromUserInput(picked, out var cap, out var pickErr) && cap is not null)
+            {
+                OpenCapability(cap);
+            }
+            else
+            {
+                RejectSelection(pickErr);
+            }
+        };
+        RecoveryPrimaryButton.Click += _primaryRecoveryHandler;
+
+        RecoveryRetryButton.Visibility = Loader.HasFile ? Visibility.Visible : Visibility.Collapsed;
+        _retryRecoveryHandler = (_, _) => ReloadCommand();
+        RecoveryRetryButton.Click += _retryRecoveryHandler;
+
+        var removablePath = _pendingRecentFilePath;
+        RecoveryRemoveButton.Visibility = removablePath is not null ? Visibility.Visible : Visibility.Collapsed;
+        if (removablePath is not null)
+        {
+            _removeRecoveryHandler = (_, _) =>
+            {
+                _app.Recents.Remove(RecentKind.File, removablePath);
+                _pendingRecentFilePath = null;
+                ErrorBanner.IsOpen = false;
+                _recoveryActionsPanel.Visibility = Visibility.Collapsed;
+            };
+            RecoveryRemoveButton.Click += _removeRecoveryHandler;
+        }
+
+        _recoveryActionsPanel.Visibility = Visibility.Visible;
+    }
+
+    private void ConfigureFolderRecoveryActions(FolderError error)
+    {
+        ClearRecoveryHandlers();
+        if (!error.IsRecoverable())
+        {
+            _recoveryActionsPanel.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        RecoveryPrimaryButton.Content = error is FolderError.PermissionDenied or FolderError.AccessRevoked
+            ? "Grant Access…"
+            : "Locate…";
+        RecoveryPrimaryButton.Visibility = Visibility.Visible;
+        _primaryRecoveryHandler = (_, _) =>
+        {
+            var picked = DocumentPicker.PickFolder(this);
+            if (string.IsNullOrWhiteSpace(picked))
+            {
+                return;
+            }
+            if (_lastFailedFolderPath is not null && _lastFailedFolderFromRecents)
+            {
+                _ = _app.Recents.Relocate(RecentKind.Folder, _lastFailedFolderPath, picked);
+            }
+            if (FolderCapability.TryFromUserInput(picked, out var folder, out var pickErr) && folder is not null)
+            {
+                OpenFolderCapability(folder);
+            }
+            else
+            {
+                ShowFolderError(pickErr, picked, _lastFailedFolderFromRecents);
+            }
+        };
+        RecoveryPrimaryButton.Click += _primaryRecoveryHandler;
+
+        var retryPath = _lastFailedFolderPath;
+        RecoveryRetryButton.Visibility = retryPath is not null ? Visibility.Visible : Visibility.Collapsed;
+        if (retryPath is not null)
+        {
+            _retryRecoveryHandler = (_, _) =>
+            {
+                if (FolderCapability.TryFromUserInput(retryPath, out var folder, out var err) && folder is not null)
+                {
+                    OpenFolderCapability(folder, _lastFailedFolderFromRecents);
+                }
+                else
+                {
+                    ShowFolderError(err, retryPath, _lastFailedFolderFromRecents);
+                }
+            };
+            RecoveryRetryButton.Click += _retryRecoveryHandler;
+        }
+
+        RecoveryRemoveButton.Visibility = retryPath is not null && _lastFailedFolderFromRecents
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+        if (retryPath is not null && _lastFailedFolderFromRecents)
+        {
+            _removeRecoveryHandler = (_, _) =>
+            {
+                _app.Recents.Remove(RecentKind.Folder, retryPath);
+                _lastFailedFolderPath = null;
+                _activeFolderError = null;
+                ErrorBanner.IsOpen = false;
+                _recoveryActionsPanel.Visibility = Visibility.Collapsed;
+            };
+            RecoveryRemoveButton.Click += _removeRecoveryHandler;
+        }
+
+        _recoveryActionsPanel.Visibility = Visibility.Visible;
     }
 
     private static MenuFlyoutItem Command(Grid root, string text, string shortcut, VirtualKey key,

@@ -489,6 +489,19 @@ read.
   - Warm launch, prose 1 MiB: 419 ms; `develop` measures the same, and the growth is
     AppKit start-up. Grok review 1: 3 nits, all fixed (approved under D-029).
   - The `MAC-002` aggregate is next on macOS.
+- **WIN-002A (PR #89)**: delivers Windows persistent folder/document capability grants
+  (`FolderCapability`/`FolderGrant`/`FolderError` in `apps/windows/Document/FolderAccess.cs`
+  with Win32 canonical root validation, symlink/junction and sibling-prefix containment,
+  and revocation propagation to bound `DocumentCapability` instances), persistent JSON
+  `RecentsStore` (`apps/windows/Document/Recents.cs`, `%LOCALAPPDATA%\MarkdownReader\recents.json`,
+  capped at 10 files + 10 folders, case-insensitive dedup, untrusted entry filtering,
+  future-version preservation, off-main availability checks), native `IFileOpenDialog`
+  (`FOS_PICKFOLDERS`) folder picking, `File > Open Folder…` (`Ctrl+Shift+O`), `Open Recent`,
+  `Close Folder`, `RecentItemsWindow`, and inline `ErrorBanner` recovery actions (`Locate…`,
+  `Grant Access…`, `Try Again`, `Remove from Recents`). Grok review 1 at `7498bd4` reported
+  0 Blockers, 2 Concerns, 3 Nits (approved under D-029); all 5 findings were fixed at
+  `ce29c41` with full Debug/Release/relocated `apps/windows/tools/check.py` passing.
+  `WIN-002B` and `WIN-002D` are next on Windows.
 - Workflow: task PRs target `develop` and merge on a Grok review with no
   serious finding (D-029). `main` takes only owner-approved milestone reviews
   from `review/<milestone>`, tagged `m-<milestone>` (D-030). The shared-core

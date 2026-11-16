@@ -2,8 +2,10 @@
 
 WIN-001A through WIN-001I provide an unpackaged Windows 11 x64 WinUI 3
 application in C# Native AOT linked against the local shared-core C ABI package
-(`markdown_ffi.dll`, model v2). It opens a native window with a menu bar: File
-(Open… Ctrl+O, Reload Ctrl+R, New Window Ctrl+N, Close Window Ctrl+W, Exit Ctrl+Shift+W),
+(`markdown_ffi.dll`, model v2), and WIN-002A adds folder capability grants,
+persistent recent files/folders, and inline access recovery. It opens a native
+window with a menu bar: File
+(Open… Ctrl+O, Open Folder… Ctrl+Shift+O, Open Recent, Close Folder, Reload Ctrl+R, New Window Ctrl+N, Close Window Ctrl+W, Exit Ctrl+Shift+W),
 Edit (Copy Ctrl+C, Select All Ctrl+A, Find… Ctrl+F, Find Next F3, Find Previous Shift+F3), View (Reset Text Size Ctrl+0,
 Increase Text Size Ctrl++, Decrease Text Size Ctrl+-, and Theme: System, Light, Dark),
 and Settings… (Ctrl+,). Alt+F opens the File menu; Alt+F4 retains the Windows
@@ -273,3 +275,16 @@ Validated on Windows 11 Pro build 26300.9711, Ryzen 9 5950X x64, Rust 1.99.1,
   smoke, association check, real relaunch restoration, and core probe with 0 leaked handles.
   Full walking skeleton acceptance across WIN-001A through WIN-001I is documented in
   docs/Windows-Skeleton-Acceptance.md.
+- **WIN-002A**: Adds UI-free `FolderCapability` / `FolderGrant` / `FolderError`
+  (`apps/windows/Document/FolderAccess.cs`) with Win32 canonical root validation,
+  symlink/junction and prefix containment (`OutsideFolder`), and grant revocation
+  propagation to bound `DocumentCapability` instances; persistent JSON `RecentsStore`
+  (`apps/windows/Document/Recents.cs`, capped at 10 files + 10 folders, case-insensitive
+  dedup, untrusted entry filtering, future-version preservation, off-main availability
+  checks); native `IFileOpenDialog` (`FOS_PICKFOLDERS`) folder picking; `File > Open Folder…`
+  (`Ctrl+Shift+O`), `Open Recent`, `Close Folder`, `RecentItemsWindow`, and inline
+  `ErrorBanner` recovery actions (`Locate…`, `Grant Access…`, `Try Again`,
+  `Remove from Recents`). Debug, Release, and relocated Release Native AOT builds
+  passed 20 core consumer tests, 18 document tests, 20 render tests, the extended
+  Native AOT smoke (`--smoke`), association checks, two-phase relaunch restoration,
+  and relocated core probe with 0 leaked handles.

@@ -33,6 +33,10 @@ internal static class DocumentTests
                 ("busy_admission_retry_recovers_when_slot_releases", TestBusyAdmissionRetryRecoversWhenSlotReleases),
                 ("document_watcher_modification_deletion_and_reappearance", TestDocumentWatcherModificationDeletionAndReappearance),
                 ("external_refresh_dispositions_and_stale_retention", TestExternalRefreshDispositionsAndStaleRetention),
+                ("folder_capability_containment_grant_revocation_and_rejection", TestFolderCapabilityContainmentGrantRevocationAndRejection),
+                ("folder_acl_denial_revocation_and_move_recovery", TestFolderAclDenialRevocationAndMoveRecovery),
+                ("recents_store_caps_dedup_untrusted_json_and_future_version", TestRecentsStoreCapsDedupUntrustedJsonAndFutureVersion),
+                ("recents_availability_checks_for_available_missing_denied_and_type", TestRecentsAvailabilityChecks),
             };
 
             foreach (var (name, run) in tests)
@@ -870,6 +874,302 @@ internal static class DocumentTests
         }
         finally
         {
+            try { Directory.Delete(tempDir, recursive: true); } catch { }
+        }
+    }
+
+    private static void TestFolderCapabilityContainmentGrantRevocationAndRejection()
+    {
+        var tempRoot = Path.Combine(Path.GetTempPath(), $"folder-cap-test-{Guid.NewGuid():N}");
+        var workspaceDir = Path.Combine(tempRoot, "docs");
+        var siblingDir = Path.Combine(tempRoot, "docs2");
+        var outsideDir = Path.Combine(tempRoot, "outside");
+        Directory.CreateDirectory(workspaceDir);
+        Directory.CreateDirectory(siblingDir);
+        Directory.CreateDirectory(outsideDir);
+        try
+        {
+            var insideFile = Path.Combine(workspaceDir, "readme.md");
+            var siblingFile = Path.Combine(siblingDir, "secret.md");
+            var outsideFile = Path.Combine(outsideDir, "outside.md");
+            File.WriteAllText(insideFile, "# Inside\n", new UTF8Encoding(false));
+            File.WriteAllText(siblingFile, "# Sibling\n", new UTF8Encoding(false));
+            File.WriteAllText(outsideFile, "# Outside\n", new UTF8Encoding(false));
+
+            Assert(!FolderCapability.TryFromUserInput(@"\\server\share\docs", out _, out var uncErr) &&
+                   uncErr == FolderError.NonLocalFolder, "UNC folder rejected as NonLocalFolder");
+            Assert(!FolderCapability.TryFromUserInput("https://example.com/docs", out _, out var httpErr) &&
+                   httpErr == FolderError.NonLocalFolder, "HTTP folder URI rejected as NonLocalFolder");
+
+            var fileAsFolder = FolderCapability.FromPickerPath(insideFile);
+            Assert(!fileAsFolder.ValidateAccess(out var notDirErr) &&
+                   notDirErr == FolderError.NotDirectory, "regular file rejected as NotDirectory");
+
+            var missingFolder = FolderCapability.FromPickerPath(Path.Combine(tempRoot, "missing"));
+            Assert(!missingFolder.ValidateAccess(out var missingErr) &&
+                   missingErr == FolderError.NotFound, "missing folder rejected as NotFound");
+
+            var folder = FolderCapability.FromPickerPath(workspaceDir);
+            Assert(folder.ToString() == "FolderCapability(<private>)", "FolderCapability.ToString is redacted");
+            Assert(folder.ValidateAccess(out _), "valid folder validates");
+
+            Assert(folder.ResolveDocument("readme.md", out var childCap, out _) && childCap is not null,
+                "inside relative document resolves");
+            var readOk = DocumentReader.Read(childCap!, 1024 * 1024);
+            Assert(readOk.IsOk, "folder-bound document reads");
+
+            Assert(!folder.ResolveDocument(@"..\outside\outside.md", out _, out var traversalErr) &&
+                   traversalErr == FolderError.OutsideFolder, "parent traversal rejected as OutsideFolder");
+            Assert(!folder.ResolveDocument(siblingFile, out _, out var prefixErr) &&
+                   prefixErr == FolderError.OutsideFolder, "sibling prefix directory rejected as OutsideFolder");
+            Assert(!folder.ResolveDocument(workspaceDir, out _, out var selfErr) &&
+                   selfErr == FolderError.OutsideFolder, "folder root itself rejected as document");
+
+            // Symlink/junction escape check and symlinked workspace root check (Developer Mode or junction)
+            var junctionDir = Path.Combine(workspaceDir, "escape-link");
+            var rootAliasDir = Path.Combine(tempRoot, "docs-alias");
+            try
+            {
+                Directory.CreateSymbolicLink(junctionDir, outsideDir);
+                Assert(!folder.ResolveDocument(Path.Combine("escape-link", "outside.md"), out _, out var linkErr) &&
+                       linkErr == FolderError.OutsideFolder, "symlink escaping folder rejected as OutsideFolder");
+
+                Directory.CreateSymbolicLink(rootAliasDir, workspaceDir);
+                var aliasFolder = FolderCapability.FromPickerPath(rootAliasDir);
+                Assert(aliasFolder.ResolveDocument(Path.Combine(rootAliasDir, "readme.md"), out var aliasChild, out _) &&
+                       aliasChild is not null, "rooted child inside symlinked workspace root resolves");
+            }
+            catch (UnauthorizedAccessException)
+            {
+                // Symlink creation without Developer Mode / privilege is skipped
+            }
+            catch (IOException)
+            {
+            }
+
+            folder.Revoke();
+            Assert(folder.IsRevoked, "folder grant marks revoked");
+            Assert(childCap!.IsRevoked, "folder revocation propagates to child document capability");
+            var readAfterRevoke = DocumentReader.Read(childCap, 1024 * 1024);
+            Assert(!readAfterRevoke.IsOk && readAfterRevoke.Error == DocumentError.AccessRevoked,
+                "child read after folder revocation returns AccessRevoked");
+        }
+        finally
+        {
+            try { Directory.Delete(tempRoot, recursive: true); } catch { }
+        }
+    }
+
+    private static void TestFolderAclDenialRevocationAndMoveRecovery()
+    {
+        var tempRoot = Path.Combine(Path.GetTempPath(), $"folder-acl-test-{Guid.NewGuid():N}");
+        var folderPath = Path.Combine(tempRoot, "workspace");
+        var movedPath = Path.Combine(tempRoot, "workspace-moved");
+        Directory.CreateDirectory(folderPath);
+        var currentUser = WindowsIdentity.GetCurrent().User!;
+        FileSystemAccessRule? denyRule = null;
+        try
+        {
+            // 1. Pre-existing ACL denial -> PermissionDenied
+            var dirInfo = new DirectoryInfo(folderPath);
+            var security = dirInfo.GetAccessControl();
+            denyRule = new FileSystemAccessRule(
+                currentUser,
+                FileSystemRights.ListDirectory | FileSystemRights.ReadData,
+                AccessControlType.Deny);
+            security.AddAccessRule(denyRule);
+            dirInfo.SetAccessControl(security);
+
+            var deniedFolder = FolderCapability.FromPickerPath(folderPath);
+            Assert(!deniedFolder.ValidateAccess(out var deniedErr) && deniedErr == FolderError.PermissionDenied,
+                $"denied folder reported {deniedErr}");
+
+            // Restore ACL
+            security.RemoveAccessRule(denyRule);
+            dirInfo.SetAccessControl(security);
+            denyRule = null;
+
+            // 2. Validated then ACL withdrawn -> AccessRevoked
+            var activeFolder = FolderCapability.FromPickerPath(folderPath);
+            Assert(activeFolder.ValidateAccess(out _), "folder validates after ACL restored");
+
+            security = dirInfo.GetAccessControl();
+            denyRule = new FileSystemAccessRule(
+                currentUser,
+                FileSystemRights.ListDirectory | FileSystemRights.ReadData,
+                AccessControlType.Deny);
+            security.AddAccessRule(denyRule);
+            dirInfo.SetAccessControl(security);
+
+            Assert(!activeFolder.ValidateAccess(out var revokedErr) && revokedErr == FolderError.AccessRevoked,
+                $"post-validation ACL withdrawal reported {revokedErr}");
+
+            security.RemoveAccessRule(denyRule);
+            dirInfo.SetAccessControl(security);
+            denyRule = null;
+
+            // 3. Moved folder -> NotFound, then relocated folder validates
+            Directory.Move(folderPath, movedPath);
+            Assert(!activeFolder.ValidateAccess(out var movedErr) && movedErr == FolderError.NotFound,
+                $"moved folder reported {movedErr}");
+
+            var relocated = FolderCapability.FromPickerPath(movedPath);
+            Assert(relocated.ValidateAccess(out _), "relocated folder validates");
+        }
+        finally
+        {
+            if (denyRule is not null && Directory.Exists(folderPath))
+            {
+                try
+                {
+                    var dirInfo = new DirectoryInfo(folderPath);
+                    var sec = dirInfo.GetAccessControl();
+                    sec.RemoveAccessRule(denyRule);
+                    dirInfo.SetAccessControl(sec);
+                }
+                catch { }
+            }
+            try { Directory.Delete(tempRoot, recursive: true); } catch { }
+        }
+    }
+
+    private static void TestRecentsStoreCapsDedupUntrustedJsonAndFutureVersion()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), $"recents-test-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempDir);
+        try
+        {
+            var storePath = Path.Combine(tempDir, "recents.json");
+            var store = new RecentsStore(storePath);
+
+            // Add 12 files -> capped at 10, newest first
+            for (var i = 1; i <= 12; i++)
+            {
+                var file = Path.Combine(tempDir, $"doc{i:D2}.md");
+                store.RecordFile(DocumentCapability.FromPickerPath(file));
+            }
+            Assert(store.Files.Count == 10, $"recent files capped at 10 (got {store.Files.Count})");
+            Assert(store.Files[0].DisplayName == "doc12.md", "newest recent file is first");
+
+            // Case-insensitive dedup moves existing entry to top
+            store.RecordFile(DocumentCapability.FromPickerPath(Path.Combine(tempDir, "DOC05.MD")));
+            Assert(store.Files.Count == 10, "dedup preserves 10-entry cap");
+            Assert(store.Files[0].DisplayName.Equals("doc05.md", StringComparison.OrdinalIgnoreCase),
+                "deduped entry moves to front");
+
+            // Folders cap & relocate
+            for (var i = 1; i <= 11; i++)
+            {
+                var dir = Path.Combine(tempDir, $"ws{i:D2}");
+                store.RecordFolder(FolderCapability.FromPickerPath(dir));
+            }
+            Assert(store.Folders.Count == 10, "recent folders capped at 10");
+            var oldFolder = Path.Combine(tempDir, "ws05");
+            var newFolder = Path.Combine(tempDir, "ws05-moved");
+            Assert(store.Relocate(RecentKind.Folder, oldFolder, newFolder), "Relocate succeeds");
+            Assert(store.Folders[0].DisplayName == "ws05-moved", "relocated folder moves to front");
+
+            // Reload from disk verifies persistence
+            var reloaded = new RecentsStore(storePath);
+            Assert(reloaded.Files.Count == 10 && reloaded.Folders.Count == 10, "reloaded recents match");
+
+            // Untrusted JSON with mixed invalid/UNC/relative/valid entries
+            var validFile = Path.Combine(tempDir, "valid.md");
+            var validFolder = Path.Combine(tempDir, "valid-ws");
+            var untrustedJson = $$"""
+            {
+              "version": 1,
+              "files": [
+                { "path": "\\\\server\\share\\unc.md", "display_name": "unc.md" },
+                { "path": "relative.md", "display_name": "relative.md" },
+                { "path": 12345 },
+                { "path": "{{validFile.Replace("\\", "\\\\")}}", "display_name": "valid\u202E.md" }
+              ],
+              "folders": [
+                { "path": "https://example.com/ws" },
+                { "path": "{{validFolder.Replace("\\", "\\\\")}}" }
+              ]
+            }
+            """;
+            File.WriteAllText(storePath, untrustedJson, new UTF8Encoding(false));
+            var sanitized = new RecentsStore(storePath);
+            Assert(sanitized.Files.Count == 1 && !sanitized.Files[0].DisplayName.Contains('\u202E'),
+                "untrusted JSON drops invalid/UNC/relative entries and sanitizes bidi display name");
+            Assert(sanitized.Folders.Count == 1 && sanitized.Folders[0].DisplayName == "valid-ws",
+                "untrusted JSON keeps valid folder");
+
+            // Future schema version is never overwritten
+            var futureJson = "{ \"version\": 99, \"files\": [], \"folders\": [] }";
+            File.WriteAllText(storePath, futureJson, new UTF8Encoding(false));
+            var futureStore = new RecentsStore(storePath);
+            futureStore.RecordFile(DocumentCapability.FromPickerPath(validFile));
+            Assert(File.ReadAllText(storePath).Contains("\"version\": 99"),
+                "future recents schema version is preserved on disk");
+        }
+        finally
+        {
+            try { Directory.Delete(tempDir, recursive: true); } catch { }
+        }
+    }
+
+    private static void TestRecentsAvailabilityChecks()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), $"recents-avail-test-{Guid.NewGuid():N}");
+        var folderPath = Path.Combine(tempDir, "ws");
+        Directory.CreateDirectory(folderPath);
+        var filePath = Path.Combine(folderPath, "note.md");
+        File.WriteAllText(filePath, "# Note\n", new UTF8Encoding(false));
+
+        var currentUser = WindowsIdentity.GetCurrent().User!;
+        FileSystemAccessRule? denyRule = null;
+        try
+        {
+            Assert(RecentsStore.CheckAvailability(new RecentEntry(RecentKind.File, filePath, "note.md", DateTimeOffset.UtcNow))
+                   == RecentAvailability.Available, "existing file is Available");
+            Assert(RecentsStore.CheckAvailability(new RecentEntry(RecentKind.Folder, folderPath, "ws", DateTimeOffset.UtcNow))
+                   == RecentAvailability.Available, "existing folder is Available");
+
+            // Wrong type
+            Assert(RecentsStore.CheckAvailability(new RecentEntry(RecentKind.File, folderPath, "ws", DateTimeOffset.UtcNow))
+                   == RecentAvailability.InvalidType, "directory as recent file is InvalidType");
+            Assert(RecentsStore.CheckAvailability(new RecentEntry(RecentKind.Folder, filePath, "note.md", DateTimeOffset.UtcNow))
+                   == RecentAvailability.InvalidType, "file as recent folder is InvalidType");
+
+            // ACL denied
+            var dirInfo = new DirectoryInfo(folderPath);
+            var security = dirInfo.GetAccessControl();
+            denyRule = new FileSystemAccessRule(
+                currentUser,
+                FileSystemRights.ListDirectory | FileSystemRights.ReadData,
+                AccessControlType.Deny);
+            security.AddAccessRule(denyRule);
+            dirInfo.SetAccessControl(security);
+
+            Assert(RecentsStore.CheckAvailability(new RecentEntry(RecentKind.Folder, folderPath, "ws", DateTimeOffset.UtcNow))
+                   == RecentAvailability.PermissionDenied, "denied folder is PermissionDenied");
+
+            security.RemoveAccessRule(denyRule);
+            dirInfo.SetAccessControl(security);
+            denyRule = null;
+
+            // Missing
+            File.Delete(filePath);
+            Assert(RecentsStore.CheckAvailability(new RecentEntry(RecentKind.File, filePath, "note.md", DateTimeOffset.UtcNow))
+                   == RecentAvailability.Missing, "deleted file is Missing");
+        }
+        finally
+        {
+            if (denyRule is not null && Directory.Exists(folderPath))
+            {
+                try
+                {
+                    var dirInfo = new DirectoryInfo(folderPath);
+                    var sec = dirInfo.GetAccessControl();
+                    sec.RemoveAccessRule(denyRule);
+                    dirInfo.SetAccessControl(sec);
+                }
+                catch { }
+            }
             try { Directory.Delete(tempDir, recursive: true); } catch { }
         }
     }
