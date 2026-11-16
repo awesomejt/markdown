@@ -187,14 +187,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, 
     return restoreWindow(state)
   }
 
-  /// Open a saved document at its position in a new, unshown window. Nil
-  /// when its bookmark no longer resolves or a window already shows it.
+  /// Open a saved folder and document, at the document's position, in a
+  /// new, unshown window (MAC-001H, MAC-002E). A folder that no longer
+  /// resolves leaves the document by itself; a document that doesn't leaves
+  /// the folder showing none. Nil when neither resolves, or when a window
+  /// already shows the document, or the folder without a document.
   func restoreWindow(_ state: RestorationState) -> ReaderWindowController? {
-    guard let capability = DocumentCapability(bookmark: state.bookmark),
-      !windows.contains(where: { $0.loader.capability == capability })
-    else { return nil }
+    let capability = state.bookmark.flatMap { DocumentCapability(bookmark: $0) }
+    let folder = state.workspace.flatMap { FolderCapability(bookmark: $0.bookmark) }
+    if let capability {
+      guard !windows.contains(where: { $0.loader.capability == capability }) else { return nil }
+    } else {
+      guard let folder, !windows.contains(where: { $0.folder == folder }) else { return nil }
+    }
     let controller = makeWindow(nil, show: false)
-    controller.restore(state, document: capability)
+    controller.restore(state, document: capability, folder: folder)
     return controller
   }
 

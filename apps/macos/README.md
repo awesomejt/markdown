@@ -346,9 +346,9 @@ measurements need an administrator for `purge` and were not run.
   system setting “Close windows when quitting an application”: with it on
   (the default), windows come back after a restart or a crash, not after
   Quit. Saved state is private document-derived data; it is never logged.
-  This build is not sandboxed, so its bookmarks are not security-scoped;
-  restoration reopens the document by itself, without its folder grant
-  (workspace restoration is MAC-002E).
+  This build is not sandboxed, so its bookmarks are not security-scoped.
+  A window with a folder also restores the folder and reopens its document
+  through the folder's grant ([MAC-002E](#workspace-watching-and-restoration-mac-002e)).
 - **Text size during a lead.** A text size change while a long document is
   still showing its lead now keeps the line at the top and the selection
   (the MAC-001G deferred finding); the new size waits for the whole text.
@@ -573,6 +573,70 @@ Limits: settings are app-wide, not per document or folder; there is no
 font choice, reading width or default sidebar pane yet (ADV-001 reading
 refinement).
 
+## Workspace watching and restoration (MAC-002E)
+
+- **Watching the folder.** A window with a folder watches its whole tree
+  with an FSEvents stream (`WorkspaceWatcher` in `MarkdownDocument`) and
+  lists it again when something changes: a document added, removed or
+  renamed, or a folder created, appears in the files sidebar by itself. The
+  refresh keeps the expanded folders, the selection and the scroll
+  position, and the search is run again over the new listing, unless the
+  reader stopped it.
+  FSEvents watches by path and holds no file descriptor, so it never keeps
+  a disk from being ejected. Events name each changed item, so changes
+  only to hidden items (a `.git` folder, an editor's `.swp` file beside a
+  visible document) are ignored unless View → Show Hidden Files is on. A dropped or overflowed batch of events still lists the
+  folder again, since every refresh is a full bounded listing (MAC-002B).
+- **Change storms.** Events are coalesced: a refresh runs once changes have
+  been quiet for 150 ms, or 1 s after the first change of a burst if they
+  never stop, so a long storm refreshes about once a second. One listing
+  runs at a time; changes during it cause exactly one more listing when it
+  finishes, never a queue. Reload Files and the View toggles still restart
+  the listing at once. In the smoke, 1,500 documents written in about
+  150 ms cost one listing, shown about 370 ms after the first write, and
+  200 writes inside `.git` and 20 to a `.swp` file in a visible folder
+  cost none.
+- **Access loss and recovery.** The stream watches the folder's own path,
+  so moving, renaming or deleting the folder, or its disk being unmounted,
+  lists it again; the listing fails, and the files sidebar and the search
+  say why (“The folder can’t be found.”, “The disk containing the folder is
+  no longer available.”, “Access to the folder was lost.”). The window keeps
+  the folder, so Close Folder still works, and remembers which folders were
+  expanded. When the folder comes back at its path (moved back, the disk
+  reconnected, permission restored) it lists again by itself: on the
+  stream's next event, when the window becomes key (for a volume that
+  delivers no events), or with Reload Files. The open document is checked
+  again at the same time, so its stale notice clears if it came back too. A
+  folder moved somewhere else is not followed while the app runs; reopen it
+  from Open Recent, which finds it through its bookmark (MAC-002A).
+- **Restoring the workspace.** A window's saved state (MAC-001H) is now
+  version 2. It adds a bookmark to the window's folder, the sidebar pane
+  (Files, Outline or Search), the expanded folders as display paths (at
+  most 512, each at most 4 KiB) and the Show Hidden Files and Show All
+  Files options. On relaunch the folder is validated off the main thread
+  and listed with those folders expanded and that pane shown, and the
+  document reopens through the folder's grant at its saved line and
+  selection, so its relative links and images work as before the quit. A
+  folder window showing no document restores the folder alone. If the
+  folder's bookmark no longer resolves, the document reopens by itself; if
+  the folder resolves but can't be read, the window shows the MAC-002A
+  recovery (Locate…, Grant Access…, Try Again). A window already showing the
+  document, or the folder without a document, isn't restored twice. Version
+  1 state, saved before this change, still restores its document. Saved
+  state is untrusted: sizes are bounded, an unknown pane falls back to
+  Files, and malformed folder state drops the folder, never the launch. The
+  expanded paths are only looked up in the fresh listing, never used as
+  access. Like the rest of the saved state they are private and never
+  logged. Restoration still follows Settings → Reopen windows from last time
+  (MAC-002D) and macOS's “Close windows when quitting an application”.
+
+Limits: a search's query and results are not restored, and the search
+re-runs on every refresh of a folder whose documents keep changing (it is
+bounded and cancellable, MAC-002C). Event delivery on network and provider
+volumes is unverified (capability matrix CAP-06); becoming key covers
+them. A folder larger than the listing limits refreshes in full each time,
+within those limits.
+
 ## Development artifact and licenses (MAC-001I)
 
 ```sh
@@ -744,7 +808,19 @@ with the status counts, moves to the results with Down arrow, opens a match
 deep in a long document (selected and in view) with Return and another by
 the click action, opens a match in a document edited since the search,
 supersedes a running query, stops one, reports a match budget, and clears
-the search with Close Folder. Its
+the search with Close Folder. Its MAC-002E part watches a folder: an added
+and a removed document appear without losing the expanded folders or the
+selection, a storm of 1,500 new documents costs a bounded number of
+listings (one in practice), 200 writes inside `.git` and 20 to a swap file
+beside a visible document cost none, and the
+folder moved away is reported in the sidebar and recovers with its
+expansion and document when moved back. It then saves a folder window
+showing the search pane, hidden files and a document scrolled to a heading
+into a private archive, closes it and restores it (folder, pane, option,
+expanded folders, the document through the folder's grant and its place,
+and watching again), and checks a folder window without a document, a
+second restore, a folder bookmark that no longer resolves and forged
+expansion and pane values. Its
 reading part opens a 202-heading document and checks the rendered text, the
 outline rows, outline and fragment-link navigation (heading revealed and
 selected, outline following), an external link routed to a stub instead of
@@ -835,8 +911,12 @@ deleted document and unreadable anchors are handled. Finally `check.py`
 runs a real relaunch: the bundle is launched with
 `--relaunch-check prepare` and `-NSQuitAlwaysKeepsWindows YES`, places the
 reader and quits, then relaunched with `--relaunch-check verify`, which
-expects AppKit to restore that window at that place and selection. The
-verify run closes its windows, so the app's saved state is left empty. The
+expects AppKit to restore that window at that place and selection. It then
+does the same for a folder (MAC-002E): `prepare` opens it, expands `docs`,
+opens `docs/live.md` from the files sidebar and shows the search pane, and
+`verify` expects the folder back with that pane and expansion and the
+document through the folder's grant at its place. Each verify run closes
+its windows, so the app's saved state is left empty. The
 smoke and measurements never restore or save windows.
 
 MAC-002D adds a second two-launch check of settings. `check.py` seeds a
@@ -931,6 +1011,16 @@ be cancelled and its runner configuration fixed.
     → “Close windows when quitting an application”, quit Markdown with the
     window open and relaunch: the window returns at the same place. Move
     the file while Markdown is not running and relaunch again.
+11. Open a folder, expand a subfolder and open a document from the files
+    sidebar. In Finder, add, rename and delete Markdown files in it: the
+    sidebar follows without collapsing the subfolder. Unzip a large archive
+    or run `git checkout` of another branch in it: the sidebar settles once,
+    without flicker. Move the folder to the Desktop and back, and eject and
+    reconnect a disk holding a folder: the sidebar reports the loss, then
+    lists again by itself. With the search pane showing, quit with the
+    window open (with “Close windows when quitting an application” off) and
+    relaunch: the folder, the pane, the expanded subfolder and the document
+    at its place return. Check the loss message with VoiceOver.
 
 Inspect the empty-state text/window/menu roles using macOS accessibility
 tooling. Full VoiceOver document reading, mixed displays and permission
@@ -1241,3 +1331,21 @@ consumer. Not run by the agent: keyboard and VoiceOver use of the Settings
 window, and a real quit and relaunch with Reopen windows from last time
 off (the check covers the declining path directly, with saved state ignored
 at launch).
+
+## MAC-002E local evidence
+
+2026-11-15, macOS 27.0.1 on Apple Silicon, Xcode 27.1, Swift 6.4:
+`.build/feas004-venv/bin/python apps/macos/tools/check.py` passed in debug
+and release: `swift format lint --strict`, 90 Swift tests per configuration
+(including 2 new `WorkspaceWatcherTests`: the coalescer's quiet and maximum
+delays, and a real FSEvents stream reporting a new file, ignoring then
+reporting changes in a hidden folder and to a swap file beside a document, reporting the folder moved away and back,
+coalescing 2,000 writes and stopping when cancelled), the bundle smoke with
+its MAC-002E part (1,500 documents written in 133–151 ms, listed once,
+about 372 ms after the first write, in both configurations), the existing
+document relaunch check and the new folder relaunch check, the preferences
+check, the release development artifact and the relocated `CoreProbe`
+consumer. Not run by the agent: a disk ejected and reconnected or a network
+folder, permission removed from a watched folder in Finder, VoiceOver on
+the files sidebar's loss message, and a real quit and relaunch outside the
+check's `-NSQuitAlwaysKeepsWindows YES` launches.

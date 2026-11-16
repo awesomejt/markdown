@@ -42,22 +42,30 @@ for configuration in ("debug", "release"):
     # Real state restoration: quit with the window kept, relaunch, expect the
     # document back at its place. The verify launch closes its windows, so
     # the app's saved state is left empty.
+    # The same with the document opened through a folder (MAC-002E): the
+    # folder, its sidebar pane and expanded folder come back too.
+    text = "# Live\n\n" + "\n".join(
+        f"## Part {index}\n\nProse for part {index}, with a *marked* word.\n"
+        for index in range(120))
     with tempfile.TemporaryDirectory(prefix="markdown-relaunch-") as directory:
         document = Path(directory) / "live.md"
-        document.write_text("# Live\n\n" + "\n".join(
-            f"## Part {index}\n\nProse for part {index}, with a *marked* word.\n"
-            for index in range(120)), encoding="utf-8")
-        for phase, marker in (("prepare", "relaunch-check: prepared"),
-                              ("verify", "relaunch-check: pass")):
-            result = subprocess.run(
-                [str(app / "Contents/MacOS/Markdown"), "--relaunch-check", phase, str(document),
-                 "-NSQuitAlwaysKeepsWindows", "YES"],
-                cwd=directory, env=env, text=True, capture_output=True, timeout=30)
-            print(result.stdout, end="", flush=True)
-            if result.returncode != 0 or marker not in result.stdout:
-                print(result.stderr, end="", flush=True)
-                raise SystemExit(f"{configuration}: relaunch check {phase} failed")
-    print(f"{configuration}: relaunch restoration passed", flush=True)
+        document.write_text(text, encoding="utf-8")
+        workspace = Path(directory) / "Workspace"
+        (workspace / "docs").mkdir(parents=True)
+        (workspace / "docs/live.md").write_text(text, encoding="utf-8")
+        (workspace / "README.md").write_text("# Readme\n", encoding="utf-8")
+        for target in (document, workspace):
+            for phase, marker in (("prepare", "relaunch-check: prepared"),
+                                  ("verify", "relaunch-check: pass")):
+                result = subprocess.run(
+                    [str(app / "Contents/MacOS/Markdown"), "--relaunch-check", phase,
+                     str(target), "-NSQuitAlwaysKeepsWindows", "YES"],
+                    cwd=directory, env=env, text=True, capture_output=True, timeout=30)
+                print(result.stdout, end="", flush=True)
+                if result.returncode != 0 or marker not in result.stdout:
+                    print(result.stderr, end="", flush=True)
+                    raise SystemExit(f"{configuration}: relaunch check {phase} failed")
+    print(f"{configuration}: relaunch restoration passed (document, folder)", flush=True)
 
     # Persistent settings: seed a throwaway defaults suite with MAC-001F
     # (version 1) settings, then upgrade and change them in one launch and

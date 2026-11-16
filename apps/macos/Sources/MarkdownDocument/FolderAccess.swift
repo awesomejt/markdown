@@ -100,6 +100,20 @@ public struct FolderCapability: Sendable, Hashable, CustomStringConvertible {
     grant = FolderGrant(url: resolved, securityScoped: securityScoped)
   }
 
+  /// Resolve a folder saved for state restoration (MAC-002E) without UI or
+  /// mounting a volume, so a disconnected server never stalls a relaunch.
+  /// Nil when it can't be found; access is checked by `validate`.
+  public init?(bookmark: Data) {
+    guard let url = Bookmarks.resolve(bookmark), let folder = try? Self(granted: url) else {
+      return nil
+    }
+    self = folder
+  }
+
+  /// A bookmark to the folder for state restoration, the same persistent
+  /// grant as a recent folder's. Touches the filesystem; call off the main thread.
+  public func bookmark() -> Data? { Bookmarks.make(url) }
+
   public var displayName: String { FileManager.default.displayName(atPath: url.path) }
   public var description: String { "FolderCapability(<redacted>)" }
   public var isRevoked: Bool { grant.isRevoked }
