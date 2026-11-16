@@ -74,6 +74,70 @@ public enum LinkDestination: Sendable, Equatable {
   }
 }
 
+/// A document's front matter, kept apart from its text (MAC-002F, R1.2):
+/// the properties the core published, or the front matter's source when it
+/// published none (the core discards the whole map on a duplicate key, an
+/// unsupported value or a limit, and the source must stay readable then).
+public struct DocumentProperties: Sendable, Equatable {
+  public struct Entry: Sendable, Equatable {
+    public let key: String
+    public let value: String
+  }
+
+  public let entries: [Entry]
+  /// The front matter's source, delimiters included, when the core
+  /// discarded its properties.
+  public let unreadSource: String?
+
+  /// The warnings with which the core discards the whole property map.
+  static let discardCodes: Set<String> = [
+    "front_matter_duplicate", "front_matter_unsupported", "front_matter_limit",
+  ]
+
+  /// Nil without front matter, and for front matter that is an empty
+  /// mapping (empty or only comments), which has nothing to show.
+  init?(_ document: CoreDocument) throws {
+    guard let range = document.frontMatterRange else { return nil }
+    var entries: [Entry] = []
+    entries.reserveCapacity(document.properties.count)
+    for property in document.properties {
+      entries.append(
+        Entry(key: try document.string(property.key), value: try Self.value(property, document)))
+    }
+    self.entries = entries
+    let discarded = try document.diagnostics.contains {
+      Self.discardCodes.contains(try document.string($0.code))
+    }
+    if entries.isEmpty, !discarded { return nil }
+    if entries.isEmpty {
+      let start = Int(range.lowerBound)
+      let end = Int(range.upperBound)
+      guard end <= document.source.count else { throw CoreError.invalidSnapshot }
+      var source = String(decoding: document.source[start..<end], as: UTF8.self)
+      while source.last?.isNewline == true { source.removeLast() }
+      unreadSource = source
+    } else {
+      unreadSource = nil
+    }
+  }
+
+  private static func value(_ property: md_property, _ document: CoreDocument) throws -> String {
+    switch Int(property.kind) {
+    case MD_VALUE_NULL: return "null"
+    case MD_VALUE_BOOLEAN: return property.boolean != 0 ? "true" : "false"
+    case MD_VALUE_INTEGER: return String(property.integer)
+    case MD_VALUE_STRING: return try document.string(property.string)
+    case MD_VALUE_STRINGS:
+      let start = Int(property.first_string)
+      let end = start + Int(property.string_count)
+      guard start <= end, end <= document.stringList.count else { throw CoreError.invalidSnapshot }
+      return try document.stringList[start..<end].map { try document.string($0) }.joined(
+        separator: ", ")
+    default: throw CoreError.invalidSnapshot
+    }
+  }
+}
+
 /// Immutable rendered text and heading map, built off the main thread from an
 /// owned snapshot. The unchecked conformance covers `text`: an immutable copy
 /// that is never mutated after `render` returns.
@@ -107,6 +171,8 @@ public struct RenderedDocument: @unchecked Sendable {
   /// a workspace search hit's source span still applies (MAC-002C).
   public let sourceLength: UInt64
   public let sourceSHA256: String
+  /// The front matter, shown beside the text rather than in it; nil without any.
+  public let properties: DocumentProperties?
 
   /// The first heading with this anchor, as GitHub resolves duplicate slugs.
   public func heading(anchor: String) -> RenderedHeading? {
@@ -129,7 +195,7 @@ public enum DocumentRenderer {
     _ document: CoreDocument, images: ImageLoader? = nil, budget: ImageBudget = ImageBudget(),
     scale: CGFloat = 1, lead: (@Sendable (RenderedDocument) -> Void)? = nil
   ) throws -> RenderedDocument {
-    var builder = Builder(
+    var builder = try Builder(
       document: document, images: ImageCache(loader: images, budget: budget), scale: scale)
     var lead = lead
     for (index, root) in document.roots.enumerated() {
@@ -252,9 +318,13 @@ private struct Builder {
   /// Where the current TextKit paragraph starts in `output`.
   private var paragraphStart = 0
   private var visited = 0
+  /// UTF-16 units of code highlighted so far (`SyntaxHighlighter.maxDocumentUnits`).
+  private var highlightedUnits = 0
+  let properties: DocumentProperties?
 
-  init(document: CoreDocument, images: ImageCache, scale: CGFloat) {
+  init(document: CoreDocument, images: ImageCache, scale: CGFloat) throws {
     self.document = document
+    properties = try DocumentProperties(document)
     self.scale = scale
     cache = AttributeCache(scale: scale)
     imageCache = images
@@ -407,10 +477,34 @@ private struct Builder {
   private mutating func codeBlock(_ node: md_node, index: Int, context: Context) throws {
     var code = try document.string(node.text)
     if code.hasSuffix("\n") { code.removeLast() }
+    // A quoted block takes the quote's colour, so only unquoted code is highlighted.
+    let info =
+      node.flags & UInt32(MD_NODE_HAS_INFO) != 0 && !context.quoted
+      ? try document.string(node.extra) : ""
     try paragraph(context, code: true) { builder in
       let start = builder.length
       builder.append(code, font: Font(code: true))
       builder.mark(index, from: start)
+      try builder.highlight(code, info: info, at: start)
+    }
+  }
+
+  /// Colour the tokens of a fenced code block appended at `start`, within the
+  /// per-block and per-document limits. The appended text matches `code`
+  /// unit for unit unless `append` inserted line breaks into a very long
+  /// run, and such a block is over the per-block limit anyway.
+  private mutating func highlight(_ code: String, info: String, at start: Int) throws {
+    let units = (code as NSString).length
+    guard !info.isEmpty, units <= SyntaxHighlighter.maxBlockUnits,
+      highlightedUnits + units <= SyntaxHighlighter.maxDocumentUnits,
+      length - start == units, SyntaxHighlighter.supports(info)
+    else { return }
+    try Task.checkCancellation()
+    highlightedUnits += units
+    for token in SyntaxHighlighter.tokens(code, info: info) {
+      output.addAttribute(
+        .foregroundColor, value: SyntaxHighlighter.color(token.kind),
+        range: NSRange(location: start + token.range.location, length: token.range.length))
     }
   }
 
@@ -551,7 +645,7 @@ private struct Builder {
       headings: headings, images: images, tables: tables, isComplete: complete, scale: scale,
       nodeText: nodeText, insertedBreaks: insertedBreaks, positions: positions,
       snapshot: document.snapshot, sourceLength: UInt64(document.source.count),
-      sourceSHA256: document.sourceSHA256)
+      sourceSHA256: document.sourceSHA256, properties: properties)
   }
 
   /// Where a node's display text starts in its source span: after a code

@@ -475,7 +475,20 @@ read.
   splits one write across batches, so tests settle before asserting silence. Grok review 1 at
   `b69746f` reported 0 Blockers, 1 Concern (hidden dot-files in visible folders), 0 Nits. The
   concern was fixed at `c78f17d` with file events, approved under D-029. A slow CI runner exposed a
-  watcher refresh re-running a stopped search. It was fixed at `06b45f2`: a refresh keeps Stop. `MAC-002F` is next on macOS.
+  watcher refresh re-running a stopped search. It was fixed at `06b45f2`: a refresh keeps Stop.
+- **MAC-002F (PR #88)**: completes the macOS R1 conformance and packaging work.
+  - A `PropertiesBar` row shows the front matter, kept out of the text. It shows the
+    source as written only when the core reports a `front_matter_*` discard warning.
+  - `SyntaxHighlighter` highlights code in the render, bounded at 16 Ki units and 2,048
+    tokens per block and 512 Ki units per document, with the Linux languages plus Swift.
+  - `--version` and About name `model-v2 (ABI v1, anchor v1)`, the core package and the
+    source commit.
+  - `artifact.py` adds a drag-to-Applications `.dmg`. It is verified by installing into a
+    stand-in Applications folder, comparing with the zip, launching it and uninstalling.
+  - The smoke timeout is 60 s, because the hosted debug smoke takes about 30 s.
+  - Warm launch, prose 1 MiB: 419 ms; `develop` measures the same, and the growth is
+    AppKit start-up. Grok review 1: 3 nits, all fixed (approved under D-029).
+  - The `MAC-002` aggregate is next on macOS.
 - Workflow: task PRs target `develop` and merge on a Grok review with no
   serious finding (D-029). `main` takes only owner-approved milestone reviews
   from `review/<milestone>`, tagged `m-<milestone>` (D-030). The shared-core

@@ -637,6 +637,74 @@ volumes is unverified (capability matrix CAP-06); becoming key covers
 them. A folder larger than the listing limits refreshes in full each time,
 within those limits.
 
+## Packaging and R1 conformance (MAC-002F)
+
+- **Front matter as properties.** A document's front matter is never part
+  of its text, so find, copy and reading positions ignore it. A
+  **Properties (N)** row above the text, collapsed at first, expands to the
+  keys and values the core published, in the core's order (sorted by key);
+  a list shows as its items separated by commas. When the core published
+  none for the front matter it found (a duplicate key, an unsupported value
+  or a limit discards the whole map, [Front-Matter.md](../../docs/Front-Matter.md#atomic-failure-and-diagnostics)),
+  the row reads **Properties (not read)** and shows the front matter as
+  written, so it stays readable. The row shows this only when the core
+  reports one of those discard warnings (`front_matter_duplicate`,
+  `front_matter_unsupported`, `front_matter_limit`); empty or comment-only
+  front matter is a valid empty mapping and shows no row. The row is
+  hidden for a document without front matter, keeps the reader's expanded or collapsed choice across
+  documents in the window, scrolls past 180 points and stacks below the
+  find bar. VoiceOver reads it as the “Document properties” group, with
+  each value labelled by its key.
+- **Syntax highlighting.** A fenced code block whose info string names a
+  known language has its keywords, type-like names, strings, comments and
+  numbers coloured (`SyntaxHighlighter` in `MarkdownRender`): Rust, Python,
+  JavaScript/TypeScript, C/C++/Objective-C, Go, Swift, shell, JSON,
+  YAML/TOML, SQL and HTML/XML/SVG/CSS, as in the Linux reader (LNX-002F)
+  plus Swift. It is a lexical tokenizer, not a parser: a misread token only
+  changes a colour. It runs in the off-main, cancellable render, never on
+  the main thread, and is bounded: a block over 16,384 UTF-16 units, the
+  tokens past 2,048 in a block, and a block that would take the document
+  past 524,288 highlighted units all stay plain monospace. Code in a block
+  quote takes the quote's colour. The colours are foreground colours with
+  light and dark variants, so the find highlights (rendering attributes)
+  still show over them and copied rich text keeps them. Unlike Linux,
+  which highlights only the rows on screen, the Mac highlights while
+  rendering, because TextKit 2 lays out from the finished text; the
+  per-document limit bounds that cost instead.
+- **Build diagnostics.** `Markdown --version` prints one line naming the
+  app version, the semantic contract the app negotiated with its core
+  (`model-v2 (ABI v1, anchor v1)`), the core package's configuration and
+  fingerprint, and the source commit `build.py` recorded, for example
+  `Markdown 0.1.0 (1); Semantic contract: model-v2 (ABI v1, anchor v1);
+  Core package: release dd0c327d3a24; Source: 7f2dd11cc395`. Markdown →
+  About Markdown shows the same lines in its credits. No path is included.
+- **Installable disk image.** `artifact.py` (and the release part of
+  `check.py`) now also writes
+  `build/macos/artifacts/Markdown-<version>-<commit>[-dirty]-macos-arm64.dmg`:
+  a compressed, read-only disk image holding the same stripped
+  `Markdown.app` as the zip and an `Applications` link, the usual macOS
+  drag-to-install layout. Its size and SHA-256 are in the JSON record
+  beside it. The verification mounts it read-only and hidden from Finder,
+  checks that it holds only the app and the link to `/Applications`, copies
+  the app out as a Finder drag does into a stand-in Applications folder in
+  a temporary directory, checks that the installed bundle matches the zip's
+  byte for byte and passes the same bundle checks (identity, arm64 and
+  macOS 27.0, system libraries only, no build-machine path, unsigned,
+  licenses), checks `--version`, runs the full smoke directly and through
+  Launch Services, unregisters it and removes it again. It never writes to
+  the real `/Applications`. To install by hand, open the disk image and
+  drag Markdown to Applications; to uninstall, move `Markdown.app` to the
+  Trash (saved settings and window state stay in the user's preferences
+  and saved application state, as for any Mac app).
+- **Budgets.** See [MAC-002F local evidence](#mac-002f-local-evidence).
+
+Limits: the disk image is unsigned and not notarized, like the zip, so a
+copy downloaded on another Mac is quarantined and Gatekeeper refuses it
+until it is allowed in System Settings → Privacy & Security (CAP-28/29);
+a clean second Mac is untested. The install verification uses a stand-in
+Applications folder, so a real install into `/Applications` is a manual
+check.
+
 ## Development artifact and licenses (MAC-001I)
 
 ```sh
@@ -769,13 +837,17 @@ the staged artifact, and verifies its actual fingerprint and configuration.
 It runs `swift format lint --strict`, builds debug/release with warnings as
 errors and Swift 6 concurrency checking, validates Info.plist, then launches
 each **assembled bundle executable** with `--smoke-test`. Each child has a
-30-second timeout and must emit its success marker and exit zero through the
+60-second timeout (the debug smoke takes about 30 s on a hosted runner) and
+must emit its success marker and exit zero through the
 native Quit action. No success marker or a timeout fails the check. The relocated
 app is launched with loader overrides removed, and a relocated standalone release
 consumer parses synthetic input without repository/runtime library dependencies.
 In release, the relocated app is the
 [development artifact](#development-artifact-and-licenses-mac-001i), extracted
-outside the checkout, verified and launched directly and through Launch Services.
+outside the checkout, verified and launched directly and through Launch Services,
+and the [disk image](#packaging-and-r1-conformance-mac-002f) is installed into a
+stand-in Applications folder, launched both ways and uninstalled. Each
+configuration's relocated bundle must also print the expected `--version` line.
 
 The smoke runs the AppKit event loop and verifies bundle identity, a visible
 resizable window/native empty state, menu shortcuts/actions, a second window,
@@ -828,6 +900,13 @@ the browser, the sidebar command and Copy enabled on the document selection.
 Its rich-block part opens a document whose sibling image loads through the
 app's real resource adapter, while a remote image and a `../` image are
 refused; the task marker and tab-separated table rows are checked on TextKit 2.
+Its MAC-002F part checks that a document without front matter shows no
+properties, that one with front matter shows **Properties (2)** collapsed,
+keeps the front matter out of the text and lists each key and value when
+expanded, that the text starts below the expanded properties and the find
+bar together, that fenced Swift code is coloured in the live text view, and
+that the About credits name the semantic contract and the bundle its source
+commit.
 Copy is written to a private pasteboard, never the user's clipboard.
 Its MAC-001F part searches a Unicode document through the real find bar and
 menu commands: case folding, NFC and NFD spellings, an emoji sequence, CJK
@@ -1349,3 +1428,50 @@ consumer. Not run by the agent: a disk ejected and reconnected or a network
 folder, permission removed from a watched folder in Finder, VoiceOver on
 the files sidebar's loss message, and a real quit and relaunch outside the
 check's `-NSQuitAlwaysKeepsWindows YES` launches.
+
+## MAC-002F local evidence
+
+2026-11-15, Apple M5 Max, macOS 27.0.1, Xcode 27.1, Swift 6.4:
+`.build/feas004-venv/bin/python apps/macos/tools/check.py` passed in debug
+and release: `swift format lint --strict`, 97 Swift tests per configuration
+(including 7 new `ConformanceTests`: each token kind, common misreads such
+as `${#a}`, apostrophes and Rust lifetimes, UTF-16 ranges past non-ASCII
+text, the block, token and document limits, quoted and unlabelled blocks
+left plain, properties in the core's order with lists, booleans, integers
+and null, unread front matter shown as written, and the diagnostics'
+contract), the bundle smoke with its MAC-002F part, both relaunch checks,
+the preferences check, `--version` from the relocated debug bundle, the
+release zip verified relocated, the release disk image (about 1.7 MB)
+installed into a stand-in Applications folder, launched directly and
+through Launch Services and uninstalled, and the relocated `CoreProbe`
+consumer.
+
+Budgets, release, `apps/macos/tools/measure.py` (five warm runs, ten
+refreshes), against the D-016 targets of 400 ms to first text and 150 ms
+per jump:
+
+| Profile | Warm launch to first text (median, min–max) | Whole document | Outline jumps (first/middle/last) | Refresh (median), place kept |
+| --- | --- | --- | --- | --- |
+| prose 1 MiB | 419 ms (388–426) | 501 ms | 26 / 30 / 17 ms | 317 ms, 10/10 |
+| prose 5 MiB | 605 ms (596–609) | 1,242 ms | 33 / 45 / 51 ms | 1,058 ms, 10/10 |
+| long lines 1 MiB | 398 ms (395–407) | 310 ms | 27 / 32 / 32 ms | 167 ms, 10/10 |
+
+Page-down steps stay under 2 ms at the 95th percentile (5 ms for long lines),
+Copy of the whole 5 MiB document takes 40 ms, and a text size change
+171 ms (1 MiB) and 740 ms (5 MiB). The jump target is met on every profile.
+The launch target is met only by long lines 1 MiB, by 2 ms: prose 1 MiB
+launches in 419 ms, where MAC-001G measured 355 ms. The same measurement on
+the `develop` head this branch starts from (`7f2dd11`) gives 417 ms
+(384–428), so MAC-002F adds nothing. The difference from MAC-001G is AppKit
+start-up, which now reaches `applicationDidFinishLaunching` about 290 ms
+after the process starts (about 255 ms then), before any document work.
+The prose profiles contain no fenced code, so highlighting costs them
+nothing. The refresh footprint matches MAC-001H (5 MiB: flat at about
+1,074 MiB after the fourth refresh). These stay open in
+[TODO.md](../../TODO.md#open-native-budgets). Cold launches (`--cold`, which
+needs `sudo purge`) were not run.
+
+Not run by the agent: dragging the app from the mounted disk image into the
+real `/Applications` in Finder and launching it from there, a quarantined
+download on a second Mac, VoiceOver on the properties row, and the About
+panel's appearance.
