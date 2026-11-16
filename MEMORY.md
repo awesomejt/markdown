@@ -117,6 +117,16 @@ read.
   artifact verification outside checkout with 0 leaked handles). Full walking skeleton
   acceptance is documented in `docs/Windows-Skeleton-Acceptance.md`. The Windows skeleton
   milestone review (D-030) is next on Windows, and LNX-001D1 is eligible on Linux.
+- WIN-002B (PR #90) delivers the Windows native workspace browser and keyboard-accessible
+  navigation (`CoreWorkspace` binding `md_workspace_classify_path`, bounded off-main
+  `WorkspaceTree` enumeration at 100,000 entries / 256 levels skipping reparse points and
+  deferring hidden subdirectories, virtualized `WorkspaceSidebar` with `All` / `.*` / `↻` / `×`
+  controls, `⚠` invisible-character flag, UIA `Level` / `PositionInSet` / `SizeOfSet`,
+  `Left` / `Right` / `Enter` / `Space` navigation, and `Ctrl+B` sidebar toggle).
+  Debug/Release/relocated Release pass 21 core, 19 document, 20 render tests, Native AOT
+  smoke, association, relaunch, and probe (`0` leaked handles). Hosted CI run `43816370744`
+  passed all checks. Grok review 1 at `87d874a` had 0 Blockers, 2 Concerns, 1 Nit (approved
+  under D-029; all 3 fixed in `39d2ad5..082b693`).
 - Phase: `desktop-apps`; the portable-core shared track is complete through
   CORE-006 (GATE-001 approved, D-018). Native chains are now eligible (D-027).
 - Product: local-first, read-only native Markdown reader. Windows, macOS and
