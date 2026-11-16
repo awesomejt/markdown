@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.IO;
 using System.IO.Pipes;
+using System.Runtime.InteropServices;
 using System.Security.Principal;
 using System.Text;
 using System.Text.Json;
@@ -18,6 +19,13 @@ namespace Markdown.Windows;
 internal static class Program
 {
     internal const string NewWindowCommand = "__NEW_WINDOW__";
+    [DllImport("kernel32.dll", ExactSpelling = true)]
+    private static extern nint GetCurrentProcess();
+
+    [DllImport("kernel32.dll", ExactSpelling = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool TerminateProcess(nint hProcess, uint uExitCode);
+
     internal static bool Smoke;
     internal static bool AssociationSmoke;
     internal static string? AssociationPipeName;
@@ -144,6 +152,14 @@ internal static class Program
                 }
                 s_associationPrimaryMutex.Dispose();
                 s_associationPrimaryMutex = null;
+            }
+            if (Smoke)
+            {
+                // Avoid WinUI 3 unpackaged multi-window ListView DLL_PROCESS_DETACH deadlock after
+                // Application.Start has returned, live Rust handles are 0, and streams are flushed.
+                Console.Out.Flush();
+                Console.Error.Flush();
+                _ = TerminateProcess(GetCurrentProcess(), (uint)Result);
             }
         }
     }
