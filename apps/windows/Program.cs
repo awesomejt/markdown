@@ -26,6 +26,9 @@ internal static class Program
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool TerminateProcess(nint hProcess, uint uExitCode);
 
+    internal static void TerminateNow(int exitCode) =>
+        _ = TerminateProcess(GetCurrentProcess(), (uint)exitCode);
+
     internal static bool Smoke;
     internal static bool AssociationSmoke;
     internal static string? AssociationPipeName;
@@ -1486,6 +1489,24 @@ public sealed partial class ReaderApp : Application
             {
                 Program.Result = 1;
             }
+            if (Program.Result == 0 && !Program.WaitZeroLiveHandles(2000))
+            {
+                Program.Result = 1;
+            }
+            var exitCode = Program.Result;
+            var watchdog = new Thread(() =>
+            {
+                Thread.Sleep(250);
+                Console.Out.Flush();
+                Console.Error.Flush();
+                Program.TerminateNow(exitCode);
+            })
+            {
+                IsBackground = true,
+                Name = "smoke-exit-watchdog",
+            };
+            watchdog.Start();
+            Exit();
         }
         catch (Exception ex)
         {
