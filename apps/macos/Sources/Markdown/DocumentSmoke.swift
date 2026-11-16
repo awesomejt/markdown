@@ -116,6 +116,7 @@ enum DocumentSmoke {
     note("reload/revocation/generations checked")
     try await reading(delegate: delegate, file: file, check: check)
     try await richBlocks(delegate: delegate, directory: directory, file: file, check: check)
+    try await conformance(delegate: delegate, file: file, check: check)
     try await ReadingControlsSmoke.run(delegate: delegate, file: file, check: check)
     try await RefreshSmoke.run(delegate: delegate, file: file, check: check)
 
@@ -258,6 +259,74 @@ enum DocumentSmoke {
     try check(surface.textView.string.contains("A\tB\nx\t1"), "table rows are tab-separated")
     try check(surface.textView.textLayoutManager != nil, "rich blocks stay on TextKit 2")
     note("tables/tasks/images/resource policy checked")
+  }
+
+  /// R1 conformance in the window (MAC-002F): front matter shown as
+  /// properties above the text, never in it; highlighted fenced code; and
+  /// the build's contract in the About panel's credits.
+  private static func conformance(
+    delegate: AppDelegate, file: (String, Data) throws -> URL, check: (Bool, String) throws -> Void
+  ) async throws {
+    let plain = try requireWindow(delegate.windows.last)
+    try check(plain.propertiesBar.isHidden, "a document without front matter shows no properties")
+    let markdown = """
+      ---
+      title: Conformance
+      tags: [one, two]
+      ---
+      # Code
+
+      ```swift
+      let answer = 42
+      ```
+      """
+    let url = try file("conformance.md", Data(markdown.utf8))
+    delegate.application(NSApp, open: [url])
+    await delegate.opensFinished()
+    let reader = try requireWindow(delegate.windows.last)
+    try await settle(reader)
+    let bar = reader.propertiesBar
+    try check(
+      !bar.isHidden && bar.title.stringValue == "Properties (2)", "front matter shows as properties"
+    )
+    try check(!bar.isExpanded, "properties start collapsed")
+    try check(!reader.surface.textView.string.contains("tags"), "front matter is not document text")
+    bar.setExpanded(true)
+    reader.window?.contentView?.layoutSubtreeIfNeeded()
+    try check(
+      bar.shownRows.map(\.key) == ["tags", "title"]
+        && bar.shownRows.map(\.value) == ["one, two", "Conformance"],
+      "expanded properties list each key and value")
+    func surfaceBelow(_ view: NSView) -> Bool {
+      let content = reader.window?.contentView
+      let barFrame = view.convert(view.bounds, to: content)
+      let surface = reader.surface.scrollView
+      return barFrame.height > 0
+        && surface.convert(surface.bounds, to: content).maxY <= barFrame.minY + 0.5
+    }
+    try check(surfaceBelow(bar), "the text starts below the expanded properties")
+    reader.showFindBar(nil)
+    reader.window?.contentView?.layoutSubtreeIfNeeded()
+    try check(
+      reader.isFindBarVisible && surfaceBelow(bar) && surfaceBelow(reader.findBar),
+      "the find bar and properties stack above the text")
+    reader.closeFindBar()
+
+    let text = reader.surface.textView.string as NSString
+    let keyword = text.range(of: "let answer")
+    let color =
+      reader.surface.textView.textStorage?.attribute(
+        .foregroundColor, at: keyword.location, effectiveRange: nil) as? NSColor
+    try check(
+      keyword.location != NSNotFound && color != nil && color != .labelColor,
+      "fenced Swift code is highlighted")
+
+    let diagnostics = BuildDiagnostics(core: try CoreRuntime.diagnostics())
+    try check(
+      diagnostics.credits.string.contains("Semantic contract: model-v2 (ABI v1, anchor v1)"),
+      "About credits name the semantic contract")
+    try check(diagnostics.sourceCommit != nil, "the bundle records its source commit")
+    note("properties/highlighting/diagnostics checked")
   }
 
   private static func settle(_ controller: ReaderWindowController) async throws {

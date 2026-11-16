@@ -40,6 +40,24 @@ public struct CoreHandleCounts: Sendable, Equatable {
   public let snapshots: UInt64
 }
 
+/// What a build reports about its core: the semantic model it requests, the
+/// ABI and anchor versions the library negotiated, and the staged package.
+public struct CoreDiagnostics: Sendable, Equatable {
+  public let modelVersion: UInt32
+  public let abiVersion: UInt32
+  public let anchorVersion: UInt32
+  public let packageConfiguration: String
+  /// The SHA-256 fingerprint of the staged core package.
+  public let packageFingerprint: String
+
+  /// `model-v2 (ABI v1, anchor v1)`.
+  public var contract: String {
+    "model-v\(modelVersion) (ABI v\(abiVersion), anchor v\(anchorVersion))"
+  }
+  /// `release dd0c327d3a24`: the configuration and the fingerprint's first 12 digits.
+  public var package: String { "\(packageConfiguration) \(packageFingerprint.prefix(12))" }
+}
+
 public enum CoreRuntime {
   public static let packageConfiguration = MD_PACKAGE_CONFIGURATION
   public static let packageFingerprint = MD_PACKAGE_FINGERPRINT
@@ -55,7 +73,19 @@ public enum CoreRuntime {
   static let worker = DispatchQueue(label: "io.github.awesomejt.markdown.core", qos: .userInitiated)
   static let admission = CoreAdmission()
 
-  public static func validate() throws {
+  public static func validate() throws { _ = try negotiate() }
+
+  /// The negotiated semantic contract and the linked core package, for
+  /// `--version` and the About panel (MAC-002F, R1.5).
+  public static func diagnostics() throws -> CoreDiagnostics {
+    let info = try negotiate()
+    return CoreDiagnostics(
+      modelVersion: UInt32(MD_MODEL_V2), abiVersion: info.abi_version,
+      anchorVersion: info.anchor_version, packageConfiguration: packageConfiguration,
+      packageFingerprint: packageFingerprint)
+  }
+
+  private static func negotiate() throws -> md_abi_info {
     var info = md_abi_info()
     info.struct_size = UInt32(MemoryLayout<md_abi_info>.size)
     try checked(md_abi_negotiate(UInt32(MD_ABI_VERSION), &info))
@@ -93,6 +123,7 @@ public enum CoreRuntime {
       info.anchor_version == 1, info.max_anchor_bytes == MD_ANCHOR_MAX_BYTES,
       sizes.allSatisfy({ UInt32($0.1) == $0.0 })
     else { throw CoreError.incompatibleABI }
+    return info
   }
 
   public static func liveHandles() throws -> CoreHandleCounts {

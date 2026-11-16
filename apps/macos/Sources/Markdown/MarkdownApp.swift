@@ -9,9 +9,14 @@ import UniformTypeIdentifiers
 enum MarkdownApp {
   @MainActor
   static func main() {
-    do { try CoreRuntime.validate() } catch {
+    let core: CoreDiagnostics
+    do { core = try CoreRuntime.diagnostics() } catch {
       FileHandle.standardError.write(Data("Core initialization failed: \(error)\n".utf8))
       exit(EXIT_FAILURE)
+    }
+    if CommandLine.arguments.dropFirst().first == "--version" {
+      print(BuildDiagnostics(core: core).versionLine)
+      exit(EXIT_SUCCESS)
     }
     let app = NSApplication.shared
     let delegate = AppDelegate(
@@ -699,12 +704,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, 
     return controller
   }
 
+  /// The standard About panel, with the semantic contract and core package
+  /// in its credits (MAC-002F).
+  @objc func showAbout(_ sender: Any?) {
+    var options: [NSApplication.AboutPanelOptionKey: Any] = [:]
+    if let core = try? CoreRuntime.diagnostics() {
+      options[.credits] = BuildDiagnostics(core: core).credits
+    }
+    NSApp.orderFrontStandardAboutPanel(options: options)
+  }
+
   private func installMenus() {
     let bar = NSMenu()
     let appMenu = NSMenu(title: "Markdown")
-    appMenu.addItem(
-      withTitle: "About Markdown",
-      action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)), keyEquivalent: "")
+    let about = appMenu.addItem(
+      withTitle: "About Markdown", action: #selector(showAbout(_:)), keyEquivalent: "")
+    about.target = self
     appMenu.addItem(.separator())
     let settings = appMenu.addItem(
       withTitle: "Settings…", action: #selector(showSettings(_:)), keyEquivalent: ",")

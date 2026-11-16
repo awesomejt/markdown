@@ -25,6 +25,8 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
   let sidebar: SidebarController
   let findBar = FindBar()
   let notice = NoticeBar()
+  /// The front matter above the text (MAC-002F).
+  let propertiesBar = PropertiesBar()
   let preferences: ReaderPreferences
   /// The matches for the find bar's current query, options and document.
   private(set) var findMatches: FindMatches?
@@ -37,10 +39,9 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
   /// The key of the running search, and the step to take when it finishes.
   private var findTaskKey: FindKey?
   private var pendingStep: Bool?
-  /// The reading surface starts below the safe area, or below a visible find bar,
-  /// and ends at the bottom, or above a visible notice.
-  private var surfaceTop: NSLayoutConstraint!
-  private var surfaceBelowFindBar: NSLayoutConstraint!
+  /// The find bar over the properties bar; the reading surface starts below
+  /// whichever is visible, and ends at the bottom, or above a visible notice.
+  private let topBars = NSStackView()
   private var surfaceBottom: NSLayoutConstraint!
   private var surfaceAboveNotice: NSLayoutConstraint!
   private let split = NSSplitViewController()
@@ -156,18 +157,31 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
     let content = NSView()
     surface.scrollView.translatesAutoresizingMaskIntoConstraints = false
     surface.scrollView.isHidden = true
-    findBar.translatesAutoresizingMaskIntoConstraints = false
     findBar.isHidden = true
+    propertiesBar.isHidden = true
+    topBars.orientation = .vertical
+    topBars.alignment = .leading
+    topBars.spacing = 0
+    topBars.detachesHiddenViews = true
+    topBars.translatesAutoresizingMaskIntoConstraints = false
+    topBars.addArrangedSubview(findBar)
+    topBars.addArrangedSubview(propertiesBar)
+    let topBarsEmpty = topBars.heightAnchor.constraint(equalToConstant: 0)
+    topBarsEmpty.priority = .defaultLow
     notice.translatesAutoresizingMaskIntoConstraints = false
     notice.isHidden = true
     content.addSubview(surface.scrollView)
-    content.addSubview(findBar)
+    content.addSubview(topBars)
     content.addSubview(notice)
     content.addSubview(statusStack)
     NSLayoutConstraint.activate([
-      findBar.topAnchor.constraint(equalTo: content.safeAreaLayoutGuide.topAnchor),
-      findBar.leadingAnchor.constraint(equalTo: content.leadingAnchor),
-      findBar.trailingAnchor.constraint(equalTo: content.trailingAnchor),
+      topBars.topAnchor.constraint(equalTo: content.safeAreaLayoutGuide.topAnchor),
+      topBars.leadingAnchor.constraint(equalTo: content.leadingAnchor),
+      topBars.trailingAnchor.constraint(equalTo: content.trailingAnchor),
+      topBarsEmpty,
+      findBar.widthAnchor.constraint(equalTo: topBars.widthAnchor),
+      propertiesBar.widthAnchor.constraint(equalTo: topBars.widthAnchor),
+      surface.scrollView.topAnchor.constraint(equalTo: topBars.bottomAnchor),
       notice.bottomAnchor.constraint(equalTo: content.bottomAnchor),
       notice.leadingAnchor.constraint(equalTo: content.leadingAnchor),
       notice.trailingAnchor.constraint(equalTo: content.trailingAnchor),
@@ -188,10 +202,6 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
     sidebarItem.isCollapsed = !preferences.showsSidebar
     split.addSplitViewItem(NSSplitViewItem(viewController: documentController))
     split.splitView.autosaveName = nil
-    surfaceTop = surface.scrollView.topAnchor.constraint(
-      equalTo: content.safeAreaLayoutGuide.topAnchor)
-    surfaceBelowFindBar = surface.scrollView.topAnchor.constraint(equalTo: findBar.bottomAnchor)
-    surfaceTop.isActive = true
     surfaceBottom = surface.scrollView.bottomAnchor.constraint(equalTo: content.bottomAnchor)
     surfaceAboveNotice = surface.scrollView.bottomAnchor.constraint(equalTo: notice.topAnchor)
     surfaceBottom.isActive = true
@@ -445,6 +455,7 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
     shownCapability = loaded.capability
     if let position { surface.show(rendered, at: position) } else { surface.show(rendered) }
     outline.show(rendered.headings)
+    propertiesBar.show(rendered.properties)
     surface.scrollView.isHidden = false
     statusStack.isHidden = true
     window?.title = loaded.capability.displayName
@@ -496,6 +507,7 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
     shownCapability = nil
     surface.show(nil)
     outline.show([])
+    propertiesBar.show(nil)
     surface.scrollView.isHidden = true
     statusStack.isHidden = false
     status.stringValue = primary
@@ -1146,8 +1158,6 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
   private func setFindBarVisible(_ visible: Bool) {
     guard visible == findBar.isHidden else { return }
     findBar.isHidden = !visible
-    surfaceTop.isActive = !visible
-    surfaceBelowFindBar.isActive = visible
   }
 
   @objc func showFindBar(_ sender: Any?) {
