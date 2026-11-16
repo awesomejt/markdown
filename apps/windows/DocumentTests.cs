@@ -37,6 +37,7 @@ internal static class DocumentTests
                 ("folder_acl_denial_revocation_and_move_recovery", TestFolderAclDenialRevocationAndMoveRecovery),
                 ("recents_store_caps_dedup_untrusted_json_and_future_version", TestRecentsStoreCapsDedupUntrustedJsonAndFutureVersion),
                 ("recents_availability_checks_for_available_missing_denied_and_type", TestRecentsAvailabilityChecks),
+                ("workspace_tree_enumeration_filtering_and_large_folder", TestWorkspaceTreeEnumerationFilteringAndLargeFolder),
             };
 
             foreach (var (name, run) in tests)
@@ -1170,6 +1171,82 @@ internal static class DocumentTests
                 }
                 catch { }
             }
+            try { Directory.Delete(tempDir, recursive: true); } catch { }
+        }
+    }
+
+    private static void TestWorkspaceTreeEnumerationFilteringAndLargeFolder()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), $"md-win-tree-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempDir);
+        try
+        {
+            var docsDir = Path.Combine(tempDir, "docs");
+            var subDir = Path.Combine(docsDir, "sub");
+            var hiddenDir = Path.Combine(tempDir, ".hidden");
+            Directory.CreateDirectory(subDir);
+            Directory.CreateDirectory(hiddenDir);
+
+            File.WriteAllText(Path.Combine(tempDir, "readme.md"), "# Root");
+            File.WriteAllText(Path.Combine(tempDir, "notes.txt"), "text");
+            File.WriteAllText(Path.Combine(tempDir, ".gitignore"), "*");
+            File.WriteAllText(Path.Combine(docsDir, "guide.markdown"), "# Guide");
+            File.WriteAllText(Path.Combine(docsDir, "inv\u200Bfile.md"), "# Invisible");
+            File.WriteAllText(Path.Combine(subDir, "deep.mdx"), "# Deep");
+            File.WriteAllText(Path.Combine(hiddenDir, "secret.md"), "# Secret");
+
+            var folder = FolderCapability.FromPickerPath(tempDir);
+            var tree = WorkspaceTree.Enumerate(folder);
+
+            Assert(!tree.Truncated, "small workspace should not be truncated");
+            Assert(tree.TotalMarkdownFiles == 5, $"expected 5 markdown files, got {tree.TotalMarkdownFiles}");
+
+            var expanded = new HashSet<ulong>();
+            var topMd = tree.BuildVisibleRows(expanded, showAllFiles: false, showHidden: false);
+            // Directories first: "docs", then markdown file "readme.md"
+            Assert(topMd.Count == 2, $"expected 2 top-level visible rows, got {topMd.Count}");
+            Assert(topMd[0].Entry.Name == "docs" && topMd[0].Entry.IsDirectory, "docs dir should be first");
+            Assert(topMd[1].Entry.Name == "readme.md" && topMd[1].Entry.IsMarkdown, "readme.md should be second");
+            Assert(topMd[0].PositionInSet == 1 && topMd[0].SizeOfSet == 2, "docs PositionInSet/SizeOfSet");
+            Assert(topMd[1].PositionInSet == 2 && topMd[1].SizeOfSet == 2, "readme.md PositionInSet/SizeOfSet");
+
+            // Expand docs
+            expanded.Add(topMd[0].Entry.Id);
+            var expandedMd = tree.BuildVisibleRows(expanded, showAllFiles: false, showHidden: false);
+            Assert(expandedMd.Count == 5, $"expected 5 visible rows when docs expanded, got {expandedMd.Count}");
+            Assert(expandedMd[1].Entry.Name == "sub" && expandedMd[1].Entry.Depth == 1, "sub dir at depth 1");
+            Assert(expandedMd[2].Entry.Name == "guide.markdown" && expandedMd[2].Entry.Depth == 1, "guide.markdown at depth 1");
+            Assert(expandedMd[3].Entry.Name == "inv\u200Bfile.md" && expandedMd[3].Entry.HasInvisible, "invisible flag preserved");
+
+            // Show all files (including notes.txt)
+            var allFiles = tree.BuildVisibleRows(expanded, showAllFiles: true, showHidden: false);
+            Assert(allFiles.Any(r => r.Entry.Name == "notes.txt"), "notes.txt visible with ShowAllFiles");
+            Assert(!allFiles.Any(r => r.Entry.Name == ".gitignore" || r.Entry.Name == ".hidden"), "hidden excluded");
+
+            // Show hidden
+            var withHidden = tree.BuildVisibleRows(expanded, showAllFiles: true, showHidden: true);
+            Assert(withHidden.Any(r => r.Entry.Name == ".hidden"), ".hidden visible with ShowHidden");
+            Assert(withHidden.Any(r => r.Entry.Name == ".gitignore"), ".gitignore visible with ShowHidden");
+
+            // ResolveDocument through FolderCapability
+            Assert(folder.ResolveDocument(expandedMd[2].Entry.RelativePath, out var guideCap, out _) && guideCap is not null,
+                "ResolveDocument succeeds for enumerated relative path");
+
+            // Large folder check (2,500 files)
+            var largeDir = Path.Combine(tempDir, "large");
+            Directory.CreateDirectory(largeDir);
+            for (var i = 0; i < 2500; i++)
+            {
+                File.WriteAllText(Path.Combine(largeDir, $"doc_{i:D4}.md"), "# Doc");
+            }
+            var largeTree = WorkspaceTree.Enumerate(folder);
+            Assert(largeTree.Entries.Count >= 2500, $"expected >= 2500 entries, got {largeTree.Entries.Count}");
+            var largeEntry = largeTree.Entries.First(e => e.Name == "large");
+            var largeRows = largeTree.BuildVisibleRows(new HashSet<ulong> { largeEntry.Id }, showAllFiles: false, showHidden: false);
+            Assert(largeRows.Count >= 2500, $"expected >= 2500 visible rows, got {largeRows.Count}");
+        }
+        finally
+        {
             try { Directory.Delete(tempDir, recursive: true); } catch { }
         }
     }
