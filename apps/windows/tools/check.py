@@ -111,8 +111,14 @@ def main() -> None:
             )
             relaunch_doc.write_text(f"# Live\n\n{sections}\n", encoding="utf-8")
             restoration_store_path = Path(directory) / "restoration.json"
+            preferences_store_path = Path(directory) / "preferences.json"
+            preferences_store_path.write_text(
+                json.dumps({"theme": 2, "textScale": 1.32}, indent=2) + "\n",
+                encoding="utf-8",
+            )
             relaunch_env = dict(env)
             relaunch_env["MARKDOWN_RESTORATION_PATH"] = str(restoration_store_path)
+            relaunch_env["MARKDOWN_PREFERENCES_PATH"] = str(preferences_store_path)
             for phase, marker in (
                 ("prepare", "relaunch-check: prepared"),
                 ("verify", "relaunch-check: pass (restored window, document, top line and selection)"),

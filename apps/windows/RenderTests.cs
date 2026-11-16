@@ -32,6 +32,7 @@ internal static class RenderTests
                 ("document_resources_filesystem_security", DocumentResourcesFilesystemSecurity),
                 ("text_scale_clamped_and_steps", TextScaleClampedAndSteps),
                 ("preferences_memory_and_local_settings", PreferencesMemoryAndLocalSettings),
+                ("preferences_schema_migration_and_future_preservation", PreferencesSchemaMigrationAndFuturePreservation),
                 ("document_find_unicode_mappings_and_wrapping", DocumentFindUnicodeMappingsAndWrapping),
                 ("global_selection_and_text_between", GlobalSelectionAndTextBetween),
                 ("native_clipboard_roundtrip", NativeClipboardRoundtrip),
@@ -711,6 +712,8 @@ internal static class RenderTests
         var prefs = new ReaderPreferences(store);
         Assert(prefs.Theme == AppTheme.System, "default theme system");
         Assert(Math.Abs(prefs.TextScaleValue - 1.0) < 0.001, "default text scale 1.0");
+        Assert(prefs.ShowOutlineByDefault, "default showOutlineByDefault true");
+        Assert(prefs.RestoreSessionOnLaunch, "default restoreSessionOnLaunch true");
 
         var changedCount = 0;
         prefs.Changed += () => changedCount++;
@@ -724,10 +727,25 @@ internal static class RenderTests
         Assert(changedCount == 2, "scale change fired event");
         Assert(Math.Abs(prefs.TextScaleValue - 1.5) < 0.001, "scale is 1.5");
 
+        prefs.ShowOutlineByDefault = false;
+        prefs.RestoreSessionOnLaunch = false;
+        Assert(changedCount == 4, "outline and restore changes fired events");
+        Assert(!prefs.ShowOutlineByDefault, "showOutlineByDefault is false");
+        Assert(!prefs.RestoreSessionOnLaunch, "restoreSessionOnLaunch is false");
+
         // Reread from same store
         var prefs2 = new ReaderPreferences(store);
         Assert(prefs2.Theme == AppTheme.Dark, "persisted theme Dark");
         Assert(Math.Abs(prefs2.TextScaleValue - 1.5) < 0.001, "persisted scale 1.5");
+        Assert(!prefs2.ShowOutlineByDefault, "persisted showOutlineByDefault false");
+        Assert(!prefs2.RestoreSessionOnLaunch, "persisted restoreSessionOnLaunch false");
+
+        prefs.ResetToDefaults();
+        Assert(changedCount == 5, "ResetToDefaults fired single event");
+        Assert(prefs.Theme == AppTheme.System, "reset theme system");
+        Assert(Math.Abs(prefs.TextScaleValue - 1.0) < 0.001, "reset text scale 1.0");
+        Assert(prefs.ShowOutlineByDefault, "reset showOutlineByDefault true");
+        Assert(prefs.RestoreSessionOnLaunch, "reset restoreSessionOnLaunch true");
 
         // File-backed LocalSettingsPreferenceStore persistence
         var tempFile = Path.Combine(Path.GetTempPath(), $"prefs-{Guid.NewGuid():N}.json");
@@ -737,12 +755,17 @@ internal static class RenderTests
             var filePrefs = new ReaderPreferences(fileStore);
             filePrefs.Theme = AppTheme.Light;
             filePrefs.TextScaleValue = 1.3;
+            filePrefs.ShowOutlineByDefault = false;
+            filePrefs.RestoreSessionOnLaunch = false;
 
             // Reread from a fresh store pointing to the same file
             var fileStore2 = new LocalSettingsPreferenceStore(tempFile);
             var filePrefs2 = new ReaderPreferences(fileStore2);
+            Assert(fileStore2.SchemaVersion == ReaderPreferences.CurrentSchemaVersion, "schema version is 2");
             Assert(filePrefs2.Theme == AppTheme.Light, "reloaded theme Light from file");
             Assert(Math.Abs(filePrefs2.TextScaleValue - 1.3) < 0.001, "reloaded scale 1.3 from file");
+            Assert(!filePrefs2.ShowOutlineByDefault, "reloaded showOutlineByDefault false");
+            Assert(!filePrefs2.RestoreSessionOnLaunch, "reloaded restoreSessionOnLaunch false");
 
             // Corrupt file fallback
             File.WriteAllText(tempFile, "{ broken json !!");
@@ -750,12 +773,83 @@ internal static class RenderTests
             var corruptPrefs = new ReaderPreferences(corruptStore);
             Assert(corruptPrefs.Theme == AppTheme.System, "corrupt file falls back to default system theme");
             Assert(Math.Abs(corruptPrefs.TextScaleValue - 1.0) < 0.001, "corrupt file falls back to 1.0 scale");
+            Assert(corruptPrefs.ShowOutlineByDefault, "corrupt file falls back to showOutlineByDefault true");
+            Assert(corruptPrefs.RestoreSessionOnLaunch, "corrupt file falls back to restoreSessionOnLaunch true");
         }
         finally
         {
             if (File.Exists(tempFile))
             {
                 try { File.Delete(tempFile); } catch { }
+            }
+        }
+    }
+
+    private static void PreferencesSchemaMigrationAndFuturePreservation()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), $"prefs-mig-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempDir);
+        var prevEnv = Environment.GetEnvironmentVariable("MARKDOWN_PREFERENCES_PATH");
+        try
+        {
+            // 1. Unversioned v1 JSON migrates to v2 on load and snaps textScale
+            var v1Path = Path.Combine(tempDir, "v1.json");
+            File.WriteAllText(v1Path, "{\"theme\":\"Dark\",\"textScale\":1.32,\"legacyField\":\"keep\"}");
+            var v1Store = new LocalSettingsPreferenceStore(v1Path);
+            var v1Prefs = new ReaderPreferences(v1Store);
+            Assert(v1Store.SchemaVersion == 2, "v1 migrated to schema version 2");
+            Assert(v1Prefs.Theme == AppTheme.Dark, "v1 string theme migrated to Dark");
+            Assert(Math.Abs(v1Prefs.TextScaleValue - 1.3) < 0.001, "v1 textScale snapped to 1.3");
+            Assert(v1Prefs.ShowOutlineByDefault, "v1 migrated showOutlineByDefault true");
+            Assert(v1Prefs.RestoreSessionOnLaunch, "v1 migrated restoreSessionOnLaunch true");
+
+            using (var migratedDoc = System.Text.Json.JsonDocument.Parse(File.ReadAllText(v1Path)))
+            {
+                Assert(migratedDoc.RootElement.GetProperty("version").GetInt32() == 2, "persisted v1->v2 version=2");
+                Assert(migratedDoc.RootElement.GetProperty("theme").GetInt32() == (int)AppTheme.Dark, "persisted normalized theme");
+                Assert(migratedDoc.RootElement.GetProperty("legacyField").GetString() == "keep", "legacy field preserved");
+            }
+
+            // 2. Explicit v1 with malformed values drops invalid fields and upgrades to v2
+            var badV1Path = Path.Combine(tempDir, "bad-v1.json");
+            File.WriteAllText(badV1Path, "{\"version\":1,\"theme\":99,\"textScale\":\"abc\",\"showOutlineByDefault\":\"yes\"}");
+            var badV1Store = new LocalSettingsPreferenceStore(badV1Path);
+            var badV1Prefs = new ReaderPreferences(badV1Store);
+            Assert(badV1Store.SchemaVersion == 2, "malformed v1 upgraded to version 2");
+            Assert(badV1Prefs.Theme == AppTheme.System, "malformed v1 theme fell back to System");
+            Assert(Math.Abs(badV1Prefs.TextScaleValue - 1.0) < 0.001, "malformed v1 textScale fell back to 1.0");
+            Assert(badV1Prefs.ShowOutlineByDefault, "malformed v1 showOutlineByDefault fell back to true");
+            Assert(badV1Prefs.RestoreSessionOnLaunch, "malformed v1 restoreSessionOnLaunch fell back to true");
+
+            // 3. Future schema version (v99) preserves version and unknown fields on load and save
+            var futurePath = Path.Combine(tempDir, "future.json");
+            File.WriteAllText(futurePath, "{\"version\":99,\"theme\":1,\"textScale\":1.5,\"futureFlag\":true,\"futureObj\":{\"nested\":[1,2]}}");
+            var futureStore = new LocalSettingsPreferenceStore(futurePath);
+            var futurePrefs = new ReaderPreferences(futureStore);
+            Assert(futureStore.SchemaVersion == 99, "future schema version preserved in memory");
+            Assert(futurePrefs.Theme == AppTheme.Light, "future known theme read");
+            Assert(Math.Abs(futurePrefs.TextScaleValue - 1.5) < 0.001, "future known textScale read");
+            futurePrefs.ShowOutlineByDefault = false;
+
+            using (var futureDoc = System.Text.Json.JsonDocument.Parse(File.ReadAllText(futurePath)))
+            {
+                Assert(futureDoc.RootElement.GetProperty("version").GetInt32() == 99, "future version not downgraded on save");
+                Assert(futureDoc.RootElement.GetProperty("futureFlag").GetBoolean(), "future primitive preserved");
+                Assert(futureDoc.RootElement.GetProperty("futureObj").GetProperty("nested").GetArrayLength() == 2, "future object preserved");
+                Assert(!futureDoc.RootElement.GetProperty("showOutlineByDefault").GetBoolean(), "updated known key persisted");
+            }
+
+            // 4. MARKDOWN_PREFERENCES_PATH environment override
+            var envPath = Path.Combine(tempDir, "env-prefs.json");
+            Environment.SetEnvironmentVariable("MARKDOWN_PREFERENCES_PATH", envPath);
+            Assert(string.Equals(LocalSettingsPreferenceStore.DefaultStorePath, envPath, StringComparison.Ordinal), "DefaultStorePath respects MARKDOWN_PREFERENCES_PATH");
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("MARKDOWN_PREFERENCES_PATH", prevEnv);
+            if (Directory.Exists(tempDir))
+            {
+                try { Directory.Delete(tempDir, recursive: true); } catch { }
             }
         }
     }

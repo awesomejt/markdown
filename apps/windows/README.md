@@ -295,3 +295,13 @@ Validated on Windows 11 Pro build 26300.9711, Ryzen 9 5950X x64, Rust 1.99.1,
   passed 20 core consumer tests, 18 document tests, 20 render tests, the extended
   Native AOT smoke (`--smoke`), association checks, two-phase relaunch restoration,
   and relocated core probe with 0 leaked handles.
+- **WIN-002D**: Adds versioned persistent preferences (`preferences.json` schema v2 in
+  `apps/windows/ReaderPreferences.cs` with `MARKDOWN_PREFERENCES_PATH` isolation,
+  `showOutlineByDefault`, `restoreSessionOnLaunch`, automatic v1-to-v2 migration on load
+  with text-scale snapping and malformed-field fallback, and future-version/unknown-field
+  preservation on save); expands `SettingsWindow` (`apps/windows/SettingsWindow.cs`,
+  `Settings…` / `Ctrl+,`) with `Show document outline in new windows`, `Restore previous
+  session on launch`, and `Reset to Defaults`; wires outline default and session restoration
+  gating in `ReaderApp`/`ReaderWindow`/`ReaderControl`; and extends `RenderTests`, `--smoke`,
+  and two-phase `--relaunch-check` (in `check.py` and `artifact.py`) to verify v1-to-v2
+  migration and preference persistence across processes.
