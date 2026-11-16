@@ -38,6 +38,7 @@ internal static unsafe class DocumentPicker
         "Markdown and text (*.md;*.markdown;*.mdown;*.mkd;*.txt)\0*.md;*.markdown;*.mdown;*.mkd;*.txt\0All files (*.*)\0*.*\0\0";
 
     private static readonly Queue<PickerAutomationStep> s_automationQueue = new();
+    private static readonly Queue<PickerAutomationStep> s_folderAutomationQueue = new();
     private static PickerAutomationStep? s_activeStep;
 
     internal static void EnqueueAutomationCancel() =>
@@ -46,10 +47,117 @@ internal static unsafe class DocumentPicker
     internal static void EnqueueAutomationSelect(string fullPath) =>
         s_automationQueue.Enqueue(new PickerAutomationStep(PickerAutomationAction.SelectPath, fullPath));
 
+    internal static void EnqueueFolderAutomationCancel() =>
+        s_folderAutomationQueue.Enqueue(new PickerAutomationStep(PickerAutomationAction.Cancel));
+
+    internal static void EnqueueFolderAutomationSelect(string fullPath) =>
+        s_folderAutomationQueue.Enqueue(new PickerAutomationStep(PickerAutomationAction.SelectPath, fullPath));
+
     public static string? PickFile(Window ownerWindow)
     {
         var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(ownerWindow);
         return PickFileForHwnd(hwnd);
+    }
+
+    public static string? PickFolder(Window ownerWindow)
+    {
+        var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(ownerWindow);
+        return PickFolderForHwnd(hwnd);
+    }
+
+    public static string? PickFolderForHwnd(nint ownerHwnd)
+    {
+        if (s_folderAutomationQueue.Count > 0)
+        {
+            var step = s_folderAutomationQueue.Dequeue();
+            return step.Action == PickerAutomationAction.SelectPath ? step.Path : null;
+        }
+
+        const uint CLSCTX_INPROC_SERVER = 0x1;
+        const uint FOS_PICKFOLDERS = 0x00000020;
+        const uint FOS_FORCEFILESYSTEM = 0x00000040;
+        const uint FOS_NOCHANGEDIR = 0x00000008;
+        const uint FOS_PATHMUSTEXIST = 0x00000800;
+        const uint FOS_DONTADDTORECENT = 0x02000000;
+        const uint SIGDN_FILESYSPATH = 0x80058000;
+
+        var clsid = new Guid("DC1C5A9C-E88A-4dde-A5A1-60F82A20AEF7");
+        var iid = new Guid("d57c7288-d4ad-4768-be02-9d969532d960");
+        void* dialogPtr = null;
+        var hr = CoCreateInstance(&clsid, null, CLSCTX_INPROC_SERVER, &iid, &dialogPtr);
+        if (hr < 0 || dialogPtr is null)
+        {
+            return null;
+        }
+
+        try
+        {
+            var vtable = *(void***)dialogPtr;
+
+            // IFileDialog::GetOptions (slot 10) & SetOptions (slot 9)
+            uint options = 0;
+            var getOptions = (delegate* unmanaged[Stdcall]<void*, uint*, int>)vtable[10];
+            if (getOptions(dialogPtr, &options) >= 0)
+            {
+                options |= FOS_PICKFOLDERS | FOS_FORCEFILESYSTEM | FOS_NOCHANGEDIR | FOS_PATHMUSTEXIST | FOS_DONTADDTORECENT;
+                var setOptions = (delegate* unmanaged[Stdcall]<void*, uint, int>)vtable[9];
+                _ = setOptions(dialogPtr, options);
+            }
+
+            // IFileDialog::SetTitle (slot 17)
+            fixed (char* titlePtr = "Open Folder Workspace\0")
+            {
+                var setTitle = (delegate* unmanaged[Stdcall]<void*, char*, int>)vtable[17];
+                _ = setTitle(dialogPtr, titlePtr);
+            }
+
+            // IModalWindow::Show (slot 3)
+            var show = (delegate* unmanaged[Stdcall]<void*, nint, int>)vtable[3];
+            if (show(dialogPtr, ownerHwnd) != 0)
+            {
+                return null;
+            }
+
+            // IFileDialog::GetResult (slot 20)
+            void* itemPtr = null;
+            var getResult = (delegate* unmanaged[Stdcall]<void*, void**, int>)vtable[20];
+            if (getResult(dialogPtr, &itemPtr) < 0 || itemPtr is null)
+            {
+                return null;
+            }
+
+            try
+            {
+                var itemVtable = *(void***)itemPtr;
+                char* pathPtr = null;
+                var getDisplayName = (delegate* unmanaged[Stdcall]<void*, uint, char**, int>)itemVtable[5];
+                if (getDisplayName(itemPtr, SIGDN_FILESYSPATH, &pathPtr) < 0 || pathPtr is null)
+                {
+                    return null;
+                }
+
+                try
+                {
+                    return new string(pathPtr);
+                }
+                finally
+                {
+                    CoTaskMemFree(pathPtr);
+                }
+            }
+            finally
+            {
+                var itemVtable = *(void***)itemPtr;
+                var releaseItem = (delegate* unmanaged[Stdcall]<void*, uint>)itemVtable[2];
+                _ = releaseItem(itemPtr);
+            }
+        }
+        finally
+        {
+            var vtable = *(void***)dialogPtr;
+            var releaseDialog = (delegate* unmanaged[Stdcall]<void*, uint>)vtable[2];
+            _ = releaseDialog(dialogPtr);
+        }
     }
 
     public static string? PickFileForHwnd(nint ownerHwnd)
@@ -178,4 +286,15 @@ internal static unsafe class DocumentPicker
     [DllImport("user32.dll", ExactSpelling = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool PostMessageW(nint hWnd, uint Msg, nuint wParam, nint lParam);
+
+    [DllImport("ole32.dll", ExactSpelling = true)]
+    private static extern int CoCreateInstance(
+        Guid* rclsid,
+        void* pUnkOuter,
+        uint dwClsContext,
+        Guid* riid,
+        void** ppv);
+
+    [DllImport("ole32.dll", ExactSpelling = true)]
+    private static extern void CoTaskMemFree(void* pv);
 }

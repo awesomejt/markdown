@@ -138,15 +138,24 @@ public sealed class DocumentCapability
 
     internal string RawPath => _rawPath;
     internal string FullPath => _fullPath;
+    internal FolderGrant? ParentGrant { get; }
     public string DisplayName { get; }
 
     public DocumentCapability(string path)
+        : this(path, null)
+    {
+    }
+
+    internal DocumentCapability(string path, FolderGrant? parentGrant)
     {
         ArgumentNullException.ThrowIfNull(path);
         _rawPath = path;
         _fullPath = NormalizeLocalPath(path);
+        ParentGrant = parentGrant;
         DisplayName = SanitizeDisplayName(ExtractFileName(_rawPath, _fullPath));
     }
+
+    internal static DocumentCapability FromFolder(string fullPath, FolderGrant grant) => new(fullPath, grant);
 
     public static DocumentCapability FromPickerPath(string path) => new(path);
 
@@ -213,7 +222,7 @@ public sealed class DocumentCapability
 
     public void Revoke() => Interlocked.Exchange(ref _revoked, 1);
 
-    public bool IsRevoked => Volatile.Read(ref _revoked) != 0;
+    public bool IsRevoked => Volatile.Read(ref _revoked) != 0 || (ParentGrant?.IsRevoked ?? false);
 
     public bool SameFileAs(DocumentCapability? other) =>
         other is not null &&
@@ -221,7 +230,7 @@ public sealed class DocumentCapability
 
     public override string ToString() => "DocumentCapability(<private>)";
 
-    private static bool HasUriScheme(string input, out string scheme)
+    internal static bool HasUriScheme(string input, out string scheme)
     {
         scheme = string.Empty;
         var colon = input.IndexOf(':');
@@ -248,7 +257,7 @@ public sealed class DocumentCapability
         return true;
     }
 
-    private static bool IsUncNetworkPath(string path)
+    internal static bool IsUncNetworkPath(string path)
     {
         if (path.StartsWith(@"\\?\UNC\", StringComparison.OrdinalIgnoreCase) ||
             path.StartsWith("//?/UNC/", StringComparison.OrdinalIgnoreCase))
@@ -268,7 +277,7 @@ public sealed class DocumentCapability
                path.StartsWith("//", StringComparison.Ordinal);
     }
 
-    private static string NormalizeLocalPath(string path)
+    internal static string NormalizeLocalPath(string path)
     {
         if (path.StartsWith(@"\\.\", StringComparison.Ordinal) ||
             path.StartsWith(@"\\?\", StringComparison.Ordinal))
@@ -286,7 +295,7 @@ public sealed class DocumentCapability
         }
     }
 
-    private static string ExtractFileName(string rawPath, string fullPath)
+    internal static string ExtractFileName(string rawPath, string fullPath)
     {
         var candidate = TrimTrailingSeparators(rawPath);
         var name = GetLastSegment(candidate);
@@ -719,17 +728,24 @@ public static unsafe class DocumentReader
         return false;
     }
 
-    private static bool IsRemoteHandle(nint handle)
+    internal static bool IsRemoteHandle(nint handle)
+    {
+        return TryGetFinalPathName(handle, out var finalPath) &&
+               finalPath.StartsWith(@"\\?\UNC\", StringComparison.OrdinalIgnoreCase);
+    }
+
+    internal static bool TryGetFinalPathName(nint handle, out string finalPath)
     {
         const int capacity = 4096;
         char* buffer = stackalloc char[capacity];
         var len = GetFinalPathNameByHandleW(handle, buffer, capacity, 0);
         if (len == 0 || len >= capacity)
         {
+            finalPath = string.Empty;
             return false;
         }
-        var finalPath = new ReadOnlySpan<char>(buffer, (int)len);
-        return finalPath.StartsWith(@"\\?\UNC\".AsSpan(), StringComparison.OrdinalIgnoreCase);
+        finalPath = new string(buffer, 0, (int)len);
+        return true;
     }
 
     private static bool IsDirectoryOnDisk(string path)
@@ -763,18 +779,19 @@ public static unsafe class DocumentReader
         }
     }
 
-    private const uint GENERIC_READ = 0x80000000;
-    private const uint FILE_READ_ATTRIBUTES = 0x00000080;
-    private const uint FILE_SHARE_READ = 0x00000001;
-    private const uint FILE_SHARE_WRITE = 0x00000002;
-    private const uint FILE_SHARE_DELETE = 0x00000004;
-    private const uint OPEN_EXISTING = 3;
-    private const uint FILE_FLAG_BACKUP_SEMANTICS = 0x02000000;
-    private const uint FILE_TYPE_DISK = 0x0001;
-    private const uint FILE_ATTRIBUTE_DIRECTORY = 0x00000010;
-    private const uint FILE_ATTRIBUTE_DEVICE = 0x00000040;
-    private const uint INVALID_FILE_ATTRIBUTES = 0xFFFFFFFF;
-    private static readonly nint INVALID_HANDLE_VALUE = -1;
+    internal const uint GENERIC_READ = 0x80000000;
+    internal const uint FILE_READ_ATTRIBUTES = 0x00000080;
+    internal const uint FILE_LIST_DIRECTORY = 0x00000001;
+    internal const uint FILE_SHARE_READ = 0x00000001;
+    internal const uint FILE_SHARE_WRITE = 0x00000002;
+    internal const uint FILE_SHARE_DELETE = 0x00000004;
+    internal const uint OPEN_EXISTING = 3;
+    internal const uint FILE_FLAG_BACKUP_SEMANTICS = 0x02000000;
+    internal const uint FILE_TYPE_DISK = 0x0001;
+    internal const uint FILE_ATTRIBUTE_DIRECTORY = 0x00000010;
+    internal const uint FILE_ATTRIBUTE_DEVICE = 0x00000040;
+    internal const uint INVALID_FILE_ATTRIBUTES = 0xFFFFFFFF;
+    internal static readonly nint INVALID_HANDLE_VALUE = -1;
 
     internal const int ERROR_FILE_NOT_FOUND = 2;
     internal const int ERROR_PATH_NOT_FOUND = 3;
@@ -804,7 +821,7 @@ public static unsafe class DocumentReader
     internal const int ERROR_CANT_RESOLVE_FILENAME = 1921;
 
     [StructLayout(LayoutKind.Sequential)]
-    private struct BY_HANDLE_FILE_INFORMATION
+    internal struct BY_HANDLE_FILE_INFORMATION
     {
         public uint dwFileAttributes;
         public uint ftCreationTimeLow;
@@ -822,7 +839,7 @@ public static unsafe class DocumentReader
     }
 
     [DllImport("kernel32.dll", ExactSpelling = true, SetLastError = true)]
-    private static extern nint CreateFileW(
+    internal static extern nint CreateFileW(
         char* lpFileName,
         uint dwDesiredAccess,
         uint dwShareMode,
@@ -832,11 +849,11 @@ public static unsafe class DocumentReader
         nint hTemplateFile);
 
     [DllImport("kernel32.dll", ExactSpelling = true, SetLastError = true)]
-    private static extern uint GetFileType(nint hFile);
+    internal static extern uint GetFileType(nint hFile);
 
     [DllImport("kernel32.dll", ExactSpelling = true, SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool GetFileInformationByHandle(
+    internal static extern bool GetFileInformationByHandle(
         nint hFile,
         out BY_HANDLE_FILE_INFORMATION lpFileInformation);
 
@@ -851,7 +868,7 @@ public static unsafe class DocumentReader
 
     [DllImport("kernel32.dll", ExactSpelling = true, SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool CloseHandle(nint hObject);
+    internal static extern bool CloseHandle(nint hObject);
 
     [DllImport("kernel32.dll", ExactSpelling = true, SetLastError = true)]
     private static extern uint GetFileAttributesW(char* lpFileName);
