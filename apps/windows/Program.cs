@@ -1415,6 +1415,7 @@ public sealed partial class ReaderApp : Application
             File.WriteAllText(Path.Combine(ws002bDocs, "guide.md"), "# Workspace Guide\n", new UTF8Encoding(false));
 
             var win002b = NewWindow();
+            await Task.Delay(50);
             win002b.OpenFolderCapability(FolderCapability.FromPickerPath(ws002bDir));
             var swWs = Stopwatch.StartNew();
             while (swWs.ElapsedMilliseconds < 3000 && win002b.WorkspaceSidebar.VisibleRows.Count < 2)
@@ -1529,6 +1530,7 @@ public sealed partial class ReaderApp : Application
                 throw new InvalidOperationException("Close failed.");
             }
             first.NewCommand();
+            await Task.Delay(50);
             Program.Result = 0;
             first.ExitCommand();
             if (windows.Count != 0)
@@ -1717,6 +1719,7 @@ internal sealed class ReaderWindow : Window
             oldDoc?.Dispose();
             Loader.Close();
             Reader.Clear();
+            WorkspaceSidebar.Clear();
         };
 
         FindBar.Visibility = Visibility.Collapsed;
@@ -2055,7 +2058,7 @@ internal sealed class ReaderWindow : Window
             : Visibility.Collapsed;
     }
 
-    internal void RefreshWorkspaceTree(bool resetExpanded)
+    internal async void RefreshWorkspaceTree(bool resetExpanded)
     {
         var folder = ActiveFolder;
         if (folder is null)
@@ -2070,48 +2073,36 @@ internal sealed class ReaderWindow : Window
         var generation = ++_workspaceGeneration;
         WorkspaceSidebar.SetLoading(folder.DisplayName, clearTree: resetExpanded);
 
-        _ = Task.Run(async () =>
+        try
         {
-            try
+            var tree = await WorkspaceTree.EnumerateAsync(folder, cts.Token);
+            if (_isClosing || generation != _workspaceGeneration || ActiveFolder != folder)
             {
-                var tree = await WorkspaceTree.EnumerateAsync(folder, cts.Token);
-                _ = DispatcherQueue?.TryEnqueue(() =>
-                {
-                    if (_isClosing || generation != _workspaceGeneration || ActiveFolder != folder)
-                    {
-                        return;
-                    }
-                    WorkspaceSidebar.SetTree(folder.DisplayName, tree, resetExpanded);
-                });
+                return;
             }
-            catch (OperationCanceledException)
+            WorkspaceSidebar.SetTree(folder.DisplayName, tree, resetExpanded);
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (WorkspaceEnumerationException ex)
+        {
+            if (_isClosing || generation != _workspaceGeneration || ActiveFolder != folder)
             {
+                return;
             }
-            catch (WorkspaceEnumerationException ex)
+            WorkspaceSidebar.SetError(ex.Error.Message());
+            ShowFolderError(ex.Error, folder.FullPath, isFromRecents: false);
+        }
+        catch (Exception)
+        {
+            if (_isClosing || generation != _workspaceGeneration || ActiveFolder != folder)
             {
-                _ = DispatcherQueue?.TryEnqueue(() =>
-                {
-                    if (_isClosing || generation != _workspaceGeneration || ActiveFolder != folder)
-                    {
-                        return;
-                    }
-                    WorkspaceSidebar.SetError(ex.Error.Message());
-                    ShowFolderError(ex.Error, folder.FullPath, isFromRecents: false);
-                });
+                return;
             }
-            catch (Exception)
-            {
-                _ = DispatcherQueue?.TryEnqueue(() =>
-                {
-                    if (_isClosing || generation != _workspaceGeneration || ActiveFolder != folder)
-                    {
-                        return;
-                    }
-                    WorkspaceSidebar.SetError("Could not load workspace.");
-                    ShowFolderError(FolderError.OpenFailed, folder.FullPath, isFromRecents: false);
-                });
-            }
-        });
+            WorkspaceSidebar.SetError("Could not load workspace.");
+            ShowFolderError(FolderError.OpenFailed, folder.FullPath, isFromRecents: false);
+        }
     }
 
     private void OpenWorkspaceEntry(WorkspaceEntry entry)

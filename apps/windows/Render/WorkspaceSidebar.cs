@@ -394,7 +394,7 @@ public sealed partial class WorkspaceSidebar : UserControl
         _tree = WorkspaceTree.Empty;
         _expandedDirectoryIds.Clear();
         _visibleRows = [];
-        _treeList.ItemsSource = new IndexList(0);
+        _treeList.ItemsSource = null;
     }
 
     public bool ExpandDirectory(ulong entryId)
