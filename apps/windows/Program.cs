@@ -424,10 +424,7 @@ public sealed partial class ReaderApp : Application
             _externalDeliveries++;
         }
 
-        if (Program.StartupInputs.Count == 0 &&
-            !Program.Smoke &&
-            !Program.AssociationSmoke &&
-            Program.RelaunchCheckPhase is null)
+        if (ShouldRestoreSessionOnLaunch(Preferences, Program.StartupInputs, Program.Smoke, Program.AssociationSmoke, Program.RelaunchCheckPhase))
         {
             var restored = RestorationStore.Load();
             if (restored.Count > 0)
@@ -494,9 +491,42 @@ public sealed partial class ReaderApp : Application
         return window;
     }
 
+    internal static bool ShouldRestoreSessionOnLaunch(
+        ReaderPreferences preferences,
+        IReadOnlyList<string> startupInputs,
+        bool isSmoke = false,
+        bool isAssociationSmoke = false,
+        string? relaunchCheckPhase = null)
+    {
+        return startupInputs.Count == 0 &&
+               !isSmoke &&
+               !isAssociationSmoke &&
+               relaunchCheckPhase is null &&
+               preferences.RestoreSessionOnLaunch;
+    }
+
+    internal static bool ShouldSaveRestorationState(
+        ReaderPreferences preferences,
+        bool isSmoke = false,
+        bool isAssociationSmoke = false,
+        string? relaunchCheckPhase = null,
+        string? restorationPath = null)
+    {
+        if (isSmoke || isAssociationSmoke || relaunchCheckPhase is not null)
+        {
+            return false;
+        }
+        if (!preferences.RestoreSessionOnLaunch)
+        {
+            RestorationStore.Clear(restorationPath);
+            return false;
+        }
+        return true;
+    }
+
     internal void SaveRestorationState()
     {
-        if (Program.Smoke || Program.AssociationSmoke || Program.RelaunchCheckPhase is not null)
+        if (!ShouldSaveRestorationState(Preferences, Program.Smoke, Program.AssociationSmoke, Program.RelaunchCheckPhase))
         {
             return;
         }
@@ -1004,6 +1034,32 @@ public sealed partial class ReaderApp : Application
             if (SettingsWindow is null)
             {
                 throw new InvalidOperationException("Settings window not opened.");
+            }
+            if (SettingsWindow.ShowOutlineCheckBox.IsChecked != true ||
+                SettingsWindow.RestoreSessionCheckBox.IsChecked != true)
+            {
+                throw new InvalidOperationException("Settings window defaults should be checked.");
+            }
+            first.Preferences.ShowOutlineByDefault = false;
+            first.Preferences.RestoreSessionOnLaunch = false;
+            if (SettingsWindow.ShowOutlineCheckBox.IsChecked != false ||
+                SettingsWindow.RestoreSessionCheckBox.IsChecked != false)
+            {
+                throw new InvalidOperationException("Settings window did not reflect preference updates.");
+            }
+            var defaultOutlineOffWindow = NewWindow();
+            if (defaultOutlineOffWindow.Reader.IsOutlineVisible)
+            {
+                throw new InvalidOperationException("New window did not honor ShowOutlineByDefault=false.");
+            }
+            defaultOutlineOffWindow.Close();
+            first.Preferences.ResetToDefaults();
+            if (first.Preferences.Theme != AppTheme.System ||
+                Math.Abs(first.Preferences.TextScaleValue - 1.0) >= 0.001 ||
+                !first.Preferences.ShowOutlineByDefault ||
+                !first.Preferences.RestoreSessionOnLaunch)
+            {
+                throw new InvalidOperationException("ResetToDefaults did not restore all preferences.");
             }
             SettingsWindow.Close();
 
@@ -1632,6 +1688,7 @@ internal sealed class ReaderWindow : Window
         Title = "Markdown";
         AppWindow.Resize(new global::Windows.Graphics.SizeInt32(960, 700));
         Reader.WindowHandle = WinRT.Interop.WindowNative.GetWindowHandle(this);
+        Reader.IsOutlineVisible = preferences.ShowOutlineByDefault;
 
         OpenCommand = PickAndOpenFile;
         OpenFolderCommand = PickAndOpenFolder;

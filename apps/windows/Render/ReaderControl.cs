@@ -53,7 +53,14 @@ public sealed partial class ReaderControl : UserControl
     public bool IsOutlineVisible
     {
         get => _outlineList.Visibility == Visibility.Visible;
-        set => _outlineList.Visibility = value ? Visibility.Visible : Visibility.Collapsed;
+        set
+        {
+            _outlineList.Visibility = value ? Visibility.Visible : Visibility.Collapsed;
+            if (_rootGrid.ColumnDefinitions.Count > 0)
+            {
+                _rootGrid.ColumnDefinitions[0].Width = value ? new GridLength(240) : new GridLength(0);
+            }
+        }
     }
 
     public ListView OutlineList => _outlineList;

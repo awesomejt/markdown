@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.IO;
+using System.Text.Json;
 using Markdown.Windows.Document;
 using Markdown.Windows.Render;
 
@@ -75,6 +76,21 @@ internal static class RelaunchCheck
                     throw new InvalidOperationException("position not saved");
                 }
 
+                var prefsPath = Environment.GetEnvironmentVariable("MARKDOWN_PREFERENCES_PATH");
+                if (!string.IsNullOrWhiteSpace(prefsPath))
+                {
+                    if (window.Preferences.Theme != AppTheme.Dark ||
+                        Math.Abs(window.Preferences.TextScaleValue - 1.3) >= 0.001 ||
+                        !window.Preferences.ShowOutlineByDefault ||
+                        !window.Preferences.RestoreSessionOnLaunch)
+                    {
+                        throw new InvalidOperationException("v1->v2 preferences migration did not produce expected values");
+                    }
+                    VerifyPreferencesSchemaV2(prefsPath.Trim());
+                    window.Preferences.Theme = AppTheme.Light;
+                    window.Preferences.ShowOutlineByDefault = false;
+                }
+
                 var state = WindowRestorationState.Create(
                     filePath,
                     pos,
@@ -147,6 +163,19 @@ internal static class RelaunchCheck
                     throw new InvalidOperationException($"restored selection text expected 'marked', got '{selText}'");
                 }
 
+                var prefsPath = Environment.GetEnvironmentVariable("MARKDOWN_PREFERENCES_PATH");
+                if (!string.IsNullOrWhiteSpace(prefsPath))
+                {
+                    if (window.Preferences.Theme != AppTheme.Light ||
+                        Math.Abs(window.Preferences.TextScaleValue - 1.3) >= 0.001 ||
+                        window.Preferences.ShowOutlineByDefault ||
+                        !window.Preferences.RestoreSessionOnLaunch)
+                    {
+                        throw new InvalidOperationException("persisted preferences did not survive relaunch");
+                    }
+                    VerifyPreferencesSchemaV2(prefsPath.Trim());
+                }
+
                 RestorationStore.Clear();
                 Console.WriteLine("relaunch-check: pass (restored window, document, top line and selection)");
                 app.CloseAll();
@@ -181,5 +210,16 @@ internal static class RelaunchCheck
             await Task.Delay(20);
         }
         throw new TimeoutException("document did not settle in time");
+    }
+
+    private static void VerifyPreferencesSchemaV2(string path)
+    {
+        using var stream = File.OpenRead(path);
+        using var doc = JsonDocument.Parse(stream);
+        if (!doc.RootElement.TryGetProperty(ReaderPreferences.VersionKey, out var verProp) ||
+            verProp.GetInt32() != ReaderPreferences.CurrentSchemaVersion)
+        {
+            throw new InvalidOperationException($"expected preferences schema version {ReaderPreferences.CurrentSchemaVersion}");
+        }
     }
 }

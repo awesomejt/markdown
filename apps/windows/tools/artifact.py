@@ -291,8 +291,14 @@ def verify(archive: Path, *, env: dict[str, str]) -> None:
             f"## Part {part}\n\nProse for part {part}, with a *marked* word." for part in range(120)
         )
         relaunch_doc.write_text(f"# Live\n\n{sections}\n", encoding="utf-8")
+        preferences_store_path = root / "preferences.json"
+        preferences_store_path.write_text(
+            json.dumps({"theme": 2, "textScale": 1.32}, indent=2) + "\n",
+            encoding="utf-8",
+        )
         relaunch_env = dict(env)
         relaunch_env["MARKDOWN_RESTORATION_PATH"] = str(root / "restoration.json")
+        relaunch_env["MARKDOWN_PREFERENCES_PATH"] = str(preferences_store_path)
         for phase, marker in (
             ("prepare", "relaunch-check: prepared"),
             ("verify", "relaunch-check: pass (restored window, document, top line and selection)"),

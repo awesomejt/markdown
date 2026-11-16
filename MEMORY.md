@@ -138,6 +138,18 @@ read.
   20 render tests, Native AOT smoke, association, relaunch, and probe (`0` leaked handles).
   Grok review 1 at `a671189` had 0 Blockers, 2 Concerns, 1 Nit (approved under D-029; all 3
   fixed in `d78cd3e`).
+- WIN-002D (PR #92) delivers Windows persistent native preferences/settings: versioned
+  `preferences.json` schema v2 (`apps/windows/ReaderPreferences.cs`: `showOutlineByDefault`,
+  `restoreSessionOnLaunch`, automatic v1→v2 migration on load with text-scale snapping and
+  malformed-field fallback, lossless future-version and unknown-field preservation via
+  `WriteRawValue`, `MARKDOWN_PREFERENCES_PATH` isolation), expanded `SettingsWindow`
+  (`apps/windows/SettingsWindow.cs`: outline default, session restoration, `Reset to Defaults`,
+  `_isRefreshing` guard), outline-default and session-restoration gating in
+  `ReaderApp`/`ReaderWindow`/`ReaderControl`, and unit/smoke/two-phase `--relaunch-check`
+  v1→v2 migration verification. Debug/Release/relocated Release pass 22 core, 20 document,
+  21 render tests, Native AOT smoke, association, relaunch, and probe (`0` leaked handles).
+  Grok review 1 at `2330d92` had 0 Blockers, 0 Concerns, 2 Nits (approved under D-029; both
+  fixed in `48cd581`). `WIN-002E` is next on Windows.
 - Phase: `desktop-apps`; the portable-core shared track is complete through
   CORE-006 (GATE-001 approved, D-018). Native chains are now eligible (D-027).
 - Product: local-first, read-only native Markdown reader. Windows, macOS and
