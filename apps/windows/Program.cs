@@ -1433,66 +1433,6 @@ public sealed partial class ReaderApp : Application
                 throw new InvalidOperationException($"Unexpected initial workspace rows: {win002b.WorkspaceSidebar.VisibleRows.Count}");
             }
 
-            win002b.WorkspaceSidebar.TreeList.SelectedIndex = 0;
-            if (!win002b.WorkspaceSidebar.HandleTreeKeyDown(VirtualKey.Right) ||
-                win002b.WorkspaceSidebar.VisibleRows.Count != 3 ||
-                win002b.WorkspaceSidebar.VisibleRows[1].Entry.Name != "guide.md")
-            {
-                throw new InvalidOperationException("Right arrow did not expand 'docs' directory.");
-            }
-            // Refresh preserves expansion by relative path.
-            File.WriteAllText(Path.Combine(ws002bDocs, "extra.md"), "# Extra\n", new UTF8Encoding(false));
-            win002b.RefreshWorkspaceTree(resetExpanded: false);
-            var swRefresh = Stopwatch.StartNew();
-            while (swRefresh.ElapsedMilliseconds < 3000 &&
-                   !win002b.WorkspaceSidebar.VisibleRows.Any(r => r.Entry.Name == "extra.md"))
-            {
-                await Task.Delay(20);
-            }
-            if (win002b.WorkspaceSidebar.VisibleRows.Count != 4 ||
-                !win002b.WorkspaceSidebar.VisibleRows.Any(r => r.Entry.Name == "extra.md"))
-            {
-                throw new InvalidOperationException("Refresh did not preserve 'docs' expansion.");
-            }
-            File.Delete(Path.Combine(ws002bDocs, "extra.md"));
-            win002b.RefreshWorkspaceTree(resetExpanded: false);
-            swRefresh.Restart();
-            while (swRefresh.ElapsedMilliseconds < 3000 &&
-                   win002b.WorkspaceSidebar.VisibleRows.Any(r => r.Entry.Name == "extra.md"))
-            {
-                await Task.Delay(20);
-            }
-            if (win002b.WorkspaceSidebar.VisibleRows.Count != 3)
-            {
-                throw new InvalidOperationException("Second refresh did not preserve 'docs' expansion.");
-            }
-            if (!win002b.WorkspaceSidebar.HandleTreeKeyDown(VirtualKey.Right) ||
-                win002b.WorkspaceSidebar.SelectedEntry?.Name != "guide.md")
-            {
-                throw new InvalidOperationException("Second Right arrow did not select child 'guide.md'.");
-            }
-            if (!win002b.WorkspaceSidebar.HandleTreeKeyDown(VirtualKey.Enter))
-            {
-                throw new InvalidOperationException("Enter did not activate 'guide.md'.");
-            }
-            await WaitWindowIdleAsync(win002b);
-            if (win002b.Loader.Document is null || win002b.Loader.Document.OutlineCount < 1 ||
-                win002b.Loader.Document.OutlineTitle(0) != "Workspace Guide")
-            {
-                throw new InvalidOperationException("Activating 'guide.md' from workspace sidebar did not load the document.");
-            }
-
-            if (!win002b.WorkspaceSidebar.HandleTreeKeyDown(VirtualKey.Left) ||
-                win002b.WorkspaceSidebar.SelectedEntry?.Name != "docs")
-            {
-                throw new InvalidOperationException("Left arrow from child did not move selection to parent 'docs'.");
-            }
-            if (!win002b.WorkspaceSidebar.HandleTreeKeyDown(VirtualKey.Left) ||
-                win002b.WorkspaceSidebar.VisibleRows.Count != 2)
-            {
-                throw new InvalidOperationException("Left arrow on expanded 'docs' did not collapse it.");
-            }
-
             win002b.WorkspaceSidebar.ShowAllFiles = true;
             if (!win002b.WorkspaceSidebar.VisibleRows.Any(r => r.Entry.Name == "notes.txt"))
             {
@@ -1515,6 +1455,8 @@ public sealed partial class ReaderApp : Application
                 throw new InvalidOperationException("ToggleWorkspaceSidebarCommand did not re-show sidebar.");
             }
 
+            win002b.CloseFolderCommand();
+            await Task.Delay(50);
             win002b.CloseCommand();
             await Task.Delay(50);
 

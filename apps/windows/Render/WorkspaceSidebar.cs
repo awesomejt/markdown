@@ -281,9 +281,14 @@ public sealed partial class WorkspaceSidebar : UserControl
         };
         _treeList.ItemClick += (_, args) =>
         {
-            if (args.ClickedItem is int idx && idx >= 0 && idx < _visibleRows.Count)
+            if (args.ClickedItem is string path)
             {
-                ActivateRow(_visibleRows[idx]);
+                var container = _treeList.ContainerFromItem(path);
+                var idx = container is not null ? _treeList.IndexFromContainer(container) : -1;
+                if (idx >= 0 && idx < _visibleRows.Count)
+                {
+                    ActivateRow(_visibleRows[idx]);
+                }
             }
         };
         _treeList.PreviewKeyDown += (_, args) =>
@@ -394,6 +399,7 @@ public sealed partial class WorkspaceSidebar : UserControl
         _tree = WorkspaceTree.Empty;
         _expandedDirectoryIds.Clear();
         _visibleRows = [];
+        _treeList.SelectedIndex = -1;
         _treeList.ItemsSource = null;
     }
 
@@ -448,7 +454,7 @@ public sealed partial class WorkspaceSidebar : UserControl
                 if (idx + 1 < _visibleRows.Count && _visibleRows[idx + 1].Entry.ParentIndex == entry.Index)
                 {
                     _treeList.SelectedIndex = idx + 1;
-                    _treeList.ScrollIntoView(idx + 1);
+                    _treeList.ScrollIntoView(_visibleRows[idx + 1].Entry.RelativePath);
                     return true;
                 }
                 return false;
@@ -466,7 +472,7 @@ public sealed partial class WorkspaceSidebar : UserControl
                         if (_visibleRows[i].Entry.Index == entry.ParentIndex)
                         {
                             _treeList.SelectedIndex = i;
-                            _treeList.ScrollIntoView(i);
+                            _treeList.ScrollIntoView(_visibleRows[i].Entry.RelativePath);
                             return true;
                         }
                     }
@@ -499,7 +505,13 @@ public sealed partial class WorkspaceSidebar : UserControl
     {
         selectedEntryId ??= SelectedEntry?.Id;
         _visibleRows = _tree.BuildVisibleRows(_expandedDirectoryIds, ShowAllFiles, ShowHidden);
-        _treeList.ItemsSource = new IndexList(_visibleRows.Count);
+        _treeList.SelectedIndex = -1;
+        var itemKeys = new List<string>(_visibleRows.Count);
+        foreach (var row in _visibleRows)
+        {
+            itemKeys.Add(row.Entry.RelativePath);
+        }
+        _treeList.ItemsSource = itemKeys;
 
         if (_tree.Truncated)
         {
