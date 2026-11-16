@@ -2,12 +2,15 @@
 
 WIN-001A through WIN-001I provide an unpackaged Windows 11 x64 WinUI 3
 application in C# Native AOT linked against the local shared-core C ABI package
-(`markdown_ffi.dll`, model v2), and WIN-002A adds folder capability grants,
-persistent recent files/folders, and inline access recovery. It opens a native
+(`markdown_ffi.dll`, model v2), WIN-002A adds folder capability grants,
+persistent recent files/folders, and inline access recovery, and WIN-002B adds
+the native workspace browser sidebar (`WorkspaceTree`, `WorkspaceSidebar`,
+`md_workspace_classify_path` classification with invisible-character warnings,
+`All` / `.*` / `↻` / `×` controls, and `Ctrl+B` sidebar toggle). It opens a native
 window with a menu bar: File
 (Open… Ctrl+O, Open Folder… Ctrl+Shift+O, Open Recent, Close Folder, Reload Ctrl+R, New Window Ctrl+N, Close Window Ctrl+W, Exit Ctrl+Shift+W),
 Edit (Copy Ctrl+C, Select All Ctrl+A, Find… Ctrl+F, Find Next F3, Find Previous Shift+F3), View (Reset Text Size Ctrl+0,
-Increase Text Size Ctrl++, Decrease Text Size Ctrl+-, and Theme: System, Light, Dark),
+Increase Text Size Ctrl++, Decrease Text Size Ctrl+-, Theme: System, Light, Dark, and Toggle Workspace Sidebar Ctrl+B),
 and Settings… (Ctrl+,). Alt+F opens the File menu; Alt+F4 retains the Windows
 close-window behavior. Closing the final window ends the process. Each window
 follows the system or user-chosen theme and declares PerMonitorV2 DPI awareness.

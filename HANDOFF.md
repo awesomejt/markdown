@@ -1,7 +1,18 @@
 # Agent Session and Platform Handoff
 
+Updated: 2026-11-15 (America/Denver), WIN-002B completed under D-029 (PR #90 approved and closed out into `develop`).
+Active task: None. Eligible tasks: `WIN-002C` (Windows workspace search UI), `WIN-002D` (Windows persistent preferences/settings), and `MAC-002` (macOS aggregate). The D-030 milestone review for `LNX-002` + `HARD-001` (`review/<milestone>` into `main`, owner-merged) is still open to cut.
+Pass `62d2b88d-bd09-433b-8474-2f22bad8c38d` completed, approved PR #90 merged into `develop`:
+
+- Implemented `WIN-002B`: `md_workspace_classify_path` C ABI binding in `CoreWorkspace` (`apps/windows/Core/CoreWorkspace.cs`), bounded off-main `WorkspaceTree` enumeration (`apps/windows/Document/WorkspaceTree.cs`: 100,000 entries, 256 levels, symlink/reparse-point skipping, directory-first case-insensitive sorting, hidden-directory deferral), virtualized `WorkspaceSidebar` (`apps/windows/Render/WorkspaceSidebar.cs`: `ListView` with recycled `WorkspaceRowItem` containers, `All` / `.*` / `↻` / `×` toolbar controls, `⚠` invisible-character warning, UIA `Level`/`PositionInSet`/`SizeOfSet`/`Name`, `Left`/`Right`/`Enter`/`Space` keyboard navigation, `View > Toggle Workspace Sidebar` `Ctrl+B`), and unit/smoke coverage.
+- Checks at `082b693`: `python apps/windows/tools/check.py` passed in Debug, Release, and relocated Release Native AOT (21 core consumer tests, 19 document tests including 2,500+ large folder, 20 render tests, extended `--smoke`, `check_association.py`, two-phase `--relaunch-check`, and relocated `--core-probe single` with 0 leaked handles). Hosted CI run `43816370744` passed all checks (`complete`, `windows-native`, `core` on all 3 OSes, `changes`, `common`).
+- Grok review 1 at `87d874a`: 0 Blockers, 2 Concerns, 1 Nit (approved under D-029). All 3 findings were fixed in `39d2ad5..082b693` with no re-review needed.
+
+Next task: `WIN-002C` (workspace search UI) or `WIN-002D` (persistent preferences/settings) on Windows, `MAC-002` on macOS, or the D-030 milestone review.
+
+## Previous handoff (WIN-002A)
+
 Updated: 2026-11-15 (America/Denver), WIN-002A completed under D-029 (PR #89 approved and closed out into `develop`).
-Active task: None. Eligible tasks: `WIN-002B` (Windows workspace browser/navigation), `WIN-002D` (Windows persistent preferences/settings), and `MAC-002` (macOS aggregate). The D-030 milestone review for `LNX-002` + `HARD-001` (`review/<milestone>` into `main`, owner-merged) is still open to cut.
 Pass `b34c4594-9f12-4358-88c9-4e259e0fbacf` completed, approved PR #89 merged into `develop`:
 
 - Implemented `WIN-002A`: `FolderCapability`/`FolderGrant`/`FolderError` with Win32 canonical root validation, symlink/junction containment, and revocation propagation; persistent JSON `RecentsStore` (10 files + 10 folders, dedup, untrusted JSON filtering, off-main availability checks); native `IFileOpenDialog` (`FOS_PICKFOLDERS`) folder picker; `File > Open Folder…` (`Ctrl+Shift+O`), `Open Recent`, `Close Folder`, `RecentItemsWindow`, and inline `ErrorBanner` recovery (`Locate…`, `Grant Access…`, `Try Again`, `Remove from Recents`).

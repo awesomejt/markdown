@@ -35,6 +35,7 @@ internal static unsafe class CoreConsumerTests
             ("find_over_current_snapshot", FindOverCurrentSnapshot),
             ("anchors_and_external_changes", AnchorsAndExternalChanges),
             ("documents_release_their_snapshots", DocumentsReleaseTheirSnapshots),
+            ("workspace_path_classification", WorkspacePathClassificationTest),
         };
 
         Console.WriteLine($"running {tests.Length} Windows core consumer tests ({CoreRuntime.ExpectedConfiguration})");
@@ -933,5 +934,52 @@ internal static unsafe class CoreConsumerTests
         DrainWorker();
         var finalHandles = CoreRuntime.LiveHandles();
         Check(finalHandles.Sessions == 0 && finalHandles.Snapshots == 0, $"snapshots expected 0, got {finalHandles.Snapshots}");
+    }
+
+    private static void WorkspacePathClassificationTest()
+    {
+        var md = CoreWorkspace.ClassifyPath("docs/readme.md");
+        Check(md.IsValid && md.IsMarkdown && !md.IsHidden && !md.HasInvisible && md.NameStart == 5,
+            $"unexpected md classification: {md}");
+
+        var txt = CoreWorkspace.ClassifyPath("notes.txt");
+        Check(txt.IsValid && !txt.IsMarkdown && !txt.IsHidden && !txt.HasInvisible && txt.NameStart == 0,
+            $"unexpected txt classification: {txt}");
+
+        var hidden = CoreWorkspace.ClassifyPath(".git/config");
+        Check(hidden.IsValid && !hidden.IsMarkdown && hidden.IsHidden,
+            $"unexpected hidden classification: {hidden}");
+
+        var dotMd = CoreWorkspace.ClassifyPath(".md");
+        Check(dotMd.IsValid && !dotMd.IsMarkdown && dotMd.IsHidden,
+            $"unexpected .md classification: {dotMd}");
+
+        var invisible = CoreWorkspace.ClassifyPath("a\u200Bb.md");
+        Check(invisible.IsValid && invisible.IsMarkdown && invisible.HasInvisible,
+            $"unexpected zwsp classification: {invisible}");
+
+        var brailleBlank = CoreWorkspace.ClassifyPath("blank\u2800.md");
+        Check(brailleBlank.IsValid && brailleBlank.IsMarkdown && brailleBlank.HasInvisible,
+            $"unexpected braille blank classification: {brailleBlank}");
+
+        var heartEmoji = CoreWorkspace.ClassifyPath("\u2764\uFE0F.md");
+        Check(heartEmoji.IsValid && heartEmoji.IsMarkdown && !heartEmoji.HasInvisible,
+            $"unexpected heart emoji classification: {heartEmoji}");
+
+        var empty = CoreWorkspace.ClassifyPath(string.Empty);
+        Check(!empty.IsValid && empty.ErrorCode == CoreFfi.MD_PATH_EMPTY,
+            $"unexpected empty classification: {empty}");
+
+        var abs = CoreWorkspace.ClassifyPath("/abs/path.md");
+        Check(!abs.IsValid && abs.ErrorCode == CoreFfi.MD_PATH_ABSOLUTE,
+            $"unexpected abs classification: {abs}");
+
+        var dot = CoreWorkspace.ClassifyPath("a/../b.md");
+        Check(!dot.IsValid && dot.ErrorCode == CoreFfi.MD_PATH_DOT_COMPONENT,
+            $"unexpected dot classification: {dot}");
+
+        var ctrl = CoreWorkspace.ClassifyPath("a\u0001b.md");
+        Check(!ctrl.IsValid && ctrl.ErrorCode == CoreFfi.MD_PATH_CONTROL,
+            $"unexpected control classification: {ctrl}");
     }
 }

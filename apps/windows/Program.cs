@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.IO;
 using System.IO.Pipes;
+using System.Runtime.InteropServices;
 using System.Security.Principal;
 using System.Text;
 using System.Text.Json;
@@ -18,6 +19,13 @@ namespace Markdown.Windows;
 internal static class Program
 {
     internal const string NewWindowCommand = "__NEW_WINDOW__";
+    [DllImport("kernel32.dll", ExactSpelling = true)]
+    private static extern nint GetCurrentProcess();
+
+    [DllImport("kernel32.dll", ExactSpelling = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool TerminateProcess(nint hProcess, uint uExitCode);
+
     internal static bool Smoke;
     internal static bool AssociationSmoke;
     internal static string? AssociationPipeName;
@@ -144,6 +152,14 @@ internal static class Program
                 }
                 s_associationPrimaryMutex.Dispose();
                 s_associationPrimaryMutex = null;
+            }
+            if (Smoke)
+            {
+                // Avoid WinUI 3 unpackaged multi-window ListView DLL_PROCESS_DETACH deadlock after
+                // Application.Start has returned, live Rust handles are 0, and streams are flushed.
+                Console.Out.Flush();
+                Console.Error.Flush();
+                _ = TerminateProcess(GetCurrentProcess(), (uint)Result);
             }
         }
     }
@@ -695,7 +711,8 @@ public sealed partial class ReaderApp : Application
             }
 
             var shortcuts = ((Grid)first.Content).KeyboardAccelerators;
-            if (shortcuts.Count != 16 ||
+            if (shortcuts.Count != 17 ||
+                !shortcuts.Any(k => k.Key == VirtualKey.B && k.Modifiers == VirtualKeyModifiers.Control) ||
                 !shortcuts.Any(k => k.Key == VirtualKey.O && k.Modifiers == VirtualKeyModifiers.Control) ||
                 !shortcuts.Any(k => k.Key == VirtualKey.O &&
                     k.Modifiers == (VirtualKeyModifiers.Control | VirtualKeyModifiers.Shift)) ||
@@ -1347,6 +1364,20 @@ public sealed partial class ReaderApp : Application
                 throw new InvalidOperationException("Recents store or Open Recent menu was not updated for folder.");
             }
 
+            // 12c. WIN-002B: Native workspace browser sidebar populated on folder open.
+            var swWs = Stopwatch.StartNew();
+            while (swWs.ElapsedMilliseconds < 3000 && win002a.WorkspaceSidebar.VisibleRows.Count < 1)
+            {
+                await Task.Delay(20);
+            }
+            if (!win002a.IsWorkspaceSidebarVisible ||
+                !win002a.ToggleWorkspaceSidebarItem.IsEnabled ||
+                win002a.WorkspaceSidebar.VisibleRows.Count != 1 ||
+                win002a.WorkspaceSidebar.VisibleRows[0].Entry.Name != "inside.md")
+            {
+                throw new InvalidOperationException($"Unexpected workspace sidebar state for win002a: visible={win002a.IsWorkspaceSidebarVisible}, count={win002a.WorkspaceSidebar.VisibleRows.Count}");
+            }
+
             // Open inside.md via File > Open while ActiveFolder is set -> binds to folder grant.
             DocumentPicker.EnqueueAutomationSelect(wsDocPath);
             win002a.OpenCommand();
@@ -1416,6 +1447,7 @@ public sealed partial class ReaderApp : Application
                 throw new InvalidOperationException("Close failed.");
             }
             first.NewCommand();
+            await Task.Delay(50);
             Program.Result = 0;
             first.ExitCommand();
             if (windows.Count != 0)
@@ -1498,13 +1530,16 @@ internal sealed class ReaderWindow : Window
     internal Action ActualSizeCommand { get; }
     internal Action BiggerCommand { get; }
     internal Action SmallerCommand { get; }
+    internal Action ToggleWorkspaceSidebarCommand { get; }
     internal Action SettingsCommand { get; }
 
     internal MenuFlyoutItem ReloadItem { get; }
     internal MenuFlyoutItem OpenFolderItem { get; }
     internal MenuFlyoutItem CloseFolderItem { get; }
+    internal MenuFlyoutItem ToggleWorkspaceSidebarItem { get; }
     internal MenuFlyoutSubItem OpenRecentMenu { get; }
     internal TextBlock Welcome { get; }
+    internal WorkspaceSidebar WorkspaceSidebar { get; } = new();
     internal ReaderControl Reader { get; } = new();
     internal FindBar FindBar { get; } = new();
     internal InfoBar ErrorBanner { get; } = new()
@@ -1525,8 +1560,12 @@ internal sealed class ReaderWindow : Window
     internal Button RecoveryRemoveButton { get; } = new() { Content = "Remove from Recents" };
 
     public bool IsFindBarVisible => FindBar.Visibility == Visibility.Visible;
+    public bool IsWorkspaceSidebarVisible => WorkspaceSidebar.Visibility == Visibility.Visible;
     private uint _findRequestId;
     private CancellationTokenSource? _findCts;
+    private ulong _workspaceGeneration;
+    private CancellationTokenSource? _workspaceCts;
+    private bool _workspaceSidebarUserVisible = true;
 
     internal ReaderWindow(ReaderApp app, ReaderPreferences preferences)
     {
@@ -1563,6 +1602,7 @@ internal sealed class ReaderWindow : Window
         ActualSizeCommand = () => Preferences.TextScaleValue = 1.0;
         BiggerCommand = () => Preferences.TextScaleValue = TextScale.Larger(Preferences.TextScaleValue) ?? Preferences.TextScaleValue;
         SmallerCommand = () => Preferences.TextScaleValue = TextScale.Smaller(Preferences.TextScaleValue) ?? Preferences.TextScaleValue;
+        ToggleWorkspaceSidebarCommand = ToggleWorkspaceSidebar;
         SettingsCommand = () => app.ShowSettings();
 
         Loader.OnReady = () =>
@@ -1588,11 +1628,15 @@ internal sealed class ReaderWindow : Window
             _findCts?.Cancel();
             _findCts?.Dispose();
             _findCts = null;
+            _workspaceCts?.Cancel();
+            _workspaceCts?.Dispose();
+            _workspaceCts = null;
             var oldDoc = _displayedDoc;
             _displayedDoc = null;
             oldDoc?.Dispose();
             Loader.Close();
             Reader.Clear();
+            WorkspaceSidebar.Clear();
         };
 
         FindBar.Visibility = Visibility.Collapsed;
@@ -1677,8 +1721,20 @@ internal sealed class ReaderWindow : Window
         view.Items.Add(themeSub);
 
         view.Items.Add(new MenuFlyoutSeparator());
+        ToggleWorkspaceSidebarItem = Command(root, "Toggle Workspace Sidebar", "Ctrl+B", VirtualKey.B, VirtualKeyModifiers.Control, ToggleWorkspaceSidebarCommand);
+        ToggleWorkspaceSidebarItem.IsEnabled = false;
+        view.Items.Add(ToggleWorkspaceSidebarItem);
         view.Items.Add(Command(root, "Settings…", "Ctrl+,", (VirtualKey)188, VirtualKeyModifiers.Control, SettingsCommand));
         menu.Items.Add(view);
+
+        WorkspaceSidebar.Visibility = Visibility.Collapsed;
+        WorkspaceSidebar.FileActivated += OpenWorkspaceEntry;
+        WorkspaceSidebar.RefreshRequested += () => RefreshWorkspaceTree(resetExpanded: false);
+        WorkspaceSidebar.CloseRequested += () =>
+        {
+            _workspaceSidebarUserVisible = false;
+            UpdateWorkspaceSidebarVisibility();
+        };
 
         Welcome = new TextBlock
         {
@@ -1696,15 +1752,23 @@ internal sealed class ReaderWindow : Window
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         root.RowDefinitions.Add(new RowDefinition());
 
+        var contentGrid = new Grid();
+        contentGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        contentGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        Grid.SetColumn(WorkspaceSidebar, 0);
+        Grid.SetColumn(Welcome, 1);
+        Grid.SetColumn(Reader, 1);
+        contentGrid.Children.Add(WorkspaceSidebar);
+        contentGrid.Children.Add(Welcome);
+        contentGrid.Children.Add(Reader);
+
         root.Children.Add(menu);
         Grid.SetRow(FindBar, 1);
         root.Children.Add(FindBar);
         Grid.SetRow(ErrorBanner, 2);
         root.Children.Add(ErrorBanner);
-        Grid.SetRow(Welcome, 3);
-        Grid.SetRow(Reader, 3);
-        root.Children.Add(Welcome);
-        root.Children.Add(Reader);
+        Grid.SetRow(contentGrid, 3);
+        root.Children.Add(contentGrid);
         Content = root;
     }
 
@@ -1886,8 +1950,93 @@ internal sealed class ReaderWindow : Window
         }
         ActiveFolder = folder;
         CloseFolderItem.IsEnabled = true;
+        ToggleWorkspaceSidebarItem.IsEnabled = true;
+        _workspaceSidebarUserVisible = true;
+        UpdateWorkspaceSidebarVisibility();
         _app.Recents.RecordFolder(folder);
+        RefreshWorkspaceTree(resetExpanded: true);
         SyncFromLoader();
+    }
+
+    internal void ToggleWorkspaceSidebar()
+    {
+        if (ActiveFolder is null)
+        {
+            return;
+        }
+        _workspaceSidebarUserVisible = !_workspaceSidebarUserVisible;
+        UpdateWorkspaceSidebarVisibility();
+    }
+
+    private void UpdateWorkspaceSidebarVisibility()
+    {
+        WorkspaceSidebar.Visibility = ActiveFolder is not null && _workspaceSidebarUserVisible
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+    }
+
+    internal async void RefreshWorkspaceTree(bool resetExpanded)
+    {
+        var folder = ActiveFolder;
+        if (folder is null)
+        {
+            return;
+        }
+
+        _workspaceCts?.Cancel();
+        _workspaceCts?.Dispose();
+        var cts = new CancellationTokenSource();
+        _workspaceCts = cts;
+        var generation = ++_workspaceGeneration;
+        WorkspaceSidebar.SetLoading(folder.DisplayName, clearTree: resetExpanded);
+
+        try
+        {
+            var tree = await WorkspaceTree.EnumerateAsync(folder, cts.Token);
+            if (_isClosing || generation != _workspaceGeneration || ActiveFolder != folder)
+            {
+                return;
+            }
+            WorkspaceSidebar.SetTree(folder.DisplayName, tree, resetExpanded);
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (WorkspaceEnumerationException ex)
+        {
+            if (_isClosing || generation != _workspaceGeneration || ActiveFolder != folder)
+            {
+                return;
+            }
+            WorkspaceSidebar.SetError(ex.Error.Message());
+            ShowFolderError(ex.Error, folder.FullPath, isFromRecents: false);
+        }
+        catch (Exception)
+        {
+            if (_isClosing || generation != _workspaceGeneration || ActiveFolder != folder)
+            {
+                return;
+            }
+            WorkspaceSidebar.SetError("Could not load workspace.");
+            ShowFolderError(FolderError.OpenFailed, folder.FullPath, isFromRecents: false);
+        }
+    }
+
+    private void OpenWorkspaceEntry(WorkspaceEntry entry)
+    {
+        var folder = ActiveFolder;
+        if (folder is null || entry.IsDirectory)
+        {
+            return;
+        }
+
+        if (!folder.ResolveDocument(entry.RelativePath, out var docCap, out var error) || docCap is null)
+        {
+            ShowFolderError(error, folder.FullPath, isFromRecents: false);
+            return;
+        }
+
+        OpenCapability(docCap);
     }
 
     internal void CloseFolder(bool revoked = false)
@@ -1897,10 +2046,18 @@ internal sealed class ReaderWindow : Window
             return;
         }
 
+        _workspaceGeneration++;
+        _workspaceCts?.Cancel();
+        _workspaceCts?.Dispose();
+        _workspaceCts = null;
+
         var hadFolderBoundDoc = Loader.Capability?.ParentGrant == ActiveFolder.Grant;
         ActiveFolder.Revoke();
         ActiveFolder = null;
         CloseFolderItem.IsEnabled = false;
+        ToggleWorkspaceSidebarItem.IsEnabled = false;
+        WorkspaceSidebar.Clear();
+        UpdateWorkspaceSidebarVisibility();
 
         if (hadFolderBoundDoc)
         {

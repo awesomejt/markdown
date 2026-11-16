@@ -164,6 +164,19 @@ internal static unsafe class CoreFfi
     internal const uint MD_READ_SECTION_SIZE = 48;
     internal const uint MD_WORKSPACE_PATH_INFO_SIZE = 16;
     internal const uint MD_WORKSPACE_ENTRY_SIZE = 24;
+    internal const uint MD_WORKSPACE_MAX_PATH_BYTES = 4096;
+    internal const uint MD_PATH_VALID = 0;
+    internal const uint MD_PATH_EMPTY = 1;
+    internal const uint MD_PATH_TOO_LONG = 2;
+    internal const uint MD_PATH_TOO_DEEP = 3;
+    internal const uint MD_PATH_ABSOLUTE = 4;
+    internal const uint MD_PATH_EMPTY_COMPONENT = 5;
+    internal const uint MD_PATH_DOT_COMPONENT = 6;
+    internal const uint MD_PATH_CONTROL = 7;
+    internal const uint MD_PATH_INVALID_UTF8 = 8;
+    internal const uint MD_PATH_MARKDOWN = 1;
+    internal const uint MD_PATH_HIDDEN = 2;
+    internal const uint MD_PATH_INVISIBLE = 4;
     internal const uint MD_NAME_OPTIONS_SIZE = 24;
     internal const uint MD_NAME_RESULT_SIZE = 56;
     internal const uint MD_NAME_HIT_SIZE = 24;
@@ -649,4 +662,10 @@ internal static unsafe class CoreFfi
 
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
     internal static extern uint md_snapshot_release(ulong snapshot);
+
+    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+    internal static extern uint md_workspace_classify_path(
+        byte* path,
+        nuint path_length,
+        md_workspace_path_info* out_info);
 }
