@@ -8,7 +8,7 @@ import sys
 import tempfile
 import uuid
 
-from artifact import package, run_smoke, smoke_environment, verify
+from artifact import check_version, package, run_smoke, smoke_environment, verify, verify_image
 from build import APP_ROOT, REPO_ROOT, build
 from package_core import prepare_core
 
@@ -30,12 +30,17 @@ for configuration in ("debug", "release"):
     if "libmarkdown_ffi" in dependencies or str(REPO_ROOT) in "\n".join(dependencies.splitlines()[1:]):
         raise SystemExit("unexpected build-tree/dynamic Rust dependency")
     if configuration == "release":
-        # The development artifact, extracted and launched outside the checkout.
-        verify(package(app), env=env)
+        # The development artifacts: the zip extracted and launched outside the
+        # checkout, and the disk image installed, launched and uninstalled.
+        archive, image = package(app)
+        verify(archive, env=env)
+        verify_image(image, archive, env=env)
     else:
         with tempfile.TemporaryDirectory(prefix="markdown-relocated-") as directory:
             relocated = Path(directory) / "Markdown.app"
             shutil.copytree(app, relocated)
+            print(check_version(relocated / "Contents/MacOS/Markdown", env, configuration),
+                  flush=True)
             run_smoke(relocated / "Contents/MacOS/Markdown", Path(directory), env)
     print(f"{configuration}: AppKit bundle smoke passed", flush=True)
 
