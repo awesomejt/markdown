@@ -1,5 +1,19 @@
 # Agent Session and Platform Handoff
 
+Updated: 2026-11-15 (America/Denver), MAC-002F completed under D-029 (PR #88 approved and closed out into `develop`).
+Active task: None. Eligible tasks: `MAC-002` (macOS aggregate), `WIN-002A` (Windows). The D-030 milestone review for `LNX-002` + `HARD-001` (`review/<milestone>` into `main`, owner-merged) is still open to cut.
+Pass `66ab082f-b3d7-4a7c-9beb-964b33da9900` completed, approved PR #88 merged into `develop`:
+
+- Implemented `MAC-002F`: front-matter properties, bounded syntax highlighting, `--version`/About diagnostics, an installable development disk image and fresh budgets. See [apps/macos/README.md](apps/macos/README.md#packaging-and-r1-conformance-mac-002f).
+- Checks at `18a4277`: `.build/feas004-venv/bin/python apps/macos/tools/check.py` passed in debug and release (97 tests per configuration, smokes, relaunch, zip and disk image verification). `tools/check.py common` passed with a canonical `TMPDIR`. Hosted CI run 43783212768 passed at `db52cc5`; `macos-native` needed a re-run after the known rustup `cargo-fmt` conflict.
+- Grok review 1 at `588808e`: 0 Blockers, 0 Concerns, 3 Nits (approval). All three nits were fixed at `18a4277`, with no re-review. The debug smoke went over its 30 s limit on a hosted runner, so `db52cc5` raises the limit to 60 s, a minor tweak with no re-review.
+- Budgets: warm launch to first text was 419 ms for prose 1 MiB, against `develop`'s 417 ms; the growth from 355 ms is AppKit start-up. Prose 5 MiB took 605 ms and long lines 1 MiB 398 ms. Every jump was ≤ 51 ms. Open items are in TODO.md.
+- Owner manual checks not run by the agent: a Finder drag from the disk image into the real `/Applications`, a quarantined copy on a second Mac, VoiceOver on the properties row, the About panel's appearance, and cold launches.
+
+Next task: the `MAC-002` aggregate (fresh native evidence over MAC-002A–F, like LNX-002) on macOS, `WIN-002A` on Windows, or the D-030 milestone review.
+
+## Previous handoff
+
 Updated: 2026-11-15 (America/Denver), MAC-002E completed under D-029 (PR #86 approved and closed out into `develop`).
 Active task: None. Eligible tasks: `MAC-002F` (macOS), `WIN-002A` (Windows). The D-030 milestone review for `LNX-002` + `HARD-001` (`review/<milestone>` into `main`, owner-merged) is still open to cut.
 Pass `f5767b8a-9fdb-4631-b1af-7810d01639aa` completed, approved PR #86 merged into `develop`:
@@ -10,19 +24,6 @@ Pass `f5767b8a-9fdb-4631-b1af-7810d01639aa` completed, approved PR #86 merged in
 - Owner manual checks not run by the agent: eject/reconnect a disk or a network folder, removing permission in Finder, VoiceOver on the loss message, a real quit/relaunch with the folder (README manual step 11).
 
 Next task: `MAC-002F` (development packaging and complete R1 conformance) on macOS, `WIN-002A` on Windows, or the D-030 milestone review.
-
-## Previous handoff
-
-Updated: 2026-11-15 (America/Denver), MAC-002D completed under D-029 (PR #85 approved and closed out into `develop`).
-Active task: None. Eligible tasks: `MAC-002E` (macOS), `WIN-002A` (Windows). The D-030 milestone review for `LNX-002` + `HARD-001` (`review/<milestone>` into `main`, owner-merged) is still open to cut.
-Pass `0816b887-d302-4363-862a-096bdd4ba691` completed, approved PR #85 merged into `develop`:
-
-- Implemented `MAC-002D` (versioned persistent settings, Settings window sidebar/reopen options and Restore Defaults); see [apps/macos/README.md](apps/macos/README.md#settings-and-preferences-mac-002d).
-- Checks at `a0c6e21`: `.build/feas004-venv/bin/python apps/macos/tools/check.py` passed in debug and release, including the new two-launch preferences check (needs `~/.cargo/bin` on `PATH`); `tools/check.py common` passed with a canonical `TMPDIR`.
-- Grok review 1 at `a0c6e21`: 0 Blockers, 0 Concerns, 0 Nits (approval). Hosted `macos-native` then failed the search smoke's Stop check, because a watcher refresh re-ran a stopped search. Fixed at `06b45f2` (a refresh keeps a stopped search stopped), a minor follow-up with no re-review.
-- Owner manual checks not run by the agent: keyboard and VoiceOver use of the Settings window, a real quit and relaunch with Reopen windows from last time off.
-
-Next task: `MAC-002E` (workspace watching/restoration and performance) on macOS, `WIN-002A` on Windows, or the D-030 milestone review.
 
 ## Older handoff
 
