@@ -165,6 +165,7 @@ public sealed partial class WorkspaceSearchPanel : UserControl
     {
         PlaceholderText = "Search in workspace…",
         FontSize = 13,
+        MaxLength = (int)CoreFfi.MD_WORKSPACE_MAX_QUERY_BYTES,
     };
     private readonly ToggleButton _matchCaseToggle = new()
     {
@@ -216,6 +217,7 @@ public sealed partial class WorkspaceSearchPanel : UserControl
 
     private List<WorkspaceSearchRow> _rows = [];
     private WorkspaceSearchSnapshot _snapshot = WorkspaceSearchSnapshot.Empty;
+    private readonly Microsoft.UI.Dispatching.DispatcherQueueTimer? _debounceTimer;
     private bool _suppressQueryEvents;
 
     public event Action<string, WorkspaceSearchOptions>? SearchRequested;
@@ -275,9 +277,26 @@ public sealed partial class WorkspaceSearchPanel : UserControl
         ToolTipService.SetToolTip(_stopButton, "Stop workspace search");
         AutomationProperties.SetName(_resultsList, "Workspace search results");
 
+        _debounceTimer = Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread()?.CreateTimer();
+        if (_debounceTimer is not null)
+        {
+            _debounceTimer.Interval = TimeSpan.FromMilliseconds(180);
+            _debounceTimer.IsRepeating = false;
+            _debounceTimer.Tick += (_, _) => RequestSearch();
+        }
+
         _queryBox.TextChanged += (_, _) =>
         {
-            if (!_suppressQueryEvents)
+            if (_suppressQueryEvents)
+            {
+                return;
+            }
+            if (_debounceTimer is not null)
+            {
+                _debounceTimer.Stop();
+                _debounceTimer.Start();
+            }
+            else
             {
                 RequestSearch();
             }
@@ -287,16 +306,17 @@ public sealed partial class WorkspaceSearchPanel : UserControl
             if (args.Key == VirtualKey.Enter)
             {
                 args.Handled = true;
+                _debounceTimer?.Stop();
                 RequestSearch();
             }
         };
-        _matchCaseToggle.Checked += (_, _) => RequestSearch();
-        _matchCaseToggle.Unchecked += (_, _) => RequestSearch();
-        _wholeWordToggle.Checked += (_, _) => RequestSearch();
-        _wholeWordToggle.Unchecked += (_, _) => RequestSearch();
-        _hiddenToggle.Checked += (_, _) => RequestSearch();
-        _hiddenToggle.Unchecked += (_, _) => RequestSearch();
-        _stopButton.Click += (_, _) => StopRequested?.Invoke();
+        _matchCaseToggle.Checked += (_, _) => { _debounceTimer?.Stop(); RequestSearch(); };
+        _matchCaseToggle.Unchecked += (_, _) => { _debounceTimer?.Stop(); RequestSearch(); };
+        _wholeWordToggle.Checked += (_, _) => { _debounceTimer?.Stop(); RequestSearch(); };
+        _wholeWordToggle.Unchecked += (_, _) => { _debounceTimer?.Stop(); RequestSearch(); };
+        _hiddenToggle.Checked += (_, _) => { _debounceTimer?.Stop(); RequestSearch(); };
+        _hiddenToggle.Unchecked += (_, _) => { _debounceTimer?.Stop(); RequestSearch(); };
+        _stopButton.Click += (_, _) => { _debounceTimer?.Stop(); StopRequested?.Invoke(); };
 
         _resultsList.ChoosingItemContainer += (_, args) => args.ItemContainer ??= new WorkspaceSearchRowItem();
         _resultsList.ItemTemplate = (DataTemplate)XamlReader.Load(
@@ -389,6 +409,7 @@ public sealed partial class WorkspaceSearchPanel : UserControl
 
     public void Clear()
     {
+        _debounceTimer?.Stop();
         Query = string.Empty;
         ApplySnapshot(WorkspaceSearchSnapshot.Empty);
     }

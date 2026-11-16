@@ -436,6 +436,17 @@ public sealed class WorkspaceSearchRunner : IDisposable
             {
                 // Superseded or stopped.
             }
+            catch (Exception ex)
+            {
+                if (!token.IsCancellationRequested)
+                {
+                    onUpdate(serial, WorkspaceSearchSnapshot.Empty with
+                    {
+                        Query = query,
+                        ErrorMessage = ex.Message,
+                    });
+                }
+            }
         }, CancellationToken.None);
 
         return serial;

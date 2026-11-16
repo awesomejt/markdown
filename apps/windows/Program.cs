@@ -2123,6 +2123,7 @@ internal sealed class ReaderWindow : Window
         if (string.IsNullOrEmpty(trimmed))
         {
             _workspaceSearchRunner.Cancel();
+            _workspaceSearchSerial++;
             WorkspaceSidebar.SearchPanel.ApplySnapshot(WorkspaceSearchSnapshot.Empty with { Query = query });
             return;
         }
@@ -2145,6 +2146,7 @@ internal sealed class ReaderWindow : Window
     internal void StopWorkspaceSearch()
     {
         _workspaceSearchRunner.Cancel();
+        _workspaceSearchSerial++;
         var current = WorkspaceSidebar.SearchPanel.CurrentSnapshot;
         if (current.IsRunning)
         {
