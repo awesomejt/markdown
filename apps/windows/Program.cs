@@ -424,11 +424,7 @@ public sealed partial class ReaderApp : Application
             _externalDeliveries++;
         }
 
-        if (Program.StartupInputs.Count == 0 &&
-            !Program.Smoke &&
-            !Program.AssociationSmoke &&
-            Program.RelaunchCheckPhase is null &&
-            Preferences.RestoreSessionOnLaunch)
+        if (ShouldRestoreSessionOnLaunch(Preferences, Program.StartupInputs, Program.Smoke, Program.AssociationSmoke, Program.RelaunchCheckPhase))
         {
             var restored = RestorationStore.Load();
             if (restored.Count > 0)
@@ -495,15 +491,43 @@ public sealed partial class ReaderApp : Application
         return window;
     }
 
+    internal static bool ShouldRestoreSessionOnLaunch(
+        ReaderPreferences preferences,
+        IReadOnlyList<string> startupInputs,
+        bool isSmoke = false,
+        bool isAssociationSmoke = false,
+        string? relaunchCheckPhase = null)
+    {
+        return startupInputs.Count == 0 &&
+               !isSmoke &&
+               !isAssociationSmoke &&
+               relaunchCheckPhase is null &&
+               preferences.RestoreSessionOnLaunch;
+    }
+
+    internal static bool ShouldSaveRestorationState(
+        ReaderPreferences preferences,
+        bool isSmoke = false,
+        bool isAssociationSmoke = false,
+        string? relaunchCheckPhase = null,
+        string? restorationPath = null)
+    {
+        if (isSmoke || isAssociationSmoke || relaunchCheckPhase is not null)
+        {
+            return false;
+        }
+        if (!preferences.RestoreSessionOnLaunch)
+        {
+            RestorationStore.Clear(restorationPath);
+            return false;
+        }
+        return true;
+    }
+
     internal void SaveRestorationState()
     {
-        if (Program.Smoke || Program.AssociationSmoke || Program.RelaunchCheckPhase is not null)
+        if (!ShouldSaveRestorationState(Preferences, Program.Smoke, Program.AssociationSmoke, Program.RelaunchCheckPhase))
         {
-            return;
-        }
-        if (!Preferences.RestoreSessionOnLaunch)
-        {
-            RestorationStore.Clear();
             return;
         }
 

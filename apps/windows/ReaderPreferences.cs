@@ -106,11 +106,18 @@ public sealed class LocalSettingsPreferenceStore : IPreferenceStore
                     {
                         switch (prop.Value.ValueKind)
                         {
-                            case JsonValueKind.Number when prop.Value.TryGetInt32(out var i):
-                                _cache[prop.Name] = i;
+                            case JsonValueKind.Number when prop.Name is ReaderPreferences.VersionKey or ReaderPreferences.ThemeKey or ReaderPreferences.TextScaleKey:
+                                if (prop.Value.TryGetInt32(out var i))
+                                {
+                                    _cache[prop.Name] = i;
+                                }
+                                else if (prop.Value.TryGetDouble(out var d) && double.IsFinite(d))
+                                {
+                                    _cache[prop.Name] = d;
+                                }
                                 break;
-                            case JsonValueKind.Number when prop.Value.TryGetDouble(out var d) && double.IsFinite(d):
-                                _cache[prop.Name] = d;
+                            case JsonValueKind.Number:
+                                _extraRawJson[prop.Name] = prop.Value.GetRawText();
                                 break;
                             case JsonValueKind.String:
                                 _cache[prop.Name] = prop.Value.GetString();

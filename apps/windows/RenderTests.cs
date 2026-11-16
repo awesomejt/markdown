@@ -821,9 +821,9 @@ internal static class RenderTests
             Assert(badV1Prefs.ShowOutlineByDefault, "malformed v1 showOutlineByDefault fell back to true");
             Assert(badV1Prefs.RestoreSessionOnLaunch, "malformed v1 restoreSessionOnLaunch fell back to true");
 
-            // 3. Future schema version (v99) preserves version and unknown fields on load and save
+            // 3. Future schema version (v99) preserves version and unknown fields (including 64-bit numbers) on load and save
             var futurePath = Path.Combine(tempDir, "future.json");
-            File.WriteAllText(futurePath, "{\"version\":99,\"theme\":1,\"textScale\":1.5,\"futureFlag\":true,\"futureObj\":{\"nested\":[1,2]}}");
+            File.WriteAllText(futurePath, "{\"version\":99,\"theme\":1,\"textScale\":1.5,\"futureFlag\":true,\"futureTimestamp\":1763336620123456789,\"futureObj\":{\"nested\":[1,2]}}");
             var futureStore = new LocalSettingsPreferenceStore(futurePath);
             var futurePrefs = new ReaderPreferences(futureStore);
             Assert(futureStore.SchemaVersion == 99, "future schema version preserved in memory");
@@ -835,9 +835,22 @@ internal static class RenderTests
             {
                 Assert(futureDoc.RootElement.GetProperty("version").GetInt32() == 99, "future version not downgraded on save");
                 Assert(futureDoc.RootElement.GetProperty("futureFlag").GetBoolean(), "future primitive preserved");
+                Assert(futureDoc.RootElement.GetProperty("futureTimestamp").GetInt64() == 1763336620123456789L, "future 64-bit number preserved losslessly");
                 Assert(futureDoc.RootElement.GetProperty("futureObj").GetProperty("nested").GetArrayLength() == 2, "future object preserved");
                 Assert(!futureDoc.RootElement.GetProperty("showOutlineByDefault").GetBoolean(), "updated known key persisted");
             }
+
+            // 4. RestoreSessionOnLaunch=false gates launch restore and clears restoration store
+            var gatePrefs = new ReaderPreferences(new MemoryPreferenceStore());
+            Assert(ReaderApp.ShouldRestoreSessionOnLaunch(gatePrefs, []), "launch restore allowed when enabled and no startup inputs");
+            Assert(!ReaderApp.ShouldRestoreSessionOnLaunch(gatePrefs, ["doc.md"]), "launch restore skipped when startup inputs present");
+            var testRestPath = Path.Combine(tempDir, "restoration-gate.json");
+            RestorationStore.Save([WindowRestorationState.Create("C:\\test\\doc.md", null, 1.0, true)], testRestPath);
+            Assert(File.Exists(testRestPath), "seeded restoration store exists");
+            gatePrefs.RestoreSessionOnLaunch = false;
+            Assert(!ReaderApp.ShouldRestoreSessionOnLaunch(gatePrefs, []), "launch restore skipped when RestoreSessionOnLaunch=false");
+            Assert(!ReaderApp.ShouldSaveRestorationState(gatePrefs, restorationPath: testRestPath), "save skipped when RestoreSessionOnLaunch=false");
+            Assert(!File.Exists(testRestPath), "existing restoration store cleared when RestoreSessionOnLaunch=false");
 
             // 4. MARKDOWN_PREFERENCES_PATH environment override
             var envPath = Path.Combine(tempDir, "env-prefs.json");
