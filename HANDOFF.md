@@ -24,7 +24,7 @@ Pass `66ab082f-b3d7-4a7c-9beb-964b33da9900` completed, approved PR #88 merged in
 
 Next task: the `MAC-002` aggregate (fresh native evidence over MAC-002A–F, like LNX-002) on macOS, `WIN-002A` on Windows, or the D-030 milestone review.
 
-## Previous handoff
+## Earlier handoff (MAC-002E)
 
 Updated: 2026-11-15 (America/Denver), MAC-002E completed under D-029 (PR #86 approved and closed out into `develop`).
 Active task: None. Eligible tasks: `MAC-002F` (macOS), `WIN-002A` (Windows). The D-030 milestone review for `LNX-002` + `HARD-001` (`review/<milestone>` into `main`, owner-merged) is still open to cut.
