@@ -604,6 +604,13 @@ They stay open until fixed or explicitly accepted; none is waived.
   578.36 ms (refresh 582.07 ms). On `prose-1mib`, the in-process pipeline is
   170.19 ms on Windows and 89.86 ms on Linux, while macOS Launch Services warm
   launch had one of five runs at 404 ms (median 355 ms first text).
+- **macOS 1 MiB warm launch (D-012/D-016, 400 ms; MAC-002F):** prose 1 MiB
+  now takes a median of 419 ms to first text (388–426 ms), where MAC-001G
+  measured 355 ms; the unchanged `develop` head measures the same (417 ms),
+  and the growth is AppKit start-up before `applicationDidFinishLaunching`
+  (about 290 ms, from about 255 ms). Prose 5 MiB is 605 ms (first text) and
+  1,242 ms (whole document); long lines 1 MiB is 398 ms
+  ([evidence](apps/macos/README.md#mac-002f-local-evidence)).
 - **Windows warm launch to presented frame (D-012/D-016, 400 ms):**
   unmeasured end-to-end (`measure.py` currently measures the in-process
   `read/parse/plan` pipeline on Windows, not process launch to first
