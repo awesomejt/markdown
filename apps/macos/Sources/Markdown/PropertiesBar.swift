@@ -122,6 +122,8 @@ final class PropertiesBar: NSView {
       let text = Self.label(source, monospaced: true)
       grid.addRow(with: [note])
       grid.addRow(with: [text])
+      // A previous document's key column may have been right-aligned.
+      if grid.numberOfColumns > 0 { grid.column(at: 0).xPlacement = .leading }
     } else {
       let count = properties.entries.count
       title.stringValue = "Properties (\(count))"

@@ -85,9 +85,17 @@ public struct DocumentProperties: Sendable, Equatable {
   }
 
   public let entries: [Entry]
-  /// The front matter's source, delimiters included, when `entries` is empty.
+  /// The front matter's source, delimiters included, when the core
+  /// discarded its properties.
   public let unreadSource: String?
 
+  /// The warnings with which the core discards the whole property map.
+  static let discardCodes: Set<String> = [
+    "front_matter_duplicate", "front_matter_unsupported", "front_matter_limit",
+  ]
+
+  /// Nil without front matter, and for front matter that is an empty
+  /// mapping (empty or only comments), which has nothing to show.
   init?(_ document: CoreDocument) throws {
     guard let range = document.frontMatterRange else { return nil }
     var entries: [Entry] = []
@@ -97,6 +105,10 @@ public struct DocumentProperties: Sendable, Equatable {
         Entry(key: try document.string(property.key), value: try Self.value(property, document)))
     }
     self.entries = entries
+    let discarded = try document.diagnostics.contains {
+      Self.discardCodes.contains(try document.string($0.code))
+    }
+    if entries.isEmpty, !discarded { return nil }
     if entries.isEmpty {
       let start = Int(range.lowerBound)
       let end = Int(range.upperBound)

@@ -56,6 +56,10 @@ struct ConformanceTests {
     // An apostrophe isn't a string, nor is a Rust lifetime.
     #expect(Self.tokens("note: don't break", "yaml").isEmpty)
     #expect(Self.tokens("fn f<'a>(x: &'a str)", "rust").map(\.0) == ["fn", "str"])
+    // A Rust char literal holding a quote opens no string.
+    #expect(
+      Self.tokens("let q = '\"'; let b = b'\\''; // end", "rust").map(\.0)
+        == ["let", "'\"'", "let", "'\\''", "// end"])
     // A digit inside a name isn't a number.
     #expect(Self.tokens("x1 = 2", "python").map(\.0) == ["2"])
     // Ranges are UTF-16, past non-ASCII text.
@@ -143,6 +147,12 @@ struct ConformanceTests {
     #expect(rendered.text.string == "Body")
     let none = try await Self.render("# No front matter\n")
     #expect(none.properties == nil)
+    // Empty or comment-only front matter is a valid, empty mapping: no row.
+    for empty in ["---\n---\nBody\n", "---\n# draft\n---\nBody\n"] {
+      let rendered = try await Self.render(empty)
+      #expect(rendered.properties == nil)
+      #expect(rendered.text.string == "Body")
+    }
   }
 
   @Test func diagnosticsNameTheContract() throws {

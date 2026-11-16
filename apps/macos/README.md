@@ -647,8 +647,11 @@ within those limits.
   none for the front matter it found (a duplicate key, an unsupported value
   or a limit discards the whole map, [Front-Matter.md](../../docs/Front-Matter.md#atomic-failure-and-diagnostics)),
   the row reads **Properties (not read)** and shows the front matter as
-  written, so it stays readable. The row is hidden for a document without
-  front matter, keeps the reader's expanded or collapsed choice across
+  written, so it stays readable. The row shows this only when the core
+  reports one of those discard warnings (`front_matter_duplicate`,
+  `front_matter_unsupported`, `front_matter_limit`); empty or comment-only
+  front matter is a valid empty mapping and shows no row. The row is
+  hidden for a document without front matter, keeps the reader's expanded or collapsed choice across
   documents in the window, scrolls past 180 points and stacks below the
   find bar. VoiceOver reads it as the “Document properties” group, with
   each value labelled by its key.

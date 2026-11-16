@@ -174,6 +174,16 @@ private struct Lexer {
     return false
   }
 
+  /// The length of a Rust char literal at `index` (`'x'` or `'\\x'`, as
+  /// after a byte prefix), so a quote inside one opens no string; nil
+  /// otherwise, which leaves `'` a lifetime.
+  private var rustCharLiteral: Int? {
+    guard language == .rust, units[index] == 0x27, let first = at(1), first != Self.newline
+    else { return nil }
+    if first == 0x5C, let escaped = at(2), escaped != Self.newline, at(3) == 0x27 { return 4 }
+    return first != 0x27 && at(2) == 0x27 ? 3 : nil
+  }
+
   mutating func run() -> [SyntaxHighlighter.Token] {
     while index < units.count, tokens.count < SyntaxHighlighter.maxTokens {
       let start = index
@@ -189,6 +199,9 @@ private struct Lexer {
         index += 4
         skip(past: [0x2D, 0x2D, 0x3E])
         push(start, .comment)
+      } else if let length = rustCharLiteral {
+        index += length
+        push(start, .string)
       } else if unit == 0x22 || opensSingleQuote || (unit == 0x60 && language == .script) {
         string(quote: unit)
         push(start, .string)
