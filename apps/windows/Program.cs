@@ -26,6 +26,9 @@ internal static class Program
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool TerminateProcess(nint hProcess, uint uExitCode);
 
+    internal static void TerminateNow(int exitCode) =>
+        _ = TerminateProcess(GetCurrentProcess(), (uint)exitCode);
+
     internal static bool Smoke;
     internal static bool AssociationSmoke;
     internal static string? AssociationPipeName;
@@ -711,7 +714,7 @@ public sealed partial class ReaderApp : Application
             }
 
             var shortcuts = ((Grid)first.Content).KeyboardAccelerators;
-            if (shortcuts.Count != 17 ||
+            if (shortcuts.Count != 18 ||
                 !shortcuts.Any(k => k.Key == VirtualKey.B && k.Modifiers == VirtualKeyModifiers.Control) ||
                 !shortcuts.Any(k => k.Key == VirtualKey.O && k.Modifiers == VirtualKeyModifiers.Control) ||
                 !shortcuts.Any(k => k.Key == VirtualKey.O &&
@@ -725,6 +728,8 @@ public sealed partial class ReaderApp : Application
                 !shortcuts.Any(k => k.Key == VirtualKey.A && k.Modifiers == VirtualKeyModifiers.Control) ||
                 !shortcuts.Any(k => k.Key == VirtualKey.Escape && k.Modifiers == VirtualKeyModifiers.None) ||
                 !shortcuts.Any(k => k.Key == VirtualKey.F && k.Modifiers == VirtualKeyModifiers.Control) ||
+                !shortcuts.Any(k => k.Key == VirtualKey.F &&
+                    k.Modifiers == (VirtualKeyModifiers.Control | VirtualKeyModifiers.Shift)) ||
                 !shortcuts.Any(k => k.Key == VirtualKey.F3 && k.Modifiers == VirtualKeyModifiers.None) ||
                 !shortcuts.Any(k => k.Key == VirtualKey.F3 && k.Modifiers == VirtualKeyModifiers.Shift) ||
                 !shortcuts.Any(k => k.Key == VirtualKey.Number0 && k.Modifiers == VirtualKeyModifiers.Control))
@@ -1372,11 +1377,41 @@ public sealed partial class ReaderApp : Application
             }
             if (!win002a.IsWorkspaceSidebarVisible ||
                 !win002a.ToggleWorkspaceSidebarItem.IsEnabled ||
+                !win002a.FindInWorkspaceItem.IsEnabled ||
                 win002a.WorkspaceSidebar.VisibleRows.Count != 1 ||
                 win002a.WorkspaceSidebar.VisibleRows[0].Entry.Name != "inside.md")
             {
                 throw new InvalidOperationException($"Unexpected workspace sidebar state for win002a: visible={win002a.IsWorkspaceSidebarVisible}, count={win002a.WorkspaceSidebar.VisibleRows.Count}");
             }
+
+            // 12d. WIN-002C: Native workspace search UI, bounded search, and result navigation.
+            win002a.ShowWorkspaceSearch();
+            if (win002a.WorkspaceSidebar.Mode != WorkspaceSidebarMode.Search)
+            {
+                throw new InvalidOperationException("Find in Workspace did not switch sidebar to Search mode.");
+            }
+            win002a.WorkspaceSidebar.SearchPanel.Query = "approved";
+            win002a.WorkspaceSidebar.SearchPanel.RequestSearch();
+            var swSearch = Stopwatch.StartNew();
+            while (swSearch.ElapsedMilliseconds < 3000 &&
+                (win002a.WorkspaceSidebar.SearchPanel.CurrentSnapshot.IsRunning ||
+                 win002a.WorkspaceSidebar.SearchPanel.CurrentSnapshot.ContentHits.Count < 1))
+            {
+                await Task.Delay(20);
+            }
+            var searchSnap = win002a.WorkspaceSidebar.SearchPanel.CurrentSnapshot;
+            if (searchSnap.IsRunning || searchSnap.ContentHits.Count != 1 || searchSnap.ContentHits[0].RelativePath != "inside.md")
+            {
+                throw new InvalidOperationException(
+                    $"Workspace search failed: running={searchSnap.IsRunning}, contentHits={searchSnap.ContentHits.Count}");
+            }
+            win002a.OpenWorkspaceContentHit(searchSnap.ContentHits[0]);
+            await WaitWindowIdleAsync(win002a);
+            if (win002a.Loader.Document is null || win002a.Reader.Visibility != Visibility.Visible)
+            {
+                throw new InvalidOperationException("Workspace search content hit navigation failed to open document.");
+            }
+            win002a.WorkspaceSidebar.SetMode(WorkspaceSidebarMode.Files);
 
             // Open inside.md via File > Open while ActiveFolder is set -> binds to folder grant.
             DocumentPicker.EnqueueAutomationSelect(wsDocPath);
@@ -1454,6 +1489,24 @@ public sealed partial class ReaderApp : Application
             {
                 Program.Result = 1;
             }
+            if (Program.Result == 0 && !Program.WaitZeroLiveHandles(2000))
+            {
+                Program.Result = 1;
+            }
+            var exitCode = Program.Result;
+            var watchdog = new Thread(() =>
+            {
+                Thread.Sleep(250);
+                Console.Out.Flush();
+                Console.Error.Flush();
+                Program.TerminateNow(exitCode);
+            })
+            {
+                IsBackground = true,
+                Name = "smoke-exit-watchdog",
+            };
+            watchdog.Start();
+            Exit();
         }
         catch (Exception ex)
         {
@@ -1527,6 +1580,7 @@ internal sealed class ReaderWindow : Window
     internal Action FindNextCommand { get; }
     internal Action FindPreviousCommand { get; }
     internal Action CloseFindCommand { get; }
+    internal Action FindInWorkspaceCommand { get; }
     internal Action ActualSizeCommand { get; }
     internal Action BiggerCommand { get; }
     internal Action SmallerCommand { get; }
@@ -1536,6 +1590,7 @@ internal sealed class ReaderWindow : Window
     internal MenuFlyoutItem ReloadItem { get; }
     internal MenuFlyoutItem OpenFolderItem { get; }
     internal MenuFlyoutItem CloseFolderItem { get; }
+    internal MenuFlyoutItem FindInWorkspaceItem { get; }
     internal MenuFlyoutItem ToggleWorkspaceSidebarItem { get; }
     internal MenuFlyoutSubItem OpenRecentMenu { get; }
     internal TextBlock Welcome { get; }
@@ -1566,6 +1621,9 @@ internal sealed class ReaderWindow : Window
     private ulong _workspaceGeneration;
     private CancellationTokenSource? _workspaceCts;
     private bool _workspaceSidebarUserVisible = true;
+    private readonly WorkspaceSearchRunner _workspaceSearchRunner = new();
+    private long _workspaceSearchSerial;
+    private WorkspaceSearchContentHit? _pendingSearchHit;
 
     internal ReaderWindow(ReaderApp app, ReaderPreferences preferences)
     {
@@ -1599,6 +1657,7 @@ internal sealed class ReaderWindow : Window
         FindNextCommand = NavigateFindNext;
         FindPreviousCommand = NavigateFindPrevious;
         CloseFindCommand = CloseFind;
+        FindInWorkspaceCommand = ShowWorkspaceSearch;
         ActualSizeCommand = () => Preferences.TextScaleValue = 1.0;
         BiggerCommand = () => Preferences.TextScaleValue = TextScale.Larger(Preferences.TextScaleValue) ?? Preferences.TextScaleValue;
         SmallerCommand = () => Preferences.TextScaleValue = TextScale.Smaller(Preferences.TextScaleValue) ?? Preferences.TextScaleValue;
@@ -1631,6 +1690,8 @@ internal sealed class ReaderWindow : Window
             _workspaceCts?.Cancel();
             _workspaceCts?.Dispose();
             _workspaceCts = null;
+            _workspaceSearchRunner.Dispose();
+            _pendingSearchHit = null;
             var oldDoc = _displayedDoc;
             _displayedDoc = null;
             oldDoc?.Dispose();
@@ -1684,6 +1745,15 @@ internal sealed class ReaderWindow : Window
         edit.Items.Add(Command(root, "Find…", "Ctrl+F", VirtualKey.F, VirtualKeyModifiers.Control, FindCommand));
         edit.Items.Add(Command(root, "Find Next", "F3", VirtualKey.F3, VirtualKeyModifiers.None, FindNextCommand));
         edit.Items.Add(Command(root, "Find Previous", "Shift+F3", VirtualKey.F3, VirtualKeyModifiers.Shift, FindPreviousCommand));
+        FindInWorkspaceItem = Command(
+            root,
+            "Find in Workspace…",
+            "Ctrl+Shift+F",
+            VirtualKey.F,
+            VirtualKeyModifiers.Control | VirtualKeyModifiers.Shift,
+            FindInWorkspaceCommand);
+        FindInWorkspaceItem.IsEnabled = false;
+        edit.Items.Add(FindInWorkspaceItem);
         menu.Items.Add(edit);
 
         var escAccelerator = new KeyboardAccelerator { Key = VirtualKey.Escape };
@@ -1735,6 +1805,10 @@ internal sealed class ReaderWindow : Window
             _workspaceSidebarUserVisible = false;
             UpdateWorkspaceSidebarVisibility();
         };
+        WorkspaceSidebar.SearchPanel.SearchRequested += ExecuteWorkspaceSearch;
+        WorkspaceSidebar.SearchPanel.StopRequested += StopWorkspaceSearch;
+        WorkspaceSidebar.SearchPanel.NameHitActivated += OpenWorkspaceNameHit;
+        WorkspaceSidebar.SearchPanel.ContentHitActivated += OpenWorkspaceContentHit;
 
         Welcome = new TextBlock
         {
@@ -1951,6 +2025,7 @@ internal sealed class ReaderWindow : Window
         ActiveFolder = folder;
         CloseFolderItem.IsEnabled = true;
         ToggleWorkspaceSidebarItem.IsEnabled = true;
+        FindInWorkspaceItem.IsEnabled = true;
         _workspaceSidebarUserVisible = true;
         UpdateWorkspaceSidebarVisibility();
         _app.Recents.RecordFolder(folder);
@@ -2039,6 +2114,148 @@ internal sealed class ReaderWindow : Window
         OpenCapability(docCap);
     }
 
+    internal void ShowWorkspaceSearch()
+    {
+        if (ActiveFolder is null)
+        {
+            return;
+        }
+        _workspaceSidebarUserVisible = true;
+        UpdateWorkspaceSidebarVisibility();
+        WorkspaceSidebar.SetMode(WorkspaceSidebarMode.Search);
+        WorkspaceSidebar.SearchPanel.FocusQuery();
+        if (!string.IsNullOrWhiteSpace(WorkspaceSidebar.SearchPanel.Query))
+        {
+            WorkspaceSidebar.SearchPanel.RequestSearch();
+        }
+    }
+
+    internal void ExecuteWorkspaceSearch(string query, WorkspaceSearchOptions options)
+    {
+        var folder = ActiveFolder;
+        if (folder is null)
+        {
+            _workspaceSearchRunner.Cancel();
+            WorkspaceSidebar.SearchPanel.ApplySnapshot(WorkspaceSearchSnapshot.Empty);
+            return;
+        }
+
+        var trimmed = query.Trim();
+        if (string.IsNullOrEmpty(trimmed))
+        {
+            _workspaceSearchRunner.Cancel();
+            _workspaceSearchSerial++;
+            WorkspaceSidebar.SearchPanel.ApplySnapshot(WorkspaceSearchSnapshot.Empty with { Query = query });
+            return;
+        }
+
+        var tree = WorkspaceSidebar.CurrentTree;
+        var serial = _workspaceSearchRunner.Start(folder, tree, query, options, (updateSerial, snapshot) =>
+        {
+            _ = DispatcherQueue?.TryEnqueue(() =>
+            {
+                if (_isClosing || updateSerial != _workspaceSearchSerial || ActiveFolder != folder)
+                {
+                    return;
+                }
+                WorkspaceSidebar.SearchPanel.ApplySnapshot(snapshot);
+            });
+        });
+        _workspaceSearchSerial = serial;
+    }
+
+    internal void StopWorkspaceSearch()
+    {
+        _workspaceSearchRunner.Cancel();
+        _workspaceSearchSerial++;
+        var current = WorkspaceSidebar.SearchPanel.CurrentSnapshot;
+        if (current.IsRunning)
+        {
+            WorkspaceSidebar.SearchPanel.ApplySnapshot(current with
+            {
+                IsRunning = false,
+                IsCancelled = true,
+            });
+        }
+    }
+
+    private void OpenWorkspaceNameHit(WorkspaceSearchNameHit hit)
+    {
+        var folder = ActiveFolder;
+        if (folder is null)
+        {
+            return;
+        }
+        if (!folder.ResolveDocument(hit.RelativePath, out var docCap, out var error) || docCap is null)
+        {
+            ShowFolderError(error, folder.FullPath, isFromRecents: false);
+            return;
+        }
+        _pendingSearchHit = null;
+        OpenCapability(docCap);
+    }
+
+    internal void OpenWorkspaceContentHit(WorkspaceSearchContentHit hit)
+    {
+        var folder = ActiveFolder;
+        if (folder is null)
+        {
+            return;
+        }
+        if (!folder.ResolveDocument(hit.RelativePath, out var docCap, out var error) || docCap is null)
+        {
+            ShowFolderError(error, folder.FullPath, isFromRecents: false);
+            return;
+        }
+
+        if (Loader.HasFile &&
+            Loader.Capability is { } currentCap &&
+            string.Equals(currentCap.FullPath, docCap.FullPath, StringComparison.OrdinalIgnoreCase) &&
+            _displayedDoc is not null &&
+            Loader.Plan is { } currentPlan)
+        {
+            docCap.Revoke();
+            ApplyContentHitNavigation(_displayedDoc, currentPlan, hit);
+            return;
+        }
+
+        _pendingSearchHit = hit;
+        OpenCapability(docCap);
+    }
+
+    private void ApplyContentHitNavigation(CoreDocument doc, RenderPlan plan, WorkspaceSearchContentHit hit)
+    {
+        if (plan.Fragments.Count == 0)
+        {
+            return;
+        }
+
+        if ((ulong)doc.SourceByteCount == hit.SourceLength &&
+            string.Equals(doc.SourceSha256, hit.SourceSha256, StringComparison.OrdinalIgnoreCase))
+        {
+            var pos = plan.PositionAtSourceOffset(hit.SpanStart, doc);
+            Reader.ScrollToFragment(pos.FragmentIndex);
+            return;
+        }
+
+        if (hit.Anchor.Length > 0)
+        {
+            try
+            {
+                var resolved = doc.ResolveAnchor(hit.Anchor);
+                if (resolved.HasValue)
+                {
+                    var pos = plan.PositionAtSourceOffset(resolved.Value.SourceOffset, doc);
+                    Reader.ScrollToFragment(pos.FragmentIndex);
+                }
+            }
+            catch (CoreException)
+            {
+                // Anchor could not be resolved; keep document top.
+            }
+        }
+    }
+
     internal void CloseFolder(bool revoked = false)
     {
         if (ActiveFolder is null)
@@ -2050,12 +2267,16 @@ internal sealed class ReaderWindow : Window
         _workspaceCts?.Cancel();
         _workspaceCts?.Dispose();
         _workspaceCts = null;
+        _workspaceSearchRunner.Cancel();
+        _workspaceSearchSerial++;
+        _pendingSearchHit = null;
 
         var hadFolderBoundDoc = Loader.Capability?.ParentGrant == ActiveFolder.Grant;
         ActiveFolder.Revoke();
         ActiveFolder = null;
         CloseFolderItem.IsEnabled = false;
         ToggleWorkspaceSidebarItem.IsEnabled = false;
+        FindInWorkspaceItem.IsEnabled = false;
         WorkspaceSidebar.Clear();
         UpdateWorkspaceSidebarVisibility();
 
@@ -2289,6 +2510,11 @@ internal sealed class ReaderWindow : Window
                 Reader.SetTextScale(Preferences.TextScaleValue);
                 Reader.Visibility = Visibility.Visible;
                 Welcome.Visibility = Visibility.Collapsed;
+                if (_pendingSearchHit is { } pendingHit)
+                {
+                    _pendingSearchHit = null;
+                    ApplyContentHitNavigation(doc, plan, pendingHit);
+                }
                 if (IsFindBarVisible && !string.IsNullOrEmpty(FindBar.Query))
                 {
                     ExecuteFind();

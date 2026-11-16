@@ -1,7 +1,18 @@
 # Agent Session and Platform Handoff
 
+Updated: 2026-11-16 (America/Denver), WIN-002C completed under D-029 (PR #91 approved and closed out into `develop`).
+Active task: None. Eligible tasks: `WIN-002D` (Windows persistent preferences/settings) and `MAC-002` (macOS aggregate). The D-030 milestone review for `LNX-002` + `HARD-001` (`review/<milestone>` into `main`, owner-merged) is still open to cut.
+Pass `871ce47c-b8f1-46b5-875e-eb2ae4ada5b7` completed, approved PR #91 merged into `develop`:
+
+- Implemented `WIN-002C`: `md_workspace_find_names`, `md_workspace_content_admit`, and `md_workspace_content_search` C ABI bindings/wrappers in `CoreWorkspace` (`apps/windows/Core/CoreWorkspace.cs`), bounded cancellable background `WorkspaceSearch`/`WorkspaceSearchRunner` (`apps/windows/Document/WorkspaceSearch.cs`), virtualized `WorkspaceSearchPanel` (`apps/windows/Render/WorkspaceSearchPanel.cs`: `Files`/`Search` mode toggle, `Aa`/`ab`/`. *`/`Stop`, 180 ms debounced input, highlighted snippets, `⚠` invisible-character warning, `Edit > Find in Workspace…` `Ctrl+Shift+F`, source-hash/anchor result navigation), and unit/smoke coverage.
+- Checks at `d78cd3e`: `python apps/windows/tools/check.py` passed in Debug, Release, and relocated Release Native AOT (22 core consumer tests, 20 document tests, 20 render tests, extended `--smoke`, `check_association.py`, two-phase `--relaunch-check`, and relocated `--core-probe single` with 0 leaked handles).
+- Grok review 1 at `a671189`: 0 Blockers, 2 Concerns, 1 Nit (approved under D-029). All 3 findings were fixed in `d78cd3e` with no re-review needed.
+
+Next task: `WIN-002D` (persistent preferences/settings) on Windows, `MAC-002` on macOS, or the D-030 milestone review.
+
+## Previous handoff (WIN-002B)
+
 Updated: 2026-11-15 (America/Denver), WIN-002B completed under D-029 (PR #90 approved and closed out into `develop`).
-Active task: None. Eligible tasks: `WIN-002C` (Windows workspace search UI), `WIN-002D` (Windows persistent preferences/settings), and `MAC-002` (macOS aggregate). The D-030 milestone review for `LNX-002` + `HARD-001` (`review/<milestone>` into `main`, owner-merged) is still open to cut.
 Pass `62d2b88d-bd09-433b-8474-2f22bad8c38d` completed, approved PR #90 merged into `develop`:
 
 - Implemented `WIN-002B`: `md_workspace_classify_path` C ABI binding in `CoreWorkspace` (`apps/windows/Core/CoreWorkspace.cs`), bounded off-main `WorkspaceTree` enumeration (`apps/windows/Document/WorkspaceTree.cs`: 100,000 entries, 256 levels, symlink/reparse-point skipping, directory-first case-insensitive sorting, hidden-directory deferral), virtualized `WorkspaceSidebar` (`apps/windows/Render/WorkspaceSidebar.cs`: `ListView` with recycled `WorkspaceRowItem` containers, `All` / `.*` / `↻` / `×` toolbar controls, `⚠` invisible-character warning, UIA `Level`/`PositionInSet`/`SizeOfSet`/`Name`, `Left`/`Right`/`Enter`/`Space` keyboard navigation, `View > Toggle Workspace Sidebar` `Ctrl+B`), and unit/smoke coverage.
