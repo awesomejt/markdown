@@ -925,13 +925,19 @@ internal static class DocumentTests
             Assert(!folder.ResolveDocument(workspaceDir, out _, out var selfErr) &&
                    selfErr == FolderError.OutsideFolder, "folder root itself rejected as document");
 
-            // Symlink/junction escape check (Developer Mode or junction)
+            // Symlink/junction escape check and symlinked workspace root check (Developer Mode or junction)
             var junctionDir = Path.Combine(workspaceDir, "escape-link");
+            var rootAliasDir = Path.Combine(tempRoot, "docs-alias");
             try
             {
                 Directory.CreateSymbolicLink(junctionDir, outsideDir);
                 Assert(!folder.ResolveDocument(Path.Combine("escape-link", "outside.md"), out _, out var linkErr) &&
                        linkErr == FolderError.OutsideFolder, "symlink escaping folder rejected as OutsideFolder");
+
+                Directory.CreateSymbolicLink(rootAliasDir, workspaceDir);
+                var aliasFolder = FolderCapability.FromPickerPath(rootAliasDir);
+                Assert(aliasFolder.ResolveDocument(Path.Combine(rootAliasDir, "readme.md"), out var aliasChild, out _) &&
+                       aliasChild is not null, "rooted child inside symlinked workspace root resolves");
             }
             catch (UnauthorizedAccessException)
             {

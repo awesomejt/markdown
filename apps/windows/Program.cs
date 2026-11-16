@@ -1347,15 +1347,15 @@ public sealed partial class ReaderApp : Application
                 throw new InvalidOperationException("Recents store or Open Recent menu was not updated for folder.");
             }
 
-            if (!win002a.ActiveFolder.ResolveDocument("inside.md", out var wsDocCap, out _) || wsDocCap is null)
-            {
-                throw new InvalidOperationException("Failed to resolve inside.md from active folder.");
-            }
-            win002a.OpenCapability(wsDocCap);
+            // Open inside.md via File > Open while ActiveFolder is set -> binds to folder grant.
+            DocumentPicker.EnqueueAutomationSelect(wsDocPath);
+            win002a.OpenCommand();
             await WaitWindowIdleAsync(win002a);
-            if (win002a.Loader.Document is null || win002a.Loader.Error is not null)
+            if (win002a.Loader.Document is null ||
+                win002a.Loader.Error is not null ||
+                win002a.Loader.Capability?.ParentGrant != win002a.ActiveFolder.Grant)
             {
-                throw new InvalidOperationException("Folder-bound document failed to load.");
+                throw new InvalidOperationException("File > Open inside active folder did not bind to folder grant.");
             }
 
             // Close Folder revokes the folder grant and its bound document.
@@ -1475,6 +1475,7 @@ internal sealed class ReaderWindow : Window
     private DocumentWatcher? _watcher;
     private bool _isClosing;
     private CoreDocument? _displayedDoc;
+    private DocumentCapability? _recordedRecentCap;
     private string? _pendingRecentFilePath;
     private string? _lastFailedFolderPath;
     private bool _lastFailedFolderFromRecents;
@@ -1873,7 +1874,16 @@ internal sealed class ReaderWindow : Window
         _activeFolderError = null;
         _lastFailedFolderPath = null;
         _lastFailedFolderFromRecents = false;
-        ActiveFolder?.Revoke();
+        if (ActiveFolder is not null)
+        {
+            if (ActiveFolder.SameFolderAs(folder))
+            {
+                _app.Recents.RecordFolder(folder);
+                SyncFromLoader();
+                return;
+            }
+            CloseFolder(revoked: false);
+        }
         ActiveFolder = folder;
         CloseFolderItem.IsEnabled = true;
         _app.Recents.RecordFolder(folder);
@@ -1984,6 +1994,13 @@ internal sealed class ReaderWindow : Window
         {
             return;
         }
+        if (ActiveFolder is not null &&
+            ActiveFolder.ResolveDocument(pickedPath, out var boundCap, out _) &&
+            boundCap is not null)
+        {
+            OpenCapability(boundCap);
+            return;
+        }
         if (!DocumentCapability.TryFromUserInput(pickedPath, out var capability, out var error) ||
             capability is null)
         {
@@ -2066,8 +2083,11 @@ internal sealed class ReaderWindow : Window
 
         if (Loader.Document is { } doc)
         {
-            if (Loader.Error is null && Loader.Capability is { IsRevoked: false } loadedCap)
+            if (Loader.Error is null &&
+                Loader.Capability is { IsRevoked: false } loadedCap &&
+                !ReferenceEquals(loadedCap, _recordedRecentCap))
             {
+                _recordedRecentCap = loadedCap;
                 _pendingRecentFilePath = null;
                 _app.Recents.RecordFile(loadedCap);
             }

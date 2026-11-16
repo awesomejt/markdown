@@ -301,7 +301,9 @@ public sealed unsafe class FolderCapability
         }
 
         var canonicalRoot = CanonicalRoot;
-        if (!IsPathInsideRoot(candidateFull, canonicalRoot))
+        var logicalRoot = NormalizeDirectoryRoot(_fullPath);
+        if (!IsPathInsideRoot(candidateFull, canonicalRoot) &&
+            !IsPathInsideRoot(candidateFull, logicalRoot))
         {
             error = FolderError.OutsideFolder;
             return false;

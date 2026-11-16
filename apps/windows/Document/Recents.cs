@@ -474,6 +474,7 @@ public sealed class RecentsStore
             return;
         }
 
+        string? tmpPath = null;
         try
         {
             var dir = Path.GetDirectoryName(_filePath);
@@ -482,7 +483,7 @@ public sealed class RecentsStore
                 Directory.CreateDirectory(dir);
             }
 
-            var tmpPath = _filePath + ".tmp." + Guid.NewGuid().ToString("N");
+            tmpPath = _filePath + ".tmp." + Guid.NewGuid().ToString("N");
             using (var stream = File.Create(tmpPath))
             using (var writer = new Utf8JsonWriter(stream, new JsonWriterOptions { Indented = true }))
             {
@@ -496,7 +497,10 @@ public sealed class RecentsStore
         }
         catch
         {
-            // Best-effort persistence; in-memory state remains intact
+            if (tmpPath is not null)
+            {
+                try { File.Delete(tmpPath); } catch { }
+            }
         }
     }
 
