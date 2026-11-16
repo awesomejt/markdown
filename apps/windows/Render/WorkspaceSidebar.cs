@@ -332,15 +332,24 @@ public sealed partial class WorkspaceSidebar : UserControl
         Content = _root;
     }
 
-    public void SetLoading(string folderDisplayName)
+    public void SetLoading(string folderDisplayName, bool clearTree = true)
     {
         _headerTitle.Text = string.IsNullOrWhiteSpace(folderDisplayName) ? "Workspace" : folderDisplayName;
-        _statusText.Text = "Loading workspace…";
+        _statusText.Text = clearTree ? "Loading workspace…" : "Refreshing workspace…";
         _statusText.Visibility = Visibility.Visible;
-        _tree = WorkspaceTree.Empty;
-        _expandedDirectoryIds.Clear();
-        _visibleRows = [];
-        _treeList.ItemsSource = new IndexList(0);
+        if (clearTree)
+        {
+            _tree = WorkspaceTree.Empty;
+            _expandedDirectoryIds.Clear();
+            _visibleRows = [];
+            _treeList.ItemsSource = new IndexList(0);
+        }
+    }
+
+    public void SetError(string message)
+    {
+        _statusText.Text = string.IsNullOrWhiteSpace(message) ? "Could not load workspace." : message;
+        _statusText.Visibility = Visibility.Visible;
     }
 
     public void SetTree(string folderDisplayName, WorkspaceTree tree, bool resetExpanded = false)
@@ -494,7 +503,7 @@ public sealed partial class WorkspaceSidebar : UserControl
 
         if (_tree.Truncated)
         {
-            _statusText.Text = $"Showing {_visibleRows.Count:N0} items (limit reached)";
+            _statusText.Text = $"Limit reached ({_tree.Entries.Count:N0} entries scanned)";
             _statusText.Visibility = Visibility.Visible;
         }
         else if (_visibleRows.Count == 0 && _tree.Entries.Count > 0)

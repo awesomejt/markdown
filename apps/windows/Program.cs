@@ -1439,6 +1439,32 @@ public sealed partial class ReaderApp : Application
             {
                 throw new InvalidOperationException("Right arrow did not expand 'docs' directory.");
             }
+            // Refresh preserves expansion by relative path.
+            File.WriteAllText(Path.Combine(ws002bDocs, "extra.md"), "# Extra\n", new UTF8Encoding(false));
+            win002b.RefreshWorkspaceTree(resetExpanded: false);
+            var swRefresh = Stopwatch.StartNew();
+            while (swRefresh.ElapsedMilliseconds < 3000 &&
+                   !win002b.WorkspaceSidebar.VisibleRows.Any(r => r.Entry.Name == "extra.md"))
+            {
+                await Task.Delay(20);
+            }
+            if (win002b.WorkspaceSidebar.VisibleRows.Count != 4 ||
+                !win002b.WorkspaceSidebar.VisibleRows.Any(r => r.Entry.Name == "extra.md"))
+            {
+                throw new InvalidOperationException("Refresh did not preserve 'docs' expansion.");
+            }
+            File.Delete(Path.Combine(ws002bDocs, "extra.md"));
+            win002b.RefreshWorkspaceTree(resetExpanded: false);
+            swRefresh.Restart();
+            while (swRefresh.ElapsedMilliseconds < 3000 &&
+                   win002b.WorkspaceSidebar.VisibleRows.Any(r => r.Entry.Name == "extra.md"))
+            {
+                await Task.Delay(20);
+            }
+            if (win002b.WorkspaceSidebar.VisibleRows.Count != 3)
+            {
+                throw new InvalidOperationException("Second refresh did not preserve 'docs' expansion.");
+            }
             if (!win002b.WorkspaceSidebar.HandleTreeKeyDown(VirtualKey.Right) ||
                 win002b.WorkspaceSidebar.SelectedEntry?.Name != "guide.md")
             {
@@ -2042,7 +2068,7 @@ internal sealed class ReaderWindow : Window
         var cts = new CancellationTokenSource();
         _workspaceCts = cts;
         var generation = ++_workspaceGeneration;
-        WorkspaceSidebar.SetLoading(folder.DisplayName);
+        WorkspaceSidebar.SetLoading(folder.DisplayName, clearTree: resetExpanded);
 
         _ = Task.Run(async () =>
         {
@@ -2069,7 +2095,20 @@ internal sealed class ReaderWindow : Window
                     {
                         return;
                     }
+                    WorkspaceSidebar.SetError(ex.Error.Message());
                     ShowFolderError(ex.Error, folder.FullPath, isFromRecents: false);
+                });
+            }
+            catch (Exception)
+            {
+                _ = DispatcherQueue?.TryEnqueue(() =>
+                {
+                    if (_isClosing || generation != _workspaceGeneration || ActiveFolder != folder)
+                    {
+                        return;
+                    }
+                    WorkspaceSidebar.SetError("Could not load workspace.");
+                    ShowFolderError(FolderError.OpenFailed, folder.FullPath, isFromRecents: false);
                 });
             }
         });

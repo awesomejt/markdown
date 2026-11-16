@@ -196,7 +196,8 @@ public sealed class WorkspaceTree
 
             var firstChild = -1;
             var prevChild = -1;
-            var childDirs = new List<(string FullPath, string RelativePrefix, int Depth, int ParentIndex)>();
+            var visibleChildDirs = new List<(string FullPath, string RelativePrefix, int Depth, int ParentIndex)>();
+            var hiddenChildDirs = new List<(string FullPath, string RelativePrefix, int Depth, int ParentIndex)>();
 
             foreach (var item in levelItems)
             {
@@ -241,7 +242,15 @@ public sealed class WorkspaceTree
 
                 if (item.IsDir)
                 {
-                    childDirs.Add((item.FullPath, item.RelativePath, depth + 1, entryIndex));
+                    var childDir = (item.FullPath, item.RelativePath, depth + 1, entryIndex);
+                    if (item.Classification.IsHidden)
+                    {
+                        hiddenChildDirs.Add(childDir);
+                    }
+                    else
+                    {
+                        visibleChildDirs.Add(childDir);
+                    }
                 }
             }
 
@@ -254,9 +263,14 @@ public sealed class WorkspaceTree
                 entries[parentIndex].FirstChildIndex = firstChild;
             }
 
-            for (var i = childDirs.Count - 1; i >= 0; i--)
+            // Push hidden directories first (LIFO) so visible directories are traversed before hidden subtrees like .git.
+            for (var i = hiddenChildDirs.Count - 1; i >= 0; i--)
             {
-                stack.Push(childDirs[i]);
+                stack.Push(hiddenChildDirs[i]);
+            }
+            for (var i = visibleChildDirs.Count - 1; i >= 0; i--)
+            {
+                stack.Push(visibleChildDirs[i]);
             }
 
             if (truncated)
