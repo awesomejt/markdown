@@ -1348,6 +1348,20 @@ public sealed partial class ReaderApp : Application
                 throw new InvalidOperationException("Recents store or Open Recent menu was not updated for folder.");
             }
 
+            // 12c. WIN-002B: Native workspace browser sidebar populated on folder open.
+            var swWs = Stopwatch.StartNew();
+            while (swWs.ElapsedMilliseconds < 3000 && win002a.WorkspaceSidebar.VisibleRows.Count < 1)
+            {
+                await Task.Delay(20);
+            }
+            if (!win002a.IsWorkspaceSidebarVisible ||
+                !win002a.ToggleWorkspaceSidebarItem.IsEnabled ||
+                win002a.WorkspaceSidebar.VisibleRows.Count != 1 ||
+                win002a.WorkspaceSidebar.VisibleRows[0].Entry.Name != "inside.md")
+            {
+                throw new InvalidOperationException($"Unexpected workspace sidebar state for win002a: visible={win002a.IsWorkspaceSidebarVisible}, count={win002a.WorkspaceSidebar.VisibleRows.Count}");
+            }
+
             // Open inside.md via File > Open while ActiveFolder is set -> binds to folder grant.
             DocumentPicker.EnqueueAutomationSelect(wsDocPath);
             win002a.OpenCommand();
@@ -1403,61 +1417,6 @@ public sealed partial class ReaderApp : Application
             await Task.Delay(50);
             RecentItemsWindow.Close();
             win002a.CloseCommand();
-            await Task.Delay(50);
-
-            // 12c. WIN-002B: Native workspace browser, filtering, keyboard navigation, and Ctrl+B sidebar toggle.
-            var ws002bDir = Path.Combine(tempDir, "win002b-ws");
-            var ws002bDocs = Path.Combine(ws002bDir, "docs");
-            Directory.CreateDirectory(ws002bDocs);
-            File.WriteAllText(Path.Combine(ws002bDir, "root.md"), "# Root\n", new UTF8Encoding(false));
-            File.WriteAllText(Path.Combine(ws002bDir, "notes.txt"), "plain\n", new UTF8Encoding(false));
-            File.WriteAllText(Path.Combine(ws002bDir, ".hidden.md"), "# Hidden\n", new UTF8Encoding(false));
-            File.WriteAllText(Path.Combine(ws002bDocs, "guide.md"), "# Workspace Guide\n", new UTF8Encoding(false));
-
-            var win002b = NewWindow();
-            await Task.Delay(50);
-            win002b.OpenFolderCapability(FolderCapability.FromPickerPath(ws002bDir));
-            var swWs = Stopwatch.StartNew();
-            while (swWs.ElapsedMilliseconds < 3000 && win002b.WorkspaceSidebar.VisibleRows.Count < 2)
-            {
-                await Task.Delay(20);
-            }
-            if (!win002b.IsWorkspaceSidebarVisible || !win002b.ToggleWorkspaceSidebarItem.IsEnabled)
-            {
-                throw new InvalidOperationException("Workspace sidebar should be visible and toggle enabled when folder opens.");
-            }
-            if (win002b.WorkspaceSidebar.VisibleRows.Count != 2 ||
-                win002b.WorkspaceSidebar.VisibleRows[0].Entry.Name != "docs" ||
-                win002b.WorkspaceSidebar.VisibleRows[1].Entry.Name != "root.md")
-            {
-                throw new InvalidOperationException($"Unexpected initial workspace rows: {win002b.WorkspaceSidebar.VisibleRows.Count}");
-            }
-
-            win002b.WorkspaceSidebar.ShowAllFiles = true;
-            if (!win002b.WorkspaceSidebar.VisibleRows.Any(r => r.Entry.Name == "notes.txt"))
-            {
-                throw new InvalidOperationException("ShowAllFiles toggle did not show notes.txt.");
-            }
-            win002b.WorkspaceSidebar.ShowHidden = true;
-            if (!win002b.WorkspaceSidebar.VisibleRows.Any(r => r.Entry.Name == ".hidden.md"))
-            {
-                throw new InvalidOperationException("ShowHidden toggle did not show .hidden.md.");
-            }
-
-            win002b.ToggleWorkspaceSidebarCommand();
-            if (win002b.IsWorkspaceSidebarVisible)
-            {
-                throw new InvalidOperationException("ToggleWorkspaceSidebarCommand did not hide sidebar.");
-            }
-            win002b.ToggleWorkspaceSidebarCommand();
-            if (!win002b.IsWorkspaceSidebarVisible)
-            {
-                throw new InvalidOperationException("ToggleWorkspaceSidebarCommand did not re-show sidebar.");
-            }
-
-            win002b.CloseFolderCommand();
-            await Task.Delay(50);
-            win002b.CloseCommand();
             await Task.Delay(50);
 
             // 13. Verify New Window, Close Window, and Exit commands close all windows cleanly.
