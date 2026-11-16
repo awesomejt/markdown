@@ -107,6 +107,12 @@ internal sealed partial class WorkspaceRowItem : ListViewItem
     }
 }
 
+public enum WorkspaceSidebarMode
+{
+    Files,
+    Search,
+}
+
 public sealed partial class WorkspaceSidebar : UserControl
 {
     private readonly Grid _root = new();
@@ -118,6 +124,23 @@ public sealed partial class WorkspaceSidebar : UserControl
         TextTrimming = TextTrimming.CharacterEllipsis,
         TextWrapping = TextWrapping.NoWrap,
         VerticalAlignment = VerticalAlignment.Center,
+    };
+    private readonly ToggleButton _filesModeButton = new()
+    {
+        Content = "Files",
+        FontSize = 11,
+        Padding = new Thickness(8, 2, 8, 2),
+        MinWidth = 0,
+        MinHeight = 24,
+        IsChecked = true,
+    };
+    private readonly ToggleButton _searchModeButton = new()
+    {
+        Content = "Search",
+        FontSize = 11,
+        Padding = new Thickness(8, 2, 8, 2),
+        MinWidth = 0,
+        MinHeight = 24,
     };
     private readonly ToggleButton _allToggle = new()
     {
@@ -165,10 +188,15 @@ public sealed partial class WorkspaceSidebar : UserControl
         SelectionMode = ListViewSelectionMode.Single,
         IsItemClickEnabled = true,
     };
+    private readonly WorkspaceSearchPanel _searchPanel = new()
+    {
+        Visibility = Visibility.Collapsed,
+    };
 
     private readonly HashSet<ulong> _expandedDirectoryIds = [];
     private WorkspaceTree _tree = WorkspaceTree.Empty;
     private List<WorkspaceVisibleRow> _visibleRows = [];
+    private WorkspaceSidebarMode _mode = WorkspaceSidebarMode.Files;
     private bool _suppressToggleEvents;
 
     public event Action<WorkspaceEntry>? FileActivated;
@@ -176,6 +204,8 @@ public sealed partial class WorkspaceSidebar : UserControl
     public event Action? CloseRequested;
 
     public ListView TreeList => _treeList;
+    public WorkspaceSearchPanel SearchPanel => _searchPanel;
+    public WorkspaceSidebarMode Mode => _mode;
     public IReadOnlyList<WorkspaceVisibleRow> VisibleRows => _visibleRows;
     public IReadOnlySet<ulong> ExpandedDirectoryIds => _expandedDirectoryIds;
     public WorkspaceTree CurrentTree => _tree;
@@ -221,6 +251,8 @@ public sealed partial class WorkspaceSidebar : UserControl
     {
         Width = 260;
 
+        AutomationProperties.SetName(_filesModeButton, "Files view");
+        AutomationProperties.SetName(_searchModeButton, "Search view");
         AutomationProperties.SetName(_allToggle, "Show all files");
         ToolTipService.SetToolTip(_allToggle, "Show all files (off shows Markdown files only)");
         AutomationProperties.SetName(_hiddenToggle, "Show hidden files");
@@ -230,6 +262,9 @@ public sealed partial class WorkspaceSidebar : UserControl
         AutomationProperties.SetName(_closeButton, "Hide workspace sidebar");
         ToolTipService.SetToolTip(_closeButton, "Hide workspace sidebar (Ctrl+B)");
         AutomationProperties.SetName(_treeList, "Workspace files");
+
+        _filesModeButton.Click += (_, _) => SetMode(WorkspaceSidebarMode.Files);
+        _searchModeButton.Click += (_, _) => SetMode(WorkspaceSidebarMode.Search);
 
         _allToggle.Checked += (_, _) =>
         {
@@ -322,19 +357,50 @@ public sealed partial class WorkspaceSidebar : UserControl
         headerGrid.Children.Add(_refreshButton);
         headerGrid.Children.Add(_closeButton);
 
+        var modeBar = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 4,
+            Margin = new Thickness(8, 0, 8, 4),
+        };
+        modeBar.Children.Add(_filesModeButton);
+        modeBar.Children.Add(_searchModeButton);
+
+        _root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         _root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         _root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         _root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
 
         Grid.SetRow(headerGrid, 0);
-        Grid.SetRow(_statusText, 1);
-        Grid.SetRow(_treeList, 2);
+        Grid.SetRow(modeBar, 1);
+        Grid.SetRow(_statusText, 2);
+        Grid.SetRow(_treeList, 3);
+        Grid.SetRow(_searchPanel, 3);
 
         _root.Children.Add(headerGrid);
+        _root.Children.Add(modeBar);
         _root.Children.Add(_statusText);
         _root.Children.Add(_treeList);
+        _root.Children.Add(_searchPanel);
 
         Content = _root;
+    }
+
+    public void SetMode(WorkspaceSidebarMode mode)
+    {
+        _mode = mode;
+        var isFiles = mode == WorkspaceSidebarMode.Files;
+        _filesModeButton.IsChecked = isFiles;
+        _searchModeButton.IsChecked = !isFiles;
+
+        _allToggle.Visibility = isFiles ? Visibility.Visible : Visibility.Collapsed;
+        _hiddenToggle.Visibility = isFiles ? Visibility.Visible : Visibility.Collapsed;
+        _refreshButton.Visibility = isFiles ? Visibility.Visible : Visibility.Collapsed;
+        _treeList.Visibility = isFiles ? Visibility.Visible : Visibility.Collapsed;
+        _statusText.Visibility = isFiles && !string.IsNullOrWhiteSpace(_statusText.Text)
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+        _searchPanel.Visibility = isFiles ? Visibility.Collapsed : Visibility.Visible;
     }
 
     public void SetLoading(string folderDisplayName, bool clearTree = true)
@@ -401,6 +467,8 @@ public sealed partial class WorkspaceSidebar : UserControl
         _visibleRows = [];
         _treeList.SelectedIndex = -1;
         _treeList.ItemsSource = null;
+        _searchPanel.Clear();
+        SetMode(WorkspaceSidebarMode.Files);
     }
 
     public bool ExpandDirectory(ulong entryId)

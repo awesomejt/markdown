@@ -38,6 +38,7 @@ internal static class DocumentTests
                 ("recents_store_caps_dedup_untrusted_json_and_future_version", TestRecentsStoreCapsDedupUntrustedJsonAndFutureVersion),
                 ("recents_availability_checks_for_available_missing_denied_and_type", TestRecentsAvailabilityChecks),
                 ("workspace_tree_enumeration_filtering_and_large_folder", TestWorkspaceTreeEnumerationFilteringAndLargeFolder),
+                ("workspace_search_bounded_cancellation_and_revocation", TestWorkspaceSearchBoundedCancellationAndRevocation),
             };
 
             foreach (var (name, run) in tests)
@@ -1244,6 +1245,58 @@ internal static class DocumentTests
             var largeEntry = largeTree.Entries.First(e => e.Name == "large");
             var largeRows = largeTree.BuildVisibleRows(new HashSet<ulong> { largeEntry.Id }, showAllFiles: false, showHidden: false);
             Assert(largeRows.Count >= 2500, $"expected >= 2500 visible rows, got {largeRows.Count}");
+        }
+        finally
+        {
+            try { Directory.Delete(tempDir, recursive: true); } catch { }
+        }
+    }
+
+    private static void TestWorkspaceSearchBoundedCancellationAndRevocation()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), $"ws-search-test-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempDir);
+        try
+        {
+            var docsDir = Path.Combine(tempDir, "docs");
+            Directory.CreateDirectory(docsDir);
+            File.WriteAllText(Path.Combine(tempDir, "alpha.md"), "# Alpha\n\nTarget keyword here.\n", new UTF8Encoding(false));
+            File.WriteAllText(Path.Combine(docsDir, "beta-target.md"), "# Beta\n\nAnother target keyword.\n", new UTF8Encoding(false));
+            File.WriteAllText(Path.Combine(docsDir, "notes.txt"), "target in txt should be skipped\n", new UTF8Encoding(false));
+            File.WriteAllText(Path.Combine(tempDir, ".hidden.md"), "# Hidden\n\ntarget in hidden\n", new UTF8Encoding(false));
+
+            Assert(FolderCapability.TryFromUserInput(tempDir, out var folder, out _) && folder is not null,
+                "FolderCapability created");
+            var tree = WorkspaceTree.Enumerate(folder!);
+
+            // 1. Name + content search
+            var snap = WorkspaceSearch.Run(folder!, tree, "target");
+            Assert(!snap.IsRunning && !snap.IsCancelled, "search completed");
+            Assert(snap.NameHits.Count == 1 && snap.NameHits[0].RelativePath == "docs/beta-target.md",
+                $"expected 1 name hit, got {snap.NameHits.Count}");
+            Assert(snap.ContentHits.Count == 2, $"expected 2 content hits, got {snap.ContentHits.Count}");
+            Assert(snap.ContentHits.All(h => h.Anchor.Length > 0 && h.SourceSha256.Length == 64),
+                "content hits carry anchors and hashes");
+
+            // 2. Bounded MaxFiles stops cleanly
+            var bounded = WorkspaceSearch.Run(
+                folder!,
+                tree,
+                "target",
+                new WorkspaceSearchOptions(MaxFiles: 1));
+            Assert(bounded.IsIncomplete && bounded.StopReason == CoreFfi.MD_STOP_FILES && bounded.FilesRead == 1,
+                $"expected stop at MaxFiles=1, got stop={bounded.StopReason}, read={bounded.FilesRead}");
+
+            // 3. Cancellation before/during search
+            using var cts = new CancellationTokenSource();
+            cts.Cancel();
+            var cancelled = WorkspaceSearch.Run(folder!, tree, "target", cancellationToken: cts.Token);
+            Assert(cancelled.IsCancelled, "cancelled search reports IsCancelled");
+
+            // 4. Folder revocation
+            folder!.Revoke();
+            var revoked = WorkspaceSearch.Run(folder!, tree, "target");
+            Assert(!string.IsNullOrEmpty(revoked.ErrorMessage), "revoked folder reports error");
         }
         finally
         {

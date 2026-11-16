@@ -165,6 +165,26 @@ internal static unsafe class CoreFfi
     internal const uint MD_WORKSPACE_PATH_INFO_SIZE = 16;
     internal const uint MD_WORKSPACE_ENTRY_SIZE = 24;
     internal const uint MD_WORKSPACE_MAX_PATH_BYTES = 4096;
+    internal const uint MD_WORKSPACE_MAX_PATH_DEPTH = 256;
+    internal const uint MD_WORKSPACE_MAX_QUERY_BYTES = 4096;
+    internal const uint MD_NAMES_DEFAULT_MAX_RESULTS = 200;
+    internal const uint MD_NAMES_MAX_RESULTS = 10000;
+    internal const uint MD_NAMES_DEFAULT_MAX_ENTRIES = 100000;
+    internal const uint MD_NAMES_MAX_ENTRIES = 1000000;
+    internal const uint MD_NAMES_MAX_PATH_BYTES = 67108864;
+    internal const uint MD_CONTENT_DEFAULT_MAX_FILES = 10000;
+    internal const uint MD_CONTENT_MAX_FILES = 1000000;
+    internal const ulong MD_CONTENT_DEFAULT_MAX_TOTAL_BYTES = 268435456;
+    internal const ulong MD_CONTENT_MAX_TOTAL_BYTES = 17179869184;
+    internal const uint MD_CONTENT_DEFAULT_MAX_FILE_BYTES = 2097152;
+    internal const uint MD_CONTENT_MAX_FILE_BYTES = 8388608;
+    internal const uint MD_CONTENT_DEFAULT_MAX_MATCHES_PER_FILE = 100;
+    internal const uint MD_CONTENT_MAX_MATCHES_PER_FILE = 10000;
+    internal const uint MD_CONTENT_DEFAULT_MAX_TOTAL_MATCHES = 2000;
+    internal const uint MD_CONTENT_MAX_TOTAL_MATCHES = 100000;
+    internal const uint MD_CONTENT_DEFAULT_SNIPPET_CONTEXT = 40;
+    internal const uint MD_CONTENT_MAX_SNIPPET_CONTEXT = 200;
+    internal const uint MD_CONTENT_MAX_SNIPPET_BYTES = 2624;
     internal const uint MD_PATH_VALID = 0;
     internal const uint MD_PATH_EMPTY = 1;
     internal const uint MD_PATH_TOO_LONG = 2;
@@ -177,6 +197,34 @@ internal static unsafe class CoreFfi
     internal const uint MD_PATH_MARKDOWN = 1;
     internal const uint MD_PATH_HIDDEN = 2;
     internal const uint MD_PATH_INVISIBLE = 4;
+    internal const uint MD_NAMES_CASE_SENSITIVE = 1;
+    internal const uint MD_NAMES_INCLUDE_HIDDEN = 2;
+    internal const uint MD_NAMES_ALL_FILES = 4;
+    internal const uint MD_NAMES_TRUNCATED = 1;
+    internal const uint MD_NAMES_ENTRIES_LIMITED = 2;
+    internal const uint MD_NAME_RANK_PREFIX = 1;
+    internal const uint MD_NAME_RANK_NAME = 2;
+    internal const uint MD_NAME_RANK_PATH = 3;
+    internal const uint MD_CONTENT_CASE_SENSITIVE = 1;
+    internal const uint MD_CONTENT_WHOLE_WORD = 2;
+    internal const uint MD_CONTENT_INCLUDE_HIDDEN = 4;
+    internal const uint MD_CONTENT_READ = 1;
+    internal const uint MD_CONTENT_SEARCHED = 2;
+    internal const uint MD_CONTENT_SKIPPED = 3;
+    internal const uint MD_CONTENT_STOPPED = 4;
+    internal const uint MD_SKIP_HIDDEN = 1;
+    internal const uint MD_SKIP_NOT_MARKDOWN = 2;
+    internal const uint MD_SKIP_TOO_LARGE = 3;
+    internal const uint MD_SKIP_INVALID_UTF8 = 4;
+    internal const uint MD_SKIP_PARSE_FAILED = 5;
+    internal const uint MD_STOP_FILES = 1;
+    internal const uint MD_STOP_BYTES = 2;
+    internal const uint MD_STOP_MATCHES = 3;
+    internal const uint MD_CONTENT_TRUNCATED = 1;
+    internal const uint MD_HIT_EXACT = 1;
+    internal const uint MD_HIT_LEADING_MORE = 2;
+    internal const uint MD_HIT_TRAILING_MORE = 4;
+    internal const uint MD_HIT_ANCHOR = 8;
     internal const uint MD_NAME_OPTIONS_SIZE = 24;
     internal const uint MD_NAME_RESULT_SIZE = 56;
     internal const uint MD_NAME_HIT_SIZE = 24;
@@ -668,4 +716,47 @@ internal static unsafe class CoreFfi
         byte* path,
         nuint path_length,
         md_workspace_path_info* out_info);
+
+    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+    internal static extern uint md_workspace_find_names(
+        byte* paths,
+        nuint paths_length,
+        md_workspace_entry* entries,
+        nuint entry_count,
+        byte* query,
+        nuint query_length,
+        md_name_options* options,
+        md_name_hit* hits,
+        nuint hit_capacity,
+        md_name_result* out_result);
+
+    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+    internal static extern uint md_workspace_content_admit(
+        byte* query,
+        nuint query_length,
+        md_content_options* options,
+        byte* path,
+        nuint path_length,
+        ulong byte_length,
+        md_content_progress* progress,
+        uint* out_outcome,
+        uint* out_reason);
+
+    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+    internal static extern uint md_workspace_content_search(
+        byte* query,
+        nuint query_length,
+        md_content_options* options,
+        byte* path,
+        nuint path_length,
+        byte* content,
+        nuint content_length,
+        md_content_progress* progress,
+        md_content_hit* hits,
+        nuint hit_capacity,
+        byte* text,
+        nuint text_capacity,
+        byte* anchors,
+        nuint anchor_capacity,
+        md_content_result* out_result);
 }

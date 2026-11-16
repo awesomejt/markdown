@@ -36,6 +36,7 @@ internal static unsafe class CoreConsumerTests
             ("anchors_and_external_changes", AnchorsAndExternalChanges),
             ("documents_release_their_snapshots", DocumentsReleaseTheirSnapshots),
             ("workspace_path_classification", WorkspacePathClassificationTest),
+            ("workspace_name_and_content_search", WorkspaceNameAndContentSearchTest),
         };
 
         Console.WriteLine($"running {tests.Length} Windows core consumer tests ({CoreRuntime.ExpectedConfiguration})");
@@ -981,5 +982,70 @@ internal static unsafe class CoreConsumerTests
         var ctrl = CoreWorkspace.ClassifyPath("a\u0001b.md");
         Check(!ctrl.IsValid && ctrl.ErrorCode == CoreFfi.MD_PATH_CONTROL,
             $"unexpected control classification: {ctrl}");
+    }
+
+    private static void WorkspaceNameAndContentSearchTest()
+    {
+        var entries = new WorkspaceNameInput[]
+        {
+            new(10, "readme.md"),
+            new(11, "docs/my-readme.md"),
+            new(12, "docs/notes.txt"),
+            new(13, ".hidden/secret.md"),
+            new(14, "/invalid/abs.md"),
+        };
+
+        var nameRes = CoreWorkspace.FindNames(entries, "readme", new WorkspaceNameOptions());
+        Check(nameRes.Hits.Count == 2, $"expected 2 name hits, got {nameRes.Hits.Count}");
+        Check(nameRes.Hits[0].Id == 10 && nameRes.Hits[0].Rank == CoreFfi.MD_NAME_RANK_PREFIX, "prefix rank first");
+        Check(nameRes.Hits[1].Id == 11 && nameRes.Hits[1].Rank == CoreFfi.MD_NAME_RANK_NAME, "second hit is docs/my-readme.md");
+        Check(nameRes.SkippedHidden == 1 && nameRes.SkippedNotMarkdown == 1 && nameRes.SkippedInvalid == 1,
+            $"unexpected skipped counts: {nameRes}");
+
+        var allNames = CoreWorkspace.FindNames(entries, "notes", new WorkspaceNameOptions(AllFiles: true));
+        Check(allNames.Hits.Count == 1 && allNames.Hits[0].Id == 12, "AllFiles finds notes.txt");
+
+        var progress = new WorkspaceContentProgress();
+        var content = Encoding.UTF8.GetBytes("# Title\n\nHello café 🚀 world.\n\nAnother café line.\n");
+        var admit = CoreWorkspace.ContentAdmit("café", "docs/guide.md", (ulong)content.Length, progress);
+        Check(admit.ShouldRead, "admit should read valid markdown file");
+
+        var fileRes = CoreWorkspace.ContentSearch("café", "docs/guide.md", content, progress);
+        Check(fileRes.IsSearched && fileRes.Hits.Count == 2, $"expected 2 content hits, got {fileRes.Hits.Count}");
+        Check(fileRes.SourceLength == (ulong)content.Length && fileRes.SourceSha256.Length == 64, "source hash populated");
+
+        var hit0 = fileRes.Hits[0];
+        Check(hit0.Line == 3, $"expected line 3, got {hit0.Line}");
+        Check(hit0.Snippet.Substring(hit0.MatchStartUtf16, hit0.MatchLengthUtf16) == "café",
+            $"UTF-16 match slice mismatch: '{hit0.Snippet}' [{hit0.MatchStartUtf16}, {hit0.MatchLengthUtf16}]");
+        Check(hit0.Anchor.Length > 0, "anchor bytes returned");
+
+        using var session = new CoreSession("ws-nav");
+        var parsed = session.ParseBlocking(content, null, copyUnchanged: true);
+        using var doc = parsed.Document!;
+        Check((ulong)doc.SourceByteCount == fileRes.SourceLength &&
+              string.Equals(doc.SourceSha256, fileRes.SourceSha256, StringComparison.OrdinalIgnoreCase),
+            "session source hash matches content search result");
+        var resolved = doc.ResolveAnchor(hit0.Anchor);
+        Check(resolved.HasValue && resolved.Value.Quality == AnchorQuality.Exact, "anchor resolves exact");
+
+        // TooLarge skip in ContentAdmit
+        var tooLarge = CoreWorkspace.ContentAdmit(
+            "café",
+            "docs/big.md",
+            CoreFfi.MD_CONTENT_DEFAULT_MAX_FILE_BYTES + 1,
+            progress);
+        Check(tooLarge.IsSkipped && tooLarge.Reason == CoreFfi.MD_SKIP_TOO_LARGE, "oversized file skipped");
+
+        // Budget stop on max_files
+        var stopProgress = new WorkspaceContentProgress();
+        var stopOpts = new WorkspaceContentOptions(MaxFiles: 1);
+        var r1 = CoreWorkspace.ContentSearch("café", "a.md", content, stopProgress, stopOpts);
+        Check(r1.IsSearched && stopProgress.FilesRead == 1 && !stopProgress.IsStopped,
+            "first file searched within MaxFiles = 1");
+        var r2 = CoreWorkspace.ContentAdmit("café", "b.md", (ulong)content.Length, stopProgress, stopOpts);
+        Check(r2.IsStopped && r2.Reason == CoreFfi.MD_STOP_FILES &&
+              stopProgress.IsStopped && stopProgress.StoppedReason == CoreFfi.MD_STOP_FILES,
+            "sticky stop on second file at MaxFiles = 1");
     }
 }
