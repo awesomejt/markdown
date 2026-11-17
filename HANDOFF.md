@@ -1,7 +1,20 @@
 # Agent Session and Platform Handoff
 
+Updated: 2026-11-16 (America/Denver), WIN-002E and WIN-002E-FIX closed out for the approved PR #93 merge into `develop`.
+Active task: None. Next Windows task: `WIN-002F` (development packaging and R1 conformance). `MAC-002` is independently ready on macOS; no platform switch is needed for WIN-002F.
+
+- PR #93 delivers Windows workspace watching, change-storm coalescing, access-loss recovery, selection/expansion retention, and v2 workspace restoration, as documented in [the Windows README](apps/windows/README.md).
+- The earlier WIN-002E completion record was premature: GitHub still had an open PR and failed smoke CI. WIN-002E-FIX preserved that history and gated WIN-002F while recovering the actual reviewed merge.
+- Recovery source `42573ab` bounds the stale-load worker rendezvous without pumping the UI dispatcher, waits for the unchanged restored-position/selection assertions, uses one New/Close followed by multi-window Exit in the same dispatcher turn, arms the failure watchdog before the lifecycle sequence, and takes the existing smoke-only detach bypass immediately after closed-window/zero-core-handle checks. Both subprocess runners retain captured stage output on timeout. Production app behavior is unchanged.
+- Native checks: `python apps/windows/tools/check.py` passed Debug, Release and relocated Release (22 core, 22 document and 22 render tests each, WinUI smoke, association, two-phase relaunch, license inventory and relocated core probe with 0 leaked handles). `python tools/check.py common`, timeout-output probes for both runners, 100 serial Debug smokes and 20 serial Release smokes passed.
+- [Hosted CI run 44008960954](https://github.com/awesomejt/markdown/actions/runs/44008960954) passed at `42573ab` on attempt 2. Attempt 1 timed out during the restoration smoke; the hosted intermittent hang remains a validation risk, despite 120 serial local passes.
+- Grok review 1 at `1080409`: 0 Blockers, 1 Concern, 2 Nits, all fixed at `aa9f98e`. D-029 approval remains applicable; later changes are minor smoke synchronization/diagnostics and state/docs, exempt from re-review under Delivery-Workflow step 7. One review used. This closeout commit travels on PR #93; merge only after its required CI passes, then delete the branch and return to clean `develop`.
+
+Next: WIN-002F on Windows, then the WIN-002 aggregate. A fresh context is recommended for the larger packaging/conformance task; this handoff contains the resume evidence. D-030 milestone reviews remain owner-merged into `main`.
+
+## Previous handoff (WIN-002D)
+
 Updated: 2026-11-16 (America/Denver), WIN-002D completed under D-029 (PR #92 approved and closed out into `develop`).
-Active task: None. Eligible tasks: `WIN-002E` (Windows workspace watching, restoration, and performance) and `MAC-002` (macOS aggregate). The D-030 milestone review for `LNX-002` + `HARD-001` (`review/<milestone>` into `main`, owner-merged) is still open to cut.
 Pass `4c23d0b9-0331-4be1-b0c1-c4761cae0969` completed, approved PR #92 merged into `develop`:
 
 - Implemented `WIN-002D`: versioned `preferences.json` schema v2 (`apps/windows/ReaderPreferences.cs`: `showOutlineByDefault`, `restoreSessionOnLaunch`, automatic v1-to-v2 migration on load with text-scale snapping and malformed-field fallback, lossless future-version and unknown-field preservation via `WriteRawValue`, `MARKDOWN_PREFERENCES_PATH` isolation), expanded `SettingsWindow` (`apps/windows/SettingsWindow.cs`: outline default, session restoration, `Reset to Defaults`, `_isRefreshing` guard), outline-default and session-restoration gating in `ReaderApp`/`ReaderWindow`/`ReaderControl`, and unit/smoke/two-phase `--relaunch-check` v1-to-v2 migration verification.

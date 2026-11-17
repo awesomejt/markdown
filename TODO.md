@@ -73,6 +73,14 @@ core alone.
 
 ## Immediate session handoff
 
+- **WIN-002E-FIX - Recover WIN-002E CI and merge.** Recovered PR #93's
+  premature closeout with bounded smoke synchronization, position settling,
+  validated native shutdown and timeout diagnostics. Acceptance: native suites,
+  100 Debug + 20 Release serial smokes and hosted CI pass before actual D-029
+  merge; original completed pass history is preserved. Hosted attempt 1 still
+  timed out at restoration; attempt 2 and all local checks passed. Carry this
+  intermittent hosted smoke risk into WIN-002F validation.
+
 - The current task, branch and exact next step are in [HANDOFF.md](HANDOFF.md).
 - The current posture, host notes and risks are in [MEMORY.md](MEMORY.md).
 - The merge-by-merge history of the completed shared phases, the CORE-003B2F

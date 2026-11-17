@@ -38,6 +38,7 @@ internal static class RenderTests
                 ("native_clipboard_roundtrip", NativeClipboardRoundtrip),
                 ("reading_position_mapping_and_anchors", ReadingPositionMappingAndAnchors),
                 ("restoration_store_serialization_and_tamper_safety", RestorationStoreSerializationAndTamperSafety),
+                ("restoration_store_v2_workspace_and_v1_backcompat", RestorationStoreV2WorkspaceAndV1Backcompat),
             };
 
             foreach (var (name, run) in tests)
@@ -1115,6 +1116,100 @@ internal static class RenderTests
             File.WriteAllText(tempFile, "{ broken json");
             var corrupt = RestorationStore.Load(tempFile);
             Assert(corrupt.Count == 0, "corrupt json returns empty");
+        }
+        finally
+        {
+            try { File.Delete(tempFile); } catch { }
+        }
+    }
+
+    private static void RestorationStoreV2WorkspaceAndV1Backcompat()
+    {
+        var tempFile = Path.Combine(Path.GetTempPath(), $"restoration-v2-{Guid.NewGuid():N}.json");
+        try
+        {
+            // 1. V2 workspace + document roundtrip and workspace-only roundtrip
+            var pos = new SavedPosition([10, 20], [30, 40], null);
+            var withBoth = WindowRestorationState.Create(
+                "C:\\ws\\readme.md",
+                pos,
+                1.25,
+                outlineShown: true,
+                workspacePath: "C:\\ws",
+                workspaceSidebarVisible: false,
+                expandedRelativePaths: ["docs", "docs/guides"],
+                showAllFiles: true,
+                showHidden: true);
+            var folderOnly = WindowRestorationState.Create(
+                string.Empty,
+                null,
+                1.0,
+                outlineShown: false,
+                workspacePath: "C:\\ws-only",
+                workspaceSidebarVisible: true,
+                expandedRelativePaths: ["sub"],
+                showAllFiles: false,
+                showHidden: false);
+
+            RestorationStore.Save([withBoth, folderOnly], tempFile);
+            var loaded = RestorationStore.Load(tempFile);
+            Assert(loaded.Count == 2, $"expected 2 restored windows, got {loaded.Count}");
+            Assert(loaded[0].FilePath == "C:\\ws\\readme.md", "first window filepath matches");
+            Assert(loaded[0].WorkspacePath == "C:\\ws", "first window workspace path matches");
+            Assert(!loaded[0].WorkspaceSidebarVisible, "first window sidebar visibility preserved");
+            Assert(loaded[0].ShowAllFiles && loaded[0].ShowHidden, "first window filter toggles preserved");
+            Assert(loaded[0].ExpandedRelativePaths is { Count: 2 } exp0 &&
+                   exp0[0] == "docs" &&
+                   exp0[1] == "docs/guides",
+                "first window expanded paths preserved");
+
+            Assert(string.IsNullOrEmpty(loaded[1].FilePath), "folder-only window has empty filepath");
+            Assert(loaded[1].WorkspacePath == "C:\\ws-only", "folder-only workspace path matches");
+            Assert(loaded[1].WorkspaceSidebarVisible, "folder-only sidebar visibility matches");
+
+            // 2. V1 back-compat
+            File.WriteAllText(tempFile, """
+                {
+                  "version": 1,
+                  "windows": [
+                    {
+                      "file_path": "C:\\legacy\\doc.md",
+                      "top_anchor": "AQID",
+                      "sel_start": null,
+                      "sel_end": null,
+                      "text_scale": 1.1,
+                      "outline_shown": false
+                    }
+                  ]
+                }
+                """);
+            var v1Loaded = RestorationStore.Load(tempFile);
+            Assert(v1Loaded.Count == 1, "v1 payload loaded");
+            Assert(v1Loaded[0].FilePath == "C:\\legacy\\doc.md", "v1 filepath loaded");
+            Assert(v1Loaded[0].WorkspacePath is null, "v1 workspace path defaults to null");
+            Assert(v1Loaded[0].WorkspaceSidebarVisible, "v1 sidebar visibility defaults to true");
+            Assert(!v1Loaded[0].ShowAllFiles && !v1Loaded[0].ShowHidden, "v1 filter toggles default to false");
+
+            // 3. Rejects traversal expanded_paths and UNC workspace_path
+            File.WriteAllText(tempFile, """
+                {
+                  "version": 2,
+                  "windows": [
+                    {
+                      "file_path": "C:\\ws\\doc.md",
+                      "workspace_path": "\\\\server\\share\\docs",
+                      "expanded_paths": ["valid", "release..old", "../escape", "C:\\abs"]
+                    }
+                  ]
+                }
+                """);
+            var filtered = RestorationStore.Load(tempFile);
+            Assert(filtered.Count == 1, "valid file preserved even when UNC workspace rejected");
+            Assert(filtered[0].WorkspacePath is null, "UNC workspace rejected");
+            Assert(filtered[0].ExpandedRelativePaths is { Count: 2 } expFiltered &&
+                   expFiltered[0] == "valid" &&
+                   expFiltered[1] == "release..old",
+                "traversal and absolute expanded paths filtered while keeping valid '..' in names");
         }
         finally
         {

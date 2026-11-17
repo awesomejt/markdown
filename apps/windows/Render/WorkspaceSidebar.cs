@@ -194,6 +194,7 @@ public sealed partial class WorkspaceSidebar : UserControl
     };
 
     private readonly HashSet<ulong> _expandedDirectoryIds = [];
+    private HashSet<string>? _pendingExpandedRelativePaths;
     private WorkspaceTree _tree = WorkspaceTree.Empty;
     private List<WorkspaceVisibleRow> _visibleRows = [];
     private WorkspaceSidebarMode _mode = WorkspaceSidebarMode.Files;
@@ -423,12 +424,64 @@ public sealed partial class WorkspaceSidebar : UserControl
         _statusText.Visibility = Visibility.Visible;
     }
 
+    public IReadOnlyList<string> GetExpandedRelativePaths()
+    {
+        if (_expandedDirectoryIds.Count == 0 || _tree.Entries.Count == 0)
+        {
+            return _pendingExpandedRelativePaths is not null
+                ? _pendingExpandedRelativePaths.ToList()
+                : [];
+        }
+
+        var paths = new List<string>();
+        foreach (var entry in _tree.Entries)
+        {
+            if (entry.IsDirectory && _expandedDirectoryIds.Contains(entry.Id))
+            {
+                paths.Add(entry.RelativePath);
+            }
+        }
+        return paths;
+    }
+
+    public void SetPendingExpandedRelativePaths(IEnumerable<string>? paths)
+    {
+        if (paths is null)
+        {
+            _pendingExpandedRelativePaths = null;
+            return;
+        }
+        var set = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var path in paths)
+        {
+            if (!string.IsNullOrWhiteSpace(path))
+            {
+                set.Add(path);
+            }
+        }
+        _pendingExpandedRelativePaths = set.Count > 0 ? set : null;
+    }
+
     public void SetTree(string folderDisplayName, WorkspaceTree tree, bool resetExpanded = false)
     {
         ArgumentNullException.ThrowIfNull(tree);
         _headerTitle.Text = string.IsNullOrWhiteSpace(folderDisplayName) ? "Workspace" : folderDisplayName;
+        var selectedRelativePath = SelectedEntry?.RelativePath;
 
-        if (resetExpanded)
+        if (_pendingExpandedRelativePaths is not null)
+        {
+            var pending = _pendingExpandedRelativePaths;
+            _pendingExpandedRelativePaths = null;
+            _expandedDirectoryIds.Clear();
+            foreach (var entry in tree.Entries)
+            {
+                if (entry.IsDirectory && pending.Contains(entry.RelativePath))
+                {
+                    _expandedDirectoryIds.Add(entry.Id);
+                }
+            }
+        }
+        else if (resetExpanded)
         {
             _expandedDirectoryIds.Clear();
         }
@@ -453,8 +506,21 @@ public sealed partial class WorkspaceSidebar : UserControl
             }
         }
 
+        ulong? restoredSelectionId = null;
+        if (!string.IsNullOrEmpty(selectedRelativePath))
+        {
+            foreach (var entry in tree.Entries)
+            {
+                if (string.Equals(entry.RelativePath, selectedRelativePath, StringComparison.Ordinal))
+                {
+                    restoredSelectionId = entry.Id;
+                    break;
+                }
+            }
+        }
+
         _tree = tree;
-        RebuildVisibleRows();
+        RebuildVisibleRows(selectedEntryId: restoredSelectionId);
     }
 
     public void Clear()
@@ -464,6 +530,7 @@ public sealed partial class WorkspaceSidebar : UserControl
         _statusText.Visibility = Visibility.Collapsed;
         _tree = WorkspaceTree.Empty;
         _expandedDirectoryIds.Clear();
+        _pendingExpandedRelativePaths = null;
         _visibleRows = [];
         _treeList.SelectedIndex = -1;
         _treeList.ItemsSource = null;

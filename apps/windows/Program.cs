@@ -432,11 +432,25 @@ public sealed partial class ReaderApp : Application
                 var isFirst = true;
                 foreach (var st in restored)
                 {
-                    if (DocumentCapability.TryFromUserInput(st.FilePath, out var cap, out _) && cap is not null)
+                    DocumentCapability? docCap = null;
+                    if (!string.IsNullOrWhiteSpace(st.FilePath) &&
+                        DocumentCapability.TryFromUserInput(st.FilePath, out var parsedDoc, out _))
+                    {
+                        docCap = parsedDoc;
+                    }
+
+                    FolderCapability? folderCap = null;
+                    if (!string.IsNullOrWhiteSpace(st.WorkspacePath) &&
+                        FolderCapability.TryFromUserInput(st.WorkspacePath, out var parsedFolder, out _))
+                    {
+                        folderCap = parsedFolder;
+                    }
+
+                    if (docCap is not null || folderCap is not null)
                     {
                         var target = isFirst ? window : NewWindow();
                         isFirst = false;
-                        target.RestoreFromState(st, cap);
+                        target.RestoreFromState(st, docCap, folderCap);
                     }
                 }
             }
@@ -534,14 +548,21 @@ public sealed partial class ReaderApp : Application
         var activeStates = new List<WindowRestorationState>();
         foreach (var w in windows)
         {
-            if (w.Loader.HasFile && w.Loader.Capability is not null && w.Loader.Document is not null)
+            var hasFile = w.Loader.HasFile && w.Loader.Capability is not null && w.Loader.Document is not null;
+            var hasFolder = w.ActiveFolder is not null;
+            if (hasFile || hasFolder)
             {
-                var saved = w.Reader.SavePosition(w.Loader.Document);
+                var saved = hasFile ? w.Reader.SavePosition(w.Loader.Document!) : null;
                 activeStates.Add(WindowRestorationState.Create(
-                    w.Loader.Capability.FullPath,
+                    hasFile ? w.Loader.Capability!.FullPath : string.Empty,
                     saved,
                     w.Preferences.TextScaleValue,
-                    w.Reader.IsOutlineVisible));
+                    w.Reader.IsOutlineVisible,
+                    w.ActiveFolder?.FullPath,
+                    w.IsWorkspaceSidebarVisible,
+                    hasFolder ? w.WorkspaceSidebar.GetExpandedRelativePaths() : null,
+                    hasFolder && w.WorkspaceSidebar.ShowAllFiles,
+                    hasFolder && w.WorkspaceSidebar.ShowHidden));
             }
         }
 
@@ -735,6 +756,8 @@ public sealed partial class ReaderApp : Application
         try
         {
             // 1. Verify initial shell contract and all 5 File menu keyboard accelerators.
+            Console.WriteLine("smoke: 1. Verify initial shell contract and all 5 File menu keyboard accelerators.");
+            Console.Out.Flush();
             if (windows.Count != 1 ||
                 first.Title != "Markdown" ||
                 AutomationProperties.GetName(first.Welcome) != "Markdown reader" ||
@@ -768,6 +791,8 @@ public sealed partial class ReaderApp : Application
             }
 
             // 2. Exercise native Win32 file open dialog (GetOpenFileNameW) Cancel path.
+            Console.WriteLine("smoke: 2. Exercise native Win32 file open dialog (GetOpenFileNameW) Cancel path.");
+            Console.Out.Flush();
             DocumentPicker.EnqueueAutomationCancel();
             first.OpenCommand();
             if (first.Loader.HasFile || first.Title != "Markdown" || first.ReloadItem.IsEnabled)
@@ -776,6 +801,8 @@ public sealed partial class ReaderApp : Application
             }
 
             // 3. Exercise native Win32 file open dialog (GetOpenFileNameW) Select + Accept path.
+            Console.WriteLine("smoke: 3. Exercise native Win32 file open dialog (GetOpenFileNameW) Select + Accept path.");
+            Console.Out.Flush();
             var smokeDocPath = Path.Combine(tempDir, "smoke-doc.md");
             File.WriteAllText(smokeDocPath, "# Windows Smoke\n\nShared core model v2.\n", new UTF8Encoding(false));
 
@@ -806,6 +833,8 @@ public sealed partial class ReaderApp : Application
             first.Reader.ExternalUriLauncher = uri => { smokeLaunchedUri = uri; return true; };
 
             // 4. Exercise Reload (Ctrl+R command delegate) after modifying file on disk.
+            Console.WriteLine("smoke: 4. Exercise Reload (Ctrl+R command delegate) after modifying file on disk.");
+            Console.Out.Flush();
             var smokeImgPath = Path.Combine(tempDir, "smoke-img.png");
             File.WriteAllBytes(smokeImgPath, RenderTests.CreatePng(64, 64));
 
@@ -842,6 +871,8 @@ public sealed partial class ReaderApp : Application
             first.Reader.ActivateOutline(0);
 
             // 5. Missing file on Reload reports path-free NotFound while preserving v2 document, then recovers to v3.
+            Console.WriteLine("smoke: 5. Missing file on Reload reports path-free NotFound while preserving v2 document, then recovers to v3.");
+            Console.Out.Flush();
             File.Delete(smokeDocPath);
             first.ReloadCommand();
             await WaitWindowIdleAsync(first);
@@ -870,6 +901,8 @@ public sealed partial class ReaderApp : Application
             }
 
             // 6. Withdraw OS read permission via NTFS discretionary ACL -> Reload reports AccessRevoked, then recovers.
+            Console.WriteLine("smoke: 6. Withdraw OS read permission via NTFS discretionary ACL -> Reload reports AccessRevoked, then recovers.");
+            Console.Out.Flush();
             DocumentTests.SetReadDenyAcl(smokeDocPath, deny: true);
             try
             {
@@ -898,6 +931,8 @@ public sealed partial class ReaderApp : Application
             }
 
             // 7. Non-local URI rejection opens in a second window without disturbing the first window.
+            Console.WriteLine("smoke: 7. Non-local URI rejection opens in a second window without disturbing the first window.");
+            Console.Out.Flush();
             var rejectedWin = OpenExternalInput("https://example.com/remote.md");
             if (windows.Count != 2 ||
                 rejectedWin.Loader.Error != DocumentError.NonLocalFile ||
@@ -912,6 +947,8 @@ public sealed partial class ReaderApp : Application
             }
 
             // 8. Stale slow load is superseded when another file is opened before the slow read finishes.
+            Console.WriteLine("smoke: 8. Stale slow load is superseded when another file is opened before the slow read finishes.");
+            Console.Out.Flush();
             var secondDocPath = Path.Combine(tempDir, "second-smoke.md");
             File.WriteAllText(secondDocPath, "# Second Smoke\n\nReplacement file.\n", new UTF8Encoding(false));
 
@@ -929,9 +966,15 @@ public sealed partial class ReaderApp : Application
                 };
 
                 first.ReloadCommand();
-                while (!entered.IsSet)
+                // Rendezvous without pumping the UI dispatcher: a pending watcher
+                // or activation refresh can otherwise coalesce away this reload
+                // before it reaches the barrier, leaving an unbounded async wait.
+                // The file worker never needs the UI thread to enter the barrier.
+                if (!entered.Wait(TimeSpan.FromSeconds(5)))
                 {
-                    await Task.Delay(5);
+                    first.Loader.ReadBarrier = null;
+                    release.Set();
+                    throw new TimeoutException("Stale-load smoke read did not enter its barrier within 5 seconds.");
                 }
 
                 first.Loader.ReadBarrier = null;
@@ -950,6 +993,8 @@ public sealed partial class ReaderApp : Application
             }
 
             // 9. Document find, text scale, theme switching, and Settings window.
+            Console.WriteLine("smoke: 9. Document find, text scale, theme switching, and Settings window.");
+            Console.Out.Flush();
             first.FindCommand();
             if (!first.IsFindBarVisible)
             {
@@ -1064,6 +1109,8 @@ public sealed partial class ReaderApp : Application
             SettingsWindow.Close();
 
             // 10. Global Selection, Copy to clipboard (CF_UNICODETEXT & text/markdown), Escape clear, and UIA accessibility.
+            Console.WriteLine("smoke: 10. Global Selection, Copy to clipboard (CF_UNICODETEXT & text/markdown), Escape clear, and UIA accessibility.");
+            Console.Out.Flush();
             first.SelectAllCommand();
             if (first.Reader.Selection is null || first.Reader.Selection.Value.IsEmpty)
             {
@@ -1160,6 +1207,8 @@ public sealed partial class ReaderApp : Application
             }
 
             // 12. External refresh, anchors and reading restoration (WIN-001H)
+            Console.WriteLine("smoke: 12. External refresh, anchors and reading restoration (WIN-001H)");
+            Console.Out.Flush();
             static string SmokeSections(int start, int count)
             {
                 var sb = new StringBuilder();
@@ -1221,37 +1270,51 @@ public sealed partial class ReaderApp : Application
                 new DocumentPosition(markedFrag, markedOffset),
                 new DocumentPosition(markedFrag, markedOffset + "marked".Length)));
 
-            void CheckKeptPlace(string msg)
+            async Task CheckKeptPlace(string msg)
             {
-                var vis = first.Reader.FirstVisibleFragmentIndex();
-                var outlineIdx = -1;
-                for (var i = 0; i < first.Loader.Document!.OutlineCount; i++)
+                var settle = Stopwatch.StartNew();
+                while (true)
                 {
-                    if (first.Loader.Document.OutlineTitle(i) == "Part 80")
+                    try
                     {
-                        outlineIdx = i;
-                        break;
+                        var vis = first.Reader.FirstVisibleFragmentIndex();
+                        var outlineIdx = -1;
+                        for (var i = 0; i < first.Loader.Document!.OutlineCount; i++)
+                        {
+                            if (first.Loader.Document.OutlineTitle(i) == "Part 80")
+                            {
+                                outlineIdx = i;
+                                break;
+                            }
+                        }
+                        if (outlineIdx < 0) throw new InvalidOperationException($"{msg}: Part 80 outline missing");
+                        var expectedFrag = first.Loader.Plan!.Outline[outlineIdx].Fragment;
+                        if (Math.Abs(vis - expectedFrag) > 1)
+                        {
+                            throw new InvalidOperationException($"{msg}: top line not kept (firstVis={vis}, target={expectedFrag})");
+                        }
+                        var sel = first.Reader.Selection;
+                        if (sel is null || sel.Value.IsEmpty)
+                        {
+                            throw new InvalidOperationException($"{msg}: selection lost");
+                        }
+                        var text = first.Loader.Plan.TextBetween(sel.Value.Anchor, sel.Value.Active);
+                        if (text != "marked")
+                        {
+                            throw new InvalidOperationException($"{msg}: selection text mismatch '{text}'");
+                        }
+                        return;
                     }
-                }
-                if (outlineIdx < 0) throw new InvalidOperationException($"{msg}: Part 80 outline missing");
-                var expectedFrag = first.Loader.Plan!.Outline[outlineIdx].Fragment;
-                if (Math.Abs(vis - expectedFrag) > 1)
-                {
-                    throw new InvalidOperationException($"{msg}: top line not kept (firstVis={vis}, target={expectedFrag})");
-                }
-                var sel = first.Reader.Selection;
-                if (sel is null || sel.Value.IsEmpty)
-                {
-                    throw new InvalidOperationException($"{msg}: selection lost");
-                }
-                var text = first.Loader.Plan.TextBetween(sel.Value.Anchor, sel.Value.Active);
-                if (text != "marked")
-                {
-                    throw new InvalidOperationException($"{msg}: selection text mismatch '{text}'");
+                    catch (InvalidOperationException) when (settle.ElapsedMilliseconds < 3000)
+                    {
+                        // Loader publication precedes WinUI layout/scroll restoration.
+                        // Yield for that work, retaining the exact position/selection assertions.
+                        await Task.Delay(25);
+                    }
                 }
             }
 
-            CheckKeptPlace("Initial placement");
+            await CheckKeptPlace("Initial placement");
 
             var prevGen = first.Loader.Document.Generation;
             var editedLive = "# Live\n\nA new introduction.\n\n" + SmokeSections(200, 30) + SmokeSections(0, 120);
@@ -1269,7 +1332,7 @@ public sealed partial class ReaderApp : Application
                 first.Loader.RefreshExternal();
                 await WaitWindowIdleAsync(first);
             }
-            CheckKeptPlace("After external edit");
+            await CheckKeptPlace("After external edit");
             if (first.Loader.Document.OutlineCount != 151)
             {
                 throw new InvalidOperationException($"Expected 151 outlines after external edit, got {first.Loader.Document.OutlineCount}");
@@ -1315,11 +1378,11 @@ public sealed partial class ReaderApp : Application
             {
                 throw new InvalidOperationException("Reappearance did not clear notice cleanly without re-parsing.");
             }
-            CheckKeptPlace("After file reappearance");
+            await CheckKeptPlace("After file reappearance");
 
             first.ReloadCommand();
             await WaitWindowIdleAsync(first);
-            CheckKeptPlace("After manual Reload");
+            await CheckKeptPlace("After manual Reload");
 
             var savedPosition = first.Reader.SavePosition(first.Loader.Document);
             if (savedPosition is null)
@@ -1400,6 +1463,8 @@ public sealed partial class ReaderApp : Application
             await Task.Delay(50);
 
             // 12b. WIN-002A: Folder capability grants, recents, Close Folder revocation, moved-folder recovery, and Recent Items window.
+            Console.WriteLine("smoke: 12b. WIN-002A: Folder capability grants, recents, Close Folder revocation, moved-folder recovery, and Recent Items window.");
+            Console.Out.Flush();
             var wsDir = Path.Combine(tempDir, "win002a-ws");
             var wsMovedDir = Path.Combine(tempDir, "win002a-ws-moved");
             Directory.CreateDirectory(wsDir);
@@ -1426,6 +1491,8 @@ public sealed partial class ReaderApp : Application
             }
 
             // 12c. WIN-002B: Native workspace browser sidebar populated on folder open.
+            Console.WriteLine("smoke: 12c. WIN-002B: Native workspace browser sidebar populated on folder open.");
+            Console.Out.Flush();
             var swWs = Stopwatch.StartNew();
             while (swWs.ElapsedMilliseconds < 3000 && win002a.WorkspaceSidebar.VisibleRows.Count < 1)
             {
@@ -1441,6 +1508,8 @@ public sealed partial class ReaderApp : Application
             }
 
             // 12d. WIN-002C: Native workspace search UI, bounded search, and result navigation.
+            Console.WriteLine("smoke: 12d. WIN-002C: Native workspace search UI, bounded search, and result navigation.");
+            Console.Out.Flush();
             win002a.ShowWorkspaceSearch();
             if (win002a.WorkspaceSidebar.Mode != WorkspaceSidebarMode.Search)
             {
@@ -1523,24 +1592,58 @@ public sealed partial class ReaderApp : Application
             }
             await Task.Delay(50);
             RecentItemsWindow.Close();
-            win002a.CloseCommand();
-            await Task.Delay(50);
+            // Keep this workspace window open for the final multi-window Exit check.
 
             // 13. Verify New Window, Close Window, and Exit commands close all windows cleanly.
+            Console.WriteLine("smoke: 13. Verify New Window, Close Window, and Exit commands close all windows cleanly.");
+            Console.Out.Flush();
+            // Arm before exercising native window lifecycle. WinUI teardown can stall
+            // during rapid create/close operations as well as final exit. Only the
+            // validated cleanup path signals success; a shutdown stall must fail.
+            var shutdownChecked = new ManualResetEventSlim(false);
+            var watchdog = new Thread(() =>
+            {
+                if (!shutdownChecked.Wait(TimeSpan.FromSeconds(15)))
+                {
+                    Console.Error.WriteLine("Smoke failed: window shutdown/core cleanup did not finish within 15 seconds.");
+                    Console.Error.Flush();
+                    Program.TerminateNow(1);
+                    return;
+                }
+                Thread.Sleep(250);
+                Console.Out.Flush();
+                Console.Error.Flush();
+                Program.TerminateNow(Program.Result);
+            })
+            {
+                IsBackground = true,
+                Name = "smoke-exit-watchdog",
+            };
+            watchdog.Start();
             first.NewCommand();
-            if (windows.Count != 2)
+            await WaitWindowLoadedAsync(windows[^1]);
+            Console.WriteLine("smoke: 13a. New window loaded.");
+            Console.Out.Flush();
+            if (windows.Count != 3)
             {
                 throw new InvalidOperationException("New Window failed.");
             }
-            windows[1].CloseCommand();
-            if (windows.Count != 1)
+            windows[^1].CloseCommand();
+            Console.WriteLine("smoke: 13b. New window closed.");
+            Console.Out.Flush();
+            if (windows.Count != 2)
             {
                 throw new InvalidOperationException("Close failed.");
             }
-            first.NewCommand();
-            await Task.Delay(50);
+            // Exit the remaining document + workspace windows in the same dispatcher
+            // turn. Re-creating an empty WinUI window during native teardown adds no
+            // command coverage and races unpackaged ListView process shutdown.
+            Console.WriteLine("smoke: 13c. Closing all windows.");
+            Console.Out.Flush();
             Program.Result = 0;
             first.ExitCommand();
+            Console.WriteLine("smoke: 13d. All windows closed.");
+            Console.Out.Flush();
             if (windows.Count != 0)
             {
                 Program.Result = 1;
@@ -1549,27 +1652,31 @@ public sealed partial class ReaderApp : Application
             {
                 Program.Result = 1;
             }
-            var exitCode = Program.Result;
-            var watchdog = new Thread(() =>
+            shutdownChecked.Set();
+            // All assertions and owned-core cleanup have finished. Do not ask
+            // WinUI to tear down a second time after the last Window.Close:
+            // unpackaged multi-window teardown can deadlock or fail-fast here.
+            // Match Main's existing smoke-only DLL_PROCESS_DETACH bypass.
+            try
             {
-                Thread.Sleep(250);
-                Console.Out.Flush();
-                Console.Error.Flush();
-                Program.TerminateNow(exitCode);
-            })
+                Directory.Delete(tempDir, recursive: true);
+            }
+            catch
             {
-                IsBackground = true,
-                Name = "smoke-exit-watchdog",
-            };
-            watchdog.Start();
-            Exit();
+                // Best-effort cleanup, as in the failure path below.
+            }
+            Console.Out.Flush();
+            Console.Error.Flush();
+            Program.TerminateNow(Program.Result);
         }
         catch (Exception ex)
         {
             Console.Error.WriteLine($"Smoke failed: {ex}");
+            Console.Error.Flush();
             Program.Result = 1;
             CloseAll();
             Exit();
+            Program.TerminateNow(1);
         }
         finally
         {
@@ -1584,6 +1691,19 @@ public sealed partial class ReaderApp : Application
             {
                 // Best-effort cleanup.
             }
+        }
+    }
+
+    private static async Task WaitWindowLoadedAsync(ReaderWindow window)
+    {
+        var elapsed = Stopwatch.StartNew();
+        while (window.Content is FrameworkElement { IsLoaded: false })
+        {
+            if (elapsed.ElapsedMilliseconds >= 5000)
+            {
+                throw new TimeoutException("Smoke window did not load within 5 seconds.");
+            }
+            await Task.Delay(10);
         }
     }
 
@@ -1614,6 +1734,7 @@ internal sealed class ReaderWindow : Window
     internal ReaderPreferences Preferences { get; }
     internal FolderCapability? ActiveFolder { get; private set; }
     private DocumentWatcher? _watcher;
+    private WorkspaceWatcher? _workspaceWatcher;
     private bool _isClosing;
     private CoreDocument? _displayedDoc;
     private DocumentCapability? _recordedRecentCap;
@@ -1741,6 +1862,8 @@ internal sealed class ReaderWindow : Window
             ActiveFolder = null;
             _watcher?.Dispose();
             _watcher = null;
+            _workspaceWatcher?.Dispose();
+            _workspaceWatcher = null;
             _findCts?.Cancel();
             _findCts?.Dispose();
             _findCts = null;
@@ -2025,16 +2148,38 @@ internal sealed class ReaderWindow : Window
         });
     }
 
-    internal void RestoreFromState(WindowRestorationState state, DocumentCapability cap)
+    internal void RestoreFromState(
+        WindowRestorationState state,
+        DocumentCapability? docCap,
+        FolderCapability? folderCap = null)
     {
-        PendingRestorePosition = state.ToSavedPosition();
         if (state.TextScale > 0)
         {
             Preferences.TextScaleValue = state.TextScale;
             Reader.SetTextScale(state.TextScale);
         }
         Reader.IsOutlineVisible = state.OutlineShown;
-        OpenCapability(cap);
+
+        if (folderCap is not null)
+        {
+            WorkspaceSidebar.ShowAllFiles = state.ShowAllFiles;
+            WorkspaceSidebar.ShowHidden = state.ShowHidden;
+            WorkspaceSidebar.SetPendingExpandedRelativePaths(state.ExpandedRelativePaths);
+            OpenFolderCapability(folderCap, isFromRecents: false, sidebarVisible: state.WorkspaceSidebarVisible);
+            if (ActiveFolder != folderCap)
+            {
+                WorkspaceSidebar.SetPendingExpandedRelativePaths(null);
+                WorkspaceSidebar.ShowAllFiles = false;
+                WorkspaceSidebar.ShowHidden = false;
+                _workspaceSidebarUserVisible = true;
+            }
+        }
+
+        if (docCap is not null)
+        {
+            PendingRestorePosition = state.ToSavedPosition();
+            OpenCapability(docCap);
+        }
     }
 
     internal void OpenCapability(DocumentCapability capability, string? recentSourcePath = null)
@@ -2045,9 +2190,10 @@ internal sealed class ReaderWindow : Window
         _watcher = null;
         if (!string.IsNullOrEmpty(capability.FullPath))
         {
+            var dispatcherQueue = DispatcherQueue;
             _watcher = new DocumentWatcher(capability.FullPath, () =>
             {
-                _ = DispatcherQueue?.TryEnqueue(() =>
+                _ = dispatcherQueue?.TryEnqueue(() =>
                 {
                     Loader.RefreshExternal();
                     SyncFromLoader();
@@ -2058,7 +2204,7 @@ internal sealed class ReaderWindow : Window
         SyncFromLoader();
     }
 
-    internal void OpenFolderCapability(FolderCapability folder, bool isFromRecents = false)
+    internal void OpenFolderCapability(FolderCapability folder, bool isFromRecents = false, bool sidebarVisible = true)
     {
         if (!folder.ValidateAccess(out var folderError))
         {
@@ -2073,6 +2219,8 @@ internal sealed class ReaderWindow : Window
         {
             if (ActiveFolder.SameFolderAs(folder))
             {
+                _workspaceSidebarUserVisible = sidebarVisible;
+                UpdateWorkspaceSidebarVisibility();
                 _app.Recents.RecordFolder(folder);
                 SyncFromLoader();
                 return;
@@ -2083,9 +2231,29 @@ internal sealed class ReaderWindow : Window
         CloseFolderItem.IsEnabled = true;
         ToggleWorkspaceSidebarItem.IsEnabled = true;
         FindInWorkspaceItem.IsEnabled = true;
-        _workspaceSidebarUserVisible = true;
+        _workspaceSidebarUserVisible = sidebarVisible;
         UpdateWorkspaceSidebarVisibility();
         _app.Recents.RecordFolder(folder);
+
+        _workspaceWatcher?.Dispose();
+        var workspaceDispatcher = DispatcherQueue;
+        _workspaceWatcher = new WorkspaceWatcher(
+            folder,
+            () =>
+            {
+                _ = workspaceDispatcher?.TryEnqueue(() =>
+                {
+                    if (!_isClosing && ActiveFolder == folder)
+                    {
+                        RefreshWorkspaceTree(resetExpanded: false, showLoadingStatus: false);
+                    }
+                });
+            },
+            folderErr =>
+            {
+                _ = workspaceDispatcher?.TryEnqueue(() => HandleWorkspaceAccessLost(folder, folderErr));
+            });
+
         RefreshWorkspaceTree(resetExpanded: true);
         SyncFromLoader();
     }
@@ -2107,7 +2275,7 @@ internal sealed class ReaderWindow : Window
             : Visibility.Collapsed;
     }
 
-    internal async void RefreshWorkspaceTree(bool resetExpanded)
+    internal async void RefreshWorkspaceTree(bool resetExpanded, bool showLoadingStatus = true)
     {
         var folder = ActiveFolder;
         if (folder is null)
@@ -2120,7 +2288,10 @@ internal sealed class ReaderWindow : Window
         var cts = new CancellationTokenSource();
         _workspaceCts = cts;
         var generation = ++_workspaceGeneration;
-        WorkspaceSidebar.SetLoading(folder.DisplayName, clearTree: resetExpanded);
+        if (showLoadingStatus || resetExpanded)
+        {
+            WorkspaceSidebar.SetLoading(folder.DisplayName, clearTree: resetExpanded);
+        }
 
         try
         {
@@ -2152,6 +2323,25 @@ internal sealed class ReaderWindow : Window
             WorkspaceSidebar.SetError("Could not load workspace.");
             ShowFolderError(FolderError.OpenFailed, folder.FullPath, isFromRecents: false);
         }
+        finally
+        {
+            if (!_isClosing && generation == _workspaceGeneration && ActiveFolder == folder)
+            {
+                _workspaceWatcher?.NotifyRefreshCompleted();
+            }
+        }
+    }
+
+    private void HandleWorkspaceAccessLost(FolderCapability folder, FolderError error)
+    {
+        if (_isClosing || ActiveFolder != folder)
+        {
+            return;
+        }
+
+        var lostPath = folder.FullPath;
+        CloseFolder(revoked: false);
+        ShowFolderError(error, lostPath, isFromRecents: false);
     }
 
     private void OpenWorkspaceEntry(WorkspaceEntry entry)
@@ -2321,6 +2511,8 @@ internal sealed class ReaderWindow : Window
         }
 
         _workspaceGeneration++;
+        _workspaceWatcher?.Dispose();
+        _workspaceWatcher = null;
         _workspaceCts?.Cancel();
         _workspaceCts?.Dispose();
         _workspaceCts = null;

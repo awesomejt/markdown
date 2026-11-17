@@ -25,15 +25,21 @@ ARTIFACTS = REPO_ROOT / "build/windows/artifacts"
 
 def run_app(command: list[str], *, cwd: Path, env: dict[str, str], timeout: int) -> str:
     print("+ " + " ".join(command), flush=True)
-    result = subprocess.run(
-        command,
-        cwd=cwd,
-        env=env,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        text=True,
-        timeout=timeout,
-    )
+    try:
+        result = subprocess.run(
+            command,
+            cwd=cwd,
+            env=env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            timeout=timeout,
+        )
+    except subprocess.TimeoutExpired as error:
+        if error.stdout:
+            output = error.stdout.decode(errors="replace") if isinstance(error.stdout, bytes) else error.stdout
+            print(output, end="", flush=True)
+        raise
     if result.stdout:
         print(result.stdout, end="", flush=True)
     result.check_returncode()

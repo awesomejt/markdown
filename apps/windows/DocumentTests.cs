@@ -39,6 +39,8 @@ internal static class DocumentTests
                 ("recents_availability_checks_for_available_missing_denied_and_type", TestRecentsAvailabilityChecks),
                 ("workspace_tree_enumeration_filtering_and_large_folder", TestWorkspaceTreeEnumerationFilteringAndLargeFolder),
                 ("workspace_search_bounded_cancellation_and_revocation", TestWorkspaceSearchBoundedCancellationAndRevocation),
+                ("workspace_watcher_change_storm_and_in_flight_gating", TestWorkspaceWatcherChangeStormAndInFlightGating),
+                ("workspace_watcher_access_loss_on_deletion_and_revocation", TestWorkspaceWatcherAccessLossOnDeletionAndRevocation),
             };
 
             foreach (var (name, run) in tests)
@@ -1297,6 +1299,118 @@ internal static class DocumentTests
             folder!.Revoke();
             var revoked = WorkspaceSearch.Run(folder!, tree, "target");
             Assert(!string.IsNullOrEmpty(revoked.ErrorMessage), "revoked folder reports error");
+        }
+        finally
+        {
+            try { Directory.Delete(tempDir, recursive: true); } catch { }
+        }
+    }
+
+    private static void TestWorkspaceWatcherChangeStormAndInFlightGating()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), $"markdown-win002e-storm-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempDir);
+        try
+        {
+            var folder = FolderCapability.FromPickerPath(tempDir);
+            var changeCount = 0;
+            using var firstChanged = new ManualResetEventSlim(false);
+            using var secondChanged = new ManualResetEventSlim(false);
+            FolderError? lostError = null;
+
+            using var watcher = new WorkspaceWatcher(
+                folder,
+                () =>
+                {
+                    var count = Interlocked.Increment(ref changeCount);
+                    if (count == 1)
+                    {
+                        firstChanged.Set();
+                    }
+                    else if (count == 2)
+                    {
+                        secondChanged.Set();
+                    }
+                },
+                err => lostError = err,
+                debounceMs: 60,
+                maxCoalesceMs: 300);
+
+            Assert(watcher.IsArmed, "WorkspaceWatcher is armed");
+
+            // Change storm: 150 rapid file writes should coalesce into a small bounded count (1 while in-flight)
+            for (var i = 0; i < 150; i++)
+            {
+                File.WriteAllText(Path.Combine(tempDir, $"note-{i:D3}.md"), $"# Note {i}\n");
+            }
+
+            Assert(firstChanged.Wait(3000), "coalesced change callback fired after storm");
+            // While refresh is still in-flight (NotifyRefreshCompleted not called yet),
+            // additional changes must be gated and not fire a second overlapping callback.
+            File.WriteAllText(Path.Combine(tempDir, "during-inflight.md"), "# Inflight\n");
+            Thread.Sleep(250);
+            Assert(Volatile.Read(ref changeCount) == 1,
+                $"expected 1 callback while refresh in-flight, got {Volatile.Read(ref changeCount)}");
+
+            watcher.NotifyRefreshCompleted();
+            Assert(secondChanged.Wait(3000), "queued in-flight change triggered follow-up refresh");
+            watcher.NotifyRefreshCompleted();
+
+            Assert(lostError is null, $"unexpected access loss during storm: {lostError}");
+        }
+        finally
+        {
+            try { Directory.Delete(tempDir, recursive: true); } catch { }
+        }
+    }
+
+    private static void TestWorkspaceWatcherAccessLossOnDeletionAndRevocation()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), $"markdown-win002e-loss-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempDir);
+        try
+        {
+            // 1. Deletion detection via parent watcher / validation
+            var folder = FolderCapability.FromPickerPath(tempDir);
+            using var lostSignal = new ManualResetEventSlim(false);
+            FolderError? lostError = null;
+            using (var watcher = new WorkspaceWatcher(
+                folder,
+                () => { },
+                err =>
+                {
+                    lostError = err;
+                    lostSignal.Set();
+                },
+                debounceMs: 40,
+                maxCoalesceMs: 200))
+            {
+                Directory.Delete(tempDir, recursive: true);
+                Assert(lostSignal.Wait(3000), "WorkspaceWatcher detected deleted root folder");
+                Assert(lostError == FolderError.NotFound, $"expected NotFound, got {lostError}");
+            }
+
+            // 2. Grant revocation detection
+            Directory.CreateDirectory(tempDir);
+            var folder2 = FolderCapability.FromPickerPath(tempDir);
+            using var revokedSignal = new ManualResetEventSlim(false);
+            FolderError? revokedError = null;
+            using (var watcher2 = new WorkspaceWatcher(
+                folder2,
+                () => { },
+                err =>
+                {
+                    revokedError = err;
+                    revokedSignal.Set();
+                },
+                debounceMs: 40,
+                maxCoalesceMs: 200))
+            {
+                folder2.Revoke();
+                watcher2.ScheduleChange();
+                Assert(revokedSignal.Wait(3000), "WorkspaceWatcher detected revoked folder grant");
+                Assert(revokedError == FolderError.AccessRevoked, $"expected AccessRevoked, got {revokedError}");
+            }
         }
         finally
         {

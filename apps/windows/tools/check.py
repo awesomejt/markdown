@@ -27,15 +27,23 @@ def run_app(command: list[str], *, cwd: Path, env: dict[str, str], timeout: int)
     print("+ " + " ".join(command), flush=True)
     # Markdown.Windows.exe is a WinExe (GUI subsystem) binary; piping stdout/stderr
     # attaches valid standard handles so Console output is captured and logged.
-    result = subprocess.run(
-        command,
-        cwd=cwd,
-        env=env,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        text=True,
-        timeout=timeout,
-    )
+    try:
+        result = subprocess.run(
+            command,
+            cwd=cwd,
+            env=env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            timeout=timeout,
+        )
+    except subprocess.TimeoutExpired as error:
+        # TimeoutExpired carries bytes even when text=True. Keep stage diagnostics
+        # visible when a native modal dialog or dispatcher stalls the smoke.
+        if error.stdout:
+            output = error.stdout.decode(errors="replace") if isinstance(error.stdout, bytes) else error.stdout
+            print(output, end="", flush=True)
+        raise
     if result.stdout:
         print(result.stdout, end="", flush=True)
     result.check_returncode()
