@@ -8,20 +8,18 @@ read.
 
 ## Current posture
 
-- MAC-002 aggregate validation is on `docs/mac-002-aggregate-acceptance`;
-  native and common checks passed but D-016 warm launch misses remain. Owner
-  decision D-037 carries explicit gaps to DESK-002 without waiving targets.
+- MAC-002 functional aggregate (PR #96) is complete under owner decision
+  D-037. Native/common checks passed; Grok follow-up at `100dc94` was clean.
+  Warm launch misses, cold launch and manual checks remain open for DESK-002.
   See [macOS MVP acceptance](docs/macOS-MVP-Acceptance.md) and HANDOFF.md.
-  Review and closeout remain pending.
-
+  DESK-002 is next; use a fresh context for the cross-desktop gate.
 - WIN-002 (PR #95) functional aggregate is closed under the owner's 2026-11-16
   decision to carry explicit gaps to DESK-002 (D-036). Fresh Debug, Release
   and installed Release pass 22 core, 22 document and 23 render tests each,
   native/artifact checks and common checks at source `968e755`. Prose warm
   launch misses, cold/manual evidence and whole-window memory remain open;
   no target is waived. See [Windows MVP acceptance](docs/Windows-MVP-Acceptance.md).
-  MAC-002 is the next dependency-ready task on macOS; HARD-001 and LNX-002
-  are complete. Switch to Mac and clear context for its aggregate pass.
+  MAC-002, HARD-001 and LNX-002 are complete; DESK-002 is next.
 - WIN-001A (PR #53) delivers the
   [Windows shell](apps/windows/README.md) in C# Native AOT/WinUI with native
   New Window/Close/Exit commands, locally deployed App SDK and Debug/Release

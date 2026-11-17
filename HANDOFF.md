@@ -1,18 +1,21 @@
 # Agent Session and Platform Handoff
 
-Updated: 2026-11-16 (America/Denver), MAC-002 aggregate validation partial.
+Updated: 2026-11-16 (America/Denver), MAC-002 approved closeout on PR #96.
 
-- Branch `docs/mac-002-aggregate-acceptance` holds the aggregate report and
-  state at baseline `511fdfc`. PR #96 is open for review. Pass
-  `97c96b1c-b41a-472d-9c0c-1c76997d8941` is partial; no lease remains.
-- Native debug/release and artifact checks and common checks passed on this
-  Mac with Cargo on PATH and `TMPDIR=/private/tmp`. Fresh five-run warm launch:
-  1 MiB prose median 399.73 ms, max 404.56 ms; 5 MiB prose median 596.12 ms;
-  long lines median 380.74 ms. D-016 remains unmet; cold and manual cases
-  remain unrun. See [macOS MVP acceptance](docs/macOS-MVP-Acceptance.md).
-- Owner approved functional closeout with explicit gaps carried to DESK-002
-  (D-037). The task criterion has been synchronized. The reviewed branch is
-  `docs/mac-002-aggregate-acceptance`; review and merge are pending.
+- MAC-002 is complete at state revision 890 under owner decision D-037.
+  [PR #96](https://github.com/awesomejt/markdown/pull/96) reviewed head
+  `100dc94` received a clean [Grok follow-up](https://github.com/awesomejt/markdown/pull/96#pullrequestreview-5934003722).
+  Both initial findings were fixed and threads resolved; hosted CI run
+  [44031596203](https://github.com/awesomejt/markdown/actions/runs/44031596203)
+  passed. This closeout commit must pass CI before merge and branch deletion.
+- The pass record's review URL has a transcription error; the correct review
+  is linked above. The reviewed SHA and approval are correct.
+- Native debug/release, artifact and common checks passed on baseline `511fdfc`.
+  D-016 warm launch misses, cold launch and manual checks remain open, without
+  waiver, for DESK-002. See [macOS MVP acceptance](docs/macOS-MVP-Acceptance.md).
+- Next dependency-ready task: DESK-002, cross-desktop conformance and release
+  gate. Start with a fresh context and assess required platform evidence; no
+  production release or merge into `main` is authorized by this closeout.
 
 ## Previous handoff (WIN-002 aggregate)
 
