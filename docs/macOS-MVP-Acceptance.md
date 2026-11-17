@@ -47,5 +47,10 @@ A fresh five-run warm-launch measurement using
 `apps/macos/tools/measure.py launch --configuration release --runs 5`
 reported 1 MiB prose median 399.73 ms (378.40–404.56; target missed by
 individual runs), 5 MiB prose median 596.12 ms (571.23–599.23), and 1 MiB
-long lines median 380.74 ms (376.38–393.25). The measurement reports a
-D-016 miss. Cold launch remains unmeasured.
+long lines median 380.74 ms (376.38–393.25). The 5 MiB prose median
+exceeds 400 ms; the 1 MiB prose median is below 400 ms but two of five runs
+exceed it. D-016 requires at least five runs and their spread without specifying
+a median or maximum threshold. This measurement tool reports a profile as
+meeting the target only when every run is at or below 400 ms, so it reports
+both prose profiles as misses. The earlier 419 ms median is a separate run,
+not the result of this measurement. Cold launch remains unmeasured.

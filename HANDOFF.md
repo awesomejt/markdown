@@ -3,7 +3,7 @@
 Updated: 2026-11-16 (America/Denver), MAC-002 aggregate validation partial.
 
 - Branch `docs/mac-002-aggregate-acceptance` holds the aggregate report and
-  state at baseline `511fdfc`. No PR has been opened. Pass
+  state at baseline `511fdfc`. PR #96 is open for review. Pass
   `97c96b1c-b41a-472d-9c0c-1c76997d8941` is partial; no lease remains.
 - Native debug/release and artifact checks and common checks passed on this
   Mac with Cargo on PATH and `TMPDIR=/private/tmp`. Fresh five-run warm launch:
@@ -12,7 +12,7 @@ Updated: 2026-11-16 (America/Denver), MAC-002 aggregate validation partial.
   remain unrun. See [macOS MVP acceptance](docs/macOS-MVP-Acceptance.md).
 - Owner approved functional closeout with explicit gaps carried to DESK-002
   (D-037). The task criterion has been synchronized. The reviewed branch is
-  `docs/mac-002-aggregate-acceptance`; no Grok review or merge has occurred.
+  `docs/mac-002-aggregate-acceptance`; review and merge are pending.
 
 ## Previous handoff (WIN-002 aggregate)
 
