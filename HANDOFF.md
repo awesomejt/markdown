@@ -14,10 +14,11 @@ Updated: 2026-11-16 (America/Denver), WIN-002 owner-approved functional aggregat
   installer/uninstaller safety, diagnostics, licensing and zero-handle core
   probe. Common checks pass. PowerShell redirection reported stderr progress
   as NativeCommandError; the native checker reached its final success marker.
-- This closeout changes documentation/state only on
-  `patch/win-002-aggregate-acceptance`, under D-033. Push/open its PR, wait for
-  required green CI, merge with a merge commit, delete the branch and return
-  to clean develop. Final PR/pass evidence is recorded before merging.
+- [PR #95](https://github.com/awesomejt/markdown/pull/95) carries documentation/state
+  only on `patch/win-002-aggregate-acceptance` under D-033 and owner approval
+  D-036. WIN-002 is completed at revision 880; no live pass, lease or
+  working task remains. Wait for closeout-head green CI, merge with a merge
+  commit, delete the branch and return to clean develop.
 - Open DESK-002 obligations: prose launch medians 456.95 / 1258.03 ms versus
   400 ms; cold launch, frame pacing, mixed DPI, full Narrator properties,
   whole-window memory evidence and second-machine/SmartScreen checks.

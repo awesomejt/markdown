@@ -8,7 +8,7 @@ read.
 
 ## Current posture
 
-- WIN-002 functional aggregate is closed under the owner's 2026-11-16
+- WIN-002 (PR #95) functional aggregate is closed under the owner's 2026-11-16
   decision to carry explicit gaps to DESK-002 (D-036). Fresh Debug, Release
   and installed Release pass 22 core, 22 document and 23 render tests each,
   native/artifact checks and common checks at source `968e755`. Prose warm

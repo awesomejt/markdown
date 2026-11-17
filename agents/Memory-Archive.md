@@ -1254,7 +1254,7 @@ From HANDOFF.md after LNX-001C:
   staging, path/hash guards and restricted-PowerShell-module verification;
   typed front-matter Properties, explicit alert labels, bounded lazy code colors,
   folder-capability relative links and About/`--version` diagnostics. See
-  [Windows MVP acceptance](docs/Windows-MVP-Acceptance.md). Debug/Release/installed
+  [Windows MVP acceptance](../docs/Windows-MVP-Acceptance.md). Debug/Release/installed
   Release pass 22 core, 22 document and 23 render tests plus native/artifact checks.
   Two Grok reviews at `df7af57` have no serious finding; valid findings are fixed
   at `2e9a14c..f053b79`, all eight threads resolved, and source CI run
