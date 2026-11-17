@@ -28,6 +28,7 @@ public sealed partial class RowItem : ListViewItem
 
     private readonly List<(int Start, int Length, bool IsCurrent)> _findHighlights = [];
     private (int Start, int Length)? _selectionHighlight;
+    private IReadOnlyList<SyntaxToken> _syntax = Array.Empty<SyntaxToken>();
 
     public Grid Root { get; } = new();
     public RichTextBlock TextBlock { get; } = new()
@@ -128,6 +129,19 @@ public sealed partial class RowItem : ListViewItem
     private void UpdateHighlighters()
     {
         TextBlock.TextHighlighters.Clear();
+        foreach (var token in _syntax)
+        {
+            var color = token.Kind switch
+            {
+                SyntaxKind.Keyword => global::Windows.UI.Color.FromArgb(255, 160, 100, 210),
+                SyntaxKind.String => global::Windows.UI.Color.FromArgb(255, 165, 115, 55),
+                SyntaxKind.Comment => global::Windows.UI.Color.FromArgb(255, 85, 140, 85),
+                _ => global::Windows.UI.Color.FromArgb(255, 60, 140, 175),
+            };
+            var highlighter = new TextHighlighter { Foreground = new SolidColorBrush(color) };
+            highlighter.Ranges.Add(new TextRange { StartIndex = token.Start, Length = token.Length });
+            TextBlock.TextHighlighters.Add(highlighter);
+        }
         if (_findHighlights.Count > 0)
         {
             var normal = new TextHighlighter { Background = s_findHighlightBrush };
@@ -155,6 +169,7 @@ public sealed partial class RowItem : ListViewItem
         ShownText = string.Empty;
         _findHighlights.Clear();
         _selectionHighlight = null;
+        _syntax = Array.Empty<SyntaxToken>();
         TextBlock.Blocks.Clear();
         TextBlock.TextHighlighters.Clear();
         TextBlock.Visibility = Visibility.Visible;
@@ -322,6 +337,8 @@ public sealed partial class RowItem : ListViewItem
         }
 
         ShownText = fragment.Text;
+        _syntax = fragment.Kind == FragmentKind.Code && fragment.StartsBlock ? Syntax.Tokens(ShownText, fragment.Language) : Array.Empty<SyntaxToken>();
+        UpdateHighlighters();
 
         // UIA: Set Name on the container so Narrator announces the item text when focused.
         // Cap length at 512 characters to prevent massive cross-process UIA payloads on long lines.

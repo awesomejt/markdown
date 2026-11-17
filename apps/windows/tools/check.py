@@ -127,6 +127,7 @@ def main() -> None:
             relaunch_env = dict(env)
             relaunch_env["MARKDOWN_RESTORATION_PATH"] = str(restoration_store_path)
             relaunch_env["MARKDOWN_PREFERENCES_PATH"] = str(preferences_store_path)
+            relaunch_env["MARKDOWN_RECENTS_PATH"] = str(Path(directory) / "recents.json")
             for phase, marker in (
                 ("prepare", "relaunch-check: prepared"),
                 ("verify", "relaunch-check: pass (restored window, document, top line and selection)"),
@@ -143,7 +144,11 @@ def main() -> None:
                 if result.returncode != 0 or marker not in result.stdout:
                     print(result.stderr, end="", flush=True)
                     raise SystemExit(f"{profile}: relaunch check {phase} failed")
-        print(f"{profile}: relaunch restoration passed", flush=True)
+            frame = run_app([exe, "--measure", "window-launch", str(relaunch_doc)],
+                            cwd=Path(directory), env=relaunch_env, timeout=45)
+            if json.loads(frame.strip().splitlines()[-1]).get("realized_rows", 0) == 0:
+                raise SystemExit("window measurement did not realize document rows")
+        print(f"{profile}: relaunch restoration and window frame probe passed", flush=True)
 
         print(
             f"{profile}: core consumer tests, document tests, render tests, Native AOT smoke, association, and relaunch restoration passed",

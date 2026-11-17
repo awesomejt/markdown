@@ -620,9 +620,12 @@ They stay open until fixed or explicitly accepted; none is waived.
   1,242 ms (whole document); long lines 1 MiB is 398 ms
   ([evidence](apps/macos/README.md#mac-002f-local-evidence)).
 - **Windows warm launch to presented frame (D-012/D-016, 400 ms):**
-  unmeasured end-to-end (`measure.py` currently measures the in-process
-  `read/parse/plan` pipeline on Windows, not process launch to first
-  presented frame). Linux `window-launch` is now measured end-to-end
+  WIN-002F adds the real-window presentation proxy: 1 MiB prose median
+  456.95 ms (445.11-477.96), 5 MiB prose 1,258.03 ms (1,233.42-1,296.16),
+  and long lines 1 MiB 301.78 ms (299.82-314.21). The two prose profiles
+  exceed 400 ms; these open targets are not waived. Jumps take at most
+  35.12 ms against 150 ms. See [Windows MVP acceptance](docs/Windows-MVP-Acceptance.md).
+  Linux `window-launch` is now measured end-to-end
   from process spawn to GTK `after-paint` (LNX-002F: `prose-1mib` median
   357.83 ms / max 368.30 ms <= 400 ms; `long-lines-1mib` median
   409.68 ms / max 412.50 ms, 1 MiB single-line Pango wrapping).

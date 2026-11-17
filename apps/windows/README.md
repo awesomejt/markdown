@@ -43,20 +43,20 @@ handle metadata. `DocumentLoader` serializes background reads and 30-second
 with per-window queue deduplication, generation/serial guards
 (`DiscardedResults`), explicit capability revocation (`Revoke()`) and post-read
 NTFS ACL withdrawal promotion (`DocumentError.AccessRevoked`), and
-detached-volume promotion (`DocumentError.VolumeUnavailable`). No document
-contents, full file paths, recent files, settings, network requests or resource
-permissions are logged or persisted.
+detached-volume promotion (`DocumentError.VolumeUnavailable`). Document content
+is not logged. Recents and restoration persist private file/folder paths locally;
+preferences persist settings under the user's application-data directory.
 
 The native presentation layer (`apps/windows/Render/`) renders model-v2 documents
 in a virtualized WinUI 3 `ListView` over an off-thread bounded presentation plan
 (`RenderPlan.cs`). Model nodes are split into 512-byte fragments with accounted budget
 ceilings (128 MiB default) and cooperative cancellation checks. Headings, prose,
 ordered and bullet lists, code blocks and fallback raw HTML are rendered into
-recycled `RowItem` containers using `RichTextBlock` (`IsTextSelectionEnabled = true`),
+recycled `RowItem` containers using `RichTextBlock` (`IsTextSelectionEnabled = false`; document-wide selection is host-owned),
 styled inlines, Cascadia Mono fonts for code/fallback, blockquote borders and
 UIA heading level automation properties (`AutomationProperties.SetHeadingLevel`).
 Link targets are resolved to internal heading fragment indices, safe external URIs
-(`http`, `https`, `mailto`), or inert text. `ReaderControl` provides a two-column
+(`http`, `https`, `mailto`), folder-capability relative links, or inert text. `ReaderControl` provides a two-column
 layout with an outline sidebar (`ListView`) and document virtualized list, outline jump
 navigation, and safe link activation. Global multi-fragment selection across virtualized rows is supported with pointer drag, edge auto-scrolling, Shift+arrow/Home/End keyboard extension, Escape to clear, Ctrl+A to select all, and Ctrl+C dual-format native clipboard copy (CF_UNICODETEXT plain text and registered "text/markdown" UTF-8 source bytes). Narrator double-reading is eliminated by setting AutomationProperties.Name on the row container while setting AccessibilityView.Raw on the child RichTextBlock, accompanied by semantic ItemType, PositionInSet, SizeOfSet, and heading levels.
 
@@ -315,3 +315,24 @@ Validated on Windows 11 Pro build 26300.9711, Ryzen 9 5950X x64, Rust 1.99.1,
   gating in `ReaderApp`/`ReaderWindow`/`ReaderControl`; and extends `RenderTests`, `--smoke`,
   and two-phase `--relaunch-check` (in `check.py` and `artifact.py`) to verify v1-to-v2
   migration and preference persistence across processes.
+
+## Development installation and R1 conformance (WIN-002F)
+
+The [Windows MVP acceptance](../../docs/Windows-MVP-Acceptance.md) maps R1 to
+native evidence and documents development installation/uninstallation. The ZIP
+now includes per-user `install.ps1` and `uninstall.ps1`; the artifact checker
+installs into a fresh path outside the checkout, runs the installed app and
+checks uninstall containment, modified-file refusal and unowned-file preservation.
+
+The reader adds a native collapsible Properties expander for typed front matter,
+explicit alert labels, lazy bounded code colors for Rust/Python/JS/TS/JSON/C/C++/
+C#/Go/shell/SQL, and relative document links through the active folder capability.
+The new code colors preserve text and coexist with find and selection. Unknown
+languages, lexical continuations and exhausted highlight budgets retain plain
+code. Help > About Markdown and `--version` report the app and negotiated core
+contract, configuration and DLL SHA-256.
+
+Real-window `window-launch` and `jump-frame` probes use the production reader
+and loader, with a WinUI rendering/compositor presentation proxy and isolated
+state. The older `launch` mode is an in-process pipeline measurement only.
+See the acceptance document for measured spreads and remaining native budgets.

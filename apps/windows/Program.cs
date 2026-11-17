@@ -29,6 +29,7 @@ internal static class Program
     internal static void TerminateNow(int exitCode) =>
         _ = TerminateProcess(GetCurrentProcess(), (uint)exitCode);
 
+    internal static string? WindowMeasureMode;
     internal static bool Smoke;
     internal static bool AssociationSmoke;
     internal static string? AssociationPipeName;
@@ -43,6 +44,16 @@ internal static class Program
     [STAThread]
     private static int Main(string[] args)
     {
+        if (args.Length == 3 && args[0] == "--measure" && args[1] is "window-launch" or "jump-frame")
+        {
+            WindowMeasureMode = args[1];
+            args = [args[2]];
+        }
+        if (args.SequenceEqual(["--version"]))
+        {
+            Console.WriteLine(AppDiagnostics.Text);
+            return 0;
+        }
         if (args.SequenceEqual(["--core-tests"]))
         {
             return CoreConsumerTests.RunAll();
@@ -99,6 +110,7 @@ internal static class Program
             AssociationPipeName = !string.IsNullOrWhiteSpace(envInstanceKey)
                 ? envInstanceKey.Trim()
                 : DefaultInstancePipeName();
+            if (WindowMeasureMode is not null) AssociationPipeName = $"measure-{Guid.NewGuid():N}";
         }
 
         if (!Smoke && RelaunchCheckPhase is null && !string.IsNullOrEmpty(AssociationPipeName))
@@ -241,9 +253,11 @@ public sealed partial class ReaderApp : Application
 
     public ReaderApp()
     {
-        if (Program.Smoke || Program.AssociationSmoke)
+        if (Program.Smoke || Program.AssociationSmoke || Program.WindowMeasureMode is not null)
         {
-            _smokeRecentsPath = Path.Combine(Path.GetTempPath(), $"markdown-smoke-recents-{Environment.ProcessId}.json");
+            _smokeRecentsPath = Program.WindowMeasureMode is not null
+                ? Environment.GetEnvironmentVariable("MARKDOWN_RECENTS_PATH") : null;
+            _smokeRecentsPath ??= Path.Combine(Path.GetTempPath(), $"markdown-smoke-recents-{Environment.ProcessId}.json");
             Recents = new RecentsStore(_smokeRecentsPath);
         }
         else
@@ -417,6 +431,15 @@ public sealed partial class ReaderApp : Application
     {
         _dispatcher = Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread();
         var window = NewWindow();
+        if (Program.WindowMeasureMode is { } mode)
+        {
+            ((FrameworkElement)window.Content).Loaded += async (_, _) =>
+            {
+                window.OpenCapability(DocumentCapability.FromPickerPath(Program.StartupInputs[0]));
+                await Measurement.RunWindowAsync(window, mode, CloseAll);
+            };
+            return;
+        }
 
         foreach (var rawInput in Program.StartupInputs)
         {
@@ -1594,6 +1617,34 @@ public sealed partial class ReaderApp : Application
             RecentItemsWindow.Close();
             // Keep this workspace window open for the final multi-window Exit check.
 
+            Console.WriteLine("smoke: R1 properties, syntax, alerts and folder-scoped relative links.");
+            var targetPath = Path.Combine(wsMovedDir, "next.md");
+            File.WriteAllText(targetPath, "---\ntitle: Linked\nflag: true\n---\n\n# There\n\n> [!NOTE]\n> A note\n\n```rust\nlet x = 42;\n```\n");
+            win002a.OpenRelativeLink("next.md", "there");
+            await WaitWindowIdleAsync(win002a);
+            if (win002a.Loader.Document?.Title != "Linked" || win002a.Reader.PropertiesView.Visibility != Visibility.Visible ||
+                win002a.Loader.Plan?.Properties.Contains("flag: true") != true)
+                throw new InvalidOperationException("R1 relative link/properties presentation failed.");
+            win002a.Reader.PropertiesView.IsExpanded = true;
+            await Task.Delay(30);
+            var syntaxRow = new RowItem();
+            var codeFragment = win002a.Loader.Plan.Fragments.First(f => f.Kind == FragmentKind.Code);
+            syntaxRow.Bind(0, codeFragment, null);
+            if (syntaxRow.TextBlock.TextHighlighters.Count == 0 || syntaxRow.ShownText != codeFragment.Text)
+                throw new InvalidOperationException("R1 lazy code colors changed text or were missing.");
+            syntaxRow.SetHighlights([(0, 3, true)]);
+            syntaxRow.SetSelectionRange(0, 3);
+            if (syntaxRow.TextBlock.TextHighlighters.Count < 3)
+                throw new InvalidOperationException("Syntax/find/selection must coexist.");
+            syntaxRow.Unbind();
+            win002a.OpenRelativeLink("../outside.md", null);
+            if (!win002a.ErrorBanner.IsOpen || win002a.Loader.Document?.Title != "Linked")
+                throw new InvalidOperationException("Outside-folder link must preserve current document and show an error.");
+            win002a.OpenCapability(movedDocCap);
+            await WaitWindowIdleAsync(win002a);
+            if (win002a.Reader.PropertiesView.Visibility != Visibility.Collapsed)
+                throw new InvalidOperationException("Properties must clear on a plain document.");
+
             // 13. Verify New Window, Close Window, and Exit commands close all windows cleanly.
             Console.WriteLine("smoke: 13. Verify New Window, Close Window, and Exit commands close all windows cleanly.");
             Console.Out.Flush();
@@ -1976,6 +2027,22 @@ internal sealed class ReaderWindow : Window
         view.Items.Add(ToggleWorkspaceSidebarItem);
         view.Items.Add(Command(root, "Settings…", "Ctrl+,", (VirtualKey)188, VirtualKeyModifiers.Control, SettingsCommand));
         menu.Items.Add(view);
+        var help = new MenuBarItem { Title = "Help", AccessKey = "H" };
+        var about = new MenuFlyoutItem { Text = "About Markdown" };
+        about.Click += async (_, _) =>
+        {
+            var dialog = new ContentDialog
+            {
+                Title = "About Markdown",
+                Content = AppDiagnostics.Text,
+                CloseButtonText = "Close",
+                XamlRoot = root.XamlRoot,
+            };
+            await dialog.ShowAsync();
+        };
+        help.Items.Add(about);
+        menu.Items.Add(help);
+        Reader.RelativeLinkActivated += OpenRelativeLink;
 
         WorkspaceSidebar.Visibility = Visibility.Collapsed;
         WorkspaceSidebar.FileActivated += OpenWorkspaceEntry;
@@ -2024,6 +2091,41 @@ internal sealed class ReaderWindow : Window
         Grid.SetRow(contentGrid, 3);
         root.Children.Add(contentGrid);
         Content = root;
+    }
+
+    private string? _pendingLinkAnchor;
+
+    internal void OpenRelativeLink(string path, string? anchor)
+    {
+        var folder = ActiveFolder;
+        var source = Loader.Capability;
+        if (folder is null || source is null)
+        {
+            ErrorBanner.Title = "Folder access needed";
+            ErrorBanner.Message = "Open the containing folder with File > Open Folder to follow local links.";
+            ErrorBanner.IsOpen = true;
+            return;
+        }
+        try
+        {
+            // Core-canonical relative paths only; the adapter rechecks containment and reparse points.
+            if (Path.IsPathRooted(path) || path.Contains(':') || path.Contains('\\'))
+                throw new ArgumentException("Invalid local target");
+            var candidate = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(source.FullPath)!, path));
+            if (!folder.ResolveDocument(candidate, out var capability, out var error) || capability is null)
+            {
+                ShowFolderError(error, folder.FullPath, false);
+                return;
+            }
+            OpenCapability(capability);
+            _pendingLinkAnchor = anchor;
+        }
+        catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException)
+        {
+            ErrorBanner.Title = "Link unavailable";
+            ErrorBanner.Message = "This local link is unsupported.";
+            ErrorBanner.IsOpen = true;
+        }
     }
 
     internal void ShowFind()
@@ -2184,6 +2286,7 @@ internal sealed class ReaderWindow : Window
 
     internal void OpenCapability(DocumentCapability capability, string? recentSourcePath = null)
     {
+        _pendingLinkAnchor = null;
         _activeFolderError = null;
         _pendingRecentFilePath = recentSourcePath;
         _watcher?.Dispose();
@@ -2752,6 +2855,12 @@ internal sealed class ReaderWindow : Window
                 var oldDoc = _displayedDoc;
                 _displayedDoc = doc;
                 Reader.InstallPlan(plan, doc.Generation, savedPos, doc);
+                if (_pendingLinkAnchor is { Length: > 0 } anchor)
+                {
+                    _pendingLinkAnchor = null;
+                    var entry = plan.Outline.FindIndex(item => item.Anchor == anchor);
+                    if (entry >= 0) Reader.ActivateOutline(entry);
+                }
                 if (oldDoc is not null && oldDoc != doc)
                 {
                     oldDoc.Dispose();

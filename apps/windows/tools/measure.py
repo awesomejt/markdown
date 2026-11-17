@@ -7,6 +7,8 @@ Build the app first (apps/windows/tools/check.py) and generate the performance f
 (tools/generate_performance_fixtures.py).
 """
 import argparse
+import ctypes
+import uuid
 import json
 import os
 from pathlib import Path
@@ -38,12 +40,22 @@ def profile_path(name: str) -> Path:
 
 def run_measure(binary: Path, mode: str, doc_path: Path) -> dict:
     cmd = [str(binary), "--measure", mode, str(doc_path)]
-    result = subprocess.run(cmd, capture_output=True, text=True, check=True, timeout=120)
+    with tempfile.TemporaryDirectory(prefix="markdown-window-measure-") as directory:
+        env = dict(os.environ)
+        for key in ("PREFERENCES", "RESTORATION", "RECENTS"):
+            env[f"MARKDOWN_{key}_PATH"] = str(Path(directory) / f"{key.lower()}.json")
+        env["MARKDOWN_INSTANCE_KEY"] = f"measure-{uuid.uuid4().hex}"
+        before = ctypes.c_longlong()
+        ctypes.windll.kernel32.QueryPerformanceCounter(ctypes.byref(before))
+        result = subprocess.run(cmd, capture_output=True, text=True, check=True, timeout=120, env=env)
     lines = [line for line in result.stdout.splitlines() if line.strip()]
     if not lines:
         raise SystemExit(f"No output from: {' '.join(cmd)}")
     text = "\n".join(lines)
-    return json.loads(text)
+    row = json.loads(text)
+    if "presented_qpc" in row:
+        row["launch_to_frame_ms"] = (row["presented_qpc"] - before.value) * 1000 / row["qpc_frequency"]
+    return row
 
 
 def spread(values: list[float]) -> dict:
@@ -56,7 +68,7 @@ def spread(values: list[float]) -> dict:
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("mode", choices=["launch", "repeated", "interaction", "refresh"])
+    parser.add_argument("mode", choices=["launch", "repeated", "interaction", "refresh", "window-launch", "jump-frame"])
     parser.add_argument("--configuration", choices=["Debug", "Release"], default="Release")
     parser.add_argument("--profile", action="append", choices=PROFILES)
     parser.add_argument("--runs", type=int, default=5, help="launches per profile")
@@ -68,16 +80,27 @@ def main():
 
     for name in profiles:
         doc = profile_path(name)
-        if args.mode == "launch":
+        if args.mode in ("window-launch", "jump-frame"):
+            _ = run_measure(binary, args.mode, doc)
+            rows = [run_measure(binary, args.mode, doc) for _ in range(args.runs)]
+            out = {"profile": name, "mode": args.mode, "runs": args.runs,
+                   "launch_to_frame_ms": spread([r["launch_to_frame_ms"] for r in rows]),
+                   "peak_rss_mib": spread([r["peak_rss_mib"] for r in rows]),
+                   "realized_rows": [r["realized_rows"] for r in rows], "proxy": rows[0]["proxy"],
+                   "cache": "one warmup; warm filesystem caches; no cold-cache claim"}
+            if args.mode == "jump-frame":
+                out["jump_ms"] = spread([v for r in rows for v in r["jump_ms"]])
+            print(json.dumps(out, indent=2))
+        elif args.mode == "launch":
             # Warm up cache once
             _ = run_measure(binary, "launch", doc)
             rows = [run_measure(binary, "launch", doc) for _ in range(args.runs)]
             pipeline = [r["pipeline_ms"] for r in rows]
             parse = [r["parse_ms"] for r in rows]
             plan = [r["plan_ms"] for r in rows]
-            target = WARM_LAUNCH if name != "prose-5mib" else None
+            target = WARM_LAUNCH
             meets_target = (max(pipeline) <= WARM_LAUNCH) if target is not None else None
-            target_note = "D-016 <= 1 MiB target applies" if target is not None else "5 MiB stress fixture beyond D-016 1 MiB target"
+            target_note = "In-process pipeline comparison only; not process launch or presented content"
             out = {
                 "profile": name,
                 "configuration": args.configuration,

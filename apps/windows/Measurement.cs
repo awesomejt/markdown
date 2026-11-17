@@ -17,7 +17,6 @@ namespace Markdown.Windows;
 /// </summary>
 public static partial class Measurement
 {
-    private const long D016TargetBytes = 1024 * 1024;
     [LibraryImport("kernel32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static partial bool QueryPerformanceCounter(out long lpPerformanceCount);
@@ -90,6 +89,93 @@ public static partial class Measurement
         return 2;
     }
 
+    internal static async Task RunWindowAsync(ReaderWindow window, string mode, Action close)
+    {
+        using var completed = new ManualResetEventSlim(false);
+        var watchdog = new Thread(() =>
+        {
+            if (!completed.Wait(TimeSpan.FromSeconds(40)))
+            {
+                Console.Error.WriteLine("window-measure: timed out before validated shutdown");
+                Console.Error.Flush();
+                Program.TerminateNow(1);
+            }
+        })
+        { IsBackground = true, Name = "window-measure-watchdog" };
+        watchdog.Start();
+        try
+        {
+            Console.Error.WriteLine("window-measure: load");
+            var timeout = Stopwatch.StartNew();
+            while (window.Loader.IsLoading || window.Loader.Document is null || window.Reader.CurrentPlan is null)
+            {
+                if (window.Loader.Error is not null || timeout.ElapsedMilliseconds > 30000)
+                    throw new InvalidOperationException("Window measurement failed to load");
+                await Task.Delay(25);
+            }
+            Console.Error.WriteLine("window-measure: frame");
+            await PresentedFrameAsync();
+            Console.Error.WriteLine("window-measure: presented");
+            var presented = Qpc();
+            var jumps = new JsonArray();
+            if (mode == "jump-frame")
+            {
+                var plan = window.Reader.CurrentPlan!;
+                foreach (var index in new[] { plan.Fragments.Count - 1, 0, plan.Fragments.Count / 2 })
+                {
+                    var before = Qpc();
+                    window.Reader.ScrollToFragment(index);
+                    await PresentedFrameAsync();
+                    jumps.Add((JsonNode)JsonValue.Create(QpcToMs(before, Qpc())));
+                }
+            }
+            var report = new JsonObject
+            {
+                ["mode"] = mode,
+                ["presented_qpc"] = presented,
+                ["qpc_frequency"] = s_frequency,
+                ["fragments"] = window.Reader.CurrentPlan!.Fragments.Count,
+                ["realized_rows"] = window.Reader.BoundRows.Count,
+                ["peak_rss_mib"] = Process.GetCurrentProcess().PeakWorkingSet64 / (1024.0 * 1024.0),
+                ["jump_ms"] = jumps,
+                ["proxy"] = "WinUI layout + two CompositionTarget.Rendering callbacks + DwmFlush; not physical display latency",
+            };
+            Console.Error.WriteLine("window-measure: close");
+            close();
+            Console.Error.WriteLine("window-measure: closed");
+            if (!Program.WaitZeroLiveHandles(2000)) throw new InvalidOperationException("Measurement leaked core handles");
+            Console.WriteLine(report.ToJsonString());
+            Console.Out.Flush();
+            completed.Set();
+            Program.TerminateNow(0);
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine(ex);
+            Console.Error.Flush();
+            Program.TerminateNow(1);
+        }
+    }
+
+    private static async Task PresentedFrameAsync()
+    {
+        // Two rendering turns ensure layout has been submitted before the compositor flush.
+        for (var i = 0; i < 2; i++)
+        {
+            var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            EventHandler<object>? handler = null;
+            handler = (_, _) =>
+            {
+                Microsoft.UI.Xaml.Media.CompositionTarget.Rendering -= handler;
+                completion.TrySetResult();
+            };
+            Microsoft.UI.Xaml.Media.CompositionTarget.Rendering += handler;
+            try { await completion.Task.WaitAsync(TimeSpan.FromSeconds(5)); }
+            finally { Microsoft.UI.Xaml.Media.CompositionTarget.Rendering -= handler; }
+        }
+        _ = DwmFlush();
+    }
+
     private static int RunLaunch(string? docPath)
     {
         var proc = Process.GetCurrentProcess();
@@ -136,8 +222,8 @@ public static partial class Measurement
             ["pipeline_ms"] = pipelineMs,
             ["peak_rss_kib"] = peakRss,
             ["working_set_kib"] = currentRss,
-            ["meets_warm_budget_400ms"] = bytes.Length <= D016TargetBytes ? pipelineMs <= 400.0 : null,
-            ["meets_cold_budget_700ms"] = bytes.Length <= D016TargetBytes ? pipelineMs <= 700.0 : null,
+            ["pipeline_under_400ms"] = pipelineMs <= 400.0,
+            ["presentation_measured"] = false,
         };
 
         Console.WriteLine(report.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));

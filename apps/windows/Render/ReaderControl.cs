@@ -48,6 +48,8 @@ public sealed partial class ReaderControl : UserControl
     private Point _lastPointerPosition;
 
     public Func<Uri, bool>? ExternalUriLauncher { get; set; }
+    public event Action<string, string?>? RelativeLinkActivated;
+    public Expander PropertiesView { get; } = new() { Visibility = Visibility.Collapsed, HorizontalAlignment = HorizontalAlignment.Stretch };
 
     public ListView DocumentList => _documentList;
     public bool IsOutlineVisible
@@ -120,7 +122,16 @@ public sealed partial class ReaderControl : UserControl
         Grid.SetColumn(_documentList, 1);
 
         _rootGrid.Children.Add(_outlineList);
-        _rootGrid.Children.Add(_documentList);
+        var documentGrid = new Grid();
+        documentGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        documentGrid.RowDefinitions.Add(new RowDefinition());
+        Grid.SetColumn(_documentList, 0);
+        Grid.SetRow(_documentList, 1);
+        documentGrid.Children.Add(PropertiesView);
+        documentGrid.Children.Add(_documentList);
+        Grid.SetColumn(documentGrid, 1);
+        _rootGrid.Children.Add(documentGrid);
+        AutomationProperties.SetName(PropertiesView, "Document properties");
 
         Content = _rootGrid;
     }
@@ -398,6 +409,15 @@ public sealed partial class ReaderControl : UserControl
         var restoreIndex = CurrentGeneration > 0 ? FirstVisibleFragmentIndex() : 0;
         Clear();
         _plan = plan;
+        PropertiesView.Header = $"Properties ({plan.Properties.Count})";
+        PropertiesView.Content = plan.Properties.Count == 0 ? null : new TextBlock
+        {
+            Text = string.Join("\n", plan.Properties),
+            TextWrapping = TextWrapping.Wrap,
+            IsTextSelectionEnabled = true,
+            Margin = new Thickness(12),
+        };
+        PropertiesView.Visibility = plan.Properties.Count == 0 ? Visibility.Collapsed : Visibility.Visible;
         CurrentGeneration = generation;
 
         var titles = new List<string>(plan.Outline.Count);
@@ -426,6 +446,8 @@ public sealed partial class ReaderControl : UserControl
 
     public void Clear()
     {
+        PropertiesView.Content = null;
+        PropertiesView.Visibility = Visibility.Collapsed;
         _pendingFocusIndex = -1;
         _lastScrolledFragmentIndex = 0;
         _suppressOutlineSelection = true;
@@ -577,6 +599,10 @@ public sealed partial class ReaderControl : UserControl
                         _ = Launcher.LaunchUriAsync(uri);
                     }
                 }
+                break;
+
+            case TargetKind.Relative:
+                if (target.Value.Uri is { } path) RelativeLinkActivated?.Invoke(path, target.Value.Anchor);
                 break;
 
             case TargetKind.Inert:

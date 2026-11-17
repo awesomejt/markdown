@@ -50,11 +50,12 @@ public enum TargetKind : byte
     Fragment,
     /// <summary>A core-canonical external http, https or mailto URI.</summary>
     External,
-    /// <summary>Relative, capability-requiring, denied, unknown-scheme or missing-anchor targets.</summary>
+    Relative,
+    /// <summary>Denied, unknown-scheme or missing-anchor targets.</summary>
     Inert,
 }
 
-public readonly record struct LinkTarget(TargetKind Kind, int Fragment, string? Uri)
+public readonly record struct LinkTarget(TargetKind Kind, int Fragment, string? Uri, string? Anchor = null)
 {
     public static LinkTarget Inert { get; } = new(TargetKind.Inert, -1, null);
 }
@@ -112,6 +113,8 @@ public sealed class RenderFragment
     /// <summary>Block quote / alert nesting depth.</summary>
     public int Quote { get; }
 
+    public string Language { get; internal set; } = string.Empty;
+
     public bool IsHeader { get; internal set; }
 
     public bool StartsBlock { get; internal set; }
@@ -148,6 +151,7 @@ public sealed class RenderPlan
 
     private static readonly string[] s_externalSchemes = ["https:", "http:", "mailto:"];
 
+    public List<string> Properties { get; } = [];
     public List<RenderFragment> Fragments { get; } = [];
     public List<OutlineItem> Outline { get; } = [];
     public List<LinkTarget> Targets { get; } = [];
@@ -524,6 +528,22 @@ public sealed class RenderPlan
         public RenderPlan Run()
         {
             Charge((long)doc.NodeCount * sizeof(int));
+            for (var i = 0; i < doc.PropertyCount; i++)
+            {
+                Check();
+                var prop = doc.Properties[i];
+                var value = prop.kind switch
+                {
+                    1 => "null",
+                    2 => prop.boolean != 0 ? "true" : "false",
+                    3 => prop.integer.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                    4 => doc.PropertyString(i),
+                    5 => string.Join(", ", Enumerable.Range((int)prop.first_string, (int)prop.string_count)
+                        .Select(j => doc.DecodeStr(doc.StringList[j]))),
+                    _ => "Unsupported value",
+                };
+                plan.Properties.Add(Owned($"{doc.PropertyKey(i)}: {value}"));
+            }
             foreach (var root in doc.Roots)
             {
                 Block(root, 0, null, 0, 0);
@@ -562,6 +582,11 @@ public sealed class RenderPlan
                 {
                     Charge(2L * target.Length);
                     resolved = new LinkTarget(TargetKind.External, -1, target);
+                }
+                else if (intent.target_kind == CoreFfi.MD_TARGET_REQUIRES_CAPABILITY)
+                {
+                    var anchor = Owned(doc.LinkFragment(i));
+                    resolved = new LinkTarget(TargetKind.Relative, -1, Owned(target), anchor);
                 }
                 else
                 {
@@ -975,10 +1000,31 @@ public sealed class RenderPlan
                 var level = kind == CoreFfi.MD_NODE_HEADING ? (int)Math.Clamp(n.value, 1u, 6u) : 0;
                 var blockImgs = _currentBlockImages.ToArray();
                 _currentBlockImages.Clear();
+                var firstFragment = plan.Fragments.Count;
                 Emit(runs, fragmentKind, level, indent, quote, images: blockImgs);
+                if (fragmentKind == FragmentKind.Code)
+                {
+                    var info = doc.NodeExtra((int)id);
+                    var language = Owned(info.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries)
+                        .FirstOrDefault()?.ToLowerInvariant() ?? string.Empty);
+                    for (var i = firstFragment; i < plan.Fragments.Count; i++) plan.Fragments[i].Language = language;
+                }
                 return;
             }
 
+            if (kind == CoreFfi.MD_NODE_ALERT)
+            {
+                var label = n.value switch
+                {
+                    CoreFfi.MD_ALERT_NOTE => "Note",
+                    CoreFfi.MD_ALERT_TIP => "Tip",
+                    CoreFfi.MD_ALERT_IMPORTANT => "Important",
+                    CoreFfi.MD_ALERT_WARNING => "Warning",
+                    CoreFfi.MD_ALERT_CAUTION => "Caution",
+                    _ => "Alert",
+                };
+                marker = (marker ?? string.Empty) + label + ": ";
+            }
             var childQuote = kind is CoreFfi.MD_NODE_BLOCK_QUOTE or CoreFfi.MD_NODE_ALERT ? quote + 1 : quote;
             var blockChildren = ChildrenOf(in n);
             for (var i = 0; i < blockChildren.Length; i++)
