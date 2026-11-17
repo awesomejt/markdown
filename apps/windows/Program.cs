@@ -1598,31 +1598,15 @@ public sealed partial class ReaderApp : Application
             // 13. Verify New Window, Close Window, and Exit commands close all windows cleanly.
             Console.WriteLine("smoke: 13. Verify New Window, Close Window, and Exit commands close all windows cleanly.");
             Console.Out.Flush();
-            first.NewCommand();
-            Console.WriteLine("smoke: 13a. New window created.");
-            Console.Out.Flush();
-            if (windows.Count != 2)
-            {
-                throw new InvalidOperationException("New Window failed.");
-            }
-            windows[1].CloseCommand();
-            Console.WriteLine("smoke: 13b. New window closed.");
-            Console.Out.Flush();
-            if (windows.Count != 1)
-            {
-                throw new InvalidOperationException("Close failed.");
-            }
-            first.NewCommand();
-            await Task.Delay(50);
-            // Arm before closing the last native window. WinUI teardown can stall
-            // before a watchdog allocated after CloseAll ever starts. Only the
+            // Arm before exercising native window lifecycle. WinUI teardown can stall
+            // during rapid create/close operations as well as final exit. Only the
             // validated cleanup path signals success; a shutdown stall must fail.
             var shutdownChecked = new ManualResetEventSlim(false);
             var watchdog = new Thread(() =>
             {
-                if (!shutdownChecked.Wait(TimeSpan.FromSeconds(5)))
+                if (!shutdownChecked.Wait(TimeSpan.FromSeconds(15)))
                 {
-                    Console.Error.WriteLine("Smoke failed: window shutdown/core cleanup did not finish within 5 seconds.");
+                    Console.Error.WriteLine("Smoke failed: window shutdown/core cleanup did not finish within 15 seconds.");
                     Console.Error.Flush();
                     Program.TerminateNow(1);
                     return;
@@ -1637,6 +1621,25 @@ public sealed partial class ReaderApp : Application
                 Name = "smoke-exit-watchdog",
             };
             watchdog.Start();
+            first.NewCommand();
+            await WaitWindowLoadedAsync(windows[1]);
+            Console.WriteLine("smoke: 13a. New window loaded.");
+            Console.Out.Flush();
+            if (windows.Count != 2)
+            {
+                throw new InvalidOperationException("New Window failed.");
+            }
+            windows[1].CloseCommand();
+            Console.WriteLine("smoke: 13b. New window closed.");
+            Console.Out.Flush();
+            if (windows.Count != 1)
+            {
+                throw new InvalidOperationException("Close failed.");
+            }
+            // Let WinUI finish the closed window's queued teardown before creating another.
+            await Task.Delay(50);
+            first.NewCommand();
+            await WaitWindowLoadedAsync(windows[1]);
             Console.WriteLine("smoke: 13c. Closing all windows.");
             Console.Out.Flush();
             Program.Result = 0;
@@ -1690,6 +1693,19 @@ public sealed partial class ReaderApp : Application
             {
                 // Best-effort cleanup.
             }
+        }
+    }
+
+    private static async Task WaitWindowLoadedAsync(ReaderWindow window)
+    {
+        var elapsed = Stopwatch.StartNew();
+        while (window.Content is FrameworkElement { IsLoaded: false })
+        {
+            if (elapsed.ElapsedMilliseconds >= 5000)
+            {
+                throw new TimeoutException("Smoke window did not load within 5 seconds.");
+            }
+            await Task.Delay(10);
         }
     }
 
