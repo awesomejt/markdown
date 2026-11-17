@@ -1,14 +1,16 @@
 # Agent Session and Platform Handoff
 
-Updated: 2026-11-16 (America/Denver), WIN-002E recovery in progress. PR #93 is OPEN; the earlier closeout recorded completion before CI and merge. WIN-002E-FIX blocks WIN-002F until native/hosted checks and actual merge pass.
-Active task: `WIN-002E-FIX`, on the existing PR #93 branch. Subsequent task: `WIN-002F` (Windows development packaging and R1 conformance) and `MAC-002` (macOS aggregate). The D-030 milestone review for `LNX-002` + `HARD-001` (`review/<milestone>` into `main`, owner-merged) is still open to cut.
-Pass `5f740d9f-5710-4f8f-b0ee-f06f276a229d` completed prematurely; approved PR #93 remains open:
+Updated: 2026-11-16 (America/Denver), WIN-002E and WIN-002E-FIX closed out for the approved PR #93 merge into `develop`.
+Active task: None. Next Windows task: `WIN-002F` (development packaging and R1 conformance). `MAC-002` is independently ready on macOS; no platform switch is needed for WIN-002F.
 
-- Implemented `WIN-002E`: `WorkspaceWatcher` (`apps/windows/Document/WorkspaceWatcher.cs`: recursive root `FileSystemWatcher` for structural `Created`/`Deleted`/`Renamed` events + parent watcher for root deletion/rename, 150 ms debounce, 1,000 ms max coalesce, in-flight refresh gating via `NotifyRefreshCompleted`, and automatic access-loss recovery into `ReaderWindow.HandleWorkspaceAccessLost`), `RestorationStore` schema v2 (`apps/windows/Restoration.cs`: `workspace_path`, `workspace_sidebar_visible`, `expanded_paths`, `show_all_files`, `show_hidden`, v1 back-compat, per-segment `IsSafeRelativePath`), `WorkspaceSidebar` selection/expansion preservation across refreshes, and `RelaunchCheck` workspace restoration verification.
-- Checks at `aa9f98e`: `.build/feasibility-venv/Scripts/python.exe apps/windows/tools/check.py` passed in Debug, Release, and relocated Release Native AOT (22 core consumer tests, 22 document tests, 22 render tests, Native AOT WinUI `--smoke`, `check_association.py`, two-phase `--relaunch-check`, and relocated `--core-probe single` with 0 leaked handles).
-- Grok review 1 at `1080409`: 0 Blockers, 1 Concern, 2 Nits (approved under D-029). All 3 findings were fixed in `aa9f98e` with no re-review needed.
+- PR #93 delivers Windows workspace watching, change-storm coalescing, access-loss recovery, selection/expansion retention, and v2 workspace restoration, as documented in [the Windows README](apps/windows/README.md).
+- The earlier WIN-002E completion record was premature: GitHub still had an open PR and failed smoke CI. WIN-002E-FIX preserved that history and gated WIN-002F while recovering the actual reviewed merge.
+- Recovery source `42573ab` bounds the stale-load worker rendezvous without pumping the UI dispatcher, waits for the unchanged restored-position/selection assertions, uses one New/Close followed by multi-window Exit in the same dispatcher turn, arms the failure watchdog before the lifecycle sequence, and takes the existing smoke-only detach bypass immediately after closed-window/zero-core-handle checks. Both subprocess runners retain captured stage output on timeout. Production app behavior is unchanged.
+- Native checks: `python apps/windows/tools/check.py` passed Debug, Release and relocated Release (22 core, 22 document and 22 render tests each, WinUI smoke, association, two-phase relaunch, license inventory and relocated core probe with 0 leaked handles). `python tools/check.py common`, timeout-output probes for both runners, 100 serial Debug smokes and 20 serial Release smokes passed.
+- [Hosted CI run 44008960954](https://github.com/awesomejt/markdown/actions/runs/44008960954) passed at `42573ab` on attempt 2. Attempt 1 timed out during the restoration smoke; the hosted intermittent hang remains a validation risk, despite 120 serial local passes.
+- Grok review 1 at `1080409`: 0 Blockers, 1 Concern, 2 Nits, all fixed at `aa9f98e`. D-029 approval remains applicable; later changes are minor smoke synchronization/diagnostics and state/docs, exempt from re-review under Delivery-Workflow step 7. One review used. This closeout commit travels on PR #93; merge only after its required CI passes, then delete the branch and return to clean `develop`.
 
-Next task: `WIN-002F` (development packaging and complete R1 conformance) on Windows, `MAC-002` on macOS, or the D-030 milestone review.
+Next: WIN-002F on Windows, then the WIN-002 aggregate. A fresh context is recommended for the larger packaging/conformance task; this handoff contains the resume evidence. D-030 milestone reviews remain owner-merged into `main`.
 
 ## Previous handoff (WIN-002D)
 

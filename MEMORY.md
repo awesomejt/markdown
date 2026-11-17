@@ -161,8 +161,12 @@ read.
   Debug/Release/relocated Release pass 22 core, 22 document, 22 render tests, Native AOT smoke,
   association, relaunch, and probe (`0` leaked handles). Grok review 1 at `1080409` had 0 Blockers,
   1 Concern, 2 Nits (approved under D-029; all 3 fixed in `aa9f98e`).
-  WIN-002E-FIX is recovering PR #93, which remains open after its premature
-  closeout; WIN-002F waits for green CI and the actual merge.
+  WIN-002E-FIX corrects the premature closeout and stabilizes smoke-only worker,
+  layout and shutdown synchronization, with stage output on timeout. Recovery source
+  `42573ab` passed native Debug/Release/relocated suites, 100 Debug + 20 Release
+  smokes, common checks and hosted CI run `44008960954` (attempt 2; an
+  intermittent hosted smoke hang remains a risk to investigate in WIN-002F). D-029 approval applies
+  through the minor-test-follow-up exemption. WIN-002F is next on Windows.
 - Phase: `desktop-apps`; the portable-core shared track is complete through
   CORE-006 (GATE-001 approved, D-018). Native chains are now eligible (D-027).
 - Product: local-first, read-only native Markdown reader. Windows, macOS and
