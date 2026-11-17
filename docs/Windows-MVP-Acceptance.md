@@ -1,8 +1,9 @@
 # Windows MVP acceptance
 
 WIN-002F completes the development packaging and R1 presentation slice on
-Windows 11 x64. The WIN-002 aggregate remains a separate task after the
-WIN-002F reviewed merge. This is an unsigned development build; production
+Windows 11 x64. WIN-002 closes the functional aggregate on the merged
+WIN-002A–F evidence under the owner-approved boundary below. This is an unsigned
+development build; production
 signing, publishing and clean-machine release acceptance are separate work.
 
 ## R1 coverage
@@ -59,16 +60,22 @@ verification marker. No new performance measurements are claimed by this
 aggregate; the original five-run spreads below remain applicable to unchanged
 application source.
 
-### Acceptance discrepancy
+### Owner-approved aggregate boundary
 
-The operational WIN-002 criterion says “Windows R1 acceptance and performance
-budgets pass.” The measured prose launch misses and unrun checks below do not
-satisfy that literal criterion. The Linux aggregate records functional closure
-with open budgets carried to DESK-002, and the Windows delivery report likewise
-assigns those gaps to DESK-002. WIN-002 requires an explicit owner disposition
-of this discrepancy before completion; neither prior task review nor green CI
-waives a performance target. DESK-002 remains the cross-desktop conformance and
-release gate, with HARD-001 and all three platform aggregates as prerequisites.
+On 2026-11-16 (America/Denver), the owner directed: “Close functional
+aggregate; carry explicit gaps to DESK-002.” This resolves the discrepancy
+between the original operational criterion (“performance budgets pass”) and
+the documented measured misses. The task criterion now matches this explicit
+functional acceptance boundary, consistent with the Linux aggregate.
+
+WIN-002 accepts R1 functional coverage and the fresh native/common checks above.
+It does not establish complete performance or production release acceptance.
+DESK-002 must reconcile the 456.95 ms / 1258.03 ms prose warm-launch medians
+against 400 ms, unmeasured cold launch, frame pacing, mixed DPI, full Narrator
+properties inspection, whole-window memory evidence, and clean second-machine /
+SmartScreen installation evidence. These gaps remain open and no target is
+waived. HARD-001 is already complete; DESK-002 still requires MAC-002 as well
+as the completed Windows and Linux functional aggregates.
 
 ## Development installation
 

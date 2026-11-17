@@ -481,10 +481,10 @@ CORE-006 no longer carry. The three host chains are independent.
 
 - **WIN-002 — Windows basic MVP.** Folder workspace, recents, browse/find/search,
   preferences, watcher/restoration, native integration, and performance tuning.
-  Aggregate audit found a criterion discrepancy: task state requires passing
-  budgets while the [Windows acceptance report](docs/Windows-MVP-Acceptance.md#acceptance-discrepancy)
-  carries measured launch misses and unrun checks to DESK-002. Owner disposition
-  is required before closure; fresh native/common checks pass and no target is waived.
+  Owner-approved functional aggregate boundary (2026-11-16): fresh native/common
+  checks pass; measured performance misses and unrun native evidence remain
+  explicit DESK-002 obligations in the [Windows acceptance report](docs/Windows-MVP-Acceptance.md#owner-approved-aggregate-boundary).
+  No numeric target or release check is waived.
 - **MAC-002 — macOS basic MVP.** Equivalent basic functionality optimized for
   macOS permissions, filesystem, menus, text system, and packaging.
 - **LNX-002 — Linux basic MVP.** Equivalent basic functionality optimized for

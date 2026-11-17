@@ -1,33 +1,30 @@
 # Agent Session and Platform Handoff
 
-Updated: 2026-11-16 (America/Denver), WIN-002 aggregate audit awaiting owner disposition.
+Updated: 2026-11-16 (America/Denver), WIN-002 owner-approved functional aggregate closeout.
 
-- Branch: `patch/win-002-aggregate-acceptance`, baseline `968e755` (PR #94 merged;
-  develop CI run [44023184544](https://github.com/awesomejt/markdown/actions/runs/44023184544)
-  passed). No application source changed and no PR is open.
-- Fresh native checks passed Debug, Release and installed Release: 22 core,
-  22 document and 23 render tests each, native smoke, associations, relaunch,
-  frame probes, installer/uninstaller safety, diagnostics, license inventory
-  and zero-handle core probe. Common checks passed with subprocess exit 0.
-  PowerShell `*>` classified build stderr progress as NativeCommandError and
-  returned 1; the native checker nevertheless reached its final artifact
-  success marker with no traceback or failed check.
-- Pass `5070ac30-d352-46b1-811d-0e65b31716a8` is blocked, revision 876;
-  no live lease or working task remains. Blocker
-  `01c3402f-aabd-4098-8387-ac0a81c4f5b4` records the acceptance discrepancy:
-  state says budgets pass, but prose warm-launch medians exceed 400 ms and
-  cold/manual checks remain unrun. Linux precedent and Windows documentation
-  defer gaps to DESK-002. The owner has been asked to choose functional closure
-  with explicit carryover or to keep WIN-002 open until its budgets pass.
-- Resolve that decision before completing WIN-002 or publishing a closure PR.
-  An accepted boundary change needs its owner evidence, synchronized task
-  validation/roadmap and decision record; use the state helper, never hand-edit.
-  Changes needing a decision use a reviewed branch under Delivery-Workflow;
-  choose the final branch type after disposition. No waiver is inferred.
-- Continue this context for the decision. MAC-002 is independently ready on
-  macOS; after Windows closure, switch to Mac with a fresh context for that
-  aggregate. HARD-001 and LNX-002 are already complete; DESK-002 waits on both
-  remaining aggregates. No Linux switch is needed now.
+- The owner directed “Close functional aggregate; carry explicit gaps to
+  DESK-002.” D-036 records this boundary; WIN-002's state criterion and
+  [acceptance report](docs/Windows-MVP-Acceptance.md#owner-approved-aggregate-boundary)
+  now match it. The earlier discrepancy blocker is resolved. No numeric
+  target or production-release check is waived.
+- Source baseline `968e755` (PR #94 merge) has green develop CI
+  [44023184544](https://github.com/awesomejt/markdown/actions/runs/44023184544).
+  Fresh Debug, Release and installed Release pass 22 core, 22 document and
+  23 render tests each, smoke, association, restoration, frame probes,
+  installer/uninstaller safety, diagnostics, licensing and zero-handle core
+  probe. Common checks pass. PowerShell redirection reported stderr progress
+  as NativeCommandError; the native checker reached its final success marker.
+- This closeout changes documentation/state only on
+  `patch/win-002-aggregate-acceptance`, under D-033. Push/open its PR, wait for
+  required green CI, merge with a merge commit, delete the branch and return
+  to clean develop. Final PR/pass evidence is recorded before merging.
+- Open DESK-002 obligations: prose launch medians 456.95 / 1258.03 ms versus
+  400 ms; cold launch, frame pacing, mixed DPI, full Narrator properties,
+  whole-window memory evidence and second-machine/SmartScreen checks.
+- Next: MAC-002 functional aggregate on macOS. Switch to Mac and use a fresh
+  context; read this handoff and inspect state after pulling develop.
+  HARD-001 and LNX-002 are already complete; DESK-002 follows MAC-002.
+  No Linux switch is needed. D-030 milestone PRs remain owner-merged into main.
 
 ## Previous handoff (WIN-002F)
 
