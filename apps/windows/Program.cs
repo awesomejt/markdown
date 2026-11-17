@@ -966,9 +966,15 @@ public sealed partial class ReaderApp : Application
                 };
 
                 first.ReloadCommand();
-                while (!entered.IsSet)
+                // Rendezvous without pumping the UI dispatcher: a pending watcher
+                // or activation refresh can otherwise coalesce away this reload
+                // before it reaches the barrier, leaving an unbounded async wait.
+                // The file worker never needs the UI thread to enter the barrier.
+                if (!entered.Wait(TimeSpan.FromSeconds(5)))
                 {
-                    await Task.Delay(5);
+                    first.Loader.ReadBarrier = null;
+                    release.Set();
+                    throw new TimeoutException("Stale-load smoke read did not enter its barrier within 5 seconds.");
                 }
 
                 first.Loader.ReadBarrier = null;

@@ -111,6 +111,12 @@ publish directory (including `markdown_ffi.dll`) is required. MSIX, signing and
 clean-machine distribution require owner authorization; WIN-001I provides the local
 unsigned development artifact with complete license notices.
 
+The smoke logs each stage and reports captured output on timeout. Its stale-load
+supersession check uses a bounded worker rendezvous without pumping the UI
+dispatcher, so a queued watcher/activation refresh cannot cancel the controlled
+reload before its read barrier is entered. This synchronization applies only to
+`--smoke`; normal reading and refresh remain asynchronous.
+
 ## Development artifact and licenses (WIN-001I)
 
 ```powershell
