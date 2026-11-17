@@ -432,11 +432,25 @@ public sealed partial class ReaderApp : Application
                 var isFirst = true;
                 foreach (var st in restored)
                 {
-                    if (DocumentCapability.TryFromUserInput(st.FilePath, out var cap, out _) && cap is not null)
+                    DocumentCapability? docCap = null;
+                    if (!string.IsNullOrWhiteSpace(st.FilePath) &&
+                        DocumentCapability.TryFromUserInput(st.FilePath, out var parsedDoc, out _))
+                    {
+                        docCap = parsedDoc;
+                    }
+
+                    FolderCapability? folderCap = null;
+                    if (!string.IsNullOrWhiteSpace(st.WorkspacePath) &&
+                        FolderCapability.TryFromUserInput(st.WorkspacePath, out var parsedFolder, out _))
+                    {
+                        folderCap = parsedFolder;
+                    }
+
+                    if (docCap is not null || folderCap is not null)
                     {
                         var target = isFirst ? window : NewWindow();
                         isFirst = false;
-                        target.RestoreFromState(st, cap);
+                        target.RestoreFromState(st, docCap, folderCap);
                     }
                 }
             }
@@ -534,14 +548,21 @@ public sealed partial class ReaderApp : Application
         var activeStates = new List<WindowRestorationState>();
         foreach (var w in windows)
         {
-            if (w.Loader.HasFile && w.Loader.Capability is not null && w.Loader.Document is not null)
+            var hasFile = w.Loader.HasFile && w.Loader.Capability is not null && w.Loader.Document is not null;
+            var hasFolder = w.ActiveFolder is not null;
+            if (hasFile || hasFolder)
             {
-                var saved = w.Reader.SavePosition(w.Loader.Document);
+                var saved = hasFile ? w.Reader.SavePosition(w.Loader.Document!) : null;
                 activeStates.Add(WindowRestorationState.Create(
-                    w.Loader.Capability.FullPath,
+                    hasFile ? w.Loader.Capability!.FullPath : string.Empty,
                     saved,
                     w.Preferences.TextScaleValue,
-                    w.Reader.IsOutlineVisible));
+                    w.Reader.IsOutlineVisible,
+                    w.ActiveFolder?.FullPath,
+                    w.IsWorkspaceSidebarVisible,
+                    hasFolder ? w.WorkspaceSidebar.GetExpandedRelativePaths() : null,
+                    hasFolder && w.WorkspaceSidebar.ShowAllFiles,
+                    hasFolder && w.WorkspaceSidebar.ShowHidden));
             }
         }
 
@@ -1567,9 +1588,11 @@ public sealed partial class ReaderApp : Application
         catch (Exception ex)
         {
             Console.Error.WriteLine($"Smoke failed: {ex}");
+            Console.Error.Flush();
             Program.Result = 1;
             CloseAll();
             Exit();
+            Program.TerminateNow(1);
         }
         finally
         {
@@ -1614,6 +1637,7 @@ internal sealed class ReaderWindow : Window
     internal ReaderPreferences Preferences { get; }
     internal FolderCapability? ActiveFolder { get; private set; }
     private DocumentWatcher? _watcher;
+    private WorkspaceWatcher? _workspaceWatcher;
     private bool _isClosing;
     private CoreDocument? _displayedDoc;
     private DocumentCapability? _recordedRecentCap;
@@ -1741,6 +1765,8 @@ internal sealed class ReaderWindow : Window
             ActiveFolder = null;
             _watcher?.Dispose();
             _watcher = null;
+            _workspaceWatcher?.Dispose();
+            _workspaceWatcher = null;
             _findCts?.Cancel();
             _findCts?.Dispose();
             _findCts = null;
@@ -2025,16 +2051,31 @@ internal sealed class ReaderWindow : Window
         });
     }
 
-    internal void RestoreFromState(WindowRestorationState state, DocumentCapability cap)
+    internal void RestoreFromState(
+        WindowRestorationState state,
+        DocumentCapability? docCap,
+        FolderCapability? folderCap = null)
     {
-        PendingRestorePosition = state.ToSavedPosition();
         if (state.TextScale > 0)
         {
             Preferences.TextScaleValue = state.TextScale;
             Reader.SetTextScale(state.TextScale);
         }
         Reader.IsOutlineVisible = state.OutlineShown;
-        OpenCapability(cap);
+
+        if (folderCap is not null)
+        {
+            WorkspaceSidebar.ShowAllFiles = state.ShowAllFiles;
+            WorkspaceSidebar.ShowHidden = state.ShowHidden;
+            WorkspaceSidebar.SetPendingExpandedRelativePaths(state.ExpandedRelativePaths);
+            OpenFolderCapability(folderCap, isFromRecents: false, sidebarVisible: state.WorkspaceSidebarVisible);
+        }
+
+        if (docCap is not null)
+        {
+            PendingRestorePosition = state.ToSavedPosition();
+            OpenCapability(docCap);
+        }
     }
 
     internal void OpenCapability(DocumentCapability capability, string? recentSourcePath = null)
@@ -2045,9 +2086,10 @@ internal sealed class ReaderWindow : Window
         _watcher = null;
         if (!string.IsNullOrEmpty(capability.FullPath))
         {
+            var dispatcherQueue = DispatcherQueue;
             _watcher = new DocumentWatcher(capability.FullPath, () =>
             {
-                _ = DispatcherQueue?.TryEnqueue(() =>
+                _ = dispatcherQueue?.TryEnqueue(() =>
                 {
                     Loader.RefreshExternal();
                     SyncFromLoader();
@@ -2058,7 +2100,7 @@ internal sealed class ReaderWindow : Window
         SyncFromLoader();
     }
 
-    internal void OpenFolderCapability(FolderCapability folder, bool isFromRecents = false)
+    internal void OpenFolderCapability(FolderCapability folder, bool isFromRecents = false, bool sidebarVisible = true)
     {
         if (!folder.ValidateAccess(out var folderError))
         {
@@ -2073,6 +2115,8 @@ internal sealed class ReaderWindow : Window
         {
             if (ActiveFolder.SameFolderAs(folder))
             {
+                _workspaceSidebarUserVisible = sidebarVisible;
+                UpdateWorkspaceSidebarVisibility();
                 _app.Recents.RecordFolder(folder);
                 SyncFromLoader();
                 return;
@@ -2083,9 +2127,29 @@ internal sealed class ReaderWindow : Window
         CloseFolderItem.IsEnabled = true;
         ToggleWorkspaceSidebarItem.IsEnabled = true;
         FindInWorkspaceItem.IsEnabled = true;
-        _workspaceSidebarUserVisible = true;
+        _workspaceSidebarUserVisible = sidebarVisible;
         UpdateWorkspaceSidebarVisibility();
         _app.Recents.RecordFolder(folder);
+
+        _workspaceWatcher?.Dispose();
+        var workspaceDispatcher = DispatcherQueue;
+        _workspaceWatcher = new WorkspaceWatcher(
+            folder,
+            () =>
+            {
+                _ = workspaceDispatcher?.TryEnqueue(() =>
+                {
+                    if (!_isClosing && ActiveFolder == folder)
+                    {
+                        RefreshWorkspaceTree(resetExpanded: false, showLoadingStatus: false);
+                    }
+                });
+            },
+            folderErr =>
+            {
+                _ = workspaceDispatcher?.TryEnqueue(() => HandleWorkspaceAccessLost(folder, folderErr));
+            });
+
         RefreshWorkspaceTree(resetExpanded: true);
         SyncFromLoader();
     }
@@ -2107,7 +2171,7 @@ internal sealed class ReaderWindow : Window
             : Visibility.Collapsed;
     }
 
-    internal async void RefreshWorkspaceTree(bool resetExpanded)
+    internal async void RefreshWorkspaceTree(bool resetExpanded, bool showLoadingStatus = true)
     {
         var folder = ActiveFolder;
         if (folder is null)
@@ -2120,7 +2184,10 @@ internal sealed class ReaderWindow : Window
         var cts = new CancellationTokenSource();
         _workspaceCts = cts;
         var generation = ++_workspaceGeneration;
-        WorkspaceSidebar.SetLoading(folder.DisplayName, clearTree: resetExpanded);
+        if (showLoadingStatus || resetExpanded)
+        {
+            WorkspaceSidebar.SetLoading(folder.DisplayName, clearTree: resetExpanded);
+        }
 
         try
         {
@@ -2152,6 +2219,25 @@ internal sealed class ReaderWindow : Window
             WorkspaceSidebar.SetError("Could not load workspace.");
             ShowFolderError(FolderError.OpenFailed, folder.FullPath, isFromRecents: false);
         }
+        finally
+        {
+            if (!_isClosing && generation == _workspaceGeneration && ActiveFolder == folder)
+            {
+                _workspaceWatcher?.NotifyRefreshCompleted();
+            }
+        }
+    }
+
+    private void HandleWorkspaceAccessLost(FolderCapability folder, FolderError error)
+    {
+        if (_isClosing || ActiveFolder != folder)
+        {
+            return;
+        }
+
+        var lostPath = folder.FullPath;
+        CloseFolder(revoked: false);
+        ShowFolderError(error, lostPath, isFromRecents: false);
     }
 
     private void OpenWorkspaceEntry(WorkspaceEntry entry)
@@ -2321,6 +2407,8 @@ internal sealed class ReaderWindow : Window
         }
 
         _workspaceGeneration++;
+        _workspaceWatcher?.Dispose();
+        _workspaceWatcher = null;
         _workspaceCts?.Cancel();
         _workspaceCts?.Dispose();
         _workspaceCts = null;

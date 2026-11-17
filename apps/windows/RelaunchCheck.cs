@@ -91,11 +91,17 @@ internal static class RelaunchCheck
                     window.Preferences.ShowOutlineByDefault = false;
                 }
 
+                var workspaceDir = Path.GetDirectoryName(Path.GetFullPath(filePath));
                 var state = WindowRestorationState.Create(
                     filePath,
                     pos,
                     window.Preferences.TextScaleValue,
-                    outlineShown: true);
+                    outlineShown: true,
+                    workspacePath: workspaceDir,
+                    workspaceSidebarVisible: true,
+                    expandedRelativePaths: [],
+                    showAllFiles: false,
+                    showHidden: false);
 
                 RestorationStore.Save([state]);
                 Console.WriteLine("relaunch-check: prepared");
@@ -122,11 +128,20 @@ internal static class RelaunchCheck
                     {
                         throw new InvalidOperationException($"failed to create capability from {state.FilePath}");
                     }
-                    window.PendingRestorePosition = state.ToSavedPosition();
-                    window.OpenCapability(cap);
+                    FolderCapability? folderCap = null;
+                    if (!string.IsNullOrWhiteSpace(state.WorkspacePath) &&
+                        FolderCapability.TryFromUserInput(state.WorkspacePath, out var parsedFolder, out _))
+                    {
+                        folderCap = parsedFolder;
+                    }
+                    window.RestoreFromState(state, cap, folderCap);
                 }
 
                 await WaitSettledAsync(window);
+                if (string.IsNullOrWhiteSpace(state.WorkspacePath) || window.ActiveFolder is null)
+                {
+                    throw new InvalidOperationException("restored workspace folder is missing");
+                }
 
                 var doc = window.Loader.Document ?? throw new InvalidOperationException("restored document is null");
                 var headingIndex = -1;
