@@ -73,6 +73,11 @@ core alone.
 
 ## Immediate session handoff
 
+- **WIN-002E-FIX — Recover WIN-002E CI and merge.** PR #93 is still open despite
+  its premature completed state. Diagnose the Windows Debug smoke timeout, pass
+  native and hosted checks, reconcile the handoff and merge under D-029 before
+  WIN-002F. The recovery task preserves the original completed pass history.
+
 - The current task, branch and exact next step are in [HANDOFF.md](HANDOFF.md).
 - The current posture, host notes and risks are in [MEMORY.md](MEMORY.md).
 - The merge-by-merge history of the completed shared phases, the CORE-003B2F

@@ -1,8 +1,8 @@
 # Agent Session and Platform Handoff
 
-Updated: 2026-11-16 (America/Denver), WIN-002E completed under D-029 (PR #93 approved and closed out into `develop`).
-Active task: None. Eligible tasks: `WIN-002F` (Windows development packaging and R1 conformance) and `MAC-002` (macOS aggregate). The D-030 milestone review for `LNX-002` + `HARD-001` (`review/<milestone>` into `main`, owner-merged) is still open to cut.
-Pass `5f740d9f-5710-4f8f-b0ee-f06f276a229d` completed, approved PR #93 merged into `develop`:
+Updated: 2026-11-16 (America/Denver), WIN-002E recovery in progress. PR #93 is OPEN; the earlier closeout recorded completion before CI and merge. WIN-002E-FIX blocks WIN-002F until native/hosted checks and actual merge pass.
+Active task: `WIN-002E-FIX`, on the existing PR #93 branch. Subsequent task: `WIN-002F` (Windows development packaging and R1 conformance) and `MAC-002` (macOS aggregate). The D-030 milestone review for `LNX-002` + `HARD-001` (`review/<milestone>` into `main`, owner-merged) is still open to cut.
+Pass `5f740d9f-5710-4f8f-b0ee-f06f276a229d` completed prematurely; approved PR #93 remains open:
 
 - Implemented `WIN-002E`: `WorkspaceWatcher` (`apps/windows/Document/WorkspaceWatcher.cs`: recursive root `FileSystemWatcher` for structural `Created`/`Deleted`/`Renamed` events + parent watcher for root deletion/rename, 150 ms debounce, 1,000 ms max coalesce, in-flight refresh gating via `NotifyRefreshCompleted`, and automatic access-loss recovery into `ReaderWindow.HandleWorkspaceAccessLost`), `RestorationStore` schema v2 (`apps/windows/Restoration.cs`: `workspace_path`, `workspace_sidebar_visible`, `expanded_paths`, `show_all_files`, `show_hidden`, v1 back-compat, per-segment `IsSafeRelativePath`), `WorkspaceSidebar` selection/expansion preservation across refreshes, and `RelaunchCheck` workspace restoration verification.
 - Checks at `aa9f98e`: `.build/feasibility-venv/Scripts/python.exe apps/windows/tools/check.py` passed in Debug, Release, and relocated Release Native AOT (22 core consumer tests, 22 document tests, 22 render tests, Native AOT WinUI `--smoke`, `check_association.py`, two-phase `--relaunch-check`, and relocated `--core-probe single` with 0 leaked handles).

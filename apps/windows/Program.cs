@@ -756,6 +756,8 @@ public sealed partial class ReaderApp : Application
         try
         {
             // 1. Verify initial shell contract and all 5 File menu keyboard accelerators.
+            Console.WriteLine("smoke: 1. Verify initial shell contract and all 5 File menu keyboard accelerators.");
+            Console.Out.Flush();
             if (windows.Count != 1 ||
                 first.Title != "Markdown" ||
                 AutomationProperties.GetName(first.Welcome) != "Markdown reader" ||
@@ -789,6 +791,8 @@ public sealed partial class ReaderApp : Application
             }
 
             // 2. Exercise native Win32 file open dialog (GetOpenFileNameW) Cancel path.
+            Console.WriteLine("smoke: 2. Exercise native Win32 file open dialog (GetOpenFileNameW) Cancel path.");
+            Console.Out.Flush();
             DocumentPicker.EnqueueAutomationCancel();
             first.OpenCommand();
             if (first.Loader.HasFile || first.Title != "Markdown" || first.ReloadItem.IsEnabled)
@@ -797,6 +801,8 @@ public sealed partial class ReaderApp : Application
             }
 
             // 3. Exercise native Win32 file open dialog (GetOpenFileNameW) Select + Accept path.
+            Console.WriteLine("smoke: 3. Exercise native Win32 file open dialog (GetOpenFileNameW) Select + Accept path.");
+            Console.Out.Flush();
             var smokeDocPath = Path.Combine(tempDir, "smoke-doc.md");
             File.WriteAllText(smokeDocPath, "# Windows Smoke\n\nShared core model v2.\n", new UTF8Encoding(false));
 
@@ -827,6 +833,8 @@ public sealed partial class ReaderApp : Application
             first.Reader.ExternalUriLauncher = uri => { smokeLaunchedUri = uri; return true; };
 
             // 4. Exercise Reload (Ctrl+R command delegate) after modifying file on disk.
+            Console.WriteLine("smoke: 4. Exercise Reload (Ctrl+R command delegate) after modifying file on disk.");
+            Console.Out.Flush();
             var smokeImgPath = Path.Combine(tempDir, "smoke-img.png");
             File.WriteAllBytes(smokeImgPath, RenderTests.CreatePng(64, 64));
 
@@ -863,6 +871,8 @@ public sealed partial class ReaderApp : Application
             first.Reader.ActivateOutline(0);
 
             // 5. Missing file on Reload reports path-free NotFound while preserving v2 document, then recovers to v3.
+            Console.WriteLine("smoke: 5. Missing file on Reload reports path-free NotFound while preserving v2 document, then recovers to v3.");
+            Console.Out.Flush();
             File.Delete(smokeDocPath);
             first.ReloadCommand();
             await WaitWindowIdleAsync(first);
@@ -891,6 +901,8 @@ public sealed partial class ReaderApp : Application
             }
 
             // 6. Withdraw OS read permission via NTFS discretionary ACL -> Reload reports AccessRevoked, then recovers.
+            Console.WriteLine("smoke: 6. Withdraw OS read permission via NTFS discretionary ACL -> Reload reports AccessRevoked, then recovers.");
+            Console.Out.Flush();
             DocumentTests.SetReadDenyAcl(smokeDocPath, deny: true);
             try
             {
@@ -919,6 +931,8 @@ public sealed partial class ReaderApp : Application
             }
 
             // 7. Non-local URI rejection opens in a second window without disturbing the first window.
+            Console.WriteLine("smoke: 7. Non-local URI rejection opens in a second window without disturbing the first window.");
+            Console.Out.Flush();
             var rejectedWin = OpenExternalInput("https://example.com/remote.md");
             if (windows.Count != 2 ||
                 rejectedWin.Loader.Error != DocumentError.NonLocalFile ||
@@ -933,6 +947,8 @@ public sealed partial class ReaderApp : Application
             }
 
             // 8. Stale slow load is superseded when another file is opened before the slow read finishes.
+            Console.WriteLine("smoke: 8. Stale slow load is superseded when another file is opened before the slow read finishes.");
+            Console.Out.Flush();
             var secondDocPath = Path.Combine(tempDir, "second-smoke.md");
             File.WriteAllText(secondDocPath, "# Second Smoke\n\nReplacement file.\n", new UTF8Encoding(false));
 
@@ -971,6 +987,8 @@ public sealed partial class ReaderApp : Application
             }
 
             // 9. Document find, text scale, theme switching, and Settings window.
+            Console.WriteLine("smoke: 9. Document find, text scale, theme switching, and Settings window.");
+            Console.Out.Flush();
             first.FindCommand();
             if (!first.IsFindBarVisible)
             {
@@ -1085,6 +1103,8 @@ public sealed partial class ReaderApp : Application
             SettingsWindow.Close();
 
             // 10. Global Selection, Copy to clipboard (CF_UNICODETEXT & text/markdown), Escape clear, and UIA accessibility.
+            Console.WriteLine("smoke: 10. Global Selection, Copy to clipboard (CF_UNICODETEXT & text/markdown), Escape clear, and UIA accessibility.");
+            Console.Out.Flush();
             first.SelectAllCommand();
             if (first.Reader.Selection is null || first.Reader.Selection.Value.IsEmpty)
             {
@@ -1181,6 +1201,8 @@ public sealed partial class ReaderApp : Application
             }
 
             // 12. External refresh, anchors and reading restoration (WIN-001H)
+            Console.WriteLine("smoke: 12. External refresh, anchors and reading restoration (WIN-001H)");
+            Console.Out.Flush();
             static string SmokeSections(int start, int count)
             {
                 var sb = new StringBuilder();
@@ -1421,6 +1443,8 @@ public sealed partial class ReaderApp : Application
             await Task.Delay(50);
 
             // 12b. WIN-002A: Folder capability grants, recents, Close Folder revocation, moved-folder recovery, and Recent Items window.
+            Console.WriteLine("smoke: 12b. WIN-002A: Folder capability grants, recents, Close Folder revocation, moved-folder recovery, and Recent Items window.");
+            Console.Out.Flush();
             var wsDir = Path.Combine(tempDir, "win002a-ws");
             var wsMovedDir = Path.Combine(tempDir, "win002a-ws-moved");
             Directory.CreateDirectory(wsDir);
@@ -1447,6 +1471,8 @@ public sealed partial class ReaderApp : Application
             }
 
             // 12c. WIN-002B: Native workspace browser sidebar populated on folder open.
+            Console.WriteLine("smoke: 12c. WIN-002B: Native workspace browser sidebar populated on folder open.");
+            Console.Out.Flush();
             var swWs = Stopwatch.StartNew();
             while (swWs.ElapsedMilliseconds < 3000 && win002a.WorkspaceSidebar.VisibleRows.Count < 1)
             {
@@ -1462,6 +1488,8 @@ public sealed partial class ReaderApp : Application
             }
 
             // 12d. WIN-002C: Native workspace search UI, bounded search, and result navigation.
+            Console.WriteLine("smoke: 12d. WIN-002C: Native workspace search UI, bounded search, and result navigation.");
+            Console.Out.Flush();
             win002a.ShowWorkspaceSearch();
             if (win002a.WorkspaceSidebar.Mode != WorkspaceSidebarMode.Search)
             {
@@ -1548,6 +1576,8 @@ public sealed partial class ReaderApp : Application
             await Task.Delay(50);
 
             // 13. Verify New Window, Close Window, and Exit commands close all windows cleanly.
+            Console.WriteLine("smoke: 13. Verify New Window, Close Window, and Exit commands close all windows cleanly.");
+            Console.Out.Flush();
             first.NewCommand();
             if (windows.Count != 2)
             {
