@@ -1,5 +1,22 @@
 # Agent Session and Platform Handoff
 
+Updated: 2026-11-16 (America/Denver), MAC-002 aggregate validation partial.
+
+- Branch `patch/mac-002-aggregate-acceptance` holds the aggregate report and
+  state at baseline `511fdfc`. No PR has been opened. Pass
+  `97c96b1c-b41a-472d-9c0c-1c76997d8941` is partial; no lease remains.
+- Native debug/release and artifact checks and common checks passed on this
+  Mac with Cargo on PATH and `TMPDIR=/private/tmp`. Fresh five-run warm launch:
+  1 MiB prose median 399.73 ms, max 404.56 ms; 5 MiB prose median 596.12 ms;
+  long lines median 380.74 ms. D-016 remains unmet; cold and manual cases
+  remain unrun. See [macOS MVP acceptance](docs/macOS-MVP-Acceptance.md).
+- Owner decision requested: close the functional aggregate with explicit gaps
+  carried to DESK-002, as separately approved for Windows, or retain the current
+  criterion and address it. Do not infer a Mac approval from D-036. Resume the
+  same task and branch after the decision; no Grok review or merge has occurred.
+
+## Previous handoff (WIN-002 aggregate)
+
 Updated: 2026-11-16 (America/Denver), WIN-002 owner-approved functional aggregate closeout.
 
 - The owner directed “Close functional aggregate; carry explicit gaps to
