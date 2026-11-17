@@ -1,5 +1,34 @@
 # Agent Session and Platform Handoff
 
+Updated: 2026-11-16 (America/Denver), WIN-002 owner-approved functional aggregate closeout.
+
+- The owner directed “Close functional aggregate; carry explicit gaps to
+  DESK-002.” D-036 records this boundary; WIN-002's state criterion and
+  [acceptance report](docs/Windows-MVP-Acceptance.md#owner-approved-aggregate-boundary)
+  now match it. The earlier discrepancy blocker is resolved. No numeric
+  target or production-release check is waived.
+- Source baseline `968e755` (PR #94 merge) has green develop CI
+  [44023184544](https://github.com/awesomejt/markdown/actions/runs/44023184544).
+  Fresh Debug, Release and installed Release pass 22 core, 22 document and
+  23 render tests each, smoke, association, restoration, frame probes,
+  installer/uninstaller safety, diagnostics, licensing and zero-handle core
+  probe. Common checks pass. PowerShell redirection reported stderr progress
+  as NativeCommandError; the native checker reached its final success marker.
+- [PR #95](https://github.com/awesomejt/markdown/pull/95) carries documentation/state
+  only on `patch/win-002-aggregate-acceptance` under D-033 and owner approval
+  D-036. WIN-002 is completed at revision 880; no live pass, lease or
+  working task remains. Wait for closeout-head green CI, merge with a merge
+  commit, delete the branch and return to clean develop.
+- Open DESK-002 obligations: prose launch medians 456.95 / 1258.03 ms versus
+  400 ms; cold launch, frame pacing, mixed DPI, full Narrator properties,
+  whole-window memory evidence and second-machine/SmartScreen checks.
+- Next: MAC-002 functional aggregate on macOS. Switch to Mac and use a fresh
+  context; read this handoff and inspect state after pulling develop.
+  HARD-001 and LNX-002 are already complete; DESK-002 follows MAC-002.
+  No Linux switch is needed. D-030 milestone PRs remain owner-merged into main.
+
+## Previous handoff (WIN-002F)
+
 Updated: 2026-11-16 (America/Denver), WIN-002F closed out for the approved PR #94 merge into `develop`.
 Active task: None. Next Windows task: `WIN-002` aggregate acceptance. `MAC-002` is independently ready on macOS; no platform switch is needed for WIN-002. Clear the context before the aggregate pass and read this handoff.
 

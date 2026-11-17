@@ -793,3 +793,27 @@ changed.
 - Linux native renderer deepening (`LNX-001E` tables/task lists/images and `LNX-001F` find/settings) is unblocked to proceed using the GTK 4 native virtualized architecture.
 
 **Consequences:** Linux implementation advances along the accepted delivery plan without blocking on screen-reader architecture redesign or substituting a general-purpose WebView. Assistive technology on Linux can access focused on-screen content and use the outline sidebar for section navigation, while whole-document continuous reading across off-screen rows remains documented for post-MVP remediation.
+
+## D-036 — Windows functional MVP aggregate boundary
+
+**Date:** 2026-11-16 (America/Denver)
+
+**Status:** accepted by owner
+
+**Context:** WIN-002's original state criterion required passing performance
+budgets, while the Windows delivery evidence carries measured launch misses
+and unrun native checks to DESK-002. Linux's functional aggregate already
+closed with explicit remaining gaps.
+
+**Decision:** The owner directed: “Close functional aggregate; carry explicit
+gaps to DESK-002.” WIN-002 closes on merged WIN-002A–F R1 functional evidence
+and fresh native/common checks. Synchronize its operational criterion with
+that boundary. This decision applies to WIN-002 and does not waive numerical
+targets, establish production release readiness, or preapprove MAC-002.
+
+**Consequences:** DESK-002 retains the Windows prose warm-launch misses,
+unmeasured cold launch, frame pacing, mixed DPI, full Narrator properties,
+whole-window memory and second-machine/SmartScreen evidence described in
+[Windows MVP acceptance](../docs/Windows-MVP-Acceptance.md#owner-approved-aggregate-boundary).
+HARD-001 and LNX-002 are complete; MAC-002 remains the next ready aggregate
+and requires native macOS validation.

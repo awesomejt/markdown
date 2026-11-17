@@ -1,8 +1,9 @@
 # Windows MVP acceptance
 
 WIN-002F completes the development packaging and R1 presentation slice on
-Windows 11 x64. The WIN-002 aggregate remains a separate task after the
-WIN-002F reviewed merge. This is an unsigned development build; production
+Windows 11 x64. WIN-002 closes the functional aggregate on the merged
+WIN-002A–F evidence under the owner-approved boundary below. This is an unsigned
+development build; production
 signing, publishing and clean-machine release acceptance are separate work.
 
 ## R1 coverage
@@ -18,6 +19,63 @@ signing, publishing and clean-machine release acceptance are separate work.
 | R1.4 search | WIN-001F and WIN-002C; document find and bounded/cancellable workspace filename/content search |
 | R1.5 diagnostics | Help > About Markdown and `--version` validate the linked DLL and identify app version, model v2, ABI v1, anchor v1, core configuration and SHA-256 |
 | R1.5 installation | ZIP includes `install.ps1` and `uninstall.ps1`; installed copy runs all artifact checks outside the checkout, with hash/containment and unowned-file preservation tests |
+
+## WIN-002 aggregate evidence
+
+The aggregate audits the merged WIN-002A–F delivery chain (PRs
+[#89](https://github.com/awesomejt/markdown/pull/89) through
+[#94](https://github.com/awesomejt/markdown/pull/94)) on top of WIN-001 and
+DESK-001. It adds no application, core, ABI, fixture or packaging behavior.
+
+| Slice | Merged delivery | Acceptance evidence |
+| --- | --- | --- |
+| Folder access, recents and recovery | WIN-002A, PR #89 | Canonical folder containment, junction rejection, propagated revocation, bounded persistent recents and native recovery actions |
+| Workspace browser | WIN-002B, PR #90 | Bounded off-thread enumeration, virtualized native tree, filtering, keyboard navigation and source classification |
+| Workspace search | WIN-002C, PR #91 | C ABI search consumers, bounded cancellable work, filename/content modes and source-accurate result navigation |
+| Preferences | WIN-002D, PR #92 | Schema-v2 migration, future/unknown-field preservation, native Settings and relaunch checks |
+| Watching and restoration | WIN-002E, PR #93 | Change-storm gating, access-loss recovery, workspace expansion/selection and reading-position restoration; smoke recovery recorded in WIN-002E-FIX |
+| Development installation and R1 presentation | WIN-002F, PR #94 | Installed Native AOT checks, typed properties, explicit alerts, bounded code colors, folder-scoped links and negotiated diagnostics |
+
+The source baseline is `968e755`, the PR #94 merge. Its
+[develop CI run](https://github.com/awesomejt/markdown/actions/runs/44023184544)
+passed. Fresh aggregate checks and their disposition belong in this task's
+pass record and PR; the WIN-002F measurements below retain their original
+source and scope.
+
+Fresh native validation on the same named Windows host passed Debug and
+Release: 22 core consumer, 22 document and 23 render tests per configuration,
+WinUI smoke, association checks, two-phase relaunch restoration and real-window
+frame probes. `python tools/check.py common` passed fixtures, capability/model
+validation, tool regressions, 8 conformance cases, local links and Markdown
+lint (86 files, zero errors). The Windows state-backend portability check also
+confirmed the reviewed native `msvcrt` locking backend.
+
+Installed Release also passed all 22 core, 22 document and 23 render tests,
+native smoke, associations, relaunch restoration, diagnostics, and the core
+probe with `handles=0,0,0`. The artifact verified 42 Rust and 19 NuGet license
+entries and install/uninstall safety, including restricted PowerShell module
+paths, modified-file refusal and preservation of unowned files. The full
+`python apps/windows/tools/check.py` reached its final development-artifact
+verification marker. No new performance measurements are claimed by this
+aggregate; the original five-run spreads below remain applicable to unchanged
+application source.
+
+### Owner-approved aggregate boundary
+
+On 2026-11-16 (America/Denver), the owner directed: “Close functional
+aggregate; carry explicit gaps to DESK-002.” This resolves the discrepancy
+between the original operational criterion (“performance budgets pass”) and
+the documented measured misses. The task criterion now matches this explicit
+functional acceptance boundary, consistent with the Linux aggregate.
+
+WIN-002 accepts R1 functional coverage and the fresh native/common checks above.
+It does not establish complete performance or production release acceptance.
+DESK-002 must reconcile the 456.95 ms / 1258.03 ms prose warm-launch medians
+against 400 ms, unmeasured cold launch, frame pacing, mixed DPI, full Narrator
+properties inspection, whole-window memory evidence, and clean second-machine /
+SmartScreen installation evidence. These gaps remain open and no target is
+waived. HARD-001 is already complete; DESK-002 still requires MAC-002 as well
+as the completed Windows and Linux functional aggregates.
 
 ## Development installation
 
