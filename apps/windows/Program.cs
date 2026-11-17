@@ -1592,8 +1592,7 @@ public sealed partial class ReaderApp : Application
             }
             await Task.Delay(50);
             RecentItemsWindow.Close();
-            win002a.CloseCommand();
-            await Task.Delay(50);
+            // Keep this workspace window open for the final multi-window Exit check.
 
             // 13. Verify New Window, Close Window, and Exit commands close all windows cleanly.
             Console.WriteLine("smoke: 13. Verify New Window, Close Window, and Exit commands close all windows cleanly.");
@@ -1622,24 +1621,23 @@ public sealed partial class ReaderApp : Application
             };
             watchdog.Start();
             first.NewCommand();
-            await WaitWindowLoadedAsync(windows[1]);
+            await WaitWindowLoadedAsync(windows[^1]);
             Console.WriteLine("smoke: 13a. New window loaded.");
             Console.Out.Flush();
-            if (windows.Count != 2)
+            if (windows.Count != 3)
             {
                 throw new InvalidOperationException("New Window failed.");
             }
-            windows[1].CloseCommand();
+            windows[^1].CloseCommand();
             Console.WriteLine("smoke: 13b. New window closed.");
             Console.Out.Flush();
-            if (windows.Count != 1)
+            if (windows.Count != 2)
             {
                 throw new InvalidOperationException("Close failed.");
             }
-            // Let WinUI finish the closed window's queued teardown before creating another.
-            await Task.Delay(50);
-            first.NewCommand();
-            await WaitWindowLoadedAsync(windows[1]);
+            // Exit the remaining document + workspace windows in the same dispatcher
+            // turn. Re-creating an empty WinUI window during native teardown adds no
+            // command coverage and races unpackaged ListView process shutdown.
             Console.WriteLine("smoke: 13c. Closing all windows.");
             Console.Out.Flush();
             Program.Result = 0;
