@@ -486,7 +486,10 @@ CORE-006 no longer carry. The three host chains are independent.
   explicit DESK-002 obligations in the [Windows acceptance report](docs/Windows-MVP-Acceptance.md#owner-approved-aggregate-boundary).
   No numeric target or release check is waived.
 - **MAC-002 — macOS basic MVP.** Equivalent basic functionality optimized for
-  macOS permissions, filesystem, menus, text system, and packaging.
+  macOS permissions, filesystem, menus, text system, and packaging. Under
+  owner decision D-037, the functional aggregate closes on fresh native/common
+  checks while explicit performance and manual gaps carry to DESK-002 without
+  waiving targets ([acceptance report](docs/macOS-MVP-Acceptance.md)).
 - **LNX-002 — Linux basic MVP.** Equivalent basic functionality optimized for
   Linux filesystems, portals, desktop environments, and packages.
 - **DESK-002 — Desktop MVP conformance and release gate.** Validate all three

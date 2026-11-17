@@ -1,5 +1,24 @@
 # Agent Session and Platform Handoff
 
+Updated: 2026-11-16 (America/Denver), MAC-002 approved closeout on PR #96.
+
+- MAC-002 is complete at state revision 890 under owner decision D-037.
+  [PR #96](https://github.com/awesomejt/markdown/pull/96) reviewed head
+  `100dc94` received a clean [Grok follow-up](https://github.com/awesomejt/markdown/pull/96#pullrequestreview-5934003722).
+  Both initial findings were fixed and threads resolved; hosted CI run
+  [44031596203](https://github.com/awesomejt/markdown/actions/runs/44031596203)
+  passed. This closeout commit must pass CI before merge and branch deletion.
+- The pass record's review URL has a transcription error; the correct review
+  is linked above. The reviewed SHA and approval are correct.
+- Native debug/release, artifact and common checks passed on baseline `511fdfc`.
+  D-016 warm launch misses, cold launch and manual checks remain open, without
+  waiver, for DESK-002. See [macOS MVP acceptance](docs/macOS-MVP-Acceptance.md).
+- Next dependency-ready task: DESK-002, cross-desktop conformance and release
+  gate. Start with a fresh context and assess required platform evidence; no
+  production release or merge into `main` is authorized by this closeout.
+
+## Previous handoff (WIN-002 aggregate)
+
 Updated: 2026-11-16 (America/Denver), WIN-002 owner-approved functional aggregate closeout.
 
 - The owner directed “Close functional aggregate; carry explicit gaps to

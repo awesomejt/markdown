@@ -817,3 +817,22 @@ whole-window memory and second-machine/SmartScreen evidence described in
 [Windows MVP acceptance](../docs/Windows-MVP-Acceptance.md#owner-approved-aggregate-boundary).
 HARD-001 and LNX-002 are complete; MAC-002 remains the next ready aggregate
 and requires native macOS validation.
+
+## D-037 — macOS functional MVP aggregate boundary
+
+**Date:** 2026-11-16 (America/Denver)
+
+**Status:** accepted by owner
+
+**Context:** MAC-002's original criterion required passing performance budgets;
+its native acceptance evidence includes warm-launch misses and unrun checks.
+
+**Decision:** The owner directed: “Close functional aggregate; carry gaps to
+DESK-002.” MAC-002 closes on the merged MAC-002A–F functional evidence and
+fresh native/common checks. Its operational criterion reflects this boundary.
+No numeric target is waived and production release readiness is not implied.
+
+**Consequences:** DESK-002 retains the warm-launch misses, unmeasured cold
+launch, real Finder installation, quarantined second-Mac launch, VoiceOver
+properties and About appearance checks recorded in
+[macOS MVP acceptance](../docs/macOS-MVP-Acceptance.md).
