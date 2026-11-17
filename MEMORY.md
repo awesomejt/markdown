@@ -160,7 +160,8 @@ read.
   preservation across background refreshes, and `RelaunchCheck` workspace verification.
   Debug/Release/relocated Release pass 22 core, 22 document, 22 render tests, Native AOT smoke,
   association, relaunch, and probe (`0` leaked handles). Grok review 1 at `1080409` had 0 Blockers,
-  1 Concern, 2 Nits (approved under D-029; all 3 fixed in `aa9f98e`). WIN-002E-FIX is recovering PR #93, which remains open after its premature
+  1 Concern, 2 Nits (approved under D-029; all 3 fixed in `aa9f98e`).
+  WIN-002E-FIX is recovering PR #93, which remains open after its premature
   closeout; WIN-002F waits for green CI and the actual merge.
 - Phase: `desktop-apps`; the portable-core shared track is complete through
   CORE-006 (GATE-001 approved, D-018). Native chains are now eligible (D-027).

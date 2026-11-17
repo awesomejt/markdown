@@ -1270,37 +1270,51 @@ public sealed partial class ReaderApp : Application
                 new DocumentPosition(markedFrag, markedOffset),
                 new DocumentPosition(markedFrag, markedOffset + "marked".Length)));
 
-            void CheckKeptPlace(string msg)
+            async Task CheckKeptPlace(string msg)
             {
-                var vis = first.Reader.FirstVisibleFragmentIndex();
-                var outlineIdx = -1;
-                for (var i = 0; i < first.Loader.Document!.OutlineCount; i++)
+                var settle = Stopwatch.StartNew();
+                while (true)
                 {
-                    if (first.Loader.Document.OutlineTitle(i) == "Part 80")
+                    try
                     {
-                        outlineIdx = i;
-                        break;
+                        var vis = first.Reader.FirstVisibleFragmentIndex();
+                        var outlineIdx = -1;
+                        for (var i = 0; i < first.Loader.Document!.OutlineCount; i++)
+                        {
+                            if (first.Loader.Document.OutlineTitle(i) == "Part 80")
+                            {
+                                outlineIdx = i;
+                                break;
+                            }
+                        }
+                        if (outlineIdx < 0) throw new InvalidOperationException($"{msg}: Part 80 outline missing");
+                        var expectedFrag = first.Loader.Plan!.Outline[outlineIdx].Fragment;
+                        if (Math.Abs(vis - expectedFrag) > 1)
+                        {
+                            throw new InvalidOperationException($"{msg}: top line not kept (firstVis={vis}, target={expectedFrag})");
+                        }
+                        var sel = first.Reader.Selection;
+                        if (sel is null || sel.Value.IsEmpty)
+                        {
+                            throw new InvalidOperationException($"{msg}: selection lost");
+                        }
+                        var text = first.Loader.Plan.TextBetween(sel.Value.Anchor, sel.Value.Active);
+                        if (text != "marked")
+                        {
+                            throw new InvalidOperationException($"{msg}: selection text mismatch '{text}'");
+                        }
+                        return;
                     }
-                }
-                if (outlineIdx < 0) throw new InvalidOperationException($"{msg}: Part 80 outline missing");
-                var expectedFrag = first.Loader.Plan!.Outline[outlineIdx].Fragment;
-                if (Math.Abs(vis - expectedFrag) > 1)
-                {
-                    throw new InvalidOperationException($"{msg}: top line not kept (firstVis={vis}, target={expectedFrag})");
-                }
-                var sel = first.Reader.Selection;
-                if (sel is null || sel.Value.IsEmpty)
-                {
-                    throw new InvalidOperationException($"{msg}: selection lost");
-                }
-                var text = first.Loader.Plan.TextBetween(sel.Value.Anchor, sel.Value.Active);
-                if (text != "marked")
-                {
-                    throw new InvalidOperationException($"{msg}: selection text mismatch '{text}'");
+                    catch (InvalidOperationException) when (settle.ElapsedMilliseconds < 3000)
+                    {
+                        // Loader publication precedes WinUI layout/scroll restoration.
+                        // Yield for that work, retaining the exact position/selection assertions.
+                        await Task.Delay(25);
+                    }
                 }
             }
 
-            CheckKeptPlace("Initial placement");
+            await CheckKeptPlace("Initial placement");
 
             var prevGen = first.Loader.Document.Generation;
             var editedLive = "# Live\n\nA new introduction.\n\n" + SmokeSections(200, 30) + SmokeSections(0, 120);
@@ -1318,7 +1332,7 @@ public sealed partial class ReaderApp : Application
                 first.Loader.RefreshExternal();
                 await WaitWindowIdleAsync(first);
             }
-            CheckKeptPlace("After external edit");
+            await CheckKeptPlace("After external edit");
             if (first.Loader.Document.OutlineCount != 151)
             {
                 throw new InvalidOperationException($"Expected 151 outlines after external edit, got {first.Loader.Document.OutlineCount}");
@@ -1364,11 +1378,11 @@ public sealed partial class ReaderApp : Application
             {
                 throw new InvalidOperationException("Reappearance did not clear notice cleanly without re-parsing.");
             }
-            CheckKeptPlace("After file reappearance");
+            await CheckKeptPlace("After file reappearance");
 
             first.ReloadCommand();
             await WaitWindowIdleAsync(first);
-            CheckKeptPlace("After manual Reload");
+            await CheckKeptPlace("After manual Reload");
 
             var savedPosition = first.Reader.SavePosition(first.Loader.Document);
             if (savedPosition is null)
@@ -1585,19 +1599,50 @@ public sealed partial class ReaderApp : Application
             Console.WriteLine("smoke: 13. Verify New Window, Close Window, and Exit commands close all windows cleanly.");
             Console.Out.Flush();
             first.NewCommand();
+            Console.WriteLine("smoke: 13a. New window created.");
+            Console.Out.Flush();
             if (windows.Count != 2)
             {
                 throw new InvalidOperationException("New Window failed.");
             }
             windows[1].CloseCommand();
+            Console.WriteLine("smoke: 13b. New window closed.");
+            Console.Out.Flush();
             if (windows.Count != 1)
             {
                 throw new InvalidOperationException("Close failed.");
             }
             first.NewCommand();
             await Task.Delay(50);
+            // Arm before closing the last native window. WinUI teardown can stall
+            // before a watchdog allocated after CloseAll ever starts. Only the
+            // validated cleanup path signals success; a shutdown stall must fail.
+            var shutdownChecked = new ManualResetEventSlim(false);
+            var watchdog = new Thread(() =>
+            {
+                if (!shutdownChecked.Wait(TimeSpan.FromSeconds(5)))
+                {
+                    Console.Error.WriteLine("Smoke failed: window shutdown/core cleanup did not finish within 5 seconds.");
+                    Console.Error.Flush();
+                    Program.TerminateNow(1);
+                    return;
+                }
+                Thread.Sleep(250);
+                Console.Out.Flush();
+                Console.Error.Flush();
+                Program.TerminateNow(Program.Result);
+            })
+            {
+                IsBackground = true,
+                Name = "smoke-exit-watchdog",
+            };
+            watchdog.Start();
+            Console.WriteLine("smoke: 13c. Closing all windows.");
+            Console.Out.Flush();
             Program.Result = 0;
             first.ExitCommand();
+            Console.WriteLine("smoke: 13d. All windows closed.");
+            Console.Out.Flush();
             if (windows.Count != 0)
             {
                 Program.Result = 1;
@@ -1606,20 +1651,22 @@ public sealed partial class ReaderApp : Application
             {
                 Program.Result = 1;
             }
-            var exitCode = Program.Result;
-            var watchdog = new Thread(() =>
+            shutdownChecked.Set();
+            // All assertions and owned-core cleanup have finished. Do not ask
+            // WinUI to tear down a second time after the last Window.Close:
+            // unpackaged multi-window teardown can deadlock or fail-fast here.
+            // Match Main's existing smoke-only DLL_PROCESS_DETACH bypass.
+            try
             {
-                Thread.Sleep(250);
-                Console.Out.Flush();
-                Console.Error.Flush();
-                Program.TerminateNow(exitCode);
-            })
+                Directory.Delete(tempDir, recursive: true);
+            }
+            catch
             {
-                IsBackground = true,
-                Name = "smoke-exit-watchdog",
-            };
-            watchdog.Start();
-            Exit();
+                // Best-effort cleanup, as in the failure path below.
+            }
+            Console.Out.Flush();
+            Console.Error.Flush();
+            Program.TerminateNow(Program.Result);
         }
         catch (Exception ex)
         {

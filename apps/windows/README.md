@@ -115,7 +115,11 @@ The smoke logs each stage and reports captured output on timeout. Its stale-load
 supersession check uses a bounded worker rendezvous without pumping the UI
 dispatcher, so a queued watcher/activation refresh cannot cancel the controlled
 reload before its read barrier is entered. This synchronization applies only to
-`--smoke`; normal reading and refresh remain asynchronous.
+`--smoke`; normal reading and refresh remain asynchronous. Position assertions
+wait up to three seconds for WinUI layout without relaxing their position or
+selection checks. The smoke arms its failure watchdog before closing the last
+window and uses the existing smoke-only process-detach bypass immediately after
+verifying closed windows and zero owned core handles.
 
 ## Development artifact and licenses (WIN-001I)
 
