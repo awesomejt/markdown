@@ -19,6 +19,57 @@ signing, publishing and clean-machine release acceptance are separate work.
 | R1.5 diagnostics | Help > About Markdown and `--version` validate the linked DLL and identify app version, model v2, ABI v1, anchor v1, core configuration and SHA-256 |
 | R1.5 installation | ZIP includes `install.ps1` and `uninstall.ps1`; installed copy runs all artifact checks outside the checkout, with hash/containment and unowned-file preservation tests |
 
+## WIN-002 aggregate evidence
+
+The aggregate audits the merged WIN-002A–F delivery chain (PRs
+[#89](https://github.com/awesomejt/markdown/pull/89) through
+[#94](https://github.com/awesomejt/markdown/pull/94)) on top of WIN-001 and
+DESK-001. It adds no application, core, ABI, fixture or packaging behavior.
+
+| Slice | Merged delivery | Acceptance evidence |
+| --- | --- | --- |
+| Folder access, recents and recovery | WIN-002A, PR #89 | Canonical folder containment, junction rejection, propagated revocation, bounded persistent recents and native recovery actions |
+| Workspace browser | WIN-002B, PR #90 | Bounded off-thread enumeration, virtualized native tree, filtering, keyboard navigation and source classification |
+| Workspace search | WIN-002C, PR #91 | C ABI search consumers, bounded cancellable work, filename/content modes and source-accurate result navigation |
+| Preferences | WIN-002D, PR #92 | Schema-v2 migration, future/unknown-field preservation, native Settings and relaunch checks |
+| Watching and restoration | WIN-002E, PR #93 | Change-storm gating, access-loss recovery, workspace expansion/selection and reading-position restoration; smoke recovery recorded in WIN-002E-FIX |
+| Development installation and R1 presentation | WIN-002F, PR #94 | Installed Native AOT checks, typed properties, explicit alerts, bounded code colors, folder-scoped links and negotiated diagnostics |
+
+The source baseline is `968e755`, the PR #94 merge. Its
+[develop CI run](https://github.com/awesomejt/markdown/actions/runs/44023184544)
+passed. Fresh aggregate checks and their disposition belong in this task's
+pass record and PR; the WIN-002F measurements below retain their original
+source and scope.
+
+Fresh native validation on the same named Windows host passed Debug and
+Release: 22 core consumer, 22 document and 23 render tests per configuration,
+WinUI smoke, association checks, two-phase relaunch restoration and real-window
+frame probes. `python tools/check.py common` passed fixtures, capability/model
+validation, tool regressions, 8 conformance cases, local links and Markdown
+lint (86 files, zero errors). The Windows state-backend portability check also
+confirmed the reviewed native `msvcrt` locking backend.
+
+Installed Release also passed all 22 core, 22 document and 23 render tests,
+native smoke, associations, relaunch restoration, diagnostics, and the core
+probe with `handles=0,0,0`. The artifact verified 42 Rust and 19 NuGet license
+entries and install/uninstall safety, including restricted PowerShell module
+paths, modified-file refusal and preservation of unowned files. The full
+`python apps/windows/tools/check.py` reached its final development-artifact
+verification marker. No new performance measurements are claimed by this
+aggregate; the original five-run spreads below remain applicable to unchanged
+application source.
+
+### Acceptance discrepancy
+
+The operational WIN-002 criterion says “Windows R1 acceptance and performance
+budgets pass.” The measured prose launch misses and unrun checks below do not
+satisfy that literal criterion. The Linux aggregate records functional closure
+with open budgets carried to DESK-002, and the Windows delivery report likewise
+assigns those gaps to DESK-002. WIN-002 requires an explicit owner disposition
+of this discrepancy before completion; neither prior task review nor green CI
+waives a performance target. DESK-002 remains the cross-desktop conformance and
+release gate, with HARD-001 and all three platform aggregates as prerequisites.
+
 ## Development installation
 
 Extract the ZIP, then run from its `Markdown` directory in PowerShell:

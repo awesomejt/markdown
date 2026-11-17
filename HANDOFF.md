@@ -1,5 +1,36 @@
 # Agent Session and Platform Handoff
 
+Updated: 2026-11-16 (America/Denver), WIN-002 aggregate audit awaiting owner disposition.
+
+- Branch: `patch/win-002-aggregate-acceptance`, baseline `968e755` (PR #94 merged;
+  develop CI run [44023184544](https://github.com/awesomejt/markdown/actions/runs/44023184544)
+  passed). No application source changed and no PR is open.
+- Fresh native checks passed Debug, Release and installed Release: 22 core,
+  22 document and 23 render tests each, native smoke, associations, relaunch,
+  frame probes, installer/uninstaller safety, diagnostics, license inventory
+  and zero-handle core probe. Common checks passed with subprocess exit 0.
+  PowerShell `*>` classified build stderr progress as NativeCommandError and
+  returned 1; the native checker nevertheless reached its final artifact
+  success marker with no traceback or failed check.
+- Pass `5070ac30-d352-46b1-811d-0e65b31716a8` is blocked, revision 876;
+  no live lease or working task remains. Blocker
+  `01c3402f-aabd-4098-8387-ac0a81c4f5b4` records the acceptance discrepancy:
+  state says budgets pass, but prose warm-launch medians exceed 400 ms and
+  cold/manual checks remain unrun. Linux precedent and Windows documentation
+  defer gaps to DESK-002. The owner has been asked to choose functional closure
+  with explicit carryover or to keep WIN-002 open until its budgets pass.
+- Resolve that decision before completing WIN-002 or publishing a closure PR.
+  An accepted boundary change needs its owner evidence, synchronized task
+  validation/roadmap and decision record; use the state helper, never hand-edit.
+  Changes needing a decision use a reviewed branch under Delivery-Workflow;
+  choose the final branch type after disposition. No waiver is inferred.
+- Continue this context for the decision. MAC-002 is independently ready on
+  macOS; after Windows closure, switch to Mac with a fresh context for that
+  aggregate. HARD-001 and LNX-002 are already complete; DESK-002 waits on both
+  remaining aggregates. No Linux switch is needed now.
+
+## Previous handoff (WIN-002F)
+
 Updated: 2026-11-16 (America/Denver), WIN-002F closed out for the approved PR #94 merge into `develop`.
 Active task: None. Next Windows task: `WIN-002` aggregate acceptance. `MAC-002` is independently ready on macOS; no platform switch is needed for WIN-002. Clear the context before the aggregate pass and read this handoff.
 

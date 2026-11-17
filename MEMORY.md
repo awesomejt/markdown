@@ -8,6 +8,17 @@ read.
 
 ## Current posture
 
+- WIN-002 aggregate audit at `968e755` passed fresh Windows Debug, Release
+  and installed Release validation (22 core, 22 document, 23 render tests each),
+  native/artifact checks and common checks. Completion is blocked on the
+  acceptance discrepancy in [Windows MVP acceptance](docs/Windows-MVP-Acceptance.md#acceptance-discrepancy):
+  the state criterion requires passing budgets, while measured prose launch
+  misses and unrun manual/cold checks are documented for DESK-002. Owner
+  disposition is pending; no target is waived. Resume on
+  `patch/win-002-aggregate-acceptance`; no PR is open. MAC-002 is independently
+  eligible on macOS. Continue this context to resolve the narrow decision;
+  use a fresh context and switch to Mac for MAC-002 afterward.
+
 - WIN-002F (PR #94) delivers per-user development install/uninstall with checked
   staging, path/hash guards and restricted-PowerShell-module verification;
   typed front-matter Properties, explicit alert labels, bounded lazy code colors,
