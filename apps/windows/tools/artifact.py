@@ -205,12 +205,46 @@ def verify(archive: Path, *, env: dict[str, str]) -> None:
         package_dir = extracted / "Markdown"
         installed = root / "installed app"
         install = ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File",
-                   str(package_dir / "install.ps1"), "-Destination", str(installed)]
-        subprocess.run(install, check=True, capture_output=True, text=True, timeout=60)
+                   str(package_dir / "install.ps1"), "-Destination", str(installed) + os.sep]
+        run_app(install, cwd=root, env=env, timeout=60)
         # Existing destinations are never overwritten, even for an apparent upgrade.
         retry = subprocess.run(install, capture_output=True, text=True, timeout=60)
         if retry.returncode == 0:
             raise SystemExit("installer overwrote existing installation")
+        # PowerShell Set-Location must determine relative installation destinations.
+        relative_parent = root / "relative location"
+        relative_parent.mkdir()
+        relative_check = root / "relative-check.ps1"
+        relative_check.write_text(
+            "param([string]$Installer,[string]$Work)\n"
+            "$ErrorActionPreference='Stop'\nSet-Location -LiteralPath $Work\n"
+            "& $Installer -Destination 'relative app\\'\n", encoding="utf-8")
+        subprocess.run(["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File",
+                        str(relative_check), "-Installer", str(package_dir / "install.ps1"), "-Work", str(relative_parent)],
+                       cwd=root, check=True, capture_output=False, text=True, timeout=60)
+        relative_install = relative_parent / "relative app"
+        if not (relative_install / "Markdown.Windows.exe").is_file():
+            raise SystemExit("relative destination ignored PowerShell location")
+        subprocess.run(["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File",
+                        str(relative_install / "uninstall.ps1")], check=True, capture_output=False, text=True, timeout=60)
+        if relative_install.exists():
+            raise SystemExit("trailing-separator relative installation could not be uninstalled")
+
+        failure_check = root / "failure-check.ps1"
+        failure_check.write_text(
+            "param([string]$Installer,[string]$Target)\n"
+            "$ErrorActionPreference='Stop'\n$script:copies=0\n"
+            "function Copy-Item { param([string]$LiteralPath,[string]$Destination)\n"
+            " $script:copies++; if ($script:copies -eq 2) { throw 'synthetic copy failure' }\n"
+            " Microsoft.PowerShell.Management\\Copy-Item -LiteralPath $LiteralPath -Destination $Destination\n}\n"
+            "try { & $Installer -Destination $Target; exit 2 } catch { if ($_.Exception.Message -ne 'synthetic copy failure') { throw } }\n",
+            encoding="utf-8")
+        failed_target = root / "failed install"
+        subprocess.run(["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File",
+                        str(failure_check), "-Installer", str(package_dir / "install.ps1"), "-Target", str(failed_target)],
+                       check=True, capture_output=False, text=True, timeout=60)
+        if failed_target.exists() or list(root.glob(".markdown-install-*")):
+            raise SystemExit("failed installation left its target or staging directory")
         app_dir = installed
         exe = app_dir / "Markdown.Windows.exe"
         core_dll = app_dir / "markdown_ffi.dll"
@@ -358,7 +392,7 @@ def verify(archive: Path, *, env: dict[str, str]) -> None:
         marker.write_bytes(original_marker)
         sentinel = installed / "keep-user-file.txt"
         sentinel.write_text("keep", encoding="utf-8")
-        subprocess.run(uninstall, check=True, capture_output=True, text=True, timeout=60)
+        run_app(uninstall, cwd=root, env=env, timeout=60)
         if exe.exists() or sentinel.read_text(encoding="utf-8") != "keep":
             raise SystemExit("uninstall did not remove app while preserving unowned file")
         if (installed / ".markdown-dev-install.json").exists():

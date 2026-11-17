@@ -28,7 +28,11 @@ powershell -NoProfile -ExecutionPolicy Bypass -File ./install.ps1
 & "$env:LOCALAPPDATA/MarkdownDev/Markdown.Windows.exe"
 ```
 
-Use `-Destination 'C:/chosen/new/folder'` to choose another new directory.
+Use `-Destination 'C:/chosen/new/folder'` to choose another new directory
+under an existing parent. Relative destinations follow the PowerShell location;
+trailing separators are normalized. Files stage beside the destination and the
+complete directory is renamed into place; a copy failure removes its private
+staging directory without publishing a partial installation.
 The installer refuses any existing destination and reparse-point payload or
 destination. It copies the self-contained Native AOT application, core DLL,
 runtime assets, license inventory and build record. It does not need elevation

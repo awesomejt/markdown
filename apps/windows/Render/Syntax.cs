@@ -47,10 +47,17 @@ public static class Syntax
                 while (i < text.Length && text[i] != '\n') i++;
                 kind = SyntaxKind.Comment;
             }
+            else if ((language is "rust" or "rs") && c == '\'' && i < text.Length &&
+                (char.IsLetter(text[i]) || text[i] == '_') && (i + 1 >= text.Length || text[i + 1] != '\''))
+            {
+                // A lifetime or label ('a, 'static, 'outer:) is not a char literal.
+                while (i < text.Length && (char.IsLetterOrDigit(text[i]) || text[i] == '_')) i++;
+            }
             else if (c is '\'' or '"' or '`')
             {
                 while (i < text.Length)
                 {
+                    if (c != '`' && text[i] == '\n') break;
                     if (text[i++] == c) break;
                     if (text[i - 1] == '\\' && i < text.Length) i++;
                 }

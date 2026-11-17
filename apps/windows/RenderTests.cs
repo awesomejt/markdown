@@ -87,6 +87,11 @@ internal static class RenderTests
         var tokens = Syntax.Tokens(code.Text, code.Language);
         Assert(tokens.Any(t => t.Kind == SyntaxKind.Keyword && code.Text.Substring(t.Start, t.Length) == "let"), "keyword token");
         Assert(tokens.Any(t => t.Kind == SyntaxKind.Number) && tokens.Any(t => t.Kind == SyntaxKind.Comment), "number/comment tokens");
+        const string lifetime = "fn f<'a>(x: &'a str) -> &'a str { let c = 'x'; }";
+        var rustTokens = Syntax.Tokens(lifetime, "rust");
+        Assert(rustTokens.Where(t => t.Kind == SyntaxKind.String).All(t => lifetime.Substring(t.Start, t.Length) == "'x'"), "lifetimes are not strings");
+        const string unclosed = "\"unterminated\nlet x = 2;";
+        Assert(Syntax.Tokens(unclosed, "rust").Any(t => t.Kind == SyntaxKind.Keyword), "unclosed strings stop at newline");
         Assert(Syntax.Tokens(new string('x', Syntax.MaxChars + 1), "rust").Count == 0, "highlight size bound");
         Assert(Syntax.Tokens("<script>alert(1)</script>", "unknown").Count == 0, "unknown language fallback");
         var hostile = Syntax.Tokens(string.Concat(Enumerable.Repeat("1 ", 256)), "json");
