@@ -17,6 +17,7 @@ internal static class RenderTests
 
             var tests = new (string Name, Action Run)[]
             {
+                ("r1_properties_alerts_syntax_and_relative_links", R1PropertiesAlertsSyntaxAndRelativeLinks),
                 ("inline_lists_code_html_and_links", InlineListsCodeHtmlAndLinks),
                 ("unicode_fragments_styles_budget_and_cancellation", UnicodeFragmentsStylesBudgetAndCancellation),
                 ("corpus_outlines_match_published_core_and_expected_contracts", CorpusOutlinesMatchPublishedCoreAndExpectedContracts),
@@ -71,6 +72,31 @@ internal static class RenderTests
     private static RenderPlan Plan(string source) =>
         RenderPlan.Build(Document(source), () => false);
 
+    private static void R1PropertiesAlertsSyntaxAndRelativeLinks()
+    {
+        var p = Plan("---\ntitle: Hello\ncount: 42\nflag: true\nempty: null\ntags: [one, two]\n---\n\n# Body\n\n> [!WARNING]\n> Careful\n\n```rust\nlet x = 42; // comment\n```\n\n[next](nested/next.md#there)\n");
+        Assert(p.Properties.Contains("title: Hello") && p.Properties.Contains("count: 42") &&
+            p.Properties.Contains("flag: true") && p.Properties.Contains("empty: null") &&
+            p.Properties.Contains("tags: one, two"), "typed properties presentation");
+        Assert(!p.Fragments.Any(f => f.Text.Contains("title: Hello")), "front matter excluded from body");
+        Assert(p.Fragments.Any(f => f.Text.Contains("Warning: Careful")), "alert label");
+        var code = p.Fragments.Single(f => f.Kind == FragmentKind.Code);
+        Assert(code.Language == "rust", "code language retained");
+        // First invocation may pay runtime initialization; lexical hints have a time fallback.
+        _ = Syntax.Tokens(code.Text, code.Language);
+        var tokens = Syntax.Tokens(code.Text, code.Language);
+        Assert(tokens.Any(t => t.Kind == SyntaxKind.Keyword && code.Text.Substring(t.Start, t.Length) == "let"), "keyword token");
+        Assert(tokens.Any(t => t.Kind == SyntaxKind.Number) && tokens.Any(t => t.Kind == SyntaxKind.Comment), "number/comment tokens");
+        Assert(Syntax.Tokens(new string('x', Syntax.MaxChars + 1), "rust").Count == 0, "highlight size bound");
+        Assert(Syntax.Tokens("<script>alert(1)</script>", "unknown").Count == 0, "unknown language fallback");
+        var hostile = Syntax.Tokens(string.Concat(Enumerable.Repeat("1 ", 256)), "json");
+        Assert(hostile.Count <= Syntax.MaxTokens && hostile.All(t => t.Start >= 0 && t.Start + t.Length <= 512), "token count/range bound");
+        Assert(p.Targets.Any(t => t.Kind == TargetKind.Relative && t.Uri == "nested/next.md" && t.Anchor == "there"), "relative link/fragment");
+        var noMetadata = Plan("# Plain");
+        Assert(noMetadata.Properties.Count == 0, "properties clear on plain document");
+        Assert(AppDiagnostics.Text.Contains("Semantic model v2") && AppDiagnostics.Text.Contains("ABI v1"), "diagnostics contract");
+    }
+
     private static void InlineListsCodeHtmlAndLinks()
     {
         var p = Plan(
@@ -99,9 +125,10 @@ internal static class RenderTests
         Assert(p.Targets.Any(t => t.Kind == TargetKind.External && t.Uri != null && t.Uri.StartsWith("https:")), "https external link missing");
         Assert(p.Targets.Any(t => t.Kind == TargetKind.External && t.Uri != null && t.Uri.StartsWith("mailto:")), "mailto external link missing");
 
-        // Relative, unsafe (javascript:), and missing anchor links must be Inert
+        // Relative links require a folder capability; unsafe and missing anchors stay inert.
         var inertCount = p.Targets.Count(t => t.Kind == TargetKind.Inert);
-        Assert(inertCount == 3, $"expected exactly 3 inert targets, got {inertCount}");
+        Assert(inertCount == 2, $"expected exactly 2 inert targets, got {inertCount}");
+        Assert(p.Targets.Any(t => t.Kind == TargetKind.Relative && t.Uri == "other.md"), "relative link missing");
 
         // Token target verification
         var (fragIdx, fragment) = p.Fragments

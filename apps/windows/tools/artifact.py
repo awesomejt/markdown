@@ -106,6 +106,8 @@ def package(release_dir: Path) -> Path:
     if info["configuration"] != "release":
         raise SystemExit("the development artifact must be the release build")
 
+    for script in ("install.ps1", "uninstall.ps1"):
+        (release_dir / script).write_bytes((REPO_ROOT / "apps/windows/resources" / script).read_bytes())
     version = app_version()
     name = (
         f"Markdown-{version}-{info['source_commit'][:12]}"
@@ -200,7 +202,16 @@ def verify(archive: Path, *, env: dict[str, str]) -> None:
         if children != ["Markdown"]:
             raise SystemExit(f"the artifact must hold exactly Markdown, found: {children}")
 
-        app_dir = extracted / "Markdown"
+        package_dir = extracted / "Markdown"
+        installed = root / "installed app"
+        install = ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File",
+                   str(package_dir / "install.ps1"), "-Destination", str(installed)]
+        subprocess.run(install, check=True, capture_output=True, text=True, timeout=60)
+        # Existing destinations are never overwritten, even for an apparent upgrade.
+        retry = subprocess.run(install, capture_output=True, text=True, timeout=60)
+        if retry.returncode == 0:
+            raise SystemExit("installer overwrote existing installation")
+        app_dir = installed
         exe = app_dir / "Markdown.Windows.exe"
         core_dll = app_dir / "markdown_ffi.dll"
         if not exe.is_file():
@@ -285,7 +296,11 @@ def verify(archive: Path, *, env: dict[str, str]) -> None:
                     if needle in content:
                         raise SystemExit(f"{file_path.relative_to(extracted)} names a build-machine path")
 
-        # Launch relocated checks from extracted directory
+        version = run_app([str(exe), "--version"], cwd=app_dir, env=env, timeout=30)
+        if "Semantic model v2" not in version or "ABI v1" not in version:
+            raise SystemExit("installed diagnostics missing semantic/ABI versions")
+
+        # Launch relocated checks from installed directory
         run_app([str(exe), "--document-tests"], cwd=app_dir, env=env, timeout=120)
         run_app([str(exe), "--render-tests"], cwd=app_dir, env=env, timeout=120)
         run_app([str(exe), "--smoke"], cwd=app_dir, env=env, timeout=60)
@@ -319,6 +334,35 @@ def verify(archive: Path, *, env: dict[str, str]) -> None:
                 raise SystemExit(f"artifact relaunch check {phase} failed to report marker")
 
         run_app([str(exe), "--core-probe", "single"], cwd=app_dir, env=env, timeout=60)
+
+        uninstall = ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File",
+                     str(installed / "uninstall.ps1")]
+        # No removals occur when an owned file was modified.
+        original_info = build_info_file.read_bytes()
+        build_info_file.write_bytes(original_info + b"\n")
+        changed = subprocess.run(uninstall, capture_output=True, text=True, timeout=60)
+        if changed.returncode == 0 or not exe.is_file():
+            raise SystemExit("uninstall removed files after a hash mismatch")
+        build_info_file.write_bytes(original_info)
+        # A tampered marker must never reach an absolute target outside the install root.
+        marker = installed / ".markdown-dev-install.json"
+        original_marker = marker.read_bytes()
+        record = json.loads(original_marker.decode("utf-8-sig"))
+        outside = root / "outside.txt"
+        outside.write_text("preserve", encoding="utf-8")
+        record["files"].insert(0, {"path": "../outside.txt", "sha256": hashlib.sha256(outside.read_bytes()).hexdigest()})
+        marker.write_text(json.dumps(record), encoding="utf-8")
+        escaped = subprocess.run(uninstall, capture_output=True, text=True, timeout=60)
+        if escaped.returncode == 0 or not exe.is_file() or outside.read_text(encoding="utf-8") != "preserve":
+            raise SystemExit("uninstall accepted an escaping manifest path")
+        marker.write_bytes(original_marker)
+        sentinel = installed / "keep-user-file.txt"
+        sentinel.write_text("keep", encoding="utf-8")
+        subprocess.run(uninstall, check=True, capture_output=True, text=True, timeout=60)
+        if exe.exists() or sentinel.read_text(encoding="utf-8") != "keep":
+            raise SystemExit("uninstall did not remove app while preserving unowned file")
+        if (installed / ".markdown-dev-install.json").exists():
+            raise SystemExit("uninstall retained install marker")
 
         print(
             f"artifact: {archive.name} verified relocated ({len(inventory['rust_packages'])} Rust packages, "
