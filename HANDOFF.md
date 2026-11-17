@@ -1,7 +1,18 @@
 # Agent Session and Platform Handoff
 
+Updated: 2026-11-16 (America/Denver), WIN-002E completed under D-029 (PR #93 approved and closed out into `develop`).
+Active task: None. Eligible tasks: `WIN-002F` (Windows development packaging and R1 conformance) and `MAC-002` (macOS aggregate). The D-030 milestone review for `LNX-002` + `HARD-001` (`review/<milestone>` into `main`, owner-merged) is still open to cut.
+Pass `5f740d9f-5710-4f8f-b0ee-f06f276a229d` completed, approved PR #93 merged into `develop`:
+
+- Implemented `WIN-002E`: `WorkspaceWatcher` (`apps/windows/Document/WorkspaceWatcher.cs`: recursive root `FileSystemWatcher` for structural `Created`/`Deleted`/`Renamed` events + parent watcher for root deletion/rename, 150 ms debounce, 1,000 ms max coalesce, in-flight refresh gating via `NotifyRefreshCompleted`, and automatic access-loss recovery into `ReaderWindow.HandleWorkspaceAccessLost`), `RestorationStore` schema v2 (`apps/windows/Restoration.cs`: `workspace_path`, `workspace_sidebar_visible`, `expanded_paths`, `show_all_files`, `show_hidden`, v1 back-compat, per-segment `IsSafeRelativePath`), `WorkspaceSidebar` selection/expansion preservation across refreshes, and `RelaunchCheck` workspace restoration verification.
+- Checks at `aa9f98e`: `.build/feasibility-venv/Scripts/python.exe apps/windows/tools/check.py` passed in Debug, Release, and relocated Release Native AOT (22 core consumer tests, 22 document tests, 22 render tests, Native AOT WinUI `--smoke`, `check_association.py`, two-phase `--relaunch-check`, and relocated `--core-probe single` with 0 leaked handles).
+- Grok review 1 at `1080409`: 0 Blockers, 1 Concern, 2 Nits (approved under D-029). All 3 findings were fixed in `aa9f98e` with no re-review needed.
+
+Next task: `WIN-002F` (development packaging and complete R1 conformance) on Windows, `MAC-002` on macOS, or the D-030 milestone review.
+
+## Previous handoff (WIN-002D)
+
 Updated: 2026-11-16 (America/Denver), WIN-002D completed under D-029 (PR #92 approved and closed out into `develop`).
-Active task: None. Eligible tasks: `WIN-002E` (Windows workspace watching, restoration, and performance) and `MAC-002` (macOS aggregate). The D-030 milestone review for `LNX-002` + `HARD-001` (`review/<milestone>` into `main`, owner-merged) is still open to cut.
 Pass `4c23d0b9-0331-4be1-b0c1-c4761cae0969` completed, approved PR #92 merged into `develop`:
 
 - Implemented `WIN-002D`: versioned `preferences.json` schema v2 (`apps/windows/ReaderPreferences.cs`: `showOutlineByDefault`, `restoreSessionOnLaunch`, automatic v1-to-v2 migration on load with text-scale snapping and malformed-field fallback, lossless future-version and unknown-field preservation via `WriteRawValue`, `MARKDOWN_PREFERENCES_PATH` isolation), expanded `SettingsWindow` (`apps/windows/SettingsWindow.cs`: outline default, session restoration, `Reset to Defaults`, `_isRefreshing` guard), outline-default and session-restoration gating in `ReaderApp`/`ReaderWindow`/`ReaderControl`, and unit/smoke/two-phase `--relaunch-check` v1-to-v2 migration verification.

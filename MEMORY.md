@@ -149,7 +149,18 @@ read.
   v1→v2 migration verification. Debug/Release/relocated Release pass 22 core, 20 document,
   21 render tests, Native AOT smoke, association, relaunch, and probe (`0` leaked handles).
   Grok review 1 at `2330d92` had 0 Blockers, 0 Concerns, 2 Nits (approved under D-029; both
-  fixed in `48cd581`). `WIN-002E` is next on Windows.
+  fixed in `48cd581`).
+- WIN-002E (PR #93) delivers Windows workspace change watching (`apps/windows/Document/WorkspaceWatcher.cs`:
+  recursive root `FileSystemWatcher` with 64 KiB buffer for structural `Created`/`Deleted`/`Renamed`
+  events plus parent-directory watcher for root deletion/rename, 150 ms debounce, 1,000 ms max coalesce,
+  in-flight enumeration gating via `NotifyRefreshCompleted`, and automatic access-loss detection into
+  inline `ErrorBanner` recovery), schema v2 workspace/session restoration (`apps/windows/Restoration.cs`:
+  `workspace_path`, `workspace_sidebar_visible`, `expanded_paths`, `show_all_files`, `show_hidden`,
+  v1 back-compat, per-segment `IsSafeRelativePath` validation), `WorkspaceSidebar` selection/expansion
+  preservation across background refreshes, and `RelaunchCheck` workspace verification.
+  Debug/Release/relocated Release pass 22 core, 22 document, 22 render tests, Native AOT smoke,
+  association, relaunch, and probe (`0` leaked handles). Grok review 1 at `1080409` had 0 Blockers,
+  1 Concern, 2 Nits (approved under D-029; all 3 fixed in `aa9f98e`). `WIN-002F` is next on Windows.
 - Phase: `desktop-apps`; the portable-core shared track is complete through
   CORE-006 (GATE-001 approved, D-018). Native chains are now eligible (D-027).
 - Product: local-first, read-only native Markdown reader. Windows, macOS and
