@@ -1,5 +1,8 @@
 param([string]$Destination = (Join-Path $env:LOCALAPPDATA 'MarkdownDev'))
 $ErrorActionPreference = 'Stop'
+# A parent pwsh can pass its module search path to Windows PowerShell. Load the
+# matching built-in utility module explicitly, including its Get-FileHash helper.
+Import-Module (Join-Path $PSHOME 'Modules/Microsoft.PowerShell.Utility/Microsoft.PowerShell.Utility.psd1') -ErrorAction Stop
 $target = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($Destination).TrimEnd('\')
 if (Test-Path -LiteralPath $target) { throw 'Choose a new installation directory; existing paths are never overwritten.' }
 if (-not (Test-Path -LiteralPath (Join-Path $PSScriptRoot 'Markdown.Windows.exe'))) { throw 'Run install.ps1 from the extracted Markdown package.' }

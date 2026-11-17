@@ -337,7 +337,7 @@ public sealed partial class RowItem : ListViewItem
         }
 
         ShownText = fragment.Text;
-        _syntax = fragment.Kind == FragmentKind.Code ? Syntax.Tokens(ShownText, fragment.Language) : Array.Empty<SyntaxToken>();
+        _syntax = fragment.Kind == FragmentKind.Code && fragment.StartsBlock ? Syntax.Tokens(ShownText, fragment.Language) : Array.Empty<SyntaxToken>();
         UpdateHighlighters();
 
         // UIA: Set Name on the container so Narrator announces the item text when focused.

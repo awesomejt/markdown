@@ -1,5 +1,8 @@
 param()
 $ErrorActionPreference = 'Stop'
+# A parent pwsh can pass its module search path to Windows PowerShell. Load the
+# matching built-in utility module explicitly, including its Get-FileHash helper.
+Import-Module (Join-Path $PSHOME 'Modules/Microsoft.PowerShell.Utility/Microsoft.PowerShell.Utility.psd1') -ErrorAction Stop
 $target = [IO.Path]::GetFullPath($PSScriptRoot).TrimEnd('\')
 $prefix = $target + '\'
 $marker = Join-Path $target '.markdown-dev-install.json'

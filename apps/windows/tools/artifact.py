@@ -203,12 +203,16 @@ def verify(archive: Path, *, env: dict[str, str]) -> None:
             raise SystemExit(f"the artifact must hold exactly Markdown, found: {children}")
 
         package_dir = extracted / "Markdown"
+        # Reproduce a parent shell's incompatible/missing module search path.
+        # Install scripts must load the utility module belonging to their own PSHOME.
+        script_env = dict(env)
+        script_env["PSModulePath"] = str(root / "restricted-modules")
         installed = root / "installed app"
         install = ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File",
                    str(package_dir / "install.ps1"), "-Destination", str(installed) + os.sep]
-        run_app(install, cwd=root, env=env, timeout=60)
+        run_app(install, cwd=root, env=script_env, timeout=60)
         # Existing destinations are never overwritten, even for an apparent upgrade.
-        retry = subprocess.run(install, capture_output=True, text=True, timeout=60)
+        retry = subprocess.run(install, capture_output=True, text=True, timeout=60, env=script_env)
         if retry.returncode == 0:
             raise SystemExit("installer overwrote existing installation")
         # PowerShell Set-Location must determine relative installation destinations.
@@ -221,12 +225,12 @@ def verify(archive: Path, *, env: dict[str, str]) -> None:
             "& $Installer -Destination 'relative app\\'\n", encoding="utf-8")
         subprocess.run(["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File",
                         str(relative_check), "-Installer", str(package_dir / "install.ps1"), "-Work", str(relative_parent)],
-                       cwd=root, check=True, capture_output=False, text=True, timeout=60)
+                       cwd=root, check=True, capture_output=False, text=True, timeout=60, env=script_env)
         relative_install = relative_parent / "relative app"
         if not (relative_install / "Markdown.Windows.exe").is_file():
             raise SystemExit("relative destination ignored PowerShell location")
         subprocess.run(["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File",
-                        str(relative_install / "uninstall.ps1")], check=True, capture_output=False, text=True, timeout=60)
+                        str(relative_install / "uninstall.ps1")], check=True, capture_output=False, text=True, timeout=60, env=script_env)
         if relative_install.exists():
             raise SystemExit("trailing-separator relative installation could not be uninstalled")
 
@@ -242,7 +246,7 @@ def verify(archive: Path, *, env: dict[str, str]) -> None:
         failed_target = root / "failed install"
         subprocess.run(["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File",
                         str(failure_check), "-Installer", str(package_dir / "install.ps1"), "-Target", str(failed_target)],
-                       check=True, capture_output=False, text=True, timeout=60)
+                       check=True, capture_output=False, text=True, timeout=60, env=script_env)
         if failed_target.exists() or list(root.glob(".markdown-install-*")):
             raise SystemExit("failed installation left its target or staging directory")
         app_dir = installed
@@ -374,7 +378,7 @@ def verify(archive: Path, *, env: dict[str, str]) -> None:
         # No removals occur when an owned file was modified.
         original_info = build_info_file.read_bytes()
         build_info_file.write_bytes(original_info + b"\n")
-        changed = subprocess.run(uninstall, capture_output=True, text=True, timeout=60)
+        changed = subprocess.run(uninstall, capture_output=True, text=True, timeout=60, env=script_env)
         if changed.returncode == 0 or not exe.is_file():
             raise SystemExit("uninstall removed files after a hash mismatch")
         build_info_file.write_bytes(original_info)
@@ -386,13 +390,13 @@ def verify(archive: Path, *, env: dict[str, str]) -> None:
         outside.write_text("preserve", encoding="utf-8")
         record["files"].insert(0, {"path": "../outside.txt", "sha256": hashlib.sha256(outside.read_bytes()).hexdigest()})
         marker.write_text(json.dumps(record), encoding="utf-8")
-        escaped = subprocess.run(uninstall, capture_output=True, text=True, timeout=60)
+        escaped = subprocess.run(uninstall, capture_output=True, text=True, timeout=60, env=script_env)
         if escaped.returncode == 0 or not exe.is_file() or outside.read_text(encoding="utf-8") != "preserve":
             raise SystemExit("uninstall accepted an escaping manifest path")
         marker.write_bytes(original_marker)
         sentinel = installed / "keep-user-file.txt"
         sentinel.write_text("keep", encoding="utf-8")
-        run_app(uninstall, cwd=root, env=env, timeout=60)
+        run_app(uninstall, cwd=root, env=script_env, timeout=60)
         if exe.exists() or sentinel.read_text(encoding="utf-8") != "keep":
             raise SystemExit("uninstall did not remove app while preserving unowned file")
         if (installed / ".markdown-dev-install.json").exists():
