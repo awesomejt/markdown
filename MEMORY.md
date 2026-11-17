@@ -8,6 +8,19 @@ read.
 
 ## Current posture
 
+- WIN-002F (PR #94) delivers per-user development install/uninstall with checked
+  staging, path/hash guards and restricted-PowerShell-module verification;
+  typed front-matter Properties, explicit alert labels, bounded lazy code colors,
+  folder-capability relative links and About/`--version` diagnostics. See
+  [Windows MVP acceptance](docs/Windows-MVP-Acceptance.md). Debug/Release/installed
+  Release pass 22 core, 22 document and 23 render tests plus native/artifact checks.
+  Two Grok reviews at `df7af57` have no serious finding; valid findings are fixed
+  at `2e9a14c..f053b79`, all eight threads resolved, and source CI run
+  `44022194671` is green. Real-window warm launch medians are 456.95 ms (1 MiB
+  prose), 1258.03 ms (5 MiB prose), and 301.78 ms (1 MiB long lines); prose
+  misses the 400 ms target, which stays open. Jumps are at most 35.12 ms.
+  WIN-002 aggregate acceptance is next on Windows; MAC-002 is independently
+  ready on macOS. A fresh context is recommended; no OS switch is needed yet.
 - WIN-001A (PR #53) delivers the
   [Windows shell](apps/windows/README.md) in C# Native AOT/WinUI with native
   New Window/Close/Exit commands, locally deployed App SDK and Debug/Release

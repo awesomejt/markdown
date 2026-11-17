@@ -1,5 +1,19 @@
 # Agent Session and Platform Handoff
 
+Updated: 2026-11-16 (America/Denver), WIN-002F closed out for the approved PR #94 merge into `develop`.
+Active task: None. Next Windows task: `WIN-002` aggregate acceptance. `MAC-002` is independently ready on macOS; no platform switch is needed for WIN-002. Clear the context before the aggregate pass and read this handoff.
+
+- [PR #94](https://github.com/awesomejt/markdown/pull/94) delivers the development installer/uninstaller, typed Properties expander, alert labels, bounded lazy code colors, folder-scoped relative Markdown links, About/`--version` diagnostics and real-window launch/jump probes. [Windows MVP acceptance](docs/Windows-MVP-Acceptance.md) maps R1 behavior and records installation, evidence and open budgets.
+- Source `f053b79` passes local Debug/Release/installed Release (22 core, 22 document, 23 render tests each), smoke, association, relaunch, frame probes, licensing and zero-handle core probe. Installer regressions cover trailing and relative destinations, failed-copy staging cleanup, restricted module paths, modified-file/escaping-marker refusal and preservation of unowned files. Common checks pass.
+- [Hosted source CI run 44022194671](https://github.com/awesomejt/markdown/actions/runs/44022194671) passed on `f053b79`. Earlier PR runs exposed a missing `Get-FileHash` under the hosted PowerShell module environment; installers now load the utility module matching their executing `$PSHOME`, with a restricted-module-path regression.
+- [Grok review 1](https://github.com/awesomejt/markdown/pull/94#pullrequestreview-5933132398) and [delayed review 2](https://github.com/awesomejt/markdown/pull/94#pullrequestreview-5933153264) at `df7af57` each reported 0 Blockers, 1 Concern, 3 Nits, no serious finding. All valid findings are fixed at `2e9a14c..f053b79`; the property-range nit was already covered by `CoreDocument` validation. All eight threads are resolved. Two reviews used; D-029 approves the reviewed head plus these exempt minor fixes and this state/docs closeout.
+- Five warm runs per profile after one warmup: presentation-proxy medians 456.95 / 1258.03 / 301.78 ms for prose 1 MiB / prose 5 MiB / long lines 1 MiB; all jumps ≤35.12 ms. Both prose launch profiles exceed 400 ms and stay open in TODO.md. Repeated-load core/plan measurements completed 20 loads per profile; no whole-window memory reclamation/budget claim is made. Cold launch, mixed DPI, frame pacing, full Narrator properties inspection and clean second-machine/SmartScreen remain unrun. The pre-existing intermittent hosted restoration smoke risk remains.
+- Pass `8b7192a7-d0f7-4f2f-b06d-bbee2fdf6c1e` completed at state revision 874 with no live lease or working task. This closeout travels on PR #94; required closeout-head CI must pass before its merge, branch deletion and return to clean `develop`. Reconcile GitHub's actual PR state before selecting new work.
+
+Next: `WIN-002` aggregate acceptance on Windows, then macOS `MAC-002` aggregate acceptance as needed before DESK-002. Linux has no dependency-ready task at this point. D-030 milestone reviews remain owner-merged into `main`.
+
+## Previous handoff (WIN-002E recovery)
+
 Updated: 2026-11-16 (America/Denver), WIN-002E and WIN-002E-FIX closed out for the approved PR #93 merge into `develop`.
 Active task: None. Next Windows task: `WIN-002F` (development packaging and R1 conformance). `MAC-002` is independently ready on macOS; no platform switch is needed for WIN-002F.
 
