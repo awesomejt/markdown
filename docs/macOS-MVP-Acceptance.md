@@ -1,9 +1,8 @@
 # macOS MVP aggregate acceptance (MAC-002)
 
-The macOS MVP delivery phases are merged; aggregate acceptance remains open.
-The validation expectation in `project.yaml` requires macOS R1 acceptance and
-performance budgets to pass. The measurements and manual gaps below do not yet
-satisfy that criterion.
+The macOS MVP delivery phases are merged. The owner approved functional
+aggregate closeout on 2026-11-16, with the explicit gaps below carried to
+DESK-002 (D-037). No performance target or release check is waived.
 
 | Phase | Delivered evidence |
 | --- | --- |
@@ -24,10 +23,8 @@ measured. A real Finder installation, a quarantined download on a second Mac,
 VoiceOver on properties, and About panel appearance remain unverified. The
 unsigned, unnotarized artifact is for development only.
 
-D-036 applies to the Windows aggregate; it does not change MAC-002's
-acceptance criterion. An owner decision or work that satisfies the outstanding
-criteria is needed before this aggregate can close. No performance target is
-waived by this report.
+The owner-approved functional boundary in D-037 applies to MAC-002. The
+performance and manual gaps remain obligations for DESK-002.
 
 ## Aggregate checks
 

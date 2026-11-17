@@ -8,11 +8,11 @@ read.
 
 ## Current posture
 
-- MAC-002 aggregate validation is partial on `patch/mac-002-aggregate-acceptance`;
-  native and common checks passed but D-016 warm launch misses remain. The
-  owner was asked whether to carry explicit gaps to DESK-002 as for Windows.
+- MAC-002 aggregate validation is on `docs/mac-002-aggregate-acceptance`;
+  native and common checks passed but D-016 warm launch misses remain. Owner
+  decision D-037 carries explicit gaps to DESK-002 without waiving targets.
   See [macOS MVP acceptance](docs/macOS-MVP-Acceptance.md) and HANDOFF.md.
-  No PR or Grok review has occurred; resume this task after the decision.
+  Review and closeout remain pending.
 
 - WIN-002 (PR #95) functional aggregate is closed under the owner's 2026-11-16
   decision to carry explicit gaps to DESK-002 (D-036). Fresh Debug, Release
