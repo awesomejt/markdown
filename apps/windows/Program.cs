@@ -2069,6 +2069,13 @@ internal sealed class ReaderWindow : Window
             WorkspaceSidebar.ShowHidden = state.ShowHidden;
             WorkspaceSidebar.SetPendingExpandedRelativePaths(state.ExpandedRelativePaths);
             OpenFolderCapability(folderCap, isFromRecents: false, sidebarVisible: state.WorkspaceSidebarVisible);
+            if (ActiveFolder != folderCap)
+            {
+                WorkspaceSidebar.SetPendingExpandedRelativePaths(null);
+                WorkspaceSidebar.ShowAllFiles = false;
+                WorkspaceSidebar.ShowHidden = false;
+                _workspaceSidebarUserVisible = true;
+            }
         }
 
         if (docCap is not null)

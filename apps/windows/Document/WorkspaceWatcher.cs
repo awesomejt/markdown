@@ -93,12 +93,8 @@ public sealed class WorkspaceWatcher : IDisposable
                     IncludeSubdirectories = true,
                     InternalBufferSize = BufferSizeBytes,
                     NotifyFilter = NotifyFilters.FileName |
-                                   NotifyFilters.DirectoryName |
-                                   NotifyFilters.LastWrite |
-                                   NotifyFilters.Size |
-                                   NotifyFilters.CreationTime,
+                                   NotifyFilters.DirectoryName,
                 };
-                rootWatcher.Changed += OnRootEvent;
                 rootWatcher.Created += OnRootEvent;
                 rootWatcher.Deleted += OnRootEvent;
                 rootWatcher.Renamed += OnRootRenamed;

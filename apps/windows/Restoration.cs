@@ -252,11 +252,9 @@ public static class RestorationStore
                                 if (pathElem.ValueKind == JsonValueKind.String)
                                 {
                                     var rel = pathElem.GetString();
-                                    if (!string.IsNullOrWhiteSpace(rel) &&
-                                        !Path.IsPathRooted(rel) &&
-                                        !rel.Contains("..", StringComparison.Ordinal))
+                                    if (IsSafeRelativePath(rel))
                                     {
-                                        expandedPaths.Add(rel);
+                                        expandedPaths.Add(rel!);
                                     }
                                 }
                             }
@@ -283,6 +281,22 @@ public static class RestorationStore
             }
             return list;
         }
+    }
+
+    private static bool IsSafeRelativePath(string? rel)
+    {
+        if (string.IsNullOrWhiteSpace(rel) || Path.IsPathRooted(rel))
+        {
+            return false;
+        }
+        foreach (var segment in rel.Split(['/', '\\']))
+        {
+            if (string.IsNullOrEmpty(segment) || segment == "." || segment == "..")
+            {
+                return false;
+            }
+        }
+        return true;
     }
 
     public static void Clear(string? customPath = null)

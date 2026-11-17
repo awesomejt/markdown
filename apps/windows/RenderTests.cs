@@ -1198,7 +1198,7 @@ internal static class RenderTests
                     {
                       "file_path": "C:\\ws\\doc.md",
                       "workspace_path": "\\\\server\\share\\docs",
-                      "expanded_paths": ["valid", "../escape", "C:\\abs"]
+                      "expanded_paths": ["valid", "release..old", "../escape", "C:\\abs"]
                     }
                   ]
                 }
@@ -1206,9 +1206,10 @@ internal static class RenderTests
             var filtered = RestorationStore.Load(tempFile);
             Assert(filtered.Count == 1, "valid file preserved even when UNC workspace rejected");
             Assert(filtered[0].WorkspacePath is null, "UNC workspace rejected");
-            Assert(filtered[0].ExpandedRelativePaths is { Count: 1 } expFiltered &&
-                   expFiltered[0] == "valid",
-                "traversal and absolute expanded paths filtered");
+            Assert(filtered[0].ExpandedRelativePaths is { Count: 2 } expFiltered &&
+                   expFiltered[0] == "valid" &&
+                   expFiltered[1] == "release..old",
+                "traversal and absolute expanded paths filtered while keeping valid '..' in names");
         }
         finally
         {
