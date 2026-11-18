@@ -1,5 +1,14 @@
 # Agent Session and Platform Handoff
 
+## MAC-003A launch investigation in review
+
+On `docs/mac-003a-launch-investigation`, the release build and five warm
+launches per fixture reproduced the D-016 misses; see
+[macOS launch investigation](docs/macOS-Launch-Investigation.md). MAC-003B
+now blocks MAC-003 and will attribute loading stages. The Instruments attempt
+had ambiguous executable metadata and was not used. The MAC-003A pass is
+partial for review; resume it for approved closeout.
+
 ## DESK-002 prerequisite correction
 
 PR #97's [Grok follow-up](https://github.com/awesomejt/markdown/pull/97#pullrequestreview-5951271433)
