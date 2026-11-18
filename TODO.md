@@ -494,7 +494,15 @@ CORE-006 no longer carry. The three host chains are independent.
   Linux filesystems, portals, desktop environments, and packages.
 - **DESK-002 — Desktop MVP conformance and release gate.** Validate all three
   basic products, budgets, capability documentation, privacy, and artifacts.
-  Needs HARD-001 (release hardening) as well as the three 002 aggregates.
+  Needs HARD-001, the three 002 aggregates, and the platform release-evidence
+  prerequisites below. No outstanding target is waived.
+- **MAC-003A — Investigate macOS launch budget misses.** Reproduce and profile
+  warm launch on the baseline Mac, document measured contributors and create
+  focused follow-up delivery tasks. This precedes MAC-003.
+- **MAC-003, WIN-003, LNX-003 — Platform release evidence.** Resolve each
+  platform's open performance and native validation gaps before DESK-002. Split
+  each aggregate into reviewable host-specific phases; see the acceptance
+  reports and open native budgets below for the outstanding evidence.
 - **DESK-003 — Desktop refinement.** Prioritize R2 features and platform-specific
   polish after the basic MVP gate.
 
@@ -695,6 +703,7 @@ MAC-001 + LNX-001 + WIN-001 -> DESK-001
 DESK-001 -> HARD-001
 DESK-001 -> each host 002A -> ... -> 002F -> platform 002 aggregate
   (002B also needs CORE-005D; 002C also needs CORE-005B, CORE-005B2, CORE-005C)
+MAC-003A -> MAC-003; MAC-003 + WIN-003 + LNX-003 -> DESK-002
 HARD-001 + all platform 002 aggregates -> DESK-002 -> DESK-003
 DESK-002 -> IOS-001 -> IOS-002
 DESK-002 -> ADV-001/ADV-003/ADV-004
