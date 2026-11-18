@@ -8,10 +8,10 @@ read.
 
 ## Current posture
 
-- DESK-002 requires explicit platform prerequisites MAC-003, WIN-003 and
-  LNX-003 for the unwaived release evidence and budget gaps. MAC-003A is the
-  next Mac task: reproduce and profile the launch misses, then materialize
-  focused follow-ups. Platform aggregates must be split into reviewable work.
+- DESK-002 requires MAC-003, WIN-003 and LNX-003 for unwaived release evidence
+  and budget gaps. MAC-003A measured launch misses; MAC-003B (load-stage
+  attribution) and MAC-003C (startup and presentation attribution) are its
+  next Mac follow-ups. Split remaining aggregates into reviewable work.
 - MAC-002 functional aggregate (PR #96) is complete under owner decision
   D-037. Native/common checks passed; Grok follow-up at `100dc94` was clean.
   Warm launch misses, cold launch and manual checks remain open for DESK-002.
