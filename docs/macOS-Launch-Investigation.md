@@ -25,11 +25,12 @@ investigation; this evidence does not isolate file reads, parsing, decoding,
 thread scheduling or AppKit startup as the cause. MAC-003B must instrument
 those stages and determine a bounded fix. Launch callback time also consumes
 a large portion of the target, but this measurement cannot attribute it to
-individual frameworks or prove a regression's cause.
+individual frameworks or prove a regression's cause. MAC-003C owns startup
+and loaded-to-presented attribution for the 1 MiB profiles.
 
 A direct-executable Instruments Time Profiler attempt reported a debug bundle
 path in its trace metadata despite the Release executable argument. Its
-attribution was therefore not used. A follow-up must verify the traced
+attribution was therefore not used. MAC-003B must verify the traced
 executable and account for profiler overhead before drawing CPU conclusions.
 The trace and local measurement output are ignored build artifacts, not
 portable evidence. Cold launch and the other release checks remain open; no

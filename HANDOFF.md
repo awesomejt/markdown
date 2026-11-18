@@ -5,7 +5,8 @@
 On `docs/mac-003a-launch-investigation`, the release build and five warm
 launches per fixture reproduced the D-016 misses; see
 [macOS launch investigation](docs/macOS-Launch-Investigation.md). MAC-003B
-now blocks MAC-003 and will attribute loading stages. The Instruments attempt
+and MAC-003C now block MAC-003 and will attribute loading stages and startup /
+presentation respectively. The Instruments attempt
 had ambiguous executable metadata and was not used. The MAC-003A pass is
 partial for review; resume it for approved closeout.
 
