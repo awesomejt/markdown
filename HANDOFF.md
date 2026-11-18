@@ -1,5 +1,20 @@
 # Agent Session and Platform Handoff
 
+## DESK-002 prerequisite correction
+
+PR #97's [Grok follow-up](https://github.com/awesomejt/markdown/pull/97#pullrequestreview-5951271433)
+reviewed `3fdde248` with no findings. Its initial concern and nit were fixed;
+the out-of-scope state-helper observation is recorded in TODO. Common checks
+and hosted CI passed on the reviewed head. The closeout commit must pass CI
+before merge. Next on this Mac: MAC-003A.
+
+DESK-002 cannot pass on the existing evidence. Its platform prerequisites are
+now explicit: MAC-003, WIN-003 and LNX-003; each has a host investigation
+predecessor (MAC-003A, WIN-003A and LNX-003A). MAC-003A investigates the macOS
+warm-launch misses first on this Mac. No budget or native check is waived. Split each
+platform aggregate into focused delivery phases, preserve the owner-only
+milestone review, and use the state helper to inspect before selecting work.
+
 Updated: 2026-11-16 (America/Denver), MAC-002 approved closeout on PR #96.
 
 - MAC-002 is complete at state revision 890 under owner decision D-037.
@@ -13,9 +28,9 @@ Updated: 2026-11-16 (America/Denver), MAC-002 approved closeout on PR #96.
 - Native debug/release, artifact and common checks passed on baseline `511fdfc`.
   D-016 warm launch misses, cold launch and manual checks remain open, without
   waiver, for DESK-002. See [macOS MVP acceptance](docs/macOS-MVP-Acceptance.md).
-- Next dependency-ready task: DESK-002, cross-desktop conformance and release
-  gate. Start with a fresh context and assess required platform evidence; no
-  production release or merge into `main` is authorized by this closeout.
+- The subsequent prerequisite correction above supersedes the earlier choice
+  of DESK-002 as the next task. No production release or merge into `main` is
+  authorized by this closeout.
 
 ## Previous handoff (WIN-002 aggregate)
 
