@@ -3,8 +3,9 @@
 ## DESK-002 prerequisite correction
 
 DESK-002 cannot pass on the existing evidence. Its platform prerequisites are
-now explicit: MAC-003, WIN-003 and LNX-003; MAC-003A investigates the macOS
-warm-launch misses first. No budget or native check is waived. Split each
+now explicit: MAC-003, WIN-003 and LNX-003; each has a host investigation
+predecessor (MAC-003A, WIN-003A and LNX-003A). MAC-003A investigates the macOS
+warm-launch misses first on this Mac. No budget or native check is waived. Split each
 platform aggregate into focused delivery phases, preserve the owner-only
 milestone review, and use the state helper to inspect before selecting work.
 

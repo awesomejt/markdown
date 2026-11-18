@@ -499,6 +499,9 @@ CORE-006 no longer carry. The three host chains are independent.
 - **MAC-003A — Investigate macOS launch budget misses.** Reproduce and profile
   warm launch on the baseline Mac, document measured contributors and create
   focused follow-up delivery tasks. This precedes MAC-003.
+- **WIN-003A / LNX-003A — Investigate native performance gaps.** On each
+  named host reproduce and profile the recorded misses and materialize focused
+  follow-up phases before the respective platform aggregate.
 - **MAC-003, WIN-003, LNX-003 — Platform release evidence.** Resolve each
   platform's open performance and native validation gaps before DESK-002. Split
   each aggregate into reviewable host-specific phases; see the acceptance
@@ -703,7 +706,8 @@ MAC-001 + LNX-001 + WIN-001 -> DESK-001
 DESK-001 -> HARD-001
 DESK-001 -> each host 002A -> ... -> 002F -> platform 002 aggregate
   (002B also needs CORE-005D; 002C also needs CORE-005B, CORE-005B2, CORE-005C)
-MAC-003A -> MAC-003; MAC-003 + WIN-003 + LNX-003 -> DESK-002
+MAC-003A -> MAC-003; WIN-003A -> WIN-003; LNX-003A -> LNX-003
+MAC-003 + WIN-003 + LNX-003 -> DESK-002
 HARD-001 + all platform 002 aggregates -> DESK-002 -> DESK-003
 DESK-002 -> IOS-001 -> IOS-002
 DESK-002 -> ADV-001/ADV-003/ADV-004
