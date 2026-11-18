@@ -543,6 +543,11 @@ CORE-006 no longer carry. The three host chains are independent.
 
 ## Deferred review findings
 
+- **State helper idempotency snapshots (PR #97):** Grok observed that cached
+  response snapshots may alias live project data, changing replayed responses
+  and causing YAML anchor churn. Reproduce and fix in a separate reviewed tool
+  task; do not assume that suppressing aliases alone fixes replay semantics.
+
 - **WIN-001A / PR #53 clock nit:** before the next cross-machine pass handoff,
   the owner should check Windows time synchronization. `w32tm /query /status`
   reports unsynchronized / Local CMOS Clock, and host-generated UTC pass

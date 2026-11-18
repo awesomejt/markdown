@@ -2,6 +2,12 @@
 
 ## DESK-002 prerequisite correction
 
+PR #97's [Grok follow-up](https://github.com/awesomejt/markdown/pull/97#pullrequestreview-5951271433)
+reviewed `3fdde248` with no findings. Its initial concern and nit were fixed;
+the out-of-scope state-helper observation is recorded in TODO. Common checks
+and hosted CI passed on the reviewed head. The closeout commit must pass CI
+before merge. Next on this Mac: MAC-003A.
+
 DESK-002 cannot pass on the existing evidence. Its platform prerequisites are
 now explicit: MAC-003, WIN-003 and LNX-003; each has a host investigation
 predecessor (MAC-003A, WIN-003A and LNX-003A). MAC-003A investigates the macOS
