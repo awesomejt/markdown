@@ -1,24 +1,23 @@
 # Agent Session and Platform Handoff
 
-## CORE-007 shared-core 5 MiB parse/encode
+## CORE-007 closeout
 
-Updated: 2026-11-26 (America/Denver), active pass on `feat/core-007-parse-encode-opt`.
+Updated: 2026-11-26 (America/Denver), CORE-007 approved closeout on PR #102.
 
-- Dense parser IDs skip SipHash maps in validation and flat-view encode;
-  parser trusts builder `SourceInfo`; `sha2` `asm` enabled (sha2-asm 0.6.4).
-- Evidence: Release `measure.py launch --profile prose-5mib --runs 5` —
-  `core_parse_ms` 103.63, `core_encode_ms` 11.28, `core_total_ms` 117.44
-  (MAC-003B baseline 186.61 / 46.53 / 235.57). See
+- [PR #102](https://github.com/awesomejt/markdown/pull/102): dense parser IDs,
+  trusted fingerprint skip, Apple-only sha2 asm. Evidence in
   [macOS-Launch-Investigation.md](docs/macOS-Launch-Investigation.md).
-- `tools/check.py core` and release core/ffi tests passed locally. Push PR
-  into `develop`, monitor Grok + CI, then D-029 closeout.
-- Residual: D-016 unwaived (`presented_ms` still > 400 ms on 5 MiB LS).
-  `LNX-003A` / `WIN-003A` stay host-blocked until Linux / Windows.
+- Grok follow-up on `b8ecae2`: 0 Blockers, 0 Concerns, 1 Nit (doc wording
+  fixed in `890083a`). Approved under D-029. Hosted CI run
+  [45777967360](https://github.com/awesomejt/markdown/actions/runs/45777967360)
+  green (including windows-native / macos-native after relaunch flake cleared).
+- Residual: D-016 unwaived; 5 MiB LS presented still > 400 ms. Next on Mac:
+  `MAC-003` aggregate / cold-manual evidence. `LNX-003A` needs Linux;
+  `WIN-003A` stays host-blocked until Windows.
 
 ## Previous handoff (MAC-003D)
 
-See [memory archive](agents/Memory-Archive.md) / git history. Superseded for
-next-step routing by CORE-007 above.
+See [memory archive](agents/Memory-Archive.md) / git history.
 
 ## Resume here — desktop foundations
 
