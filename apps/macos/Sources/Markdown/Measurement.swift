@@ -108,7 +108,9 @@ enum Measurement {
       }
     }
     row["ms"] = marks
-    row["startup_ms"] = startupTimings(marks)
+    if let startup = try startupTimings(marks) {
+      row["startup_ms"] = startup
+    }
     row["footprint_mib"] = mebibytes(footprint())
     emit(row)
   }
@@ -123,12 +125,18 @@ enum Measurement {
   }
 
   /// Additive slices of process-start→didFinishLaunching for MAC-003C.
-  private static func startupTimings(_ marks: [String: Double]) -> [String: Double] {
-    let mainEntry = marks["main_entry"] ?? 0
-    let coreReady = marks["core_ready"] ?? mainEntry
-    let willFinish = marks["will_finish_launching"] ?? coreReady
-    let menus = marks["menus_installed"] ?? willFinish
-    let didFinish = marks["did_finish_launching"] ?? menus
+  /// Returns nil when required marks are missing so fabricated zeros are never
+  /// summarized as D-016 evidence.
+  private static func startupTimings(_ marks: [String: Double]) throws -> [String: Double]? {
+    guard let mainEntry = marks["main_entry"], let didFinish = marks["did_finish_launching"]
+    else {
+      return nil
+    }
+    guard let coreReady = marks["core_ready"], let willFinish = marks["will_finish_launching"],
+      let menus = marks["menus_installed"]
+    else {
+      throw Failure(description: "incomplete startup marks")
+    }
     return [
       "process_to_main_ms": mainEntry,
       "main_to_core_ms": max(coreReady - mainEntry, 0),

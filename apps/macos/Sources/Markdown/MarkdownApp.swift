@@ -250,10 +250,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, 
     for url in urls {
       guard let capability = try? DocumentCapability(granted: url) else { continue }
       if let existing = windows.first(where: { $0.loader.capability == capability }) {
-        existing.showWindow(nil)
+        // Same recovery as the enqueued open path when a restored window is
+        // stale or holds a revoked grant for this file.
+        reuse(existing, for: capability, folder: nil, recent: nil)
         continue
       }
       let target = emptyWindow() ?? makeWindow(nil)
+      target.recent = nil
       target.loader.open(capability)
       target.showWindow(nil)
     }
