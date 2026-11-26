@@ -25,6 +25,9 @@ pub use parse::{
 };
 #[cfg(feature = "model-v2")]
 pub use parse::{parse_markdown_v2, parse_markdown_v2_cancellable};
+/// Shared dense parser-ID index helper for the C ABI flat encoder.
+#[doc(hidden)]
+pub use validate::dense_id_index;
 pub use validate::{Document, ModelError, ModelLimits};
 
 /// Generated schema for tooling; no schema dependency is enabled by default.

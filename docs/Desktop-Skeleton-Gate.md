@@ -41,7 +41,7 @@ Measurements below are taken from each host's Release acceptance evidence (`apps
 | External refresh (`prose-1mib` / `5mib` / `long-lines`) | 310 / 1,050 / 167 ms (`10/10` kept place) | 168.91 / 996.00 / 24.70 ms (`kept_place: true`) | 82.14 / 582.07 / 6.28 ms (`kept_place: true`) | Anchors preserved across all 3 hosts |
 | Refresh footprint (`prose-5mib`) | 531 → 887–1,043 MiB | 363.02 MiB peak | ~774.9 MiB | macOS retains freed blocks across revisions |
 | Repeated-load RSS | 227–581 MiB (5 MiB, 20 loads, allocator wrapper) | ~19.1 MiB (1 MiB) / ~23.9 MiB (5 MiB, 5 loads) | ~51.1 MiB trimmed (1 MiB) / ~153.4 MiB trimmed (5 MiB) | Bounded on all 3 hosts |
-| Local dev artifact | Unsigned arm64 `.zip` (~1.1 MB, 43 packages) | Unsigned x64 `.zip` (42 Rust + 19 NuGet packages) | Unsigned x86-64 `.tar.gz` (74 Rust packages) | Relocated verification passed on all 3 hosts |
+| Local dev artifact | Unsigned arm64 `.zip` (~1.1 MB, 44 packages after CORE-007) | Unsigned x64 `.zip` (42 Rust + 19 NuGet) | Unsigned x86-64 `.tar.gz` (core + GTK graph; no sha2-asm) | Relocated verification passed on all 3 hosts |
 
 ## Contract bias and capability deviations
 

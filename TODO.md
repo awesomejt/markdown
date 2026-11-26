@@ -503,12 +503,9 @@ CORE-006 no longer carry. The three host chains are independent.
   instrumented 5 MiB load stages, fixed `Task.detached` scheduling, recorded
   profiler evidence, and materialized CORE-007 for the dominant core cost.
 - **CORE-007 — Optimize shared core 5 MiB parse and flat-view encoding.**
-  Follow-up materialized by MAC-003B (blocks MAC-003). Reduce the dominant
-  shared Rust core costs measured on 5 MiB prose (`validate_parts` SipHash
-  node-ID lookups in `v2::Document::new`, `md_snapshot_get_view`
-  `HashMap<&str, u32>` lookups, and unaccelerated SHA-256 hashing) without
-  weakening untrusted `from_json` validation or changing the C ABI / semantic
-  output.
+  Done in PR #102: dense `n{i}` ID resolution, trusted parser fingerprint
+  skip, and Apple-only sha2 `asm`. 5 MiB medians on Mac: `core_parse_ms`
+  103.63 (was 186.61), `core_encode_ms` 11.28 (was 46.53). D-016 unwaived.
 - **MAC-003C — Attribute macOS startup and presentation time.** Done: stage
   timers for startup and load→install presentation, synchronous `openAtLaunch`
   so loading overlaps launch, and evidence in

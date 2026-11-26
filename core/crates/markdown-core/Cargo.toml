@@ -14,6 +14,12 @@ serde_json = "=1.0.145"
 sha2 = "=0.10.9"
 schemars = { version = "=1.0.4", optional = true }
 
+# Hardware SHA-2 only where measured (Apple Silicon). Other targets keep sha2's
+# default path (x86_64 SHA-NI via intrinsics; soft elsewhere) so Windows MSVC
+# does not need sha2-asm (CORE-007 / Grok review).
+[target.'cfg(all(target_arch = "aarch64", target_vendor = "apple"))'.dependencies]
+sha2 = { version = "=0.10.9", features = ["asm"] }
+
 [features]
 model-v2 = ["dep:url"]
 schema = ["dep:schemars"]

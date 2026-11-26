@@ -87,6 +87,15 @@ fn metadata_value_safe(value: &MetadataValue) -> bool {
     }
 }
 
+/// How strictly to check [`SourceInfo`] against the provided source bytes.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum FingerprintCheck {
+    /// Recompute SHA-256 (untrusted `from_json` / `Document::new`).
+    Full,
+    /// Parser just set `SourceInfo::of`; only re-check length and digest shape.
+    Trusted,
+}
+
 /// Immutable validated snapshot. Deserialize via `from_json`, not unchecked serde.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(transparent)]
@@ -99,7 +108,17 @@ impl Document {
         source: &str,
         limits: ModelLimits,
     ) -> Result<Self, ModelError> {
-        validate(&input, source, limits)?;
+        validate_parts(&input, source, limits, true, FingerprintCheck::Full)?;
+        Ok(Self { input })
+    }
+    /// Parser-produced input: structure checks stay, but the source digest is
+    /// not recomputed (the builder already hashed once).
+    pub(crate) fn from_parser(
+        input: DocumentInput,
+        source: &str,
+        limits: ModelLimits,
+    ) -> Result<Self, ModelError> {
+        validate_parts(&input, source, limits, true, FingerprintCheck::Trusted)?;
         Ok(Self { input })
     }
     pub fn from_json(bytes: &[u8], source: &str, limits: ModelLimits) -> Result<Self, ModelError> {
@@ -122,22 +141,58 @@ impl Document {
     }
 }
 
-fn validate(d: &DocumentInput, source: &str, limits: ModelLimits) -> Result<(), ModelError> {
-    validate_parts(d, source, limits, true)
+/// Parse a dense parser id (`n12`, `l3`, `r0`) into its index, rejecting
+/// leading zeros so `n01` cannot collide with `n1`.
+pub fn dense_id_index(id: &str, prefix: u8) -> Option<usize> {
+    let bytes = id.as_bytes();
+    if bytes.len() < 2 || bytes[0] != prefix {
+        return None;
+    }
+    let digits = &bytes[1..];
+    if digits[0] == b'0' {
+        return if digits.len() == 1 { Some(0) } else { None };
+    }
+    let mut value = 0usize;
+    for &digit in digits {
+        if !digit.is_ascii_digit() {
+            return None;
+        }
+        value = value
+            .checked_mul(10)?
+            .checked_add(usize::from(digit - b'0'))?;
+    }
+    Some(value)
 }
+
+fn digest_shape(value: &str) -> bool {
+    value.len() == 64
+        && value
+            .bytes()
+            .all(|b| b.is_ascii_hexdigit() && !b.is_ascii_uppercase())
+}
+
 #[cfg(feature = "model-v2")]
 pub(crate) fn validate_structure(
     d: &DocumentInput,
     source: &str,
     limits: ModelLimits,
 ) -> Result<(), ModelError> {
-    validate_parts(d, source, limits, false)
+    validate_parts(d, source, limits, false, FingerprintCheck::Full)
+}
+#[cfg(feature = "model-v2")]
+pub(crate) fn validate_structure_trusted(
+    d: &DocumentInput,
+    source: &str,
+    limits: ModelLimits,
+) -> Result<(), ModelError> {
+    validate_parts(d, source, limits, false, FingerprintCheck::Trusted)
 }
 fn validate_parts(
     d: &DocumentInput,
     source: &str,
     limits: ModelLimits,
     intents: bool,
+    fingerprint: FingerprintCheck,
 ) -> Result<(), ModelError> {
     require(
         d.model_version == MODEL_VERSION,
@@ -151,26 +206,68 @@ fn validate_parts(
         "source_limit",
         "source",
     )?;
-    require(
-        d.source == SourceInfo::of(source),
-        "source_mismatch",
-        "source",
-    )?;
+    match fingerprint {
+        FingerprintCheck::Full => require(
+            d.source == SourceInfo::of(source),
+            "source_mismatch",
+            "source",
+        )?,
+        FingerprintCheck::Trusted => {
+            require(
+                d.source.bytes == source.len() as u64 && digest_shape(&d.source.sha256),
+                "source_mismatch",
+                "source",
+            )?;
+        }
+    }
     require(d.nodes.len() <= limits.max_nodes, "node_limit", "nodes")?;
-    let mut index = HashMap::with_capacity(d.nodes.len());
+    // Parser IDs are dense `n{i}`. Skip SipHash indexing when every node uses
+    // that layout; untrusted documents with custom IDs keep the HashMap path.
+    let dense = d
+        .nodes
+        .iter()
+        .enumerate()
+        .all(|(i, node)| dense_id_index(&node.id.0, b'n') == Some(i));
+    let index = if dense {
+        None
+    } else {
+        let mut index = HashMap::with_capacity(d.nodes.len());
+        for (i, node) in d.nodes.iter().enumerate() {
+            require_lazy(id_valid(&node.id.0), "invalid_id", || {
+                format!("nodes[{i}].id")
+            })?;
+            require_lazy(
+                index.insert(node.id.0.as_str(), i).is_none(),
+                "duplicate_id",
+                || format!("nodes[{i}].id"),
+            )?;
+        }
+        Some(index)
+    };
+    let resolve = |id: &NodeId| -> Result<usize, ModelError> {
+        if dense {
+            dense_id_index(&id.0, b'n')
+                .filter(|&i| i < d.nodes.len())
+                .ok_or_else(|| err("unknown_node", "tree"))
+        } else {
+            index
+                .as_ref()
+                .expect("hash index")
+                .get(id.0.as_str())
+                .copied()
+                .ok_or_else(|| err("unknown_node", "tree"))
+        }
+    };
     let mut caps = BTreeSet::new();
     let mut anchors = BTreeSet::new();
     let mut footnotes = BTreeSet::new();
     for (i, node) in d.nodes.iter().enumerate() {
         let path = || format!("nodes[{i}]");
-        require_lazy(id_valid(&node.id.0), "invalid_id", || {
-            format!("nodes[{i}].id")
-        })?;
-        require_lazy(
-            index.insert(node.id.0.as_str(), i).is_none(),
-            "duplicate_id",
-            || format!("nodes[{i}].id"),
-        )?;
+        if dense {
+            require_lazy(id_valid(&node.id.0), "invalid_id", || {
+                format!("nodes[{i}].id")
+            })?;
+        }
         require_lazy(span_valid(node.span, source), "invalid_span", || {
             format!("nodes[{i}].span")
         })?;
@@ -234,12 +331,6 @@ fn validate_parts(
         }
     }
     let mut parents = vec![0usize; d.nodes.len()];
-    let resolve = |id: &NodeId| {
-        index
-            .get(id.0.as_str())
-            .copied()
-            .ok_or_else(|| err("unknown_node", "tree"))
-    };
     let ordered = |ids: &[NodeId]| -> Result<(), ModelError> {
         let mut end = 0;
         for id in ids {
@@ -335,9 +426,11 @@ fn validate_parts(
             "metadata",
         )?;
         require(
-            d.roots
-                .first()
-                .is_none_or(|id| d.nodes[index[id.0.as_str()]].span.start >= span.end),
+            d.roots.first().is_none_or(|id| {
+                resolve(id)
+                    .map(|i| d.nodes[i].span.start >= span.end)
+                    .unwrap_or(false)
+            }),
             "front_matter_overlap",
             "metadata",
         )?;
@@ -385,7 +478,7 @@ fn validate_parts(
             diagnostic
                 .node
                 .as_ref()
-                .is_none_or(|id| index.contains_key(id.0.as_str())),
+                .is_none_or(|id| resolve(id).is_ok()),
             "unknown_node",
             || format!("diagnostics[{i}].node"),
         )?;
@@ -482,5 +575,112 @@ mod tests {
         .unwrap_err();
         assert_eq!(calls, 1);
         assert_eq!(error, err("example", "nodes[7]"));
+    }
+
+    #[test]
+    fn dense_ids_reject_leading_zeros_and_bad_prefixes() {
+        assert_eq!(dense_id_index("n0", b'n'), Some(0));
+        assert_eq!(dense_id_index("n12", b'n'), Some(12));
+        assert_eq!(dense_id_index("l3", b'l'), Some(3));
+        assert_eq!(dense_id_index("r0", b'r'), Some(0));
+        assert_eq!(dense_id_index("n01", b'n'), None);
+        assert_eq!(dense_id_index("n", b'n'), None);
+        assert_eq!(dense_id_index("x1", b'n'), None);
+        assert_eq!(dense_id_index("n1a", b'n'), None);
+    }
+
+    #[test]
+    fn digest_shape_requires_lowercase_hex() {
+        assert!(digest_shape(&"a".repeat(64)));
+        assert!(!digest_shape(&"A".repeat(64)));
+        assert!(!digest_shape(&"a".repeat(63)));
+        assert!(!digest_shape(&format!("{}g", "a".repeat(63))));
+    }
+
+    fn dense_paragraph(source: &str) -> DocumentInput {
+        DocumentInput {
+            model_version: MODEL_VERSION,
+            document_id: DocumentId("doc".into()),
+            revision_id: RevisionId("rev".into()),
+            source: SourceInfo::of(source),
+            capabilities: BTreeSet::new(),
+            roots: vec![NodeId("n0".into())],
+            nodes: vec![
+                Node {
+                    id: NodeId("n0".into()),
+                    span: SourceSpan {
+                        start: 0,
+                        end: source.len() as u64,
+                    },
+                    content: NodeKind::Paragraph {
+                        children: vec![NodeId("n1".into())],
+                    },
+                },
+                Node {
+                    id: NodeId("n1".into()),
+                    span: SourceSpan {
+                        start: 0,
+                        end: source.len() as u64,
+                    },
+                    content: NodeKind::Text {
+                        text: source.to_string(),
+                    },
+                },
+            ],
+            outline: Vec::new(),
+            metadata: Metadata::default(),
+            links: Vec::new(),
+            resources: Vec::new(),
+            diagnostics: Vec::new(),
+        }
+    }
+
+    #[test]
+    fn dense_path_rejects_out_of_range_child_ids() {
+        let source = "hi";
+        let mut input = dense_paragraph(source);
+        if let NodeKind::Paragraph { children } = &mut input.nodes[0].content {
+            children[0] = NodeId("n9".into());
+        }
+        assert_eq!(
+            Document::new(input, source, ModelLimits::default())
+                .unwrap_err()
+                .code,
+            "unknown_node"
+        );
+    }
+
+    #[test]
+    fn mixed_ids_use_hash_map_and_catch_duplicates() {
+        let source = "hi";
+        let mut input = dense_paragraph(source);
+        input.nodes[1].id = NodeId("text".into());
+        if let NodeKind::Paragraph { children } = &mut input.nodes[0].content {
+            children[0] = NodeId("text".into());
+        }
+        input.nodes.push(Node {
+            id: NodeId("text".into()),
+            span: SourceSpan { start: 0, end: 2 },
+            content: NodeKind::SoftBreak {},
+        });
+        assert_eq!(
+            Document::new(input, source, ModelLimits::default())
+                .unwrap_err()
+                .code,
+            "duplicate_id"
+        );
+    }
+
+    #[test]
+    fn from_parser_rejects_mismatched_source_length() {
+        let source = "hello";
+        let mut input = dense_paragraph(source);
+        input.source.bytes = 1;
+        assert_eq!(
+            Document::from_parser(input, source, ModelLimits::default())
+                .unwrap_err()
+                .code,
+            "source_mismatch"
+        );
     }
 }

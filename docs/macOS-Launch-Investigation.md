@@ -138,6 +138,33 @@ Because these dominant costs live in the shared Rust core and affect all three
 desktop hosts, they are tracked in follow-up task `CORE-007` (`MAC-003B ->
 CORE-007 -> MAC-003`). D-016 remains unwaived.
 
+## CORE-007 shared-core parse/encode optimization
+
+On the same host class (Apple M5 Max, macOS 27.2.x, Rust 1.99.1), Release
+`apps/macos/tools/measure.py launch --configuration release --runs 5
+--profile prose-5mib` after CORE-007:
+
+| Metric | MAC-003B post-fix median (ms) | CORE-007 median (ms) |
+| --- | ---: | ---: |
+| `core_parse_ms` | 186.61 | 103.63 |
+| `core_encode_ms` | 46.53 | 11.28 |
+| `core_total_ms` | 235.57 | 117.44 |
+| load `total_ms` | 237.73 | 119.58 |
+| `presented_ms` | 574.55 | 640.25 |
+
+Changes (semantic output and C ABI unchanged; untrusted `from_json` still
+recomputes SHA-256 and uses SipHash maps for non-dense IDs):
+
+1. Dense parser IDs (`n{i}` / `l{i}` / `r{i}`) resolve by index in validation
+   and flat-view encode, skipping SipHash `HashMap` traffic on the hot path.
+2. Parser validation trusts the builder's `SourceInfo` (length + hex shape);
+   only `Document::new` / `from_json` recompute the digest.
+3. `sha2` enables the `asm` feature only on `aarch64-apple-*` so Apple Silicon
+   uses hardware SHA-2; Windows/Linux keep the default sha2 path.
+
+`presented_ms` remains above 400 ms (D-016 unwaived); Launch Services /
+AppKit bring-up still dominate wall time once core load drops below ~120 ms.
+
 ## MAC-003C startup and presentation attribution
 
 On Apple M5 Max, macOS 27.2.1 (26B131), Xcode 27.2 (27B52) and Rust 1.99.1,
