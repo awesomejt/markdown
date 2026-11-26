@@ -192,9 +192,10 @@ evidence.
   420 MiB budget in `tests/content_budgets.rs`. See the
   [workspace-search memory guard](../specs/workspace-search/README.md#memory-guard-core-005c).
   Hosts that pass the 8 MiB maximum accept the reader's cost.
-- SHA-256 fingerprinting is duplicated between the builder and validation.
-  Removing the second pass would weaken independent validation, so it is left
-  as an optimization opportunity.
+- SHA-256 fingerprinting runs once in the builder. Parser validation trusts
+  that digest (length + hex shape only); untrusted `from_json` / `Document::new`
+  still recompute. Dense parser IDs (`n{i}`) skip SipHash node maps in
+  validation and flat-view encode (CORE-007).
 - The upstream block scan and final validation cannot be interrupted, so
   cancellation latency grows with document size (50 ms maximum at 5 MiB here).
 - Source-offset conflicts still drop the whole affected top-level block. A

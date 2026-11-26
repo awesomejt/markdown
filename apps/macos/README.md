@@ -736,7 +736,7 @@ artifact relocated, as described below. `--no-verify` skips that.
   `cargo metadata` unifies features across the workspace, so the list is a
   safe superset: a feature another member enables can add a package the
   app does not link, never drop one.
-  That is 43 packages: the two workspace crates and 41 from crates.io. Each
+  That is 44 packages: the two workspace crates and 42 from crates.io. Each
   crates.io package's own license files are copied in full; markdown-core
   adds the Unicode License V3 for its Unicode data. Each license must pass
   the repository's [dependency policy](../../docs/Dependencies.md), and a
@@ -1330,7 +1330,7 @@ Checked on 2026-10-31 on the same Mac (Apple M5 Max, macOS 27.0.1 build
 debug and release: 30 render, 11 document and 13 core tests, the debug
 bundle smoke from a copied folder, both real relaunch checks, the relocated
 release consumer and the release artifact verification. The artifact was
-1,115,214 bytes; its 43 inventoried packages (41 from crates.io) each had a
+1,115,214 bytes; its inventoried packages (crates.io plus workspace) each had a
 notice and license text. Extracted into a temporary folder outside the
 checkout, it linked only `/usr/lib` and `/System/Library` libraries
 (`libiconv`, `libresolv`, `libobjc`, `libSystem`, the Swift runtime and

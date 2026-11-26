@@ -148,13 +148,34 @@ impl Document {
         source: &str,
         limits: ModelLimits,
     ) -> Result<Self, ModelError> {
+        Self::build(input, source, limits, false)
+    }
+    /// Parser-produced input: skip recomputing the source SHA-256 the builder
+    /// already hashed. Untrusted `from_json` / `new` keep the full check.
+    pub(crate) fn from_parser(
+        input: DocumentInput,
+        source: &str,
+        limits: ModelLimits,
+    ) -> Result<Self, ModelError> {
+        Self::build(input, source, limits, true)
+    }
+    fn build(
+        input: DocumentInput,
+        source: &str,
+        limits: ModelLimits,
+        trusted: bool,
+    ) -> Result<Self, ModelError> {
         if input.model_version != MODEL_VERSION {
             return Err(error("model_version"));
         }
         let (structure, links, resources) = input.split();
         // Shares only the version-independent tree/source/metadata checks. This
         // unchecked structural DTO is never published as a validated v1 Document.
-        crate::validate::validate_structure(&structure, source, limits)?;
+        if trusted {
+            crate::validate::validate_structure_trusted(&structure, source, limits)?;
+        } else {
+            crate::validate::validate_structure(&structure, source, limits)?;
+        }
         validate_intents(&structure, &links, &resources, source, limits)?;
         Ok(Self {
             input: DocumentInput::from_structure(structure, links, resources),

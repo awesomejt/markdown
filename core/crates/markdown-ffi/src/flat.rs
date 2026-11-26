@@ -8,6 +8,28 @@ use markdown_core::session::{Snapshot, SnapshotModel};
 use markdown_core::*;
 use std::collections::HashMap;
 
+/// Parse a dense parser id (`n12` / `l3` / `r0`) into a table index.
+fn dense_id_index(id: &str, prefix: u8) -> Option<usize> {
+    let bytes = id.as_bytes();
+    if bytes.len() < 2 || bytes[0] != prefix {
+        return None;
+    }
+    let digits = &bytes[1..];
+    if digits[0] == b'0' {
+        return if digits.len() == 1 { Some(0) } else { None };
+    }
+    let mut value = 0usize;
+    for &digit in digits {
+        if !digit.is_ascii_digit() {
+            return None;
+        }
+        value = value
+            .checked_mul(10)?
+            .checked_add(usize::from(digit - b'0'))?;
+    }
+    Some(value)
+}
+
 pub(crate) struct Flat {
     model_version: u32,
     strings: Vec<u8>,
@@ -50,9 +72,13 @@ struct Parts<'a> {
 
 struct Builder<'a> {
     flat: Flat,
-    nodes: HashMap<&'a str, u32>,
-    links: HashMap<&'a str, u32>,
-    resources: HashMap<&'a str, u32>,
+    /// `None` when every node id is dense `n{i}` (parser output).
+    nodes: Option<HashMap<&'a str, u32>>,
+    node_count: usize,
+    links: Option<HashMap<&'a str, u32>>,
+    link_count: usize,
+    resources: Option<HashMap<&'a str, u32>>,
+    resource_count: usize,
 }
 
 impl<'a> Builder<'a> {
@@ -78,13 +104,78 @@ impl<'a> Builder<'a> {
         }
     }
     fn node(&self, id: &NodeId) -> Result<u32, md_status> {
+        if self.nodes.is_none() {
+            return dense_id_index(&id.0, b'n')
+                .filter(|&i| i < self.node_count)
+                .map(|i| i as u32)
+                .ok_or(MD_ERR_INTERNAL);
+        }
         self.nodes
-            .get(id.0.as_str())
-            .copied()
+            .as_ref()
+            .and_then(|map| map.get(id.0.as_str()).copied())
+            .ok_or(MD_ERR_INTERNAL)
+    }
+    fn link(&self, id: &str) -> Result<u32, md_status> {
+        if self.links.is_none() {
+            return dense_id_index(id, b'l')
+                .filter(|&i| i < self.link_count)
+                .map(|i| i as u32)
+                .ok_or(MD_ERR_INTERNAL);
+        }
+        self.links
+            .as_ref()
+            .and_then(|map| map.get(id).copied())
+            .ok_or(MD_ERR_INTERNAL)
+    }
+    fn resource(&self, id: &str) -> Result<u32, md_status> {
+        if self.resources.is_none() {
+            return dense_id_index(id, b'r')
+                .filter(|&i| i < self.resource_count)
+                .map(|i| i as u32)
+                .ok_or(MD_ERR_INTERNAL);
+        }
+        self.resources
+            .as_ref()
+            .and_then(|map| map.get(id).copied())
             .ok_or(MD_ERR_INTERNAL)
     }
     fn span(span: SourceSpan) -> Result<(u32, u32), md_status> {
         Ok((small(span.start)?, small(span.end)?))
+    }
+    fn begin_intents(
+        &mut self,
+        link_count: usize,
+        resource_count: usize,
+        dense_link: impl Fn(usize) -> bool,
+        dense_resource: impl Fn(usize) -> bool,
+    ) -> Result<(), md_status> {
+        small(link_count)?;
+        small(resource_count)?;
+        self.link_count = link_count;
+        self.resource_count = resource_count;
+        self.links = if (0..link_count).all(dense_link) {
+            None
+        } else {
+            Some(HashMap::with_capacity(link_count))
+        };
+        self.resources = if (0..resource_count).all(dense_resource) {
+            None
+        } else {
+            Some(HashMap::with_capacity(resource_count))
+        };
+        Ok(())
+    }
+    fn note_link(&mut self, id: &'a str, index: u32) -> Result<(), md_status> {
+        if let Some(map) = &mut self.links {
+            map.insert(id, index);
+        }
+        Ok(())
+    }
+    fn note_resource(&mut self, id: &'a str, index: u32) -> Result<(), md_status> {
+        if let Some(map) = &mut self.resources {
+            map.insert(id, index);
+        }
+        Ok(())
     }
 }
 
@@ -180,8 +271,14 @@ impl Flat {
                         diagnostics: &d.diagnostics,
                     },
                 )?;
+                b.begin_intents(
+                    d.links.len(),
+                    d.resources.len(),
+                    |i| dense_id_index(&d.links[i].id.0, b'l') == Some(i),
+                    |i| dense_id_index(&d.resources[i].id.0, b'r') == Some(i),
+                )?;
                 for (i, link) in d.links.iter().enumerate() {
-                    b.links.insert(&link.id.0, small(i)?);
+                    b.note_link(&link.id.0, small(i)?)?;
                     let intent =
                         b.v1_intent(&link.id.0, &link.destination, link.span, |b, intent| {
                             match &link.disposition {
@@ -205,7 +302,7 @@ impl Flat {
                     b.flat.links.push(intent);
                 }
                 for (i, resource) in d.resources.iter().enumerate() {
-                    b.resources.insert(&resource.id.0, small(i)?);
+                    b.note_resource(&resource.id.0, small(i)?)?;
                     let intent = b.v1_intent(
                         &resource.id.0,
                         &resource.destination,
@@ -244,14 +341,20 @@ impl Flat {
                         diagnostics: &d.diagnostics,
                     },
                 )?;
+                b.begin_intents(
+                    d.links.len(),
+                    d.resources.len(),
+                    |i| dense_id_index(&d.links[i].id.0, b'l') == Some(i),
+                    |i| dense_id_index(&d.resources[i].id.0, b'r') == Some(i),
+                )?;
                 for (i, link) in d.links.iter().enumerate() {
-                    b.links.insert(&link.id.0, small(i)?);
+                    b.note_link(&link.id.0, small(i)?)?;
                     let intent =
                         b.v2_intent(&link.id.0, &link.destination, &link.source, &link.target)?;
                     b.flat.links.push(intent);
                 }
                 for (i, resource) in d.resources.iter().enumerate() {
-                    b.resources.insert(&resource.id.0, small(i)?);
+                    b.note_resource(&resource.id.0, small(i)?)?;
                     let intent = b.v2_intent(
                         &resource.id.0,
                         &resource.destination,
@@ -320,6 +423,21 @@ impl Flat {
 impl<'a> Builder<'a> {
     fn start(model_version: u32, d: &Parts<'a>) -> Result<Self, md_status> {
         small(d.source.bytes)?;
+        small(d.nodes.len())?;
+        let dense_nodes = d
+            .nodes
+            .iter()
+            .enumerate()
+            .all(|(i, node)| dense_id_index(&node.id.0, b'n') == Some(i));
+        let nodes = if dense_nodes {
+            None
+        } else {
+            let mut nodes = HashMap::with_capacity(d.nodes.len());
+            for (i, node) in d.nodes.iter().enumerate() {
+                nodes.insert(node.id.0.as_str(), i as u32);
+            }
+            Some(nodes)
+        };
         let mut b = Builder {
             flat: Flat {
                 model_version,
@@ -342,14 +460,13 @@ impl<'a> Builder<'a> {
                 source_sha256: md_str::default(),
                 title: md_str::default(),
             },
-            nodes: HashMap::with_capacity(d.nodes.len()),
-            links: HashMap::new(),
-            resources: HashMap::new(),
+            nodes,
+            node_count: d.nodes.len(),
+            links: None,
+            link_count: 0,
+            resources: None,
+            resource_count: 0,
         };
-        small(d.nodes.len())?;
-        for (i, node) in d.nodes.iter().enumerate() {
-            b.nodes.insert(&node.id.0, i as u32);
-        }
         b.flat.document_id = b.string(&d.document_id.0)?;
         b.flat.revision_id = b.string(&d.revision_id.0)?;
         b.flat.source_sha256 = b.string(&d.source.sha256)?;
@@ -578,7 +695,7 @@ impl<'a> Builder<'a> {
                     record.text = self.string(text)?
                 }
                 NodeKind::Link { target, title, .. } => {
-                    record.aux = *self.links.get(target.0.as_str()).ok_or(MD_ERR_INTERNAL)?;
+                    record.aux = self.link(&target.0)?;
                     record.extra =
                         self.optional(title.as_deref(), MD_NODE_HAS_TITLE, &mut flags)?;
                 }
@@ -587,10 +704,7 @@ impl<'a> Builder<'a> {
                     alt,
                     title,
                 } => {
-                    record.aux = *self
-                        .resources
-                        .get(resource.0.as_str())
-                        .ok_or(MD_ERR_INTERNAL)?;
+                    record.aux = self.resource(&resource.0)?;
                     record.text = self.string(alt)?;
                     record.extra =
                         self.optional(title.as_deref(), MD_NODE_HAS_TITLE, &mut flags)?;

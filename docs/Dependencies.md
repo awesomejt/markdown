@@ -14,12 +14,14 @@ Choosing a project license does not change third-party licenses.
 | --- | --- | --- | --- |
 | bitflags | 2.13.2 | MIT OR Apache-2.0 | [crates.io](https://crates.io/crates/bitflags/2.13.2) |
 | block-buffer | 0.10.4 | MIT OR Apache-2.0 | [crates.io](https://crates.io/crates/block-buffer/0.10.4) |
+| cc | 1.11.3 | MIT OR Apache-2.0 | [crates.io](https://crates.io/crates/cc/1.11.3) |
 | cfg-if | 1.0.5 | MIT OR Apache-2.0 | [crates.io](https://crates.io/crates/cfg-if/1.0.5) |
 | cpufeatures | 0.2.17 | MIT OR Apache-2.0 | [crates.io](https://crates.io/crates/cpufeatures/0.2.17) |
 | crypto-common | 0.1.7 | MIT OR Apache-2.0 | [crates.io](https://crates.io/crates/crypto-common/0.1.7) |
 | digest | 0.10.7 | MIT OR Apache-2.0 | [crates.io](https://crates.io/crates/digest/0.10.7) |
 | displaydoc | 0.2.7 | MIT OR Apache-2.0 | [crates.io](https://crates.io/crates/displaydoc/0.2.7) |
 | dyn-clone | 1.0.20 | MIT OR Apache-2.0 | [crates.io](https://crates.io/crates/dyn-clone/1.0.20) |
+| find-msvc-tools | 0.1.15 | MIT OR Apache-2.0 | [crates.io](https://crates.io/crates/find-msvc-tools/0.1.15) |
 | form_urlencoded | 1.2.3 | MIT OR Apache-2.0 | [crates.io](https://crates.io/crates/form_urlencoded/1.2.3) |
 | generic-array | 0.14.7 | MIT | [crates.io](https://crates.io/crates/generic-array/0.14.7) |
 | icu_collections | 2.4.0 | Unicode-3.0 | [crates.io](https://crates.io/crates/icu_collections/2.4.0) |
@@ -53,6 +55,8 @@ Choosing a project license does not change third-party licenses.
 | serde_derive_internals | 0.29.1 | MIT OR Apache-2.0 | [crates.io](https://crates.io/crates/serde_derive_internals/0.29.1) |
 | serde_json | 1.0.145 | MIT OR Apache-2.0 | [crates.io](https://crates.io/crates/serde_json/1.0.145) |
 | sha2 | 0.10.9 | MIT OR Apache-2.0 | [crates.io](https://crates.io/crates/sha2/0.10.9) |
+| sha2-asm | 0.6.4 | MIT | [crates.io](https://crates.io/crates/sha2-asm/0.6.4) |
+| shlex | 2.0.1 | MIT OR Apache-2.0 | [crates.io](https://crates.io/crates/shlex/2.0.1) |
 | smallvec | 1.16.4 | MIT OR Apache-2.0 | [crates.io](https://crates.io/crates/smallvec/1.16.4) |
 | stable_deref_trait | 1.2.1 | MIT OR Apache-2.0 | [crates.io](https://crates.io/crates/stable_deref_trait/1.2.1) |
 | syn | 2.0.119 | MIT OR Apache-2.0 | [crates.io](https://crates.io/crates/syn/2.0.119) |
@@ -114,6 +118,15 @@ it is disabled in the default library build but included in CI/metadata policy
 checks. The table is the full resolved all-feature graph, not a claim that every
 optional/target-specific package ships in each app.
 
+CORE-007 enables sha2's `asm` feature so Apple Silicon uses hardware SHA-2
+(and x86_64 uses sha2-asm). That pulls in runtime `sha2-asm` 0.6.4 (MIT) plus
+its build-only `cc` / `find-msvc-tools` / `shlex` crates. `markdown-core` is
+unpublished app code, so the crates.io warning against libraries enabling
+`asm` does not apply. Parser validation also skips a second SHA-256 pass on
+trusted builder output and resolves dense `n{i}` / `l{i}` / `r{i}` IDs without
+SipHash; untrusted `from_json` still recomputes the digest and uses the HashMap
+path for non-dense IDs.
+
 The policy checks all resolved/transitive package licenses and origins, rejects
 publishable workspace members, members outside core/, and spike dependencies.
 Workspace packages must be local; non-workspace packages must use canonical
@@ -143,7 +156,7 @@ This adds no Cargo package and does not alter the reviewed dependency graph.
 
 The macOS app links the core statically, so its runtime graph is the
 normal-dependency closure of `markdown-ffi` with `model-v2` for
-`aarch64-apple-darwin`: 43 of the packages above. `apps/macos/tools/licenses.py`
+`aarch64-apple-darwin`: 44 of the packages above. `apps/macos/tools/licenses.py`
 computes it from `cargo metadata` at build time and writes it, with every
 package's license files, into each bundle's `Contents/Resources/Licenses/`
 ([details](../apps/macos/README.md#development-artifact-and-licenses-mac-001i)).
@@ -157,19 +170,20 @@ Linked: bitflags, block-buffer, cfg-if, cpufeatures, crypto-common, digest,
 form_urlencoded, generic-array, the seven icu_* packages, idna, idna_adapter,
 itoa, libc, litemap, markdown-core, markdown-ffi, memchr, percent-encoding,
 potential_utf, pulldown-cmark, ryu, serde, serde_core, serde_json, sha2,
-smallvec, stable_deref_trait, tinystr, typenum, unicase, url, utf8_iter,
-writeable, yoke, zerofrom, zerotrie and zerovec, at the versions in the table.
+sha2-asm, smallvec, stable_deref_trait, tinystr, typenum, unicase, url,
+utf8_iter, writeable, yoke, zerofrom, zerotrie and zerovec, at the versions
+in the table.
 
-Not linked (compile-time or optional only): displaydoc, dyn-clone,
-proc-macro2, quote, ref-cast, ref-cast-impl, schemars, schemars_derive,
-serde_derive, serde_derive_internals, both syn versions, synstructure,
-unicode-ident, version_check, yoke-derive, zerofrom-derive and
-zerovec-derive. unicode-ident's Unicode notice is therefore not needed in
-the app; the ICU packages' Unicode License V3 texts are bundled, as is
-`licenses/Unicode-3.0.txt` for markdown-core's Unicode data. The Swift
-runtime and Apple frameworks are part of macOS and are not redistributed;
-the app has no Swift package dependencies. This is a development
-inventory, not a distribution approval.
+Not linked (compile-time or optional only): cc, displaydoc, dyn-clone,
+find-msvc-tools, proc-macro2, quote, ref-cast, ref-cast-impl, schemars,
+schemars_derive, serde_derive, serde_derive_internals, shlex, both syn
+versions, synstructure, unicode-ident, version_check, yoke-derive,
+zerofrom-derive and zerovec-derive. unicode-ident's Unicode notice is
+therefore not needed in the app; the ICU packages' Unicode License V3 texts
+are bundled, as is `licenses/Unicode-3.0.txt` for markdown-core's Unicode
+data. The Swift runtime and Apple frameworks are part of macOS and are not
+redistributed; the app has no Swift package dependencies. This is a
+development inventory, not a distribution approval.
 
 ## Linux app graph (LNX-001A)
 
@@ -237,7 +251,7 @@ Signing, release publishing and production deployment still need owner approval.
 ## Windows app runtime inventory (WIN-001I)
 
 The Windows app links markdown_ffi.dll dynamically, built from the normal-dependency
-closure of markdown-ffi with model-v2 for x86_64-pc-windows-msvc: 42 of the Rust
+closure of markdown-ffi with model-v2 for x86_64-pc-windows-msvc: 43 of the Rust
 packages above (excluding the Unix-only libc). In addition, the self-contained Native AOT
 publish bundles the locked NuGet platform graph (19 packages).
 
@@ -249,9 +263,9 @@ and inventory.json) inside the published app and local development artifact
 Rust packages linked: bitflags, block-buffer, cfg-if, cpufeatures, crypto-common,
 digest, form_urlencoded, generic-array, the seven icu_* packages, idna,
 idna_adapter, itoa, litemap, markdown-core, markdown-ffi, memchr, percent-encoding,
-potential_utf, pulldown-cmark, ryu, serde, serde_core, serde_json, sha2, smallvec,
-stable_deref_trait, tinystr, typenum, unicase, url, utf8_iter, writeable, yoke,
-zerofrom, zerotrie, zerovec.
+potential_utf, pulldown-cmark, ryu, serde, serde_core, serde_json, sha2, sha2-asm,
+smallvec, stable_deref_trait, tinystr, typenum, unicase, url, utf8_iter, writeable,
+yoke, zerofrom, zerotrie, zerovec.
 
 ## Windows shell NuGet graph
 

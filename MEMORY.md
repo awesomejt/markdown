@@ -9,11 +9,11 @@ read.
 ## Current posture
 
 - DESK-002 requires MAC-003, WIN-003 and LNX-003 for unwaived release evidence
-  and budget gaps. MAC-003A–D closed on Mac through PR #101: load/startup
-  attribution plus deferred Files/Search/Find chrome (~75–80 ms window init;
-  LS prose 1 MiB presented median ~539 ms, D-016 still unwaived). Next on Mac:
-  CORE-007 (shared 5 MiB parse/encode) then MAC-003 aggregate / cold-manual
-  evidence. Split remaining aggregates into reviewable work.
+  and budget gaps. MAC-003A–D closed on Mac through PR #101. CORE-007 is in
+  progress: 5 MiB `core_parse_ms` 103.63 / `core_encode_ms` 11.28 (was
+  186.61 / 46.53) via dense ID resolution, trusted fingerprint skip, and
+  sha2 asm; D-016 unwaived. Next after CORE-007: MAC-003 aggregate /
+  cold-manual evidence. Split remaining aggregates into reviewable work.
 - MAC-002 functional aggregate (PR #96) is complete under owner decision
   D-037. Native/common checks passed; Grok follow-up at `100dc94` was clean.
   Warm launch misses, cold launch and manual checks remain open for DESK-002.
@@ -290,7 +290,7 @@ read.
   verifies it extracted outside the checkout, launched directly and through
   Launch Services. `open -a` registers the temporary copy, so unregister it
   with `lsregister -u`. Every bundle carries `Resources/Licenses` from
-  `licenses.py` (43 linked packages, a safe superset). The core builds with
+  `licenses.py` (44 linked packages after CORE-007, a safe superset). The core builds with
   `--remap-path-prefix` for the checkout and CARGO_HOME. Skeleton
   acceptance: [docs/macOS-Skeleton-Acceptance.md](docs/macOS-Skeleton-Acceptance.md).
 - MAC-001 aggregate (PR #48) closed on that page with fresh native checks at

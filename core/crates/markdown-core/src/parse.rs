@@ -279,7 +279,8 @@ fn build<'a, C: Checkpoint>(
         },
     };
     // Reject invalid caller identities before the parser allocates its internal tree.
-    Document::new(b.doc.clone(), source, limits.model).map_err(ParseError::Model)?;
+    // from_parser: SourceInfo was just set above; skip a second SHA-256 of `source`.
+    Document::from_parser(b.doc.clone(), source, limits.model).map_err(ParseError::Model)?;
     let offset = front_matter_end(source).unwrap_or(0);
     if offset > 0 {
         b.doc.metadata.front_matter_span = Some(span(0..offset));
@@ -567,7 +568,7 @@ fn finish_v1(
         .filter(|d| d.node.is_none() && d.span == metadata.front_matter_span)
         .cloned()
         .collect();
-    match Document::new(doc, source, limits.model) {
+    match Document::from_parser(doc, source, limits.model) {
         Err(error) if matches!(error.code, "child_span" | "sibling_order") => {
             let body_span = span(offset..source.len());
             let id = NodeId("n0".into());
@@ -581,7 +582,7 @@ fn finish_v1(
                 message: "Container source offsets cannot be represented; the body is preserved as inert source.".into(),
                 span: Some(body_span), node: Some(id.clone()),
             });
-            Document::new(
+            Document::from_parser(
                 DocumentInput {
                     model_version: MODEL_VERSION,
                     document_id: identity.0,
@@ -1889,7 +1890,7 @@ fn finish_v2(
         })
         .cloned()
         .collect();
-    match v2::Document::new(
+    match v2::Document::from_parser(
         v2::DocumentInput::from_structure(b.doc, links, resources),
         source,
         limits.model,
@@ -1927,7 +1928,7 @@ fn finish_v2(
                 resources: Vec::new(),
                 diagnostics,
             };
-            v2::Document::new(
+            v2::Document::from_parser(
                 v2::DocumentInput::from_structure(d, Vec::new(), Vec::new()),
                 source,
                 limits.model,
