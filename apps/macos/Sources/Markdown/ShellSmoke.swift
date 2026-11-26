@@ -112,9 +112,15 @@ enum ShellSmoke {
     guard let item = NSApp.mainMenu?.item(withTitle: menu)?.submenu?.item(withTitle: title) else {
       throw Failure(description: "missing menu item \(menu)/\(title)")
     }
-    try check(
-      item.keyEquivalent == key && item.keyEquivalentModifierMask == .command,
-      "shortcut for \(title)")
+    // AppKit's Window menu can clear the Command mask on items with an empty
+    // key equivalent after window churn; only require Command when a key is set.
+    if key.isEmpty {
+      try check(item.keyEquivalent.isEmpty, "shortcut for \(title)")
+    } else {
+      try check(
+        item.keyEquivalent == key && item.keyEquivalentModifierMask == .command,
+        "shortcut for \(title)")
+    }
     guard item.action != nil else { throw Failure(description: "missing action for \(title)") }
     return item
   }

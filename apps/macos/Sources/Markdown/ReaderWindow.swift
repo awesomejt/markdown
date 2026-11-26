@@ -69,6 +69,13 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
   /// text is installed and when the whole document is shown (MAC-001G).
   var onMilestone: ((Milestone) -> Void)?
   enum Milestone { case loaded, installed, completed }
+  /// Stage timings for the most recent load→first-install path (MAC-003C).
+  private(set) var lastPresentationTimings: PresentationTimings?
+  /// Wall clock for the in-flight render that owns `renderRequest`.
+  private var presentationLoadedAt: ContinuousClock.Instant?
+  private var presentationScheduleMs: Double = 0
+  private var presentationRenderMs: Double = 0
+  private var presentationFirstInstallRecorded = false
 
   // MARK: Folder grants and recovery (MAC-002A)
 
@@ -346,22 +353,46 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
     let capability = loaded.capability
     let scale = preferences.textScale
     renderPlacement = placement
-    var lead: (@Sendable (RenderedDocument) -> Void)?
+    let loadedAt = ContinuousClock.now
+    presentationLoadedAt = loadedAt
+    presentationScheduleMs = 0
+    presentationRenderMs = 0
+    presentationFirstInstallRecorded = false
     var saved: SavedPosition?
+    let wantsLead: Bool
     switch placement {
-    case .top:
-      lead = { @Sendable [weak self] partial in
-        Task { @MainActor in self?.installLead(partial, id: id, loaded) }
-      }
-    case .restore(let position): saved = position
-    case .restyle, .keep, .transfer, .target: break
+    case .top: wantsLead = true
+    case .restore(let position):
+      saved = position
+      wantsLead = false
+    case .restyle, .keep, .transfer, .target: wantsLead = false
     }
+    let stages = PresentationStageBox()
+    let lead: (@Sendable (RenderedDocument) -> Void)? =
+      wantsLead
+      ? { @Sendable [weak self] partial in
+        let renderSoFar = stages.renderMillisecondsSoFar()
+        Task { @MainActor in
+          guard let self, id == self.renderRequest else { return }
+          self.presentationScheduleMs = stages.scheduleMilliseconds
+          self.presentationRenderMs = renderSoFar
+          self.installLead(partial, id: id, loaded)
+        }
+      } : nil
     let work = Task.detached(priority: .userInitiated) { [lead, saved] in
+      let scheduled = ContinuousClock.now
+      stages.scheduleMilliseconds = PresentationStageBox.milliseconds(
+        loadedAt.duration(to: scheduled))
       // Resolving the folder touches the filesystem, so it stays off the main thread.
       let images = Self.imageLoader(DocumentResources(document: capability))
+      stages.beginRender()
       let rendered = try DocumentRenderer.render(
         document, images: images, scale: scale, lead: lead)
-      return (rendered, saved.flatMap { rendered.restore($0) })
+      let renderMs = stages.finishRender()
+      return (
+        rendered, saved.flatMap { rendered.restore($0) },
+        stages.scheduleMilliseconds, renderMs
+      )
     }
     renderTask = Task { [weak self] in
       // Cancelling the window's task (a newer state, or close) stops the render.
@@ -373,37 +404,62 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
       guard let self, id == self.renderRequest else { return }
       let title = document.title ?? capability.displayName
       switch (result, placement) {
-      case (.success((let rendered, _)), .restyle):
+      case (.success((let rendered, _, let scheduleMs, let renderMs)), .restyle):
+        self.presentationScheduleMs = scheduleMs
+        self.presentationRenderMs = renderMs
         self.surface.restyle(rendered)
-      case (.success((let rendered, _)), .keep(let position)):
-        self.install(rendered, title: title, loaded, at: position)
-      case (.success((let rendered, let restored)), .restore):
-        self.install(rendered, title: title, loaded, at: restored)
-      case (.success((let rendered, _)), .target(let target)):
-        self.install(rendered, title: title, loaded)
+      case (.success((let rendered, _, let scheduleMs, let renderMs)), .keep(let position)):
+        self.presentationScheduleMs = scheduleMs
+        self.presentationRenderMs = renderMs
+        _ = self.install(rendered, title: title, loaded, at: position)
+      case (.success((let rendered, let restored, let scheduleMs, let renderMs)), .restore):
+        self.presentationScheduleMs = scheduleMs
+        self.presentationRenderMs = renderMs
+        _ = self.install(rendered, title: title, loaded, at: restored)
+      case (.success((let rendered, _, let scheduleMs, let renderMs)), .target(let target)):
+        self.presentationScheduleMs = scheduleMs
+        self.presentationRenderMs = renderMs
+        _ = self.install(rendered, title: title, loaded)
         self.show(target)
-      case (.success((let rendered, _)), .transfer):
+      case (.success((let rendered, _, let scheduleMs, let renderMs)), .transfer):
         // Anchor the reader's place as it is now; the core calls run off
         // the main thread, and a newer state still wins.
+        self.presentationScheduleMs = scheduleMs
+        self.presentationRenderMs = renderMs
         let shown = self.surface.document
         let position = self.surface.readingPosition
         let moved = await Task.detached {
           shown.flatMap { try? rendered.restore($0.save(position)) }
         }.value
         guard id == self.renderRequest else { return }
-        self.install(rendered, title: title, loaded, at: moved)
-      case (.success((let rendered, _)), .top)
+        _ = self.install(rendered, title: title, loaded, at: moved)
+      case (.success((let rendered, _, let scheduleMs, let renderMs)), .top)
       where self.surface.document?.isComplete == false
         && self.surface.document?.generation == rendered.generation:
-        self.completeLead(rendered)
-      case (.success((let rendered, _)), .top):
-        self.install(rendered, title: title, loaded)
+        self.presentationScheduleMs = scheduleMs
+        self.presentationRenderMs = renderMs
+        _ = self.completeLead(rendered)
+      case (.success((let rendered, _, let scheduleMs, let renderMs)), .top):
+        self.presentationScheduleMs = scheduleMs
+        self.presentationRenderMs = renderMs
+        _ = self.install(rendered, title: title, loaded)
       case (.failure, _):
         let error = DocumentError.parseFailed
         self.showStatus(error.message, error.recovery, title: capability.displayName, url: nil)
       }
       self.renderTask = nil
     }
+  }
+
+  /// Record the first install for this render request (lead or full).
+  private func noteFirstInstall(install: Duration) {
+    guard !presentationFirstInstallRecorded, let loadedAt = presentationLoadedAt else { return }
+    presentationFirstInstallRecorded = true
+    lastPresentationTimings = PresentationTimings(
+      scheduleMilliseconds: presentationScheduleMs,
+      renderMilliseconds: presentationRenderMs,
+      installMilliseconds: PresentationStageBox.milliseconds(install),
+      totalMilliseconds: PresentationStageBox.milliseconds(loadedAt.duration(to: .now)))
   }
 
   /// Images are read only from the document's folder (MAC-001E).
@@ -428,11 +484,13 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
   /// arrives after its render finished, or was replaced, is dropped.
   private func installLead(_ lead: RenderedDocument, id: UInt64, _ loaded: LoadedDocument) {
     guard id == renderRequest, renderTask != nil else { return }
-    install(lead, title: loaded.document.title ?? loaded.capability.displayName, loaded)
+    _ = install(lead, title: loaded.document.title ?? loaded.capability.displayName, loaded)
   }
 
   /// Append the rest of the document to its lead, keeping the reader's place.
-  private func completeLead(_ rendered: RenderedDocument) {
+  @discardableResult
+  private func completeLead(_ rendered: RenderedDocument) -> Duration {
+    let started = ContinuousClock.now
     let row = outline.table.selectedRow
     surface.complete(rendered)
     outline.show(rendered.headings)
@@ -444,13 +502,16 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
     // A search started while the lead was shown runs now.
     if !findBar.isHidden { search(then: pendingStep) }
     onMilestone?(.completed)
+    return started.duration(to: .now)
   }
 
   /// Show a rendering at the top, or at `position` when there is one.
+  @discardableResult
   private func install(
     _ rendered: RenderedDocument, title: String, _ loaded: LoadedDocument,
     at position: ReadingPosition? = nil
-  ) {
+  ) -> Duration {
+    let started = ContinuousClock.now
     documentTitle = title
     shownCapability = loaded.capability
     if let position { surface.show(rendered, at: position) } else { surface.show(rendered) }
@@ -467,9 +528,12 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
     findMatches = nil
     findKey = nil
     if !findBar.isHidden { search(then: nil) }
+    let install = started.duration(to: .now)
+    noteFirstInstall(install: install)
     onMilestone?(.installed)
     if rendered.isComplete { onMilestone?(.completed) }
     invalidateReadingPosition()
+    return install
   }
 
   /// Re-render the presented document at the current text size, keeping the

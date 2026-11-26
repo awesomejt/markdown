@@ -509,9 +509,14 @@ CORE-006 no longer carry. The three host chains are independent.
   `HashMap<&str, u32>` lookups, and unaccelerated SHA-256 hashing) without
   weakening untrusted `from_json` validation or changing the C ABI / semantic
   output.
-- **MAC-003C — Attribute macOS startup and presentation time.** Profile startup
-  and loaded-to-presented work for both 1 MiB profiles, then fix or materialize
-  the actionable costs.
+- **MAC-003C — Attribute macOS startup and presentation time.** Done: stage
+  timers for startup and load→install presentation, synchronous `openAtLaunch`
+  so loading overlaps launch, and evidence in
+  [macOS-Launch-Investigation.md](docs/macOS-Launch-Investigation.md).
+  Window construction (~130 ms) is tracked as MAC-003D.
+- **MAC-003D — Reduce macOS ReaderWindow construction cost at launch.** Defer
+  or slim sidebar/search/find construction so `makeWindow` / `openAtLaunch` is
+  not ~130 ms on the warm launch path before first text.
 - **WIN-003A / LNX-003A — Investigate native performance gaps.** On each
   named host reproduce and profile the recorded misses and materialize focused
   follow-up phases before the respective platform aggregate.
@@ -724,7 +729,7 @@ MAC-001 + LNX-001 + WIN-001 -> DESK-001
 DESK-001 -> HARD-001
 DESK-001 -> each host 002A -> ... -> 002F -> platform 002 aggregate
   (002B also needs CORE-005D; 002C also needs CORE-005B, CORE-005B2, CORE-005C)
-MAC-003A -> MAC-003B -> CORE-007 -> MAC-003; MAC-003A -> MAC-003C -> MAC-003
+MAC-003A -> MAC-003B -> CORE-007 -> MAC-003; MAC-003A -> MAC-003C -> MAC-003D -> MAC-003
 WIN-003A -> WIN-003; LNX-003A -> LNX-003
 MAC-003 + WIN-003 + LNX-003 -> DESK-002
 HARD-001 + all platform 002 aggregates -> DESK-002 -> DESK-003

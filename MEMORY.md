@@ -10,10 +10,10 @@ read.
 
 - DESK-002 requires MAC-003, WIN-003 and LNX-003 for unwaived release evidence
   and budget gaps. MAC-003A measured launch misses; MAC-003B (PR #99) attributed
-  5 MiB load stages, fixed `Task.detached` scheduling, pinned `url` 2.5.9 for
-  RUSTSEC-2026-0592, and materialized CORE-007 for the dominant shared Rust
-  parse/encode cost. Next on Mac: MAC-003C (startup/presentation) and/or
-  CORE-007 (shared core). Split remaining aggregates into reviewable work.
+  5 MiB load stages and materialized CORE-007; MAC-003C (PR #100) attributed
+  startup/presentation, opened launch documents synchronously, and materialized
+  MAC-003D for ~130 ms `ReaderWindow` construction. Next on Mac: MAC-003D
+  and/or CORE-007. Split remaining aggregates into reviewable work.
 - MAC-002 functional aggregate (PR #96) is complete under owner decision
   D-037. Native/common checks passed; Grok follow-up at `100dc94` was clean.
   Warm launch misses, cold launch and manual checks remain open for DESK-002.

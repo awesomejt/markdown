@@ -93,6 +93,16 @@ def main():
                 summary["load_stages_ms"] = {
                     key: spread([row["load_ms"][key] for row in rows]) for key in keys
                 }
+            if all("startup_ms" in row for row in rows):
+                keys = sorted(rows[0]["startup_ms"].keys())
+                summary["startup_stages_ms"] = {
+                    key: spread([row["startup_ms"][key] for row in rows]) for key in keys
+                }
+            if all("presentation_ms" in row for row in rows):
+                keys = sorted(rows[0]["presentation_ms"].keys())
+                summary["presentation_stages_ms"] = {
+                    key: spread([row["presentation_ms"][key] for row in rows]) for key in keys
+                }
             print(json.dumps(summary))
         elif args.mode == "repeated":
             rows = direct(bundle, f"repeated={args.count}", document, 60 + 10 * args.count)
