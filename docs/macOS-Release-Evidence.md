@@ -15,13 +15,14 @@ work is split into focused delivery phases.
 | MAC-003C | Startup and presentation attribution | Done (PR #100) |
 | MAC-003D | ReaderWindow construction reduction | Done (PR #101) |
 | CORE-007 | Shared core 5 MiB parse/encode | Done (PR #102) |
-| **MAC-003E** | **Cold Launch Services measurement (D-016 700 ms)** | **Next** |
-| **MAC-003F** | **Owner manual release checklist** | Pending |
+| **MAC-003E** | **Cold Launch Services measurement (D-016 700 ms)** | **Next (parallel with F)** |
+| **MAC-003F** | **Owner manual release checklist** | **Next (parallel with E)** |
 | **MAC-003G** | **Residual warm/D-016 and display disposition** | Pending |
 | MAC-003 | Aggregate closeout when E–G clear or owner-decided | Waiting on E–G |
 
-Chain: `MAC-003E → MAC-003F → MAC-003G → MAC-003`. Existing edges
-`CORE-007 → MAC-003` and `MAC-003D → MAC-003` remain. Detail for A–D and
+Join: `MAC-003E → MAC-003G`, `MAC-003F → MAC-003G → MAC-003`. Cold measure and
+manual checklist do not depend on each other (both are owner-gated). Existing
+edges `CORE-007 → MAC-003` and `MAC-003D → MAC-003` remain. Detail for A–D and
 CORE-007 lives in [macOS-Launch-Investigation.md](macOS-Launch-Investigation.md).
 
 ## Gap register (from MAC-002 / D-037 / open budgets)
@@ -78,9 +79,19 @@ Selected stage medians (prose-5mib): `process_to_main_ms` 251.78,
 Cold launch was not run: `sudo purge` requires an interactive administrator
 password in this environment.
 
-Run-to-run and session-to-session Launch Services variance is large relative
-to the 400 ms budget; compare trends with stage timers, not single medians
-alone.
+### Reconciliation with prior warm medians
+
+Prior prose-1mib Launch Services `presented_ms` medians on this Mac class are
+not a single series: MAC-003B post-fix reported ~373 ms under macOS 27.0.1 /
+Xcode 27.1; MAC-003D after window-construction work reported 538.76 ms; this
+pass reports 582.53 ms under **macOS 27.2.1 / Xcode 27.2**. CORE-007 and
+MAC-003D reduced attributed load and window-construction cost; they did not
+remove dyld/Launch Services or AppKit bring-up, which still dominate wall
+time. Session-to-session LS variance and the OS/Xcode bump can move medians
+by tens of milliseconds without a product regression. **MAC-003G should
+rebaseline with several warm sessions on the same OS/Xcode before an owner
+D-016 decision**, and prefer stage timers (`process_to_main_ms`, load
+`total_ms`, presentation `total_ms`) over single-session medians alone.
 
 ## MAC-003E — Owner cold-launch procedure
 
