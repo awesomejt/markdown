@@ -1,10 +1,26 @@
 import Foundation
 import MarkdownCore
 
+/// Stage-level attribution for one completed document load (MAC-003B).
+public struct DocumentLoadTimings: Sendable, Equatable {
+  /// Wall-clock start of the load request, for correlating with process start.
+  public let startedAt: Date
+  /// Delay from `start` on the main actor to the background load beginning.
+  public let taskStartMilliseconds: Double
+  public let read: DocumentReadTimings
+  public let coreTotalMilliseconds: Double
+  public let core: CoreTimings
+  /// Delay from background load completion to `finish` running on the main actor.
+  public let publishHopMilliseconds: Double
+  /// End-to-end wall time from `start` to `finish` on the main actor.
+  public let totalMilliseconds: Double
+}
+
 public struct LoadedDocument: Sendable {
   public let capability: DocumentCapability
   public let document: CoreDocument
   public let revisionToken: String
+  public let timings: DocumentLoadTimings
 }
 
 /// One window's document. Every open/reload takes a new request number; only
@@ -218,22 +234,39 @@ public final class DocumentLoader {
     }
     if !refresh { state = .loading(capability) }
     let previous = lastRead
-    task = Task { [weak self] in
+    let startedAt = Date()
+    let startedClock = ContinuousClock.now
+    // Start off the main actor so background file I/O and core parsing do not
+    // wait for launch/window setup to yield the main thread (MAC-003B).
+    task = Task.detached(priority: .userInitiated) { [weak self] in
       let outcome = await Self.load(
-        capability, session: session, previous: previous, copyUnchanged: !refresh)
-      self?.finish(id, capability, outcome)
+        capability, session: session, previous: previous, copyUnchanged: !refresh,
+        startedClock: startedClock)
+      await self?.finish(id, capability, outcome, startedAt: startedAt, startedClock: startedClock)
     }
   }
 
+  private struct LoadStageMetrics: Sendable {
+    let taskStartMilliseconds: Double
+    let read: DocumentReadTimings
+    let coreTotalMilliseconds: Double
+    let core: CoreTimings
+    let backgroundFinishedAt: ContinuousClock.Instant
+  }
+
   private enum Outcome: Sendable {
-    case document(CoreDocument, DocumentBytes)
+    case document(CoreDocument, DocumentBytes, LoadStageMetrics)
     /// A refresh read the bytes already published.
-    case unchanged(DocumentBytes)
+    case unchanged(DocumentBytes, LoadStageMetrics)
     case failure(DocumentError)
     case discarded
   }
 
-  private func finish(_ id: UInt64, _ capability: DocumentCapability, _ outcome: Outcome) {
+  private func finish(
+    _ id: UInt64, _ capability: DocumentCapability, _ outcome: Outcome,
+    startedAt: Date, startedClock: ContinuousClock.Instant
+  ) {
+    let finishClock = ContinuousClock.now
     guard id == request else {
       discardedResults += 1
       return
@@ -243,19 +276,31 @@ public final class DocumentLoader {
     refreshing = false
     let kept = keptOnFailure
     keptOnFailure = nil
+    func makeTimings(_ metrics: LoadStageMetrics) -> DocumentLoadTimings {
+      DocumentLoadTimings(
+        startedAt: startedAt,
+        taskStartMilliseconds: metrics.taskStartMilliseconds,
+        read: metrics.read,
+        coreTotalMilliseconds: metrics.coreTotalMilliseconds,
+        core: metrics.core,
+        publishHopMilliseconds: Self.milliseconds(metrics.backgroundFinishedAt, finishClock),
+        totalMilliseconds: Self.milliseconds(startedClock, finishClock))
+    }
     switch outcome {
-    case .document(let document, let bytes):
+    case .document(let document, let bytes, let metrics):
       lastRead = (bytes.device, bytes.volume)
       state = .loaded(
         LoadedDocument(
-          capability: capability, document: document, revisionToken: bytes.revisionToken))
-    case .unchanged(let bytes):
+          capability: capability, document: document, revisionToken: bytes.revisionToken,
+          timings: makeTimings(metrics)))
+    case .unchanged(let bytes, let metrics):
       lastRead = (bytes.device, bytes.volume)
       // The session has its availability back; so does a stale document.
       if let shown = document {
         state = .loaded(
           LoadedDocument(
-            capability: capability, document: shown.document, revisionToken: bytes.revisionToken))
+            capability: capability, document: shown.document, revisionToken: bytes.revisionToken,
+            timings: makeTimings(metrics)))
       }
     case .failure(var error):
       // Permission lost after a successful read is a revoked grant.
@@ -288,17 +333,27 @@ public final class DocumentLoader {
 
   private nonisolated static func load(
     _ capability: DocumentCapability, session: CoreSession,
-    previous: (device: dev_t, volume: URL?)?, copyUnchanged: Bool
+    previous: (device: dev_t, volume: URL?)?, copyUnchanged: Bool,
+    startedClock: ContinuousClock.Instant
   ) async -> Outcome {
+    let taskStartMs = milliseconds(startedClock, .now)
     do {
       let bytes = try await DocumentReader.read(capability, limit: CoreRuntime.maxSourceBytes)
+      let coreStart = ContinuousClock.now
       let result = try await parse(bytes, session: session, copyUnchanged: copyUnchanged)
+      let coreEnd = ContinuousClock.now
+      let metrics = LoadStageMetrics(
+        taskStartMilliseconds: taskStartMs,
+        read: bytes.timings,
+        coreTotalMilliseconds: milliseconds(coreStart, coreEnd),
+        core: result.timings,
+        backgroundFinishedAt: coreEnd)
       switch result.outcome {
       case .unchanged where !copyUnchanged:
-        return .unchanged(bytes)
+        return .unchanged(bytes, metrics)
       case .published, .unchanged:
         guard let document = result.document else { return .failure(.parseFailed) }
-        return .document(document, bytes)
+        return .document(document, bytes, metrics)
       case .superseded, .cancelled, .closed:
         return .discarded
       case .failed:
@@ -341,5 +396,12 @@ public final class DocumentLoader {
         try await Task.sleep(for: .milliseconds(20))
       }
     }
+  }
+
+  private nonisolated static func milliseconds(
+    _ a: ContinuousClock.Instant, _ b: ContinuousClock.Instant
+  ) -> Double {
+    let parts = a.duration(to: b).components
+    return Double(parts.seconds) * 1000 + Double(parts.attoseconds) / 1e15
   }
 }

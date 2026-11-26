@@ -501,6 +501,13 @@ CORE-006 no longer carry. The three host chains are independent.
   focused follow-up delivery tasks. This precedes MAC-003.
 - **MAC-003B — Attribute macOS document loading time.** Instrument and profile
   the 5 MiB load stages, then fix or materialize the dominant actionable cost.
+- **CORE-007 — Optimize shared core 5 MiB parse and flat-view encoding.**
+  Follow-up materialized by MAC-003B (blocks MAC-003). Reduce the dominant
+  shared Rust core costs measured on 5 MiB prose (`validate_parts` SipHash
+  node-ID lookups in `v2::Document::new`, `md_snapshot_get_view`
+  `HashMap<&str, u32>` lookups, and unaccelerated SHA-256 hashing) without
+  weakening untrusted `from_json` validation or changing the C ABI / semantic
+  output.
 - **MAC-003C — Attribute macOS startup and presentation time.** Profile startup
   and loaded-to-presented work for both 1 MiB profiles, then fix or materialize
   the actionable costs.
@@ -716,7 +723,7 @@ MAC-001 + LNX-001 + WIN-001 -> DESK-001
 DESK-001 -> HARD-001
 DESK-001 -> each host 002A -> ... -> 002F -> platform 002 aggregate
   (002B also needs CORE-005D; 002C also needs CORE-005B, CORE-005B2, CORE-005C)
-MAC-003A -> MAC-003B and MAC-003C -> MAC-003
+MAC-003A -> MAC-003B -> CORE-007 -> MAC-003; MAC-003A -> MAC-003C -> MAC-003
 WIN-003A -> WIN-003; LNX-003A -> LNX-003
 MAC-003 + WIN-003 + LNX-003 -> DESK-002
 HARD-001 + all platform 002 aggregates -> DESK-002 -> DESK-003

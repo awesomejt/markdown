@@ -137,6 +137,14 @@ public enum DocumentError: Error, Sendable, Equatable {
   }
 }
 
+/// Stage timings for one bounded file read (MAC-003B).
+public struct DocumentReadTimings: Sendable, Equatable {
+  public let queueMilliseconds: Double
+  public let coordinateMilliseconds: Double
+  public let ioMilliseconds: Double
+  public let totalMilliseconds: Double
+}
+
 /// A bounded byte snapshot of one regular file.
 public struct DocumentBytes: Sendable {
   public let data: Data
@@ -144,6 +152,7 @@ public struct DocumentBytes: Sendable {
   public let revisionToken: String
   let device: dev_t
   let volume: URL?
+  public let timings: DocumentReadTimings
 }
 
 /// Cancels a queued or running read, including a coordinator wait.
@@ -167,11 +176,17 @@ enum DocumentReader {
 
   static func read(_ capability: DocumentCapability, limit: UInt64) async throws -> DocumentBytes {
     let cancellation = ReadCancellation()
+    let queuedAt = ContinuousClock.now
     return try await withTaskCancellationHandler {
       try await withCheckedThrowingContinuation { continuation in
         queue.async {
+          let startedAt = ContinuousClock.now
           continuation.resume(
-            with: Result { try read(capability, limit: limit, cancellation: cancellation) })
+            with: Result {
+              try read(
+                capability, limit: limit, cancellation: cancellation,
+                queueMilliseconds: milliseconds(queuedAt, startedAt))
+            })
         }
       }
     } onCancel: {
@@ -187,23 +202,35 @@ enum DocumentReader {
   /// normal coordinated read.
   static func read(
     _ capability: DocumentCapability, limit: UInt64, cancellation: ReadCancellation,
-    coordinated: Bool = true
+    coordinated: Bool = true, queueMilliseconds: Double = 0
   ) throws -> DocumentBytes {
     dispatchPrecondition(condition: .notOnQueue(.main))
+    let readStart = ContinuousClock.now
     if cancellation.isCancelled { throw CancellationError() }
     guard capability.isSupportedType else { throw DocumentError.unsupportedType }
     // A revoked folder grant withdraws its documents before any file access.
     guard !capability.isRevoked else { throw DocumentError.accessRevoked }
     return try capability.accessing { () throws -> DocumentBytes in
       guard coordinated else {
-        return try readFile(at: capability.url, limit: limit, cancellation: cancellation)
+        let (bytes, ioMs) = try readFile(
+          at: capability.url, limit: limit, cancellation: cancellation)
+        let totalMs = queueMilliseconds + milliseconds(readStart, .now)
+        return DocumentBytes(
+          data: bytes.data, revisionToken: bytes.revisionToken, device: bytes.device,
+          volume: bytes.volume,
+          timings: DocumentReadTimings(
+            queueMilliseconds: queueMilliseconds, coordinateMilliseconds: 0,
+            ioMilliseconds: ioMs, totalMilliseconds: totalMs))
       }
-      return try readScoped(capability, limit: limit, cancellation: cancellation)
+      return try readScoped(
+        capability, limit: limit, cancellation: cancellation,
+        queueMilliseconds: queueMilliseconds, readStart: readStart)
     }
   }
 
   private static func readScoped(
-    _ capability: DocumentCapability, limit: UInt64, cancellation: ReadCancellation
+    _ capability: DocumentCapability, limit: UInt64, cancellation: ReadCancellation,
+    queueMilliseconds: Double, readStart: ContinuousClock.Instant
   ) throws -> DocumentBytes {
     // The coordinator opens the item itself and would block on a FIFO; reject
     // non-regular items first. fstat after our own open still guards a swap.
@@ -215,20 +242,32 @@ enum DocumentReader {
     guard failure == 0 else { throw map(errno: failure) }
     let kind = info.st_mode & S_IFMT
     guard kind == S_IFREG else { throw DocumentError.notRegularFile(isDirectory: kind == S_IFDIR) }
-    var result: Result<DocumentBytes, Error> = .failure(CancellationError())
+    var result: Result<(DocumentBytes, Double), Error> = .failure(CancellationError())
     var coordinationError: NSError?
+    let coordinateStart = ContinuousClock.now
     cancellation.coordinator.coordinate(
       readingItemAt: capability.url, options: [.withoutChanges], error: &coordinationError
     ) { url in
       result = Result { try readFile(at: url, limit: limit, cancellation: cancellation) }
     }
+    let coordinateEnd = ContinuousClock.now
     if let coordinationError { throw map(coordinationError) }
-    return try result.get()
+    let (bytes, ioMs) = try result.get()
+    let coordinateTotal = milliseconds(coordinateStart, coordinateEnd)
+    let coordinateOverhead = max(0, coordinateTotal - ioMs)
+    let totalMs = queueMilliseconds + milliseconds(readStart, .now)
+    return DocumentBytes(
+      data: bytes.data, revisionToken: bytes.revisionToken, device: bytes.device,
+      volume: bytes.volume,
+      timings: DocumentReadTimings(
+        queueMilliseconds: queueMilliseconds, coordinateMilliseconds: coordinateOverhead,
+        ioMilliseconds: ioMs, totalMilliseconds: totalMs))
   }
 
   private static func readFile(at url: URL, limit: UInt64, cancellation: ReadCancellation)
-    throws -> DocumentBytes
+    throws -> (DocumentBytes, Double)
   {
+    let ioStart = ContinuousClock.now
     // O_NONBLOCK keeps a FIFO or device from blocking open(); fstat on the
     // opened descriptor avoids a check-then-open race.
     let (fd, failure) = url.withUnsafeFileSystemRepresentation { path -> (Int32, Int32) in
@@ -259,9 +298,23 @@ enum DocumentReader {
       data.append(contentsOf: buffer[..<count])
     }
     let volume = try? url.resourceValues(forKeys: [.volumeURLKey]).volume
-    return DocumentBytes(
-      data: data, revisionToken: token(info, size: data.count), device: info.st_dev,
-      volume: volume)
+    let ioMs = milliseconds(ioStart, .now)
+    let placeholder = DocumentReadTimings(
+      queueMilliseconds: 0, coordinateMilliseconds: 0, ioMilliseconds: ioMs,
+      totalMilliseconds: ioMs)
+    return (
+      DocumentBytes(
+        data: data, revisionToken: token(info, size: data.count), device: info.st_dev,
+        volume: volume, timings: placeholder),
+      ioMs
+    )
+  }
+
+  private static func milliseconds(_ a: ContinuousClock.Instant, _ b: ContinuousClock.Instant)
+    -> Double
+  {
+    let parts = a.duration(to: b).components
+    return Double(parts.seconds) * 1000 + Double(parts.attoseconds) / 1e15
   }
 
   /// The file's current revision token, as a read would record it, or nil

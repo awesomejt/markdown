@@ -477,4 +477,58 @@ struct DocumentTests {
     await loader.close()
     try expectNoHandles()
   }
+
+  /// Load-stage attribution reports finite, non-negative timings whose sub-stages
+  /// stay within their enclosing totals (MAC-003B).
+  @Test func loadStageTimingsAreOrderedAndBounded() async throws {
+    let body =
+      "# Timing\n\n" + String(repeating: "Paragraph with *emphasis* and `code`.\n\n", count: 400)
+    let capability = try file("timing.md", Data(body.utf8))
+    let loader = DocumentLoader()
+    let before = Date()
+    loader.open(capability)
+    try await settle(loader)
+    let after = Date()
+    guard let t = loader.document?.timings else {
+      Issue.record("expected loaded document")
+      await loader.close()
+      return
+    }
+    #expect(t.startedAt >= before.addingTimeInterval(-0.05))
+    #expect(t.startedAt <= after.addingTimeInterval(0.05))
+    let values = [
+      t.taskStartMilliseconds,
+      t.read.queueMilliseconds,
+      t.read.coordinateMilliseconds,
+      t.read.ioMilliseconds,
+      t.read.totalMilliseconds,
+      t.core.queueMilliseconds,
+      t.core.submitMilliseconds,
+      t.core.parseMilliseconds,
+      t.core.encodeMilliseconds,
+      t.core.copyMilliseconds,
+      t.coreTotalMilliseconds,
+      t.publishHopMilliseconds,
+      t.totalMilliseconds,
+    ]
+    for value in values {
+      #expect(value.isFinite && value >= 0)
+    }
+    // Sub-stages must not exceed their parent stage (allowing tiny floating-point slack).
+    let slack = 0.5
+    #expect(
+      t.read.queueMilliseconds + t.read.coordinateMilliseconds + t.read.ioMilliseconds
+        <= t.read.totalMilliseconds + slack)
+    #expect(
+      t.core.queueMilliseconds + t.core.submitMilliseconds + t.core.parseMilliseconds
+        + t.core.encodeMilliseconds + t.core.copyMilliseconds
+        <= t.coreTotalMilliseconds + slack)
+    #expect(
+      t.taskStartMilliseconds + t.read.totalMilliseconds + t.coreTotalMilliseconds
+        + t.publishHopMilliseconds <= t.totalMilliseconds + slack)
+    #expect(t.core.parseMilliseconds > 0)
+    #expect(t.totalMilliseconds > 0)
+    await loader.close()
+    try expectNoHandles()
+  }
 }

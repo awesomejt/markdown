@@ -35,3 +35,96 @@ executable and account for profiler overhead before drawing CPU conclusions.
 The trace and local measurement output are ignored build artifacts, not
 portable evidence. Cold launch and the other release checks remain open; no
 budget is waived.
+
+## MAC-003B load-stage attribution and profiling
+
+On Apple M5 Max, macOS 27.2.1 (26B131), Xcode 27.2 (27B52) and Rust 1.99.1,
+`CoreTimings`, `DocumentReadTimings`, `DocumentLoadTimings`, `Measurement.swift`
+and `apps/macos/tools/measure.py` were instrumented to report per-stage
+durations (`load_stages_ms`) alongside launch milestones (`load_started`).
+`DocumentTests.loadStageTimingsAreOrderedAndBounded` verifies finite,
+non-negative, parent-bounded stage timings.
+
+### Before and after `Task.detached` scheduling fix
+
+Five warm Launch Services runs per profile (one unrecorded warmup each) with
+`apps/macos/tools/measure.py launch --configuration release --runs 5`:
+
+| Profile | Stage / Metric | Before fix median (min–max) ms | After fix median (min–max) ms |
+| --- | --- | --- | --- |
+| prose 1 MiB | `task_start_ms` | 10.91 (9.73–13.93) | 0.02 (0.02–0.02) |
+| prose 1 MiB | `read_total_ms` | 1.35 (1.32–1.58) | 1.48 (1.37–1.51) |
+| prose 1 MiB | `core_total_ms` | 34.56 (32.95–34.96) | 35.79 (33.98–36.22) |
+| prose 1 MiB | `load total_ms` | 47.34 (44.42–50.18) | 37.59 (35.64–38.07) |
+| prose 1 MiB | `presented_ms` | 373.13 (368.86–393.77) | 359.82 (356.79–392.40) |
+| prose 5 MiB | `task_start_ms` | 11.40 (6.66–12.96) | 0.02 (0.02–0.03) |
+| prose 5 MiB | `read_total_ms` (`coord` / `io`) | 1.94 (0.98 / 0.67) | 1.91 (0.96 / 0.65) |
+| prose 5 MiB | `core_parse_ms` | 176.56 (170.96–185.47) | 186.61 (180.93–192.63) |
+| prose 5 MiB | `core_encode_ms` | 41.67 (36.79–48.11) | 46.53 (45.37–52.43) |
+| prose 5 MiB | `core_copy_ms` | 2.30 (2.13–2.34) | 2.17 (2.07–2.31) |
+| prose 5 MiB | `core_total_ms` | 220.62 (210.29–236.28) | 235.57 (231.66–247.80) |
+| prose 5 MiB | `publish_hop_ms` | 0.01 (0.01–2.56) | 0.01 (0.01–0.01) |
+| prose 5 MiB | `load total_ms` | 237.95 (223.86–245.19) | 237.73 (233.82–250.17) |
+| prose 5 MiB | `presented_ms` | 579.87 (558.15–598.16) | 574.55 (569.81–586.28) |
+| long lines 1 MiB | `task_start_ms` | 10.97 (10.43–12.34) | 0.02 (0.02–0.02) |
+| long lines 1 MiB | `load total_ms` | 19.66 (19.09–21.36) | 11.63 (9.90–15.07) |
+| long lines 1 MiB | `presented_ms` | 377.44 (371.29–386.59) | 362.98 (350.36–368.44) |
+
+Findings from stage attribution:
+
+1. **Main-actor scheduling (`task_start_ms`, fixed):** `DocumentLoader.start`
+   previously created a `@MainActor`-inherited `Task`, delaying background
+   loading by ~11 ms across all profiles until launch/window setup yielded the
+   main thread. Switching to `Task.detached(priority: .userInitiated)` reduced
+   `task_start_ms` to 0.02 ms and dropped warm `presented_ms` medians by
+   ~13–14 ms on both 1 MiB profiles (both now meet the 400 ms D-016 target on
+   all five runs).
+2. **File access (`read_total_ms`):** 1.91 ms median on 5 MiB (`NSFileCoordinator`
+   0.96 ms, `readFile` I/O 0.65 ms, queue 0.02 ms) — less than 1% of load time.
+3. **Swift FFI copy (`core_copy_ms`) and main-actor publish (`publish_hop_ms`):**
+   2.17 ms and 0.01 ms respectively on 5 MiB — ~1% of load time.
+4. **Dominant cost — shared Rust core (`core_total_ms`):** 235.57 ms median on
+   5 MiB (99.1% of load time after the scheduling fix): 186.61 ms in
+   `md_job_run` (`core_parse_ms`) and 46.53 ms in `md_snapshot_get_view`
+   (`core_encode_ms`).
+
+### Verified Time Profiler attribution and overhead accounting
+
+Before the `Task.detached` edit, `xcrun xctrace record --template 'Time Profiler'`
+was run on `build/macos/release/Markdown.app/Contents/MacOS/Markdown --measure repeated=3 build/fixtures/performance/prose-5mib.md`:
+
+- **Executable verification:** `dwarfdump --uuid` reported arm64 UUID
+  `A42A8624-4FCA-302B-B768-9B1CFDAC293E` for
+  `build/macos/release/Markdown.app/Contents/MacOS/Markdown`. Both the trace
+  TOC `<process>` path and every sampled `Markdown` `<binary>` frame matched
+  that exact Release bundle path and UUID.
+- **Profiler overhead (3 iterations of `repeated=3`):**
+  - Unprofiled medians: `core_parse_ms` 195.81 ms, `core_encode_ms` 47.77 ms,
+    `task_start_ms` 7.87 ms, `presented_ms` 348.32 ms.
+  - Profiled medians (`--target-stdout -`): `core_parse_ms` 188.86 ms,
+    `core_encode_ms` 46.99 ms, `task_start_ms` 20.17 ms, `presented_ms`
+    361.36 ms.
+  - Worker-thread sampling overhead on `md_job_run` and `md_snapshot_get_view`
+    was within run-to-run noise; Instruments added ~12 ms on the main thread
+    during window creation (`task_start_ms`).
+- **CPU hotspots (3,853 total 1 ms samples; 601 in `md_job_run`, 161 in
+  `md_snapshot_get_view`, 6 in `CoreDocument(copying:)`):**
+  - Inside `md_job_run` (601 samples):
+    - `markdown_core::validate::validate_parts` via `finish_v2` ->
+      `v2::Document::new`: **356 samples (59.2%)** — dominated by
+      `NodeKind::children` (73 self), `Sip13Rounds::write` +
+      `RandomState::hash_one` (103 self combined) hashing 461,177 string node
+      IDs, `validate_parts` / closures (70 self), `memcmp` (26 self) and
+      `id_valid` (17 self).
+    - `markdown_core::parse::build`: **255 samples (42.4%)** — including
+      `sha2::sha256::compress256` (**81 self samples, 13.5% of `md_job_run`**)
+      and `Builder::event` (158 inclusive).
+  - Inside `md_snapshot_get_view` (161 samples):
+    - `markdown_ffi::flat::Builder::finish` (54 self, 33.5%) and
+      `HashMap<&str, u32, RandomState>` (`get` 37, `Sip13Rounds::write` 20,
+      `hash_one` 13, `memcmp` 10, `insert` 7 — **54.0% self** mapping 461,177
+      string node IDs back to `u32` indices).
+
+Because these dominant costs live in the shared Rust core and affect all three
+desktop hosts, they are tracked in follow-up task `CORE-007` (`MAC-003B ->
+CORE-007 -> MAC-003`). D-016 remains unwaived.

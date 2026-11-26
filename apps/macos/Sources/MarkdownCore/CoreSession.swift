@@ -22,7 +22,9 @@ public enum CoreAvailability: Sendable, Equatable {
   case unavailable(CoreUnavailability)
 }
 
-public struct CoreTimings: Sendable {
+public struct CoreTimings: Sendable, Equatable {
+  public let queueMilliseconds: Double
+  public let submitMilliseconds: Double
   public let parseMilliseconds: Double
   public let encodeMilliseconds: Double
   public let copyMilliseconds: Double
@@ -191,6 +193,7 @@ public final class CoreSession: @unchecked Sendable {
   {
     try Task.checkCancellation()
     try CoreRuntime.admission.reserve()
+    let queuedAt = ContinuousClock.now
     let request = Request(source: source, token: revisionToken, copyUnchanged: copyUnchanged)
     return try await withTaskCancellationHandler {
       try await withCheckedThrowingContinuation { continuation in
@@ -198,7 +201,7 @@ public final class CoreSession: @unchecked Sendable {
         CoreRuntime.worker.async {
           guard let input = request.beginWork() else { return }
           let result = Result {
-            try autoreleasepool { try self.run(input.0, input.1, request) }
+            try autoreleasepool { try self.run(input.0, input.1, request, queuedAt: queuedAt) }
           }
           request.complete(result)
         }
@@ -208,12 +211,16 @@ public final class CoreSession: @unchecked Sendable {
     }
   }
 
-  private func run(_ source: Data, _ token: String?, _ request: Request) throws -> CoreResult {
+  private func run(
+    _ source: Data, _ token: String?, _ request: Request, queuedAt: ContinuousClock.Instant
+  ) throws -> CoreResult {
+    let runStart = ContinuousClock.now
     let copyUnchanged = request.copyUnchanged
     precondition(!Thread.isMainThread)
     try request.checkCancellation()
     var job: md_job = 0
     var generation: UInt64 = 0
+    let submitStart = ContinuousClock.now
     let tokenBytes = Array((token ?? "").utf8)
     try lock.withLock {
       guard handle != 0 else { throw CoreError.closed }
@@ -226,6 +233,7 @@ public final class CoreSession: @unchecked Sendable {
         }
       }
     }
+    let submitted = ContinuousClock.now
     request.installJob(job)
     defer { request.release() }
     var result = md_job_result()
@@ -268,6 +276,8 @@ public final class CoreSession: @unchecked Sendable {
       outcome: outcome, generation: result.generation, latest: result.latest,
       failure: failure, document: document,
       timings: CoreTimings(
+        queueMilliseconds: ms(queuedAt, runStart),
+        submitMilliseconds: ms(submitStart, submitted),
         parseMilliseconds: ms(start, parsed), encodeMilliseconds: ms(parsed, encoded),
         copyMilliseconds: ms(encoded, copied)))
   }
