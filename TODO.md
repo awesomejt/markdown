@@ -515,13 +515,23 @@ CORE-006 no longer carry. The three host chains are independent.
   (PR #101): defer Files/Search/Find until needed; single-show `openAtLaunch`;
   remeasured stages in
   [macOS-Launch-Investigation.md](docs/macOS-Launch-Investigation.md).
+- **MAC-003E — Measure macOS cold Launch Services launch.** Five cold runs per
+  D-016 profile with `measure.py launch --cold` (`sudo purge`); record against
+  700 ms in [macOS-Release-Evidence.md](docs/macOS-Release-Evidence.md).
+- **MAC-003F — Collect macOS manual release evidence.** Owner checklist:
+  VoiceOver properties / 5 MiB end-line pause, About panel, real
+  `/Applications` install, quarantined second-Mac Gatekeeper path.
+- **MAC-003G — Reconcile residual macOS D-016 and display gaps.** After E/F,
+  disposition warm-launch misses, refresh footprint and mixed-scale (CAP-14)
+  via further tasks or explicit owner decisions; enables MAC-003 closeout.
 - **WIN-003A / LNX-003A — Investigate native performance gaps.** On each
   named host reproduce and profile the recorded misses and materialize focused
   follow-up phases before the respective platform aggregate.
 - **MAC-003, WIN-003, LNX-003 — Platform release evidence.** Resolve each
-  platform's open performance and native validation gaps before DESK-002. Split
-  each aggregate into reviewable host-specific phases; see the acceptance
-  reports and open native budgets below for the outstanding evidence.
+  platform's open performance and native validation gaps before DESK-002.
+  macOS is split into MAC-003E→F→G then MAC-003; see
+  [macOS-Release-Evidence.md](docs/macOS-Release-Evidence.md). Windows and
+  Linux still need host-local investigation before their aggregates.
 - **DESK-003 — Desktop refinement.** Prioritize R2 features and platform-specific
   polish after the basic MVP gate.
 
@@ -669,7 +679,8 @@ They stay open until fixed or explicitly accepted; none is waived.
   357.83 ms / max 368.30 ms <= 400 ms; `long-lines-1mib` median
   409.68 ms / max 412.50 ms, 1 MiB single-line Pango wrapping).
 - **Cold launches across all three hosts (D-012/D-016, 700 ms):** unmeasured on
-  macOS (`measure.py launch --cold`), Windows, and Linux.
+  macOS (`measure.py launch --cold`; MAC-003E + owner `sudo purge`), Windows,
+  and Linux.
 - **Mixed-scale displays and display pacing (CAP-14):** unmeasured on macOS,
   Windows, and Linux.
 - **macOS first VoiceOver line query on 5 MiB:** `accessibilityLine(for:)`
@@ -728,6 +739,7 @@ DESK-001 -> HARD-001
 DESK-001 -> each host 002A -> ... -> 002F -> platform 002 aggregate
   (002B also needs CORE-005D; 002C also needs CORE-005B, CORE-005B2, CORE-005C)
 MAC-003A -> MAC-003B -> CORE-007 -> MAC-003; MAC-003A -> MAC-003C -> MAC-003D -> MAC-003
+MAC-003E -> MAC-003F -> MAC-003G -> MAC-003
 WIN-003A -> WIN-003; LNX-003A -> LNX-003
 MAC-003 + WIN-003 + LNX-003 -> DESK-002
 HARD-001 + all platform 002 aggregates -> DESK-002 -> DESK-003

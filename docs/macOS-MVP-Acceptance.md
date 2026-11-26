@@ -24,7 +24,9 @@ VoiceOver on properties, and About panel appearance remain unverified. The
 unsigned, unnotarized artifact is for development only.
 
 The owner-approved functional boundary in D-037 applies to MAC-002. The
-performance and manual gaps remain obligations for DESK-002.
+performance and manual gaps remain obligations for DESK-002 via MAC-003; see
+[macOS-Release-Evidence.md](macOS-Release-Evidence.md) for the gap register,
+warm baseline after CORE-007, cold-launch procedure and manual checklist.
 
 ## Aggregate checks
 

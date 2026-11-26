@@ -12,8 +12,11 @@ read.
   and budget gaps. MAC-003A–D closed on Mac through PR #101. CORE-007 closed
   in PR #102: 5 MiB `core_parse_ms` 103.63 / `core_encode_ms` 11.28 (was
   186.61 / 46.53) via dense ID resolution, trusted fingerprint skip, and
-  Apple-only sha2 asm; D-016 unwaived. Next on Mac: MAC-003 aggregate /
-  cold-manual evidence. Split remaining aggregates into reviewable work.
+  Apple-only sha2 asm; D-016 unwaived. MAC-003 split into MAC-003E (cold
+  launch), MAC-003F (manual release checklist) and MAC-003G (residual D-016 /
+  display disposition); evidence package in
+  [macOS-Release-Evidence.md](docs/macOS-Release-Evidence.md). Next on Mac:
+  MAC-003E (needs owner `sudo purge`).
 - MAC-002 functional aggregate (PR #96) is complete under owner decision
   D-037. Native/common checks passed; Grok follow-up at `100dc94` was clean.
   Warm launch misses, cold launch and manual checks remain open for DESK-002.
