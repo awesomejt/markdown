@@ -159,7 +159,8 @@ recomputes SHA-256 and uses SipHash maps for non-dense IDs):
    and flat-view encode, skipping SipHash `HashMap` traffic on the hot path.
 2. Parser validation trusts the builder's `SourceInfo` (length + hex shape);
    only `Document::new` / `from_json` recompute the digest.
-3. `sha2` enables the `asm` feature so aarch64 uses hardware SHA-2.
+3. `sha2` enables the `asm` feature only on `aarch64-apple-*` so Apple Silicon
+   uses hardware SHA-2; Windows/Linux keep the default sha2 path.
 
 `presented_ms` remains above 400 ms (D-016 unwaived); Launch Services /
 AppKit bring-up still dominate wall time once core load drops below ~120 ms.

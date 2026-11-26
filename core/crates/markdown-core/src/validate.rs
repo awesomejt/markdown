@@ -143,7 +143,7 @@ impl Document {
 
 /// Parse a dense parser id (`n12`, `l3`, `r0`) into its index, rejecting
 /// leading zeros so `n01` cannot collide with `n1`.
-pub(crate) fn dense_id_index(id: &str, prefix: u8) -> Option<usize> {
+pub fn dense_id_index(id: &str, prefix: u8) -> Option<usize> {
     let bytes = id.as_bytes();
     if bytes.len() < 2 || bytes[0] != prefix {
         return None;
@@ -595,5 +595,92 @@ mod tests {
         assert!(!digest_shape(&"A".repeat(64)));
         assert!(!digest_shape(&"a".repeat(63)));
         assert!(!digest_shape(&format!("{}g", "a".repeat(63))));
+    }
+
+    fn dense_paragraph(source: &str) -> DocumentInput {
+        DocumentInput {
+            model_version: MODEL_VERSION,
+            document_id: DocumentId("doc".into()),
+            revision_id: RevisionId("rev".into()),
+            source: SourceInfo::of(source),
+            capabilities: BTreeSet::new(),
+            roots: vec![NodeId("n0".into())],
+            nodes: vec![
+                Node {
+                    id: NodeId("n0".into()),
+                    span: SourceSpan {
+                        start: 0,
+                        end: source.len() as u64,
+                    },
+                    content: NodeKind::Paragraph {
+                        children: vec![NodeId("n1".into())],
+                    },
+                },
+                Node {
+                    id: NodeId("n1".into()),
+                    span: SourceSpan {
+                        start: 0,
+                        end: source.len() as u64,
+                    },
+                    content: NodeKind::Text {
+                        text: source.to_string(),
+                    },
+                },
+            ],
+            outline: Vec::new(),
+            metadata: Metadata::default(),
+            links: Vec::new(),
+            resources: Vec::new(),
+            diagnostics: Vec::new(),
+        }
+    }
+
+    #[test]
+    fn dense_path_rejects_out_of_range_child_ids() {
+        let source = "hi";
+        let mut input = dense_paragraph(source);
+        if let NodeKind::Paragraph { children } = &mut input.nodes[0].content {
+            children[0] = NodeId("n9".into());
+        }
+        assert_eq!(
+            Document::new(input, source, ModelLimits::default())
+                .unwrap_err()
+                .code,
+            "unknown_node"
+        );
+    }
+
+    #[test]
+    fn mixed_ids_use_hash_map_and_catch_duplicates() {
+        let source = "hi";
+        let mut input = dense_paragraph(source);
+        input.nodes[1].id = NodeId("text".into());
+        if let NodeKind::Paragraph { children } = &mut input.nodes[0].content {
+            children[0] = NodeId("text".into());
+        }
+        input.nodes.push(Node {
+            id: NodeId("text".into()),
+            span: SourceSpan { start: 0, end: 2 },
+            content: NodeKind::SoftBreak {},
+        });
+        assert_eq!(
+            Document::new(input, source, ModelLimits::default())
+                .unwrap_err()
+                .code,
+            "duplicate_id"
+        );
+    }
+
+    #[test]
+    fn from_parser_rejects_mismatched_source_length() {
+        let source = "hello";
+        let mut input = dense_paragraph(source);
+        input.source.bytes = 1;
+        assert_eq!(
+            Document::from_parser(input, source, ModelLimits::default())
+                .unwrap_err()
+                .code,
+            "source_mismatch"
+        );
     }
 }

@@ -1,5 +1,5 @@
 contract_version: project-state/v1
-revision: 951
+revision: 952
 project: &id003
   concurrency_limit: 1
   created_at: '2026-10-24T23:34:09.871478+00:00'
@@ -10319,49 +10319,11 @@ passes:
     blocker: null
     execution_record: {}
     started_at: '2026-11-26T07:14:19.187159+00:00'
-    last_heartbeat_at: '2026-11-26T07:25:10.528003+00:00'
+    last_heartbeat_at: '2026-11-26T07:30:54.559968+00:00'
     completed_at: null
-    lease_expires_at: '2026-11-26T09:25:10.528003+00:00'
-    lease_version: 3
+    lease_expires_at: '2026-11-26T09:30:54.559968+00:00'
+    lease_version: 4
 idempotency:
-  win002a-start-20261115:
-    fingerprint: d559e2aa05716c574f0cad701a0083ca6687561afaf0ec2c52faabc74f49ab11
-    response:
-      contract_version: project-state/v1
-      operation: start_pass
-      revision: 852
-      data:
-        pass: *id001
-        task: *id002
-      snapshot:
-        contract_version: project-state/v1
-        snapshot_at: '2026-11-16T04:21:55.874029+00:00'
-        revision: 852
-        project: *id003
-        current_phase: *id004
-        phases: *id005
-        active_tasks:
-          - *id002
-        working_tasks_without_active_lease: []
-        active_passes:
-          - *id001
-        stale_passes: []
-        blocked_tasks: []
-        eligible_tasks:
-          - *id006
-        latest_pass: *id001
-        queue_counts:
-          by_status:
-            completed: 92
-            pending: 16
-            working: 1
-          total: 109
-          active_passes: 1
-          stale_passes: 0
-          eligible: 1
-          blocked: 0
-        warnings: []
-        recommended_action: resume_active
   win002a-complete-20261115:
     fingerprint: 5d84e8b362eb75e0fd16273b734a51803c21f459207615b6e2a6e9f46254ecbb
     response:
@@ -14116,6 +14078,45 @@ idempotency:
         contract_version: project-state/v1
         snapshot_at: '2026-11-26T07:25:10.528015+00:00'
         revision: 951
+        project: *id003
+        current_phase: *id004
+        phases: *id005
+        active_tasks:
+          - *id053
+        working_tasks_without_active_lease: []
+        active_passes:
+          - *id064
+        stale_passes: []
+        blocked_tasks:
+          - *id042
+          - *id044
+        eligible_tasks: []
+        latest_pass: *id064
+        queue_counts:
+          by_status:
+            completed: 105
+            pending: 12
+            blocked: 2
+            working: 1
+          total: 120
+          active_passes: 1
+          stale_passes: 0
+          eligible: 0
+          blocked: 2
+        warnings: []
+        recommended_action: resume_active
+  core-007-hb-3-2026-11-26:
+    fingerprint: de34c9cc975099a86616dc04b3c2390a86a56593f27bbad7afa73ce0a6cac313
+    response:
+      contract_version: project-state/v1
+      operation: heartbeat_pass
+      revision: 952
+      data:
+        pass: *id064
+      snapshot:
+        contract_version: project-state/v1
+        snapshot_at: '2026-11-26T07:30:54.559982+00:00'
+        revision: 952
         project: *id003
         current_phase: *id004
         phases: *id005

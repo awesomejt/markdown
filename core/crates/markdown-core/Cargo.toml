@@ -11,11 +11,14 @@ pulldown-cmark = { version = "=0.13.5", default-features = false }
 unicase = "=2.10.0"
 serde = { version = "=1.0.228", features = ["derive"] }
 serde_json = "=1.0.145"
-# `asm` enables aarch64 hardware SHA-2 (Apple Silicon); x86_64 keeps SHA-NI via
-# sha2-asm. markdown-core is unpublished app code, so the crates.io library
-# warning against enabling `asm` does not apply here (CORE-007).
-sha2 = { version = "=0.10.9", features = ["asm"] }
+sha2 = "=0.10.9"
 schemars = { version = "=1.0.4", optional = true }
+
+# Hardware SHA-2 only where measured (Apple Silicon). Other targets keep sha2's
+# default path (x86_64 SHA-NI via intrinsics; soft elsewhere) so Windows MSVC
+# does not need sha2-asm (CORE-007 / Grok review).
+[target.'cfg(all(target_arch = "aarch64", target_vendor = "apple"))'.dependencies]
+sha2 = { version = "=0.10.9", features = ["asm"] }
 
 [features]
 model-v2 = ["dep:url"]

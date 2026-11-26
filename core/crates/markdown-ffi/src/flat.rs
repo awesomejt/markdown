@@ -4,31 +4,10 @@
 //! handle is released. Every model value is represented (the round trip is
 //! tested), so adapters never need the Rust model or its lifetimes.
 use crate::abi::*;
+use markdown_core::dense_id_index;
 use markdown_core::session::{Snapshot, SnapshotModel};
 use markdown_core::*;
 use std::collections::HashMap;
-
-/// Parse a dense parser id (`n12` / `l3` / `r0`) into a table index.
-fn dense_id_index(id: &str, prefix: u8) -> Option<usize> {
-    let bytes = id.as_bytes();
-    if bytes.len() < 2 || bytes[0] != prefix {
-        return None;
-    }
-    let digits = &bytes[1..];
-    if digits[0] == b'0' {
-        return if digits.len() == 1 { Some(0) } else { None };
-    }
-    let mut value = 0usize;
-    for &digit in digits {
-        if !digit.is_ascii_digit() {
-            return None;
-        }
-        value = value
-            .checked_mul(10)?
-            .checked_add(usize::from(digit - b'0'))?;
-    }
-    Some(value)
-}
 
 pub(crate) struct Flat {
     model_version: u32,

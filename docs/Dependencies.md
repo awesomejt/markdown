@@ -118,12 +118,12 @@ it is disabled in the default library build but included in CI/metadata policy
 checks. The table is the full resolved all-feature graph, not a claim that every
 optional/target-specific package ships in each app.
 
-CORE-007 enables sha2's `asm` feature so Apple Silicon uses hardware SHA-2
-(and x86_64 uses sha2-asm). That pulls in runtime `sha2-asm` 0.6.4 (MIT) plus
-its build-only `cc` / `find-msvc-tools` / `shlex` crates. `markdown-core` is
-unpublished app code, so the crates.io warning against libraries enabling
-`asm` does not apply. Parser validation also skips a second SHA-256 pass on
-trusted builder output and resolves dense `n{i}` / `l{i}` / `r{i}` IDs without
+CORE-007 enables sha2's `asm` feature only on `aarch64-apple-*` so Apple
+Silicon uses hardware SHA-2. That target pulls in runtime `sha2-asm` 0.6.4
+(MIT) plus its build-only `cc` / `find-msvc-tools` / `shlex` crates; Windows
+and Linux keep the default sha2 path (SHA-NI intrinsics on x86_64) and do not
+link sha2-asm. Parser validation also skips a second SHA-256 pass on trusted
+builder output and resolves dense `n{i}` / `l{i}` / `r{i}` IDs without
 SipHash; untrusted `from_json` still recomputes the digest and uses the HashMap
 path for non-dense IDs.
 
@@ -251,9 +251,10 @@ Signing, release publishing and production deployment still need owner approval.
 ## Windows app runtime inventory (WIN-001I)
 
 The Windows app links markdown_ffi.dll dynamically, built from the normal-dependency
-closure of markdown-ffi with model-v2 for x86_64-pc-windows-msvc: 43 of the Rust
-packages above (excluding the Unix-only libc). In addition, the self-contained Native AOT
-publish bundles the locked NuGet platform graph (19 packages).
+closure of markdown-ffi with model-v2 for x86_64-pc-windows-msvc: 42 of the Rust
+packages above (excluding the Unix-only libc; sha2-asm is Apple-only). In addition,
+the self-contained Native AOT publish bundles the locked NuGet platform graph
+(19 packages).
 
 apps/windows/tools/licenses.py computes both inventories and writes them, alongside
 project and third-party license notices, to Licenses/ (LICENSE, THIRD-PARTY-NOTICES.txt,
@@ -263,9 +264,9 @@ and inventory.json) inside the published app and local development artifact
 Rust packages linked: bitflags, block-buffer, cfg-if, cpufeatures, crypto-common,
 digest, form_urlencoded, generic-array, the seven icu_* packages, idna,
 idna_adapter, itoa, litemap, markdown-core, markdown-ffi, memchr, percent-encoding,
-potential_utf, pulldown-cmark, ryu, serde, serde_core, serde_json, sha2, sha2-asm,
-smallvec, stable_deref_trait, tinystr, typenum, unicase, url, utf8_iter, writeable,
-yoke, zerofrom, zerotrie, zerovec.
+potential_utf, pulldown-cmark, ryu, serde, serde_core, serde_json, sha2, smallvec,
+stable_deref_trait, tinystr, typenum, unicase, url, utf8_iter, writeable, yoke,
+zerofrom, zerotrie, zerovec.
 
 ## Windows shell NuGet graph
 
