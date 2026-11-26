@@ -216,3 +216,27 @@ Findings:
 D-016 remains unwaived. Warm Launch Services 1 MiB medians still miss 400 ms;
 the actionable host follow-up is `MAC-003D` (window construction). Shared core
 5 MiB parse/encode remains `CORE-007`.
+
+## MAC-003D ReaderWindow construction
+
+On the same host, document-only launch no longer builds Files/Search controllers
+or the Find bar up front. `SidebarController` installs only the outline until a
+folder is granted; `ensureFolderControllers` / `ensureFindBar` build the rest on
+first use. `openAtLaunch` uses `makeWindow(show: false)` then a single show after
+`loader.open`. Opt-in `MARKDOWN_WINDOW_TIMING=1` stamps init stages on stderr.
+
+Warm Launch Services five-run medians after the change
+(`apps/macos/tools/measure.py launch --configuration release --runs 5`):
+
+| Profile | Metric | Before (MAC-003C) | After (MAC-003D) |
+| --- | --- | --- | --- |
+| prose 1 MiB | `presented_ms` median | 617.54 | 538.76 |
+| prose 1 MiB | `menus_to_did_finish_ms` median | 143.95 | 125.92 |
+| prose 1 MiB | presentation `total_ms` median | 5.71 | 5.84 |
+
+Direct `--measure launch` samples (prose 1 MiB): `ReaderWindow` init total
+~73–80 ms (was ~130 ms makeWindow attribution); `load_started` −
+`did_finish_launching` ~80–90 ms (was ~133 ms). Presentation stage timers still
+report. D-016 remains unwaived (LS median still above 400 ms); residual warm
+gap is mostly Launch Services / AppKit bring-up and TextKit layout, not unused
+workspace chrome. Shared core 5 MiB work remains `CORE-007`.

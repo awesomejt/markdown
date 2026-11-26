@@ -515,8 +515,9 @@ CORE-006 no longer carry. The three host chains are independent.
   [macOS-Launch-Investigation.md](docs/macOS-Launch-Investigation.md).
   Window construction (~130 ms) is tracked as MAC-003D.
 - **MAC-003D — Reduce macOS ReaderWindow construction cost at launch.** Defer
-  or slim sidebar/search/find construction so `makeWindow` / `openAtLaunch` is
-  not ~130 ms on the warm launch path before first text.
+  Files/Search/Find until a folder is granted or Find is shown; single-show
+  `openAtLaunch`; remeasured LS/direct stages in
+  [macOS-Launch-Investigation.md](docs/macOS-Launch-Investigation.md).
 - **WIN-003A / LNX-003A — Investigate native performance gaps.** On each
   named host reproduce and profile the recorded misses and materialize focused
   follow-up phases before the respective platform aggregate.

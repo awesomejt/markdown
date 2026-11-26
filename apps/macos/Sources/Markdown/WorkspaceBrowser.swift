@@ -8,9 +8,10 @@ import MarkdownDocument
 final class SidebarController: NSViewController {
   enum Mode: Int { case files, outline, search }
 
-  let files: WorkspaceBrowserController
+  /// Attached when a folder is first granted (MAC-003D); nil for document-only windows.
+  private(set) var files: WorkspaceBrowserController?
   let outline: OutlineController
-  let search: WorkspaceSearchController
+  private(set) var search: WorkspaceSearchController?
   let picker = NSSegmentedControl(
     labels: ["Files", "Outline", "Search"], trackingMode: .selectOne, target: nil, action: nil)
   private(set) var mode: Mode = .outline
@@ -21,17 +22,24 @@ final class SidebarController: NSViewController {
   private var contentTop: NSLayoutConstraint!
   private var contentBelowPicker: NSLayoutConstraint!
 
-  init(
-    files: WorkspaceBrowserController, outline: OutlineController,
-    search: WorkspaceSearchController
-  ) {
-    self.files = files
+  init(outline: OutlineController) {
     self.outline = outline
-    self.search = search
     super.init(nibName: nil, bundle: nil)
   }
 
   required init?(coder: NSCoder) { fatalError("The sidebar is constructed programmatically") }
+
+  /// Files and Search views are installed lazily (MAC-003D): a document-only
+  /// launch only builds the outline, which is what first text needs.
+  private var folderPanesInstalled = false
+
+  /// Hand the folder panes to the sidebar the first time a folder is granted.
+  func attachFolderPanes(files: WorkspaceBrowserController, search: WorkspaceSearchController) {
+    guard self.files == nil else { return }
+    self.files = files
+    self.search = search
+    if hasFiles { installFolderPanesIfNeeded() }
+  }
 
   override func loadView() {
     let view = NSView()
@@ -47,33 +55,57 @@ final class SidebarController: NSViewController {
     picker.setToolTip("Search the folder (Option-Command-3)", forSegment: 2)
     picker.isHidden = true
     view.addSubview(picker)
-    for child in [files, outline, search] as [NSViewController] {
-      addChild(child)
-      child.view.translatesAutoresizingMaskIntoConstraints = false
-      view.addSubview(child.view)
-      NSLayoutConstraint.activate([
-        child.view.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-        child.view.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-        child.view.bottomAnchor.constraint(equalTo: view.bottomAnchor),
-      ])
-    }
-    contentTop = files.view.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor)
-    contentBelowPicker = files.view.topAnchor.constraint(equalTo: picker.bottomAnchor, constant: 6)
+    install(outline, in: view)
+    // Pin the outline under the safe area until folder panes exist; those
+    // constraints are replaced when Files/Search are installed.
+    contentTop = outline.view.topAnchor.constraint(
+      equalTo: view.safeAreaLayoutGuide.topAnchor)
+    contentBelowPicker = outline.view.topAnchor.constraint(
+      equalTo: picker.bottomAnchor, constant: 6)
     NSLayoutConstraint.activate([
       picker.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 4),
       picker.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 8),
       picker.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -8),
-      outline.view.topAnchor.constraint(equalTo: files.view.topAnchor),
-      search.view.topAnchor.constraint(equalTo: files.view.topAnchor),
       contentTop,
     ])
     self.view = view
+    if hasFiles { installFolderPanesIfNeeded() }
     apply()
+  }
+
+  private func install(_ child: NSViewController, in view: NSView) {
+    guard child.parent !== self else { return }
+    addChild(child)
+    child.view.translatesAutoresizingMaskIntoConstraints = false
+    view.addSubview(child.view)
+    NSLayoutConstraint.activate([
+      child.view.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+      child.view.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+      child.view.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+    ])
+  }
+
+  /// Build Files and Search the first time a folder is granted.
+  private func installFolderPanesIfNeeded() {
+    guard isViewLoaded, !folderPanesInstalled, let files, let search else { return }
+    folderPanesInstalled = true
+    let host = view
+    contentTop.isActive = false
+    contentBelowPicker.isActive = false
+    install(files, in: host)
+    install(search, in: host)
+    contentTop = files.view.topAnchor.constraint(equalTo: host.safeAreaLayoutGuide.topAnchor)
+    contentBelowPicker = files.view.topAnchor.constraint(equalTo: picker.bottomAnchor, constant: 6)
+    NSLayoutConstraint.activate([
+      outline.view.topAnchor.constraint(equalTo: files.view.topAnchor),
+      search.view.topAnchor.constraint(equalTo: files.view.topAnchor),
+    ])
   }
 
   /// Offer the files (a folder was granted) or only the outline.
   func setHasFiles(_ value: Bool) {
     guard value != hasFiles else { return }
+    if value { installFolderPanesIfNeeded() }
     hasFiles = value
     mode = value ? .files : .outline
     apply()
@@ -83,6 +115,7 @@ final class SidebarController: NSViewController {
   /// Show the files, the outline or the search; all but the outline need a folder.
   func show(_ mode: Mode) {
     guard mode == .outline || hasFiles else { return }
+    if mode != .outline { installFolderPanesIfNeeded() }
     let changed = mode != self.mode
     self.mode = mode
     apply()
@@ -92,9 +125,9 @@ final class SidebarController: NSViewController {
   @objc private func pick(_ sender: NSSegmentedControl) {
     show(Mode(rawValue: sender.selectedSegment) ?? .outline)
     switch mode {
-    case .files: view.window?.makeFirstResponder(files.outlineView)
+    case .files: view.window?.makeFirstResponder(files?.outlineView)
     case .outline: view.window?.makeFirstResponder(outline.table)
-    case .search: search.focus()
+    case .search: search?.focus()
     }
   }
 
@@ -104,9 +137,11 @@ final class SidebarController: NSViewController {
     contentTop.isActive = !hasFiles
     contentBelowPicker.isActive = hasFiles
     picker.selectedSegment = mode.rawValue
-    files.view.isHidden = mode != .files
     outline.view.isHidden = mode != .outline
-    search.view.isHidden = mode != .search
+    if folderPanesInstalled, let files, let search {
+      files.view.isHidden = mode != .files
+      search.view.isHidden = mode != .search
+    }
   }
 }
 
@@ -130,9 +165,10 @@ final class WorkspaceBrowserController: NSViewController, NSOutlineViewDataSourc
   /// unavailable, or restored from saved state (MAC-002E).
   private var retainedExpansion: [String] = []
   private(set) var listing: WorkspaceListing?
-  let outlineView = WorkspaceOutlineView()
-  private let message = NSTextField(wrappingLabelWithString: "")
-  private let footer = NSTextField(wrappingLabelWithString: "")
+  /// Built in `loadView` (MAC-003D): constructing the controller is cheap until shown.
+  private(set) lazy var outlineView = WorkspaceOutlineView()
+  private lazy var message = NSTextField(wrappingLabelWithString: "")
+  private lazy var footer = NSTextField(wrappingLabelWithString: "")
   /// Selecting a row from the document (reveal) must not open it again.
   private var revealing = false
 

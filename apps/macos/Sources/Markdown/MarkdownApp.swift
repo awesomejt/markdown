@@ -255,10 +255,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, 
         reuse(existing, for: capability, folder: nil, recent: nil)
         continue
       }
-      let target = emptyWindow() ?? makeWindow(nil)
+      // Build without showing, then show once after open starts (MAC-003D):
+      // avoids double showWindow/makeKey from makeWindow(show: true) + showWindow.
+      let target = emptyWindow() ?? makeWindow(nil, show: false)
       target.recent = nil
       target.loader.open(capability)
       target.showWindow(nil)
+      target.window?.makeKeyAndOrderFront(nil)
     }
   }
 
