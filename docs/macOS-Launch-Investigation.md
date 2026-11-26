@@ -78,7 +78,13 @@ Findings from stage attribution:
    main thread. Switching to `Task.detached(priority: .userInitiated)` reduced
    `task_start_ms` to 0.02 ms and dropped warm `presented_ms` medians by
    ~13–14 ms on both 1 MiB profiles (both now meet the 400 ms D-016 target on
-   all five runs).
+   all five runs). On 5 MiB, `core_total_ms` shifted from 220.62 to 235.57 ms
+   in the post-fix run (within run-to-run variance and possible CPU contention
+   while core work overlaps main-thread window setup), leaving `load total_ms`
+   flat (237.95 vs 237.73 ms) and `presented_ms` ~5 ms lower (579.87 vs
+   574.55 ms). `CORE-007` should compare against the post-fix release baseline
+   (`core_parse_ms` 186.61 ms, `core_encode_ms` 46.53 ms, `core_total_ms`
+   235.57 ms, `presented_ms` 574.55 ms).
 2. **File access (`read_total_ms`):** 1.91 ms median on 5 MiB (`NSFileCoordinator`
    0.96 ms, `readFile` I/O 0.65 ms, queue 0.02 ms) — less than 1% of load time.
 3. **Swift FFI copy (`core_copy_ms`) and main-actor publish (`publish_hop_ms`):**
@@ -109,16 +115,19 @@ was run on `build/macos/release/Markdown.app/Contents/MacOS/Markdown --measure r
     during window creation (`task_start_ms`).
 - **CPU hotspots (3,853 total 1 ms samples; 601 in `md_job_run`, 161 in
   `md_snapshot_get_view`, 6 in `CoreDocument(copying:)`):**
-  - Inside `md_job_run` (601 samples):
-    - `markdown_core::validate::validate_parts` via `finish_v2` ->
-      `v2::Document::new`: **356 samples (59.2%)** — dominated by
-      `NodeKind::children` (73 self), `Sip13Rounds::write` +
-      `RandomState::hash_one` (103 self combined) hashing 461,177 string node
-      IDs, `validate_parts` / closures (70 self), `memcmp` (26 self) and
-      `id_valid` (17 self).
-    - `markdown_core::parse::build`: **255 samples (42.4%)** — including
-      `sha2::sha256::compress256` (**81 self samples, 13.5% of `md_job_run`**)
-      and `Builder::event` (158 inclusive).
+  - Inside `md_job_run` (601 inclusive samples; 600 in
+    `parse_markdown_v2_cancellable`):
+    - Sibling 1 — `markdown_core::parse::finish_v2`: **342 inclusive samples
+      (56.9%)**, of which `v2::Document::new` is **341 inclusive (56.7%)**.
+    - Sibling 2 — `markdown_core::parse::build`: **255 inclusive samples
+      (42.4%)**, including `Builder::event` (158 inclusive) and
+      `sha2::sha256::compress256` (**81 self samples, 13.5% of `md_job_run`**).
+    - Across both siblings (`v2::Document::new` and `parse::build`),
+      `markdown_core::validate::validate_parts` appears in **356 inclusive
+      samples (59.2%)** — dominated by `NodeKind::children` (73 self),
+      `Sip13Rounds::write` + `RandomState::hash_one` (103 self combined)
+      hashing 461,177 string node IDs, `validate_parts` / closures (70 self),
+      `memcmp` (26 self) and `id_valid` (17 self).
   - Inside `md_snapshot_get_view` (161 samples):
     - `markdown_ffi::flat::Builder::finish` (54 self, 33.5%) and
       `HashMap<&str, u32, RandomState>` (`get` 37, `Sip13Rounds::write` 20,

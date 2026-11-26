@@ -212,20 +212,27 @@ enum DocumentReader {
     guard !capability.isRevoked else { throw DocumentError.accessRevoked }
     return try capability.accessing { () throws -> DocumentBytes in
       guard coordinated else {
-        let (bytes, ioMs) = try readFile(
-          at: capability.url, limit: limit, cancellation: cancellation)
+        let raw = try readFile(at: capability.url, limit: limit, cancellation: cancellation)
         let totalMs = queueMilliseconds + milliseconds(readStart, .now)
         return DocumentBytes(
-          data: bytes.data, revisionToken: bytes.revisionToken, device: bytes.device,
-          volume: bytes.volume,
+          data: raw.data, revisionToken: raw.revisionToken, device: raw.device,
+          volume: raw.volume,
           timings: DocumentReadTimings(
             queueMilliseconds: queueMilliseconds, coordinateMilliseconds: 0,
-            ioMilliseconds: ioMs, totalMilliseconds: totalMs))
+            ioMilliseconds: raw.ioMilliseconds, totalMilliseconds: totalMs))
       }
       return try readScoped(
         capability, limit: limit, cancellation: cancellation,
         queueMilliseconds: queueMilliseconds, readStart: readStart)
     }
+  }
+
+  private struct RawRead {
+    let data: Data
+    let revisionToken: String
+    let device: dev_t
+    let volume: URL?
+    let ioMilliseconds: Double
   }
 
   private static func readScoped(
@@ -242,7 +249,7 @@ enum DocumentReader {
     guard failure == 0 else { throw map(errno: failure) }
     let kind = info.st_mode & S_IFMT
     guard kind == S_IFREG else { throw DocumentError.notRegularFile(isDirectory: kind == S_IFDIR) }
-    var result: Result<(DocumentBytes, Double), Error> = .failure(CancellationError())
+    var result: Result<RawRead, Error> = .failure(CancellationError())
     var coordinationError: NSError?
     let coordinateStart = ContinuousClock.now
     cancellation.coordinator.coordinate(
@@ -252,20 +259,20 @@ enum DocumentReader {
     }
     let coordinateEnd = ContinuousClock.now
     if let coordinationError { throw map(coordinationError) }
-    let (bytes, ioMs) = try result.get()
+    let raw = try result.get()
     let coordinateTotal = milliseconds(coordinateStart, coordinateEnd)
-    let coordinateOverhead = max(0, coordinateTotal - ioMs)
+    let coordinateOverhead = max(0, coordinateTotal - raw.ioMilliseconds)
     let totalMs = queueMilliseconds + milliseconds(readStart, .now)
     return DocumentBytes(
-      data: bytes.data, revisionToken: bytes.revisionToken, device: bytes.device,
-      volume: bytes.volume,
+      data: raw.data, revisionToken: raw.revisionToken, device: raw.device,
+      volume: raw.volume,
       timings: DocumentReadTimings(
         queueMilliseconds: queueMilliseconds, coordinateMilliseconds: coordinateOverhead,
-        ioMilliseconds: ioMs, totalMilliseconds: totalMs))
+        ioMilliseconds: raw.ioMilliseconds, totalMilliseconds: totalMs))
   }
 
   private static func readFile(at url: URL, limit: UInt64, cancellation: ReadCancellation)
-    throws -> (DocumentBytes, Double)
+    throws -> RawRead
   {
     let ioStart = ContinuousClock.now
     // O_NONBLOCK keeps a FIFO or device from blocking open(); fstat on the
@@ -298,19 +305,12 @@ enum DocumentReader {
       data.append(contentsOf: buffer[..<count])
     }
     let volume = try? url.resourceValues(forKeys: [.volumeURLKey]).volume
-    let ioMs = milliseconds(ioStart, .now)
-    let placeholder = DocumentReadTimings(
-      queueMilliseconds: 0, coordinateMilliseconds: 0, ioMilliseconds: ioMs,
-      totalMilliseconds: ioMs)
-    return (
-      DocumentBytes(
-        data: data, revisionToken: token(info, size: data.count), device: info.st_dev,
-        volume: volume, timings: placeholder),
-      ioMs
-    )
+    return RawRead(
+      data: data, revisionToken: token(info, size: data.count), device: info.st_dev,
+      volume: volume, ioMilliseconds: milliseconds(ioStart, .now))
   }
 
-  private static func milliseconds(_ a: ContinuousClock.Instant, _ b: ContinuousClock.Instant)
+  static func milliseconds(_ a: ContinuousClock.Instant, _ b: ContinuousClock.Instant)
     -> Double
   {
     let parts = a.duration(to: b).components

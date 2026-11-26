@@ -283,8 +283,9 @@ public final class DocumentLoader {
         read: metrics.read,
         coreTotalMilliseconds: metrics.coreTotalMilliseconds,
         core: metrics.core,
-        publishHopMilliseconds: Self.milliseconds(metrics.backgroundFinishedAt, finishClock),
-        totalMilliseconds: Self.milliseconds(startedClock, finishClock))
+        publishHopMilliseconds: DocumentReader.milliseconds(
+          metrics.backgroundFinishedAt, finishClock),
+        totalMilliseconds: DocumentReader.milliseconds(startedClock, finishClock))
     }
     switch outcome {
     case .document(let document, let bytes, let metrics):
@@ -336,7 +337,7 @@ public final class DocumentLoader {
     previous: (device: dev_t, volume: URL?)?, copyUnchanged: Bool,
     startedClock: ContinuousClock.Instant
   ) async -> Outcome {
-    let taskStartMs = milliseconds(startedClock, .now)
+    let taskStartMs = DocumentReader.milliseconds(startedClock, .now)
     do {
       let bytes = try await DocumentReader.read(capability, limit: CoreRuntime.maxSourceBytes)
       let coreStart = ContinuousClock.now
@@ -345,7 +346,7 @@ public final class DocumentLoader {
       let metrics = LoadStageMetrics(
         taskStartMilliseconds: taskStartMs,
         read: bytes.timings,
-        coreTotalMilliseconds: milliseconds(coreStart, coreEnd),
+        coreTotalMilliseconds: DocumentReader.milliseconds(coreStart, coreEnd),
         core: result.timings,
         backgroundFinishedAt: coreEnd)
       switch result.outcome {
@@ -396,12 +397,5 @@ public final class DocumentLoader {
         try await Task.sleep(for: .milliseconds(20))
       }
     }
-  }
-
-  private nonisolated static func milliseconds(
-    _ a: ContinuousClock.Instant, _ b: ContinuousClock.Instant
-  ) -> Double {
-    let parts = a.duration(to: b).components
-    return Double(parts.seconds) * 1000 + Double(parts.attoseconds) / 1e15
   }
 }
