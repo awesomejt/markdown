@@ -499,8 +499,9 @@ CORE-006 no longer carry. The three host chains are independent.
 - **MAC-003A — Investigate macOS launch budget misses.** Reproduce and profile
   warm launch on the baseline Mac, document measured contributors and create
   focused follow-up delivery tasks. This precedes MAC-003.
-- **MAC-003B — Attribute macOS document loading time.** Instrument and profile
-  the 5 MiB load stages, then fix or materialize the dominant actionable cost.
+- **MAC-003B — Attribute macOS document loading time.** Done in PR #99:
+  instrumented 5 MiB load stages, fixed `Task.detached` scheduling, recorded
+  profiler evidence, and materialized CORE-007 for the dominant core cost.
 - **CORE-007 — Optimize shared core 5 MiB parse and flat-view encoding.**
   Follow-up materialized by MAC-003B (blocks MAC-003). Reduce the dominant
   shared Rust core costs measured on 5 MiB prose (`validate_parts` SipHash
