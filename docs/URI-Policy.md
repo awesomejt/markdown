@@ -80,7 +80,7 @@ resource safety remain platform/core resource phases; this change adds no fetch.
 
 ## External activation
 
-Optional url 2.5.8 provides WHATWG parsing and IDNA without I/O. HTTP(S) requires
+Optional url 2.5.9 provides WHATWG parsing and IDNA without I/O. HTTP(S) requires
 an explicit exactly-two-slash authority prefix, a valid nonempty host and no
 username/password. Missing/extra authority slashes are rejected instead of
 silently repaired. International domains become ASCII IDNA and path spaces/

@@ -20,7 +20,7 @@ Choosing a project license does not change third-party licenses.
 | digest | 0.10.7 | MIT OR Apache-2.0 | [crates.io](https://crates.io/crates/digest/0.10.7) |
 | displaydoc | 0.2.7 | MIT OR Apache-2.0 | [crates.io](https://crates.io/crates/displaydoc/0.2.7) |
 | dyn-clone | 1.0.20 | MIT OR Apache-2.0 | [crates.io](https://crates.io/crates/dyn-clone/1.0.20) |
-| form_urlencoded | 1.2.2 | MIT OR Apache-2.0 | [crates.io](https://crates.io/crates/form_urlencoded/1.2.2) |
+| form_urlencoded | 1.2.3 | MIT OR Apache-2.0 | [crates.io](https://crates.io/crates/form_urlencoded/1.2.3) |
 | generic-array | 0.14.7 | MIT | [crates.io](https://crates.io/crates/generic-array/0.14.7) |
 | icu_collections | 2.4.0 | Unicode-3.0 | [crates.io](https://crates.io/crates/icu_collections/2.4.0) |
 | icu_locale_core | 2.4.0 | Unicode-3.0 | [crates.io](https://crates.io/crates/icu_locale_core/2.4.0) |
@@ -62,7 +62,7 @@ Choosing a project license does not change third-party licenses.
 | typenum | 1.20.1 | MIT OR Apache-2.0 | [crates.io](https://crates.io/crates/typenum/1.20.1) |
 | unicase | 2.10.0 | MIT OR Apache-2.0 | [crates.io](https://crates.io/crates/unicase/2.10.0) |
 | unicode-ident | 1.0.27 | (MIT OR Apache-2.0) AND Unicode-3.0 | [crates.io](https://crates.io/crates/unicode-ident/1.0.27) |
-| url | 2.5.8 | MIT OR Apache-2.0 | [crates.io](https://crates.io/crates/url/2.5.8) |
+| url | 2.5.9 | MIT OR Apache-2.0 | [crates.io](https://crates.io/crates/url/2.5.9) |
 | utf8_iter | 1.0.4 | Apache-2.0 OR MIT | [crates.io](https://crates.io/crates/utf8_iter/1.0.4) |
 | version_check | 0.9.5 | MIT/Apache-2.0 | [crates.io](https://crates.io/crates/version_check/0.9.5) |
 | writeable | 0.6.4 | Unicode-3.0 | [crates.io](https://crates.io/crates/writeable/0.6.4) |
@@ -78,8 +78,9 @@ CORE-006A adds the workspace crate markdown-ffi (the hand-written C ABI). It
 depends only on markdown-core and the already-pinned serde_json, so no package
 or license is added; the C header is hand-written, not generated (no cbindgen).
 
-CORE-003B2 adds url 2.5.8 only through opt-in feature `model-v2`. Its WHATWG
-parser/IDNA backend handles canonical external URLs without network access.
+CORE-003B2 adds url (now pinned at 2.5.9 for RUSTSEC-2026-0592) only through
+opt-in feature `model-v2`. Its WHATWG parser/IDNA backend handles canonical
+external URLs without network access.
 The v1 plus schema-tooling graph remains 32 packages; the full optional graph
 has 60, including ICU4X Unicode data. This compile/data footprint is an explicit
 tradeoff against writing an incomplete URL/IDN parser. CORE-003B4 measured the

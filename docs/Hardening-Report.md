@@ -58,6 +58,7 @@ into `tools/check.py common`).
 | Advisory | Package | Status | Disposition |
 | --- | --- | --- | --- |
 | `RUSTSEC-2026-0433` | `pulldown-cmark 0.13.5` | Dispositioned | Upstream quadratic parsing of nested image wikilinks requires `Options::ENABLE_WIKILINKS`. `PARSER_OPTIONS` in `core/crates/markdown-core/src/parse.rs` does not enable `ENABLE_WIKILINKS`, and `hostile.rs` verifies linear/bounded handling. Upgrading `pulldown-cmark` is a separate gated task per `TODO.md`. |
+| `RUSTSEC-2026-0592` | `url` (was 2.5.8) | Resolved | Stack overflow in `Url::origin()` on nested `blob:` URLs. The core pins `url = "=2.5.9"` (patched). The reader does not call `Url::origin()`; it uses `Url::parse` and host/scheme getters for http/https/mailto policy only. |
 
 ## Residual Risks
 
