@@ -38,8 +38,15 @@ def profile(name):
 def launch_once(bundle, document, cold):
     """One Launch Services launch, as Finder opens a document."""
     if cold:
-        # Needs an administrator; the agent shell has none.
-        subprocess.run(["sudo", "purge"], check=True)
+        # Needs an administrator; the agent shell has none (MAC-003E).
+        try:
+            subprocess.run(["sudo", "purge"], check=True)
+        except subprocess.CalledProcessError as error:
+            raise SystemExit(
+                "cold launch requires sudo purge (admin password). "
+                "Run this command in an owner terminal that can authenticate, "
+                "then record the JSON summaries in docs/macOS-Release-Evidence.md."
+            ) from error
     with tempfile.TemporaryDirectory(prefix="markdown-measure-") as directory:
         output = Path(directory) / "out.json"
         subprocess.run(["open", "-n", "-W", "-a", str(bundle), "--stdout", str(output),

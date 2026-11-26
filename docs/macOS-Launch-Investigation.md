@@ -1,5 +1,9 @@
 # MAC-003A macOS launch investigation
 
+Release-evidence gap register, cold-launch procedure and manual checklist for
+the MAC-003 aggregate live in
+[macOS-Release-Evidence.md](macOS-Release-Evidence.md) (MAC-003E–G).
+
 On Apple M5 Max, macOS 27.0.1, Xcode 27.1 and Rust 1.99.1,
 source `0f982e3` was built in Release with
 `PATH="$HOME/.cargo/bin:$PATH" TMPDIR=/private/tmp .build/feas004-venv/bin/python apps/macos/tools/build.py --configuration release`.

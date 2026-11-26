@@ -1,32 +1,38 @@
 # Agent Session and Platform Handoff
 
-## CORE-007 closeout
+## MAC-003 split closeout (PR #103)
 
-Updated: 2026-11-26 (America/Denver), CORE-007 approved closeout on PR #102.
+Updated: 2026-11-26 (America/Denver). PR #103 merged under D-029; MAC-003
+pass finished **blocked** pending MAC-003E/F/G.
 
-- [PR #102](https://github.com/awesomejt/markdown/pull/102): dense parser IDs,
-  trusted fingerprint skip, Apple-only sha2 asm. Evidence in
-  [macOS-Launch-Investigation.md](docs/macOS-Launch-Investigation.md).
-- Grok follow-up on `b8ecae2`: 0 Blockers, 0 Concerns, 1 Nit (doc wording
-  fixed in `890083a`). Approved under D-029. Hosted CI run
-  [45777967360](https://github.com/awesomejt/markdown/actions/runs/45777967360)
-  green (including windows-native / macos-native after relaunch flake cleared).
-- Residual: D-016 unwaived; 5 MiB LS presented still > 400 ms. Next on Mac:
-  `MAC-003` aggregate / cold-manual evidence. `LNX-003A` needs Linux;
-  `WIN-003A` stays host-blocked until Windows.
+- Evidence: [docs/macOS-Release-Evidence.md](docs/macOS-Release-Evidence.md)
+- Join: MAC-003E ∥ MAC-003F → MAC-003G → MAC-003
+- Eligible now: **MAC-003E** (cold launch; owner `sudo purge`) and
+  **MAC-003F** (owner manual checklist)
+- Warm baseline at `5823b1d` still misses D-016 400 ms; cold unmeasured
+- `LNX-003A` needs Linux; `WIN-003A` host-blocked until Windows
 
-## Previous handoff (MAC-003D)
+## Owner actions
 
-See [memory archive](agents/Memory-Archive.md) / git history.
+1. **MAC-003E:** after release rebuild,
 
-## Resume here — desktop foundations
+   ```sh
+   .build/feas004-venv/bin/python apps/macos/tools/measure.py launch \
+     --configuration release --runs 5 --cold
+   ```
 
-Inspect state before any pass:
+   Paste the three JSON lines into the evidence doc (admin password for
+   `sudo purge`).
+
+2. **MAC-003F:** run the manual checklist in the evidence doc (About,
+   VoiceOver properties / 5 MiB end line, real `/Applications` install,
+   quarantine/second Mac when available).
+
+## Resume here
 
 ```sh
-python3 tools/project_state.py --file project.yaml inspect
+/Users/jason/projects/dev/markdown/.build/feas004-venv/bin/python \
+  tools/project_state.py --file project.yaml inspect
 ```
 
-On the Mac, Homebrew `python3` lacks PyYAML, so use
-`/Users/jason/projects/dev/markdown/.build/feas004-venv/bin/python`.
-Always pass `task_ref` (not `task_key`) to `start_pass`.
+Start `MAC-003E` or `MAC-003F` with `task_ref` set to that task key.
