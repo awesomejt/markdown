@@ -70,13 +70,16 @@ final class WorkspaceSearchController: NSViewController, NSOutlineViewDataSource
   var onOpen: ((WorkspaceItem, SearchMatch?) -> Void)?
   /// The search finished, failed or stopped; the smoke waits for it.
   var onFinish: (() -> Void)?
-  let field = NSSearchField()
-  let matchCase = NSButton(checkboxWithTitle: "Match Case", target: nil, action: nil)
-  let wholeWords = NSButton(checkboxWithTitle: "Whole Words", target: nil, action: nil)
-  let results = WorkspaceOutlineView()
-  private let status = NSTextField(wrappingLabelWithString: "")
-  private let spinner = NSProgressIndicator()
-  let stopButton = NSButton(title: "Stop", target: nil, action: nil)
+  /// Controls are built in `loadView` (MAC-003D): init stays cheap until the pane shows.
+  private(set) lazy var field = NSSearchField()
+  private(set) lazy var matchCase = NSButton(
+    checkboxWithTitle: "Match Case", target: nil, action: nil)
+  private(set) lazy var wholeWords = NSButton(
+    checkboxWithTitle: "Whole Words", target: nil, action: nil)
+  private(set) lazy var results = WorkspaceOutlineView()
+  private lazy var status = NSTextField(wrappingLabelWithString: "")
+  private lazy var spinner = NSProgressIndicator()
+  private(set) lazy var stopButton = NSButton(title: "Stop", target: nil, action: nil)
   /// The documents searched: the files sidebar's listing.
   private(set) var listing: WorkspaceListing?
   private(set) var groups: [SearchGroup] = []

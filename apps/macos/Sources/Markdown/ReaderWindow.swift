@@ -15,18 +15,23 @@ import MarkdownRender
 @MainActor
 final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenuItemValidation {
   var onClose: ((ReaderWindowController) -> Void)?
-  let loader = DocumentLoader()
-  let surface = ReaderSurface()
-  let outline = OutlineController()
-  /// The folder's files beside the outline (MAC-002B).
-  let files = WorkspaceBrowserController()
-  /// The folder search beside them (MAC-002C).
-  let search = WorkspaceSearchController()
+  let loader: DocumentLoader
+  let surface: ReaderSurface
+  let outline: OutlineController
+  /// The folder's files beside the outline (MAC-002B). Built on first folder grant (MAC-003D).
+  private var filesStorage: WorkspaceBrowserController?
+  /// The folder search beside them (MAC-002C). Built with the files pane (MAC-003D).
+  private var searchStorage: WorkspaceSearchController?
+  /// Public for smokes and checks; creates the folder panes if needed.
+  var files: WorkspaceBrowserController { ensureFolderControllers().0 }
+  var search: WorkspaceSearchController { ensureFolderControllers().1 }
   let sidebar: SidebarController
-  let findBar = FindBar()
-  let notice = NoticeBar()
+  /// Built the first time Find is shown (MAC-003D).
+  private var findBarStorage: FindBar?
+  var findBar: FindBar { ensureFindBar() }
+  let notice: NoticeBar
   /// The front matter above the text (MAC-002F).
-  let propertiesBar = PropertiesBar()
+  let propertiesBar: PropertiesBar
   let preferences: ReaderPreferences
   /// The matches for the find bar's current query, options and document.
   private(set) var findMatches: FindMatches?
@@ -131,13 +136,41 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
   }
 
   init(preferences: ReaderPreferences) {
+    let timed = ProcessInfo.processInfo.environment["MARKDOWN_WINDOW_TIMING"] != nil
+    func stamp(_ label: String, from start: ContinuousClock.Instant) {
+      guard timed else { return }
+      let elapsed = start.duration(to: .now)
+      let ms =
+        Double(elapsed.components.attoseconds) / 1e15
+        + Double(elapsed.components.seconds) * 1000
+      let line = "window-timing: \(label)=\(String(format: "%.2f", ms))ms\n"
+      FileHandle.standardError.write(Data(line.utf8))
+    }
+    let initStarted = ContinuousClock.now
     self.preferences = preferences
-    sidebar = SidebarController(files: files, outline: outline, search: search)
+    var mark = ContinuousClock.now
+    loader = DocumentLoader()
+    stamp("loader", from: mark)
+    mark = .now
+    surface = ReaderSurface()
+    stamp("surface", from: mark)
+    mark = .now
+    // Files, Search and Find stay unbuilt until a folder is granted or Find
+    // is shown (MAC-003D): document-only launch only pays for outline chrome.
+    outline = OutlineController()
+    notice = NoticeBar()
+    propertiesBar = PropertiesBar()
+    stamp("chrome_controllers", from: mark)
+    mark = .now
+    sidebar = SidebarController(outline: outline)
+    stamp("sidebar", from: mark)
+    mark = .now
     let window = NSWindow(
       contentRect: NSRect(x: 0, y: 0, width: 900, height: 640),
       styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
       backing: .buffered, defer: false
     )
+    stamp("nswindow", from: mark)
     window.title = "Markdown"
     window.minSize = NSSize(width: 480, height: 320)
     window.isReleasedWhenClosed = false
@@ -164,14 +197,13 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
     let content = NSView()
     surface.scrollView.translatesAutoresizingMaskIntoConstraints = false
     surface.scrollView.isHidden = true
-    findBar.isHidden = true
     propertiesBar.isHidden = true
     topBars.orientation = .vertical
     topBars.alignment = .leading
     topBars.spacing = 0
     topBars.detachesHiddenViews = true
     topBars.translatesAutoresizingMaskIntoConstraints = false
-    topBars.addArrangedSubview(findBar)
+    // Find bar is inserted on first show; properties stay for front matter.
     topBars.addArrangedSubview(propertiesBar)
     let topBarsEmpty = topBars.heightAnchor.constraint(equalToConstant: 0)
     topBarsEmpty.priority = .defaultLow
@@ -186,7 +218,6 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
       topBars.leadingAnchor.constraint(equalTo: content.leadingAnchor),
       topBars.trailingAnchor.constraint(equalTo: content.trailingAnchor),
       topBarsEmpty,
-      findBar.widthAnchor.constraint(equalTo: topBars.widthAnchor),
       propertiesBar.widthAnchor.constraint(equalTo: topBars.widthAnchor),
       surface.scrollView.topAnchor.constraint(equalTo: topBars.bottomAnchor),
       notice.bottomAnchor.constraint(equalTo: content.bottomAnchor),
@@ -199,8 +230,11 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
       statusStack.widthAnchor.constraint(lessThanOrEqualTo: content.widthAnchor, constant: -48),
       detail.widthAnchor.constraint(lessThanOrEqualToConstant: 480),
     ])
+    mark = .now
     let documentController = NSViewController()
     documentController.view = content
+    stamp("content_tree", from: mark)
+    mark = .now
     let sidebarItem = NSSplitViewItem(sidebarWithViewController: sidebar)
     sidebarItem.minimumThickness = 160
     sidebarItem.maximumThickness = 360
@@ -212,23 +246,24 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
     surfaceBottom = surface.scrollView.bottomAnchor.constraint(equalTo: content.bottomAnchor)
     surfaceAboveNotice = surface.scrollView.bottomAnchor.constraint(equalTo: notice.topAnchor)
     surfaceBottom.isActive = true
+    stamp("split_items", from: mark)
+    mark = .now
     window.contentViewController = split
+    stamp("set_content", from: mark)
+    mark = .now
+    // Re-assert size after attaching the split: fullSizeContentView can leave
+    // the content area wrong for an unshown window (restoration smoke).
     window.setContentSize(NSSize(width: 900, height: 640))
     window.center()
+    stamp("size_center", from: mark)
     super.init(window: window)
     window.delegate = self
+    stamp("total", from: initStarted)
     outline.onSelect = { [weak self] index in self?.surface.reveal(heading: index) }
     surface.onNavigate = { [weak self] index in self?.outline.select(index) }
     surface.onOpenDocument = { [weak self] path, fragment in self?.followLink(path, fragment) }
-    files.onOpen = { [weak self] item in self?.openItem(item) }
-    files.onExpansionChange = { [weak self] in self?.workspaceStateChanged() }
     sidebar.onModeChange = { [weak self] in self?.workspaceStateChanged() }
-    search.onOpen = { [weak self] item, match in self?.openItem(item, at: match.map { .match($0) })
-    }
     loader.onChange = { [weak self] state in self?.present(state) }
-    findBar.onSearch = { [weak self] in self?.search(then: nil) }
-    findBar.onNavigate = { [weak self] backwards in self?.step(backwards: backwards) }
-    findBar.onClose = { [weak self] in self?.closeFindBar() }
     notice.onReload = { [weak self] in self?.reloadDocument(nil) }
     // Restorable windows save the reading position once the reader pauses.
     surface.scrollView.contentView.postsBoundsChangedNotifications = true
@@ -238,6 +273,41 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
     NotificationCenter.default.addObserver(
       self, selector: #selector(readingPositionChanged(_:)),
       name: NSTextView.didChangeSelectionNotification, object: surface.textView)
+  }
+
+  /// Build Files/Search the first time a folder is granted (MAC-003D).
+  @discardableResult
+  private func ensureFolderControllers() -> (
+    WorkspaceBrowserController, WorkspaceSearchController
+  ) {
+    if let files = filesStorage, let search = searchStorage {
+      return (files, search)
+    }
+    let files = WorkspaceBrowserController()
+    let search = WorkspaceSearchController()
+    files.onOpen = { [weak self] item in self?.openItem(item) }
+    files.onExpansionChange = { [weak self] in self?.workspaceStateChanged() }
+    search.onOpen = { [weak self] item, match in self?.openItem(item, at: match.map { .match($0) })
+    }
+    filesStorage = files
+    searchStorage = search
+    sidebar.attachFolderPanes(files: files, search: search)
+    return (files, search)
+  }
+
+  /// Build the document find bar the first time Find is shown (MAC-003D).
+  @discardableResult
+  private func ensureFindBar() -> FindBar {
+    if let findBar = findBarStorage { return findBar }
+    let findBar = FindBar()
+    findBar.isHidden = true
+    findBar.onSearch = { [weak self] in self?.search(then: nil) }
+    findBar.onNavigate = { [weak self] backwards in self?.step(backwards: backwards) }
+    findBar.onClose = { [weak self] in self?.closeFindBar() }
+    topBars.insertArrangedSubview(findBar, at: 0)
+    findBar.widthAnchor.constraint(equalTo: topBars.widthAnchor).isActive = true
+    findBarStorage = findBar
+    return findBar
   }
 
   required init?(coder: NSCoder) {
@@ -500,7 +570,7 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
       show(pending.target)
     }
     // A search started while the lead was shown runs now.
-    if !findBar.isHidden { search(then: pendingStep) }
+    if isFindBarVisible { search(then: pendingStep) }
     onMilestone?(.completed)
     return started.duration(to: .now)
   }
@@ -527,7 +597,7 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
     // A reloaded document gets a new snapshot: search it again.
     findMatches = nil
     findKey = nil
-    if !findBar.isHidden { search(then: nil) }
+    if isFindBarVisible { search(then: nil) }
     let install = started.duration(to: .now)
     noteFirstInstall(install: install)
     onMilestone?(.installed)
@@ -766,6 +836,7 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
     let id = listRequest
     listTask?.cancel()
     let options = workspaceOptions
+    let (files, search) = ensureFolderControllers()
     sidebar.setHasFiles(true)
     if files.listing == nil {
       files.clear(message: folderLost?.message ?? "Listing…", keepingExpansion: true)
@@ -872,19 +943,27 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
     listRequest &+= 1
     listTask?.cancel()
     listTask = nil
-    files.clear(message: message)
-    search.setListing(nil, unavailable: message)
+    if message != nil {
+      let (files, search) = ensureFolderControllers()
+      files.clear(message: message)
+      search.setListing(nil, unavailable: message)
+    } else {
+      filesStorage?.clear(message: nil)
+      searchStorage?.setListing(nil, unavailable: nil)
+    }
     sidebar.setHasFiles(message != nil)
   }
 
   /// Select the shown document in the files sidebar, if it is listed.
   private func revealInFiles(_ capability: DocumentCapability) {
-    guard let listing = files.listing, folder != nil else { return }
+    // Use storage only: never build Files/Search on a document-only install
+    // (MAC-003D / Grok concern on PR #101).
+    guard folder != nil, let files = filesStorage, let listing = files.listing else { return }
     let id = listRequest
     Task { [weak self] in
       let path = await Task.detached { listing.path(of: capability.url) }.value
       guard let self, id == self.listRequest, self.shownCapability == capability else { return }
-      self.files.reveal(path)
+      self.filesStorage?.reveal(path)
     }
   }
 
@@ -1166,7 +1245,7 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
     if let folder, let folderBookmark, folderBookmark.folder == folder {
       workspace = RestorationState.WorkspaceState(
         bookmark: folderBookmark.data, mode: pendingWorkspace?.mode ?? sidebar.mode,
-        expanded: pendingWorkspace?.expanded ?? files.expandedPaths(),
+        expanded: pendingWorkspace?.expanded ?? filesStorage?.expandedPaths() ?? [],
         includeHidden: workspaceOptions.includeHidden, allFiles: workspaceOptions.allFiles)
     }
     guard document != nil || workspace != nil else { return }
@@ -1216,20 +1295,26 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
     let generation: UInt64
   }
 
-  var isFindBarVisible: Bool { !findBar.isHidden }
+  var isFindBarVisible: Bool { findBarStorage.map { !$0.isHidden } ?? false }
 
   /// Show or hide the bar; the reading surface moves below it, keeping its frame.
   private func setFindBarVisible(_ visible: Bool) {
-    guard visible == findBar.isHidden else { return }
-    findBar.isHidden = !visible
+    if visible {
+      let bar = ensureFindBar()
+      guard bar.isHidden else { return }
+      bar.isHidden = false
+    } else if let bar = findBarStorage, !bar.isHidden {
+      bar.isHidden = true
+    }
   }
 
   @objc func showFindBar(_ sender: Any?) {
     guard surface.document != nil else { return }
     setFindBarVisible(true)
-    window?.makeFirstResponder(findBar.field)
-    findBar.field.selectText(nil)
-    if findMatches == nil, !findBar.query.isEmpty { search(then: nil) }
+    let bar = ensureFindBar()
+    window?.makeFirstResponder(bar.field)
+    bar.field.selectText(nil)
+    if findMatches == nil, !bar.query.isEmpty { search(then: nil) }
   }
 
   @objc func findNextMatch(_ sender: Any?) { step(backwards: false) }
@@ -1239,7 +1324,8 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
   @objc func useSelectionForFind(_ sender: Any?) {
     let selection = surface.textView.selectedRange()
     guard surface.document != nil, selection.length > 0 else { return }
-    findBar.field.stringValue = (surface.textView.string as NSString).substring(with: selection)
+    let bar = ensureFindBar()
+    bar.field.stringValue = (surface.textView.string as NSString).substring(with: selection)
     setFindBarVisible(true)
     search(then: nil)
   }
@@ -1251,7 +1337,7 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
     findTask?.cancel()
     findTask = nil
     findTaskKey = nil
-    if !findBar.isHidden, let current = surface.currentMatch,
+    if isFindBarVisible, let current = surface.currentMatch,
       surface.matches.indices.contains(current),
       surface.textView.selectedRange() == selectionAtMatch
     {
@@ -1261,10 +1347,10 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
     findKey = nil
     selectionAtMatch = nil
     surface.highlight([])
-    guard !findBar.isHidden else { return }
-    let refocus = window?.firstResponder === findBar.field.currentEditor()
+    guard let bar = findBarStorage, !bar.isHidden else { return }
+    let refocus = window?.firstResponder === bar.field.currentEditor()
     setFindBarVisible(false)
-    findBar.status.stringValue = ""
+    bar.status.stringValue = ""
     if refocus || window?.firstResponder == nil { window?.makeFirstResponder(surface.textView) }
   }
 
@@ -1433,7 +1519,7 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
     listTask = nil
     watcher?.cancel()
     watcher = nil
-    search.setListing(nil)
+    searchStorage?.setListing(nil)
     findRequest &+= 1
     findTask?.cancel()
     findTask = nil

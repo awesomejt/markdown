@@ -255,7 +255,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, 
         reuse(existing, for: capability, folder: nil, recent: nil)
         continue
       }
-      let target = emptyWindow() ?? makeWindow(nil)
+      // Build hidden, then show once after open starts (MAC-003D): avoids
+      // constructing and showing before loader.open begins.
+      let target = emptyWindow() ?? makeWindow(nil, show: false)
       target.recent = nil
       target.loader.open(capability)
       target.showWindow(nil)
