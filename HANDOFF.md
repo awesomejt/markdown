@@ -1,30 +1,32 @@
 # Agent Session and Platform Handoff
 
-## MAC-003D window construction (in progress / ready for PR)
+## MAC-003D window construction closeout
 
-Updated: 2026-11-25 (America/Denver), MAC-003D implementation complete on
-`feat/mac-003d-window-construction`; PR/review/closeout next.
+Updated: 2026-11-25 (America/Denver), MAC-003D approved closeout on PR #101.
 
-- Defers Files/Search controllers and Find bar until a folder is granted or
-  Find is shown; outline-only sidebar on document-only launch.
-- `openAtLaunch` builds with `makeWindow(show: false)` then shows once after
-  open. Opt-in `MARKDOWN_WINDOW_TIMING=1` stamps init stages.
-- Evidence in [macOS-Launch-Investigation.md](docs/macOS-Launch-Investigation.md):
-  init ~73–80 ms (was ~130 ms); LS prose 1 MiB presented median ~539 ms (was
-  ~618); `menus_to_did_finish_ms` median ~126 ms (was ~144). D-016 unwaived.
-- Native `apps/macos/tools/check.py` passed (debug+release smoke, relaunch,
-  preferences). Local `tools/check.py` hits a pre-existing
-  `/private/var` vs `/var` path assert in `test_ci_paths.py` on this Mac;
-  unrelated to this change.
-- Next on this Mac after MAC-003D closeout: `CORE-007` (shared core 5 MiB
-  parse/encode) — clear context when switching to it. `MAC-003` aggregate and
-  cold/manual evidence remain for DESK-002. `LNX-003A` needs Linux;
-  `WIN-003A` is host-blocked until Windows.
+- [PR #101](https://github.com/awesomejt/markdown/pull/101) defers Files/Search/Find
+  until a folder is granted or Find is shown; `openAtLaunch` builds hidden then
+  shows once; evidence in
+  [macOS-Launch-Investigation.md](docs/macOS-Launch-Investigation.md).
+- [Grok review on `bd46a08`](https://github.com/awesomejt/markdown/pull/101#pullrequestreview-6069659101)
+  (follow-up): 0 Blockers, 0 Concerns, 0 Nits after fixing the
+  `revealInFiles` eager-build concern from the first review of `52e6552`.
+  Approved under D-029. Hosted CI run
+  [45769107588](https://github.com/awesomejt/markdown/actions/runs/45769107588)
+  green (including macos-native).
+- Residual: warm Launch Services 1 MiB still misses 400 ms (D-016 unwaived);
+  LS prose 1 MiB presented median ~539 ms after this work (was ~618). Shared
+  core 5 MiB parse/encode remains CORE-007; cold launch and manual checks
+  remain for MAC-003 / DESK-002.
+- Next on this Mac: `CORE-007` (shared core 5 MiB) — **clear context** before
+  starting it; this pass was AppKit launch chrome. `LNX-003A` needs Linux;
+  `WIN-003A` stays host-blocked until Windows.
 
 ## Previous handoff (MAC-003C)
 
 See git history / [memory archive](agents/Memory-Archive.md) for MAC-003C and
-earlier closeouts. Superseded for next-step routing by the MAC-003D note above.
+earlier closeouts. Superseded for next-step routing by the MAC-003D closeout
+above.
 
 ## Resume here — desktop foundations
 
