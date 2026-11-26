@@ -84,10 +84,16 @@ def main():
             target = COLD_LAUNCH if args.cold else WARM_LAUNCH
             ok = max(presented) <= target
             failed |= not ok
-            print(json.dumps({"profile": name, "cache": "cold" if args.cold else "warm",
-                              "presented_ms": spread(presented), "completed_ms": spread(completed),
-                              "target_ms": target, "meets_target": ok,
-                              "runs": [row["ms"] for row in rows]}))
+            summary = {"profile": name, "cache": "cold" if args.cold else "warm",
+                       "presented_ms": spread(presented), "completed_ms": spread(completed),
+                       "target_ms": target, "meets_target": ok,
+                       "runs": [row["ms"] for row in rows]}
+            if all("load_ms" in row for row in rows):
+                keys = sorted(rows[0]["load_ms"].keys())
+                summary["load_stages_ms"] = {
+                    key: spread([row["load_ms"][key] for row in rows]) for key in keys
+                }
+            print(json.dumps(summary))
         elif args.mode == "repeated":
             rows = direct(bundle, f"repeated={args.count}", document, 60 + 10 * args.count)
             retained = [row["retained_footprint_mib"] for row in rows]

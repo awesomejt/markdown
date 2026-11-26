@@ -90,6 +90,10 @@ enum Measurement {
     marks["presented"] = presented.timeIntervalSince(started) * 1000
     try await complete(window)
     var row = describe(window)
+    if let timings = window.loader.document?.timings {
+      marks["load_started"] = timings.startedAt.timeIntervalSince(started) * 1000
+      row["load_ms"] = loadTimings(timings)
+    }
     row["ms"] = marks
     row["footprint_mib"] = mebibytes(footprint())
     emit(row)
@@ -113,6 +117,9 @@ enum Measurement {
       row["iteration"] = iteration
       row["presented_ms"] = milliseconds(presented)
       row["completed_ms"] = milliseconds(start.duration(to: .now))
+      if let timings = window.loader.document?.timings {
+        row["load_ms"] = loadTimings(timings)
+      }
       row["live_footprint_mib"] = mebibytes(footprint())
       window.window?.performClose(nil)
       // Closing cancels work and awaits native cleanup off the main actor.
@@ -346,6 +353,24 @@ enum Measurement {
     guard window.surface.document?.isComplete == true else {
       throw Failure(description: "document did not complete")
     }
+  }
+
+  private static func loadTimings(_ timings: DocumentLoadTimings) -> [String: Double] {
+    [
+      "task_start_ms": timings.taskStartMilliseconds,
+      "read_queue_ms": timings.read.queueMilliseconds,
+      "read_coordinate_ms": timings.read.coordinateMilliseconds,
+      "read_io_ms": timings.read.ioMilliseconds,
+      "read_total_ms": timings.read.totalMilliseconds,
+      "core_queue_ms": timings.core.queueMilliseconds,
+      "core_submit_ms": timings.core.submitMilliseconds,
+      "core_parse_ms": timings.core.parseMilliseconds,
+      "core_encode_ms": timings.core.encodeMilliseconds,
+      "core_copy_ms": timings.core.copyMilliseconds,
+      "core_total_ms": timings.coreTotalMilliseconds,
+      "publish_hop_ms": timings.publishHopMilliseconds,
+      "total_ms": timings.totalMilliseconds,
+    ]
   }
 
   private static func describe(_ window: ReaderWindowController) -> [String: Any] {

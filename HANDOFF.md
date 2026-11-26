@@ -1,5 +1,27 @@
 # Agent Session and Platform Handoff
 
+## MAC-003B load-stage attribution closeout
+
+Updated: 2026-11-25 (America/Denver), MAC-003B approved closeout on PR #99.
+
+- [PR #99](https://github.com/awesomejt/markdown/pull/99) delivers stage-level
+  load timing, the `Task.detached` scheduling fix, UUID-verified Time Profiler
+  evidence in [macOS-Launch-Investigation.md](docs/macOS-Launch-Investigation.md),
+  CORE-007 materialization, and the `url` 2.5.9 pin for RUSTSEC-2026-0592.
+- [Grok review 1](https://github.com/awesomejt/markdown/pull/99#pullrequestreview-5951911568)
+  at `74480dd`: 0 Blockers, 0 Concerns, 3 Nits (fixed in `8b5e55d`). Approved
+  head `fef8e76` under D-029 (nit fixes + advisory pin bump exempt from
+  re-review). All review threads resolved.
+- Hosted CI run [45759158828](https://github.com/awesomejt/markdown/actions/runs/45759158828)
+  passed all checks at `fef8e76`. Local `tools/check.py common` and `core`
+  passed after the pin bump.
+- Residual: 5 MiB warm launch median 574.55 ms (unwaived); cold launch and
+  manual release checks remain for MAC-003 / DESK-002.
+- Next on this Mac: `MAC-003C` (startup/presentation attribution) and/or
+  `CORE-007` (shared Rust parse/encode). Both are independently ready after
+  this merge. Prefer a fresh context; this pass was mostly CI/closeout recovery
+  of an already-implemented branch.
+
 ## MAC-003A launch investigation closeout
 
 On `docs/mac-003a-launch-investigation`, the release build and five warm
@@ -9,8 +31,8 @@ and MAC-003C now block MAC-003 and will attribute loading stages and startup /
 presentation respectively. The Instruments attempt had ambiguous executable
 metadata and was not used. The [Grok follow-up](https://github.com/awesomejt/markdown/pull/98#pullrequestreview-5951331793)
 reviewed `7573d113` without serious findings. The closeout pass records both
-follow-ups, addressing its nit. After closeout CI and merge, MAC-003B is next
-on this Mac; MAC-003C is independently ready.
+follow-ups, addressing its nit. Superseded for next-step routing by the
+MAC-003B closeout above.
 
 ## DESK-002 prerequisite correction
 
