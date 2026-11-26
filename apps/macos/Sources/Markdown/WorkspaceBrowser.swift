@@ -38,7 +38,10 @@ final class SidebarController: NSViewController {
     guard self.files == nil else { return }
     self.files = files
     self.search = search
-    if hasFiles { installFolderPanesIfNeeded() }
+    if hasFiles {
+      installFolderPanesIfNeeded()
+      apply()
+    }
   }
 
   override func loadView() {

@@ -956,12 +956,14 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
 
   /// Select the shown document in the files sidebar, if it is listed.
   private func revealInFiles(_ capability: DocumentCapability) {
-    guard let listing = files.listing, folder != nil else { return }
+    // Use storage only: never build Files/Search on a document-only install
+    // (MAC-003D / Grok concern on PR #101).
+    guard folder != nil, let files = filesStorage, let listing = files.listing else { return }
     let id = listRequest
     Task { [weak self] in
       let path = await Task.detached { listing.path(of: capability.url) }.value
       guard let self, id == self.listRequest, self.shownCapability == capability else { return }
-      self.files.reveal(path)
+      self.filesStorage?.reveal(path)
     }
   }
 
@@ -1243,7 +1245,7 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, NSMenu
     if let folder, let folderBookmark, folderBookmark.folder == folder {
       workspace = RestorationState.WorkspaceState(
         bookmark: folderBookmark.data, mode: pendingWorkspace?.mode ?? sidebar.mode,
-        expanded: pendingWorkspace?.expanded ?? files.expandedPaths(),
+        expanded: pendingWorkspace?.expanded ?? filesStorage?.expandedPaths() ?? [],
         includeHidden: workspaceOptions.includeHidden, allFiles: workspaceOptions.allFiles)
     }
     guard document != nil || workspace != nil else { return }
