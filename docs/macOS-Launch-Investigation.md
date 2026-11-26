@@ -137,3 +137,82 @@ was run on `build/macos/release/Markdown.app/Contents/MacOS/Markdown --measure r
 Because these dominant costs live in the shared Rust core and affect all three
 desktop hosts, they are tracked in follow-up task `CORE-007` (`MAC-003B ->
 CORE-007 -> MAC-003`). D-016 remains unwaived.
+
+## MAC-003C startup and presentation attribution
+
+On Apple M5 Max, macOS 27.2.1 (26B131), Xcode 27.2 (27B52) and Rust 1.99.1,
+`LaunchClock`, `PresentationTimings`, `Measurement.swift` and
+`apps/macos/tools/measure.py` report process-relative startup slices and
+load→first-install presentation stages for Launch Services and direct
+launches. `DocumentLoader` stage timers from MAC-003B remain unchanged.
+
+Five warm Launch Services runs per profile (one unrecorded warmup each) with
+`apps/macos/tools/measure.py launch --configuration release --runs 5` after
+the synchronous `openAtLaunch` fix:
+
+| Profile | Metric | Median (min–max) ms |
+| --- | --- | --- |
+| prose 1 MiB | `presented_ms` | 617.54 (606.93–632.67) |
+| prose 1 MiB | `process_to_main_ms` | 270.41 (263.14–290.35) |
+| prose 1 MiB | `core_to_will_finish_ms` | 100.11 (92.25–116.26) |
+| prose 1 MiB | `will_finish_to_menus_ms` | 5.01 (4.86–6.79) |
+| prose 1 MiB | `menus_to_did_finish_ms` | 143.95 (137.88–156.66) |
+| prose 1 MiB | `process_to_did_finish_ms` | 529.65 (518.03–544.61) |
+| prose 1 MiB | `presentation total_ms` | 5.71 (5.56–5.85) |
+| prose 1 MiB | `render_ms` / `install_ms` | 4.72 / 0.80 |
+| prose 1 MiB | `installed_to_committed` | ~37 |
+| prose 1 MiB | `committed_to_presented` | ~6 |
+| long lines 1 MiB | `presented_ms` | 624.83 (579.00–656.18) |
+| long lines 1 MiB | `presentation total_ms` | 6.15 (5.97–6.34) |
+
+One direct (non–Launch Services) release sample for prose 1 MiB:
+
+| Metric | ms |
+| --- | --- |
+| `process_to_main_ms` | 7.86 |
+| `core_to_will_finish_ms` | 188.35 |
+| `menus_to_did_finish_ms` | 25.69 |
+| `process_to_did_finish_ms` | 227.55 |
+| `load_started` − `did_finish_launching` | ~133 (window `makeWindow` + `loader.open`) |
+| `presentation total_ms` | 5.51 |
+| `presented` | 445.08 |
+
+Findings:
+
+1. **Launch Services vs direct:** `open -a` warm launches spend ~260–270 ms
+   before `main` (`process_to_main_ms`). The same Release binary started as a
+   direct executable reaches `main` in ~8–11 ms. D-012 Launch Services
+   measurement remains the product path; the gap is dyld/Launch Services, not
+   document work.
+2. **AppKit bring-up:** From `main`/`core_ready` to
+   `applicationWillFinishLaunching` is ~90–190 ms (NSApplication / framework
+   initialization). Menu installation itself is only ~5 ms.
+3. **Synchronous launch open (fixed):** Document delivery used `enqueueOpen`,
+   so the MainActor Task that calls `loader.open` could not run until after
+   `applicationDidFinishLaunching` returned. `openAtLaunch` now opens
+   synchronously during launch (and for `application(_:open:)` before
+   `launchFinished`), so `load_started` overlaps the end of launch instead of
+   waiting for a run-loop hop. On Launch Services runs after the fix,
+   `load_started` and `did_finish_launching` are within 1 ms.
+4. **Window construction (~130 ms):** Building `ReaderWindowController` /
+   `makeWindow` (sidebar Files/Outline/Search, TextKit surface, chrome)
+   dominates the post-menu launch path. On direct launches it appears as the
+   ~130 ms gap from `did_finish_launching` to `load_started`; on Launch
+   Services it appears as the ~140 ms `menus_to_did_finish_ms` while
+   `openAtLaunch` builds the window before the did-finish mark. Tracked as
+   follow-up `MAC-003D`.
+5. **Presentation after load is small:** Off-main `DocumentRenderer.render`
+   plus main-thread install is ~5–6 ms on both 1 MiB profiles. The remaining
+   loaded→presented cost is TextKit viewport layout (~30–55 ms
+   `installed_to_committed`) and the next display frame (~6–15 ms
+   `committed_to_presented`), not Swift rendering.
+6. **Profiler target:** A Time Profiler attempt via `xctrace record --launch`
+   on the Release executable recorded TOC metadata for a different registered
+   `Markdown.app` under a sibling checkout's debug bundle path. That trace is
+   not used for CPU conclusions (same class of ambiguity as MAC-003A). Stage
+   timers above are the evidence; MAC-003D should verify any future trace
+   UUID against `dwarfdump --uuid` on the measured binary.
+
+D-016 remains unwaived. Warm Launch Services 1 MiB medians still miss 400 ms;
+the actionable host follow-up is `MAC-003D` (window construction). Shared core
+5 MiB parse/encode remains `CORE-007`.

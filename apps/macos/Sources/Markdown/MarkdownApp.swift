@@ -9,11 +9,13 @@ import UniformTypeIdentifiers
 enum MarkdownApp {
   @MainActor
   static func main() {
+    LaunchClock.mark("main_entry")
     let core: CoreDiagnostics
     do { core = try CoreRuntime.diagnostics() } catch {
       FileHandle.standardError.write(Data("Core initialization failed: \(error)\n".utf8))
       exit(EXIT_FAILURE)
     }
+    LaunchClock.mark("core_ready")
     if CommandLine.arguments.dropFirst().first == "--version" {
       print(BuildDiagnostics(core: core).versionLine)
       exit(EXIT_SUCCESS)
@@ -89,14 +91,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, 
   }
 
   func applicationWillFinishLaunching(_ notification: Notification) {
+    LaunchClock.mark("will_finish_launching")
     NSApp.appearance = preferences.appearance.appearance
     installMenus()
+    LaunchClock.mark("menus_installed")
   }
 
   /// The text size the windows were last rendered at.
   private var appliedScale: CGFloat
   /// Whether the windows were last made restorable.
   private var appliedReopen: Bool
+  /// Set at the end of `applicationDidFinishLaunching`. Launch-time document
+  /// delivery opens synchronously so loading starts before the run-loop hop
+  /// that `enqueueOpen` would otherwise wait for (MAC-003C).
+  private var launchFinished = false
 
   private func preferencesChanged() {
     NSApp.appearance = preferences.appearance.appearance
@@ -153,14 +161,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, 
   }
 
   func applicationDidFinishLaunching(_ notification: Notification) {
+    LaunchClock.mark("did_finish_launching")
     if measurement?.opensAtLaunch == true,
       let url = Measurement.documentArgument(CommandLine.arguments)
     {
-      open([url])
+      openAtLaunch([url])
     }
     // Documents delivered at launch (Finder, `open`) already created windows.
     if windows.isEmpty { newWindow(nil) }
     NSApp.activate()
+    launchFinished = true
     if let measurement {
       Task { await Measurement.run(measurement, delegate: self) }
     }
@@ -224,7 +234,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, 
 
   /// Finder, Launch Services and `open -a` deliver granted file URLs here.
   func application(_ sender: NSApplication, open urls: [URL]) {
-    open(urls)
+    if launchFinished {
+      open(urls)
+    } else {
+      // During launch the MainActor run-loop has not spun yet, so an
+      // `enqueueOpen` Task would not start loading until after this and
+      // `applicationDidFinishLaunching` return. Open synchronously instead.
+      openAtLaunch(urls)
+    }
+  }
+
+  /// Open documents immediately on the current MainActor turn: one window
+  /// per URL, no identity lookup, so loading overlaps the rest of launch.
+  private func openAtLaunch(_ urls: [URL]) {
+    for url in urls {
+      guard let capability = try? DocumentCapability(granted: url) else { continue }
+      if let existing = windows.first(where: { $0.loader.capability == capability }) {
+        existing.showWindow(nil)
+        continue
+      }
+      let target = emptyWindow() ?? makeWindow(nil)
+      target.loader.open(capability)
+      target.showWindow(nil)
+    }
   }
 
   /// What an open panel asks for.

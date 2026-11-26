@@ -85,7 +85,8 @@ enum Measurement {
   private static func launch(_ delegate: AppDelegate) async throws {
     let started = try processStart()
     let window = try launchWindow(delegate)
-    var marks: [String: Double] = ["did_finish_launching": since(started)]
+    var marks = LaunchClock.snapshot()
+    marks["did_finish_launching"] = marks["did_finish_launching"] ?? since(started)
     let presented = try await present(window) { marks[$0] = since(started) }
     marks["presented"] = presented.timeIntervalSince(started) * 1000
     try await complete(window)
@@ -94,9 +95,48 @@ enum Measurement {
       marks["load_started"] = timings.startedAt.timeIntervalSince(started) * 1000
       row["load_ms"] = loadTimings(timings)
     }
+    if let presentation = window.lastPresentationTimings {
+      row["presentation_ms"] = presentationTimings(presentation)
+      if let loaded = marks["loaded"], let installed = marks["installed"] {
+        marks["loaded_to_installed"] = installed - loaded
+      }
+      if let installed = marks["installed"], let committed = marks["committed"] {
+        marks["installed_to_committed"] = committed - installed
+      }
+      if let committed = marks["committed"], let presentedMs = marks["presented"] {
+        marks["committed_to_presented"] = presentedMs - committed
+      }
+    }
     row["ms"] = marks
+    row["startup_ms"] = startupTimings(marks)
     row["footprint_mib"] = mebibytes(footprint())
     emit(row)
+  }
+
+  private static func presentationTimings(_ timings: PresentationTimings) -> [String: Double] {
+    [
+      "schedule_ms": timings.scheduleMilliseconds,
+      "render_ms": timings.renderMilliseconds,
+      "install_ms": timings.installMilliseconds,
+      "total_ms": timings.totalMilliseconds,
+    ]
+  }
+
+  /// Additive slices of process-start→didFinishLaunching for MAC-003C.
+  private static func startupTimings(_ marks: [String: Double]) -> [String: Double] {
+    let mainEntry = marks["main_entry"] ?? 0
+    let coreReady = marks["core_ready"] ?? mainEntry
+    let willFinish = marks["will_finish_launching"] ?? coreReady
+    let menus = marks["menus_installed"] ?? willFinish
+    let didFinish = marks["did_finish_launching"] ?? menus
+    return [
+      "process_to_main_ms": mainEntry,
+      "main_to_core_ms": max(coreReady - mainEntry, 0),
+      "core_to_will_finish_ms": max(willFinish - coreReady, 0),
+      "will_finish_to_menus_ms": max(menus - willFinish, 0),
+      "menus_to_did_finish_ms": max(didFinish - menus, 0),
+      "process_to_did_finish_ms": didFinish,
+    ]
   }
 
   private static func repeated(_ count: Int, _ delegate: AppDelegate) async throws {
